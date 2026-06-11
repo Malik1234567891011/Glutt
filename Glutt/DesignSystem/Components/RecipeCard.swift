@@ -51,27 +51,8 @@ struct RecipeCard: View {
     }
 
     private var recipeImage: some View {
-        ZStack {
-            Rectangle()
-                .fill(Theme.Colors.accent.opacity(0.08))
-            if let urlString = recipe.imageURL, let url = URL(string: urlString) {
-                AsyncImage(url: url) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    imagePlaceholder
-                }
-            } else {
-                imagePlaceholder
-            }
-        }
-        .frame(height: 150)
-        .clipped()
-    }
-
-    private var imagePlaceholder: some View {
-        Image(systemName: "fork.knife")
-            .font(.system(size: 32))
-            .foregroundStyle(Theme.Colors.accent.opacity(0.35))
+        RecipeImageView(recipe: recipe)
+            .frame(height: 170)
     }
 
     private func ingredientMatchIndicator(owned: Int) -> some View {

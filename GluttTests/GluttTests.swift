@@ -22,6 +22,46 @@ final class IngredientCanonicalizerTests: XCTestCase {
     }
 }
 
+final class UnitConverterTests: XCTestCase {
+
+    func testFractionsFormatting() {
+        XCTAssertEqual(UnitConverter.format(quantity: 0.5, unit: "cup"), "½ cup")
+        XCTAssertEqual(UnitConverter.format(quantity: 1.5), "1½")
+        XCTAssertEqual(UnitConverter.format(quantity: 2.0, unit: "tbsp"), "2 tbsp")
+        XCTAssertEqual(UnitConverter.format(quantity: 0.25), "¼")
+    }
+
+    func testMetricConversion() {
+        let cups = UnitConverter.convert(quantity: 2, unit: "cups", to: .metric)
+        XCTAssertEqual(cups.quantity, 480)
+        XCTAssertEqual(cups.unit, "ml")
+
+        let pounds = UnitConverter.convert(quantity: 1, unit: "lb", to: .metric)
+        XCTAssertEqual(pounds.quantity, 454)
+        XCTAssertEqual(pounds.unit, "g")
+
+        // Promotes to liters at >= 1000 ml
+        let quarts = UnitConverter.convert(quantity: 2, unit: "quarts", to: .metric)
+        XCTAssertEqual(quarts.unit, "l")
+    }
+
+    func testOriginalSystemIsUntouched() {
+        let result = UnitConverter.convert(quantity: 2, unit: "cups", to: .original)
+        XCTAssertEqual(result.quantity, 2)
+        XCTAssertEqual(result.unit, "cups")
+    }
+
+    func testScaledDisplay() {
+        // 0.5 cup scaled from 4 -> 6 servings = 0.75 cup
+        let display = UnitConverter.display(quantity: 0.5, unit: "cup", scale: 1.5)
+        XCTAssertEqual(display, "¾ cup")
+    }
+
+    func testFahrenheitToCelsius() {
+        XCTAssertEqual(UnitConverter.fahrenheitToCelsius(425), 218)
+    }
+}
+
 final class ModelTests: XCTestCase {
 
     @MainActor

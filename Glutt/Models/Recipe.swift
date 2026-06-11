@@ -17,6 +17,8 @@ final class Recipe {
     var importConfidence: Double?
 
     var imageURL: String?
+    /// Name of a bundled asset-catalog image (used by seed/sample content).
+    var imageAssetName: String?
     @Attribute(.externalStorage) var imageData: Data?
 
     var servings: Int
@@ -25,6 +27,8 @@ final class Recipe {
     var difficulty: Difficulty
     var tags: [String]
     var notes: String
+    /// Private 1–5 rating. Nil until the user rates it.
+    var rating: Int?
 
     // Nutrition (per serving, optional, only surfaced when nutrition mode is on)
     var calories: Int?

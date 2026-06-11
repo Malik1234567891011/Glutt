@@ -77,6 +77,16 @@ final class Router {
     /// Set when a deep link or capture action requests a flow that isn't built yet.
     var pendingAction: CaptureAction?
 
+    init() {
+        // Launch-argument hook for UI tests and tooling: `-tab recipes`
+        let arguments = ProcessInfo.processInfo.arguments
+        if let flagIndex = arguments.firstIndex(of: "-tab"),
+           arguments.indices.contains(flagIndex + 1),
+           let tab = AppTab(rawValue: arguments[flagIndex + 1]) {
+            selectedTab = tab
+        }
+    }
+
     func handle(url: URL) {
         guard url.scheme == "glutt" else { return }
         switch url.host {

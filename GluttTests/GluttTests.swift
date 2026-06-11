@@ -225,6 +225,41 @@ final class TextRecipeParserTests: XCTestCase {
     }
 }
 
+final class CookModeTests: XCTestCase {
+
+    func testStepIngredientMatching() {
+        let chicken = RecipeIngredient(name: "Chicken thighs", quantity: 600, unit: "g", sortIndex: 0)
+        let rice = RecipeIngredient(name: "Rice", quantity: 2, unit: "cups", sortIndex: 1)
+        let yogurt = RecipeIngredient(name: "Greek yogurt", quantity: 0.5, unit: "cup", sortIndex: 2)
+        let ingredients = [chicken, rice, yogurt]
+
+        let searStep = RecipeStep(index: 0, text: "Sear the chicken 4 minutes per side.")
+        XCTAssertEqual(searStep.ingredientsUsed(from: ingredients).map(\.name), ["Chicken thighs"])
+
+        let sauceStep = RecipeStep(index: 1, text: "Whisk the yogurt into a sauce while the rice cooks.")
+        XCTAssertEqual(
+            sauceStep.ingredientsUsed(from: ingredients).map(\.name),
+            ["Rice", "Greek yogurt"]
+        )
+
+        let restStep = RecipeStep(index: 2, text: "Let everything rest 5 minutes.")
+        XCTAssertTrue(restStep.ingredientsUsed(from: ingredients).isEmpty)
+    }
+
+    func testTimerFormatting() {
+        XCTAssertEqual(TimerManager.format(seconds: 45), "0:45")
+        XCTAssertEqual(TimerManager.format(seconds: 600), "10:00")
+        XCTAssertEqual(TimerManager.format(seconds: 5400), "1:30:00")
+    }
+
+    func testTimerCountdown() {
+        let timer = CookTimer(label: "Test", totalSeconds: 60, endDate: .now.addingTimeInterval(60))
+        XCTAssertEqual(timer.remainingSeconds(), 60)
+        XCTAssertFalse(timer.isFinished())
+        XCTAssertTrue(timer.isFinished(at: .now.addingTimeInterval(61)))
+    }
+}
+
 final class ModelTests: XCTestCase {
 
     @MainActor

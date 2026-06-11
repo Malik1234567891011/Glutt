@@ -12,6 +12,7 @@ struct RecipeDetailView: View {
     @State private var isConfirmingDelete = false
     @State private var isNamingVersion = false
     @State private var versionLabel = ""
+    @State private var isCooking = false
 
     init(recipe: Recipe) {
         self.recipe = recipe
@@ -50,6 +51,20 @@ struct RecipeDetailView: View {
         .background(Theme.Colors.background)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarMenu }
+        .safeAreaInset(edge: .bottom) {
+            Button {
+                isCooking = true
+            } label: {
+                Label("Cook", systemImage: "frying.pan")
+            }
+            .buttonStyle(.gluttPrimary)
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.bottom, Theme.Spacing.sm)
+            .background(Theme.Colors.background.opacity(0.95))
+        }
+        .fullScreenCover(isPresented: $isCooking) {
+            CookModeView(recipe: recipe, scale: scale)
+        }
         .sheet(isPresented: $isShowingEditor) {
             RecipeEditorView(recipe: recipe)
         }

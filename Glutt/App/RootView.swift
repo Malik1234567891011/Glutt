@@ -1,8 +1,10 @@
+import SwiftData
 import SwiftUI
 
 struct RootView: View {
     @Environment(Router.self) private var router
     @Environment(\.scenePhase) private var scenePhase
+    @Query(sort: \Recipe.createdAt) private var recipes: [Recipe]
 
     var body: some View {
         @Bindable var router = router
@@ -30,6 +32,11 @@ struct RootView: View {
         .onChange(of: scenePhase) {
             if scenePhase == .active {
                 router.checkForSharedImport()
+            }
+        }
+        .fullScreenCover(isPresented: $router.demoCookOnLaunch) {
+            if let recipe = recipes.first {
+                CookModeView(recipe: recipe)
             }
         }
     }

@@ -78,6 +78,8 @@ final class Router {
     var pendingAction: CaptureAction?
     /// URL waiting to be imported (from share extension or glutt://import?url=...).
     var pendingImportURL: URL?
+    /// Dev/testing hook (`-demoCook`): opens Cook Mode for the first recipe on launch.
+    var demoCookOnLaunch = false
 
     init() {
         // Launch-argument hooks for UI tests and tooling: `-tab recipes`, `-importURL https://...`
@@ -94,6 +96,7 @@ final class Router {
             selectedTab = .recipes
             pendingAction = .importRecipe
         }
+        demoCookOnLaunch = arguments.contains("-demoCook")
     }
 
     func handle(url: URL) {

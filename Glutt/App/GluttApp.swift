@@ -1,9 +1,38 @@
 import SwiftData
 import SwiftUI
+import UserNotifications
+
+/// Routes notification taps (e.g. "time to start cooking") to the right tab,
+/// and keeps banners visible while the app is foregrounded.
+final class NotificationRoutingDelegate: NSObject, UNUserNotificationCenterDelegate {
+    var router: Router?
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        if response.notification.request.content.userInfo["destination"] as? String == "plan" {
+            router?.selectedTab = .plan
+        }
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+}
 
 @main
 struct GluttApp: App {
     @State private var router = Router()
+    private let notificationDelegate = NotificationRoutingDelegate()
+
+    init() {
+        notificationDelegate.router = router
+        UNUserNotificationCenter.current().delegate = notificationDelegate
+    }
 
     let container: ModelContainer = {
         let schema = Schema([

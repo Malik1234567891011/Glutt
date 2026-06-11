@@ -16,6 +16,8 @@ final class PlannedMeal {
     var freeformTitle: String?
 
     var createdAt: Date
+    /// Stable handle for scheduled notifications tied to this meal.
+    var reminderID: UUID?
 
     var displayTitle: String {
         recipe?.title ?? leftover?.title ?? freeformTitle ?? "Meal"

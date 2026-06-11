@@ -80,6 +80,8 @@ final class Router {
     var pendingImportURL: URL?
     /// Dev/testing hook (`-demoCook`): opens Cook Mode for the first recipe on launch.
     var demoCookOnLaunch = false
+    /// Dev/testing hook (`-demoWizard`): opens the week planner wizard on launch.
+    var demoWizardOnLaunch = false
 
     init() {
         // Launch-argument hooks for UI tests and tooling: `-tab recipes`, `-importURL https://...`
@@ -97,6 +99,10 @@ final class Router {
             pendingAction = .importRecipe
         }
         demoCookOnLaunch = arguments.contains("-demoCook")
+        if arguments.contains("-demoWizard") {
+            demoWizardOnLaunch = true
+            selectedTab = .plan
+        }
     }
 
     func handle(url: URL) {

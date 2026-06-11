@@ -396,3 +396,122 @@ final class ModelTests: XCTestCase {
         XCTAssertEqual(try context.fetchCount(FetchDescriptor<UserPrefs>()), 1)
     }
 }
+
+final class PrepDetectorTests: XCTestCase {
+
+    func testDetectsMarinadeAndThaw() {
+        let recipe = Recipe(title: "Butter Chicken")
+        recipe.steps = [
+            RecipeStep(index: 0, text: "Marinate the chicken in yogurt for 4 hours."),
+            RecipeStep(index: 1, text: "Thaw the frozen peas."),
+            RecipeStep(index: 2, text: "Simmer the sauce."),
+        ]
+        let tasks = PrepDetector.tasks(for: recipe)
+
+        XCTAssertEqual(tasks.count, 2)
+        XCTAssertTrue(tasks.contains { $0.keyword == "marinate" })
+        XCTAssertTrue(tasks.contains { $0.keyword == "thaw" })
+        XCTAssertTrue(tasks.allSatisfy { $0.text.contains("Butter Chicken") })
+    }
+
+    func testNoFalsePositives() {
+        let recipe = Recipe(title: "Quick Eggs")
+        recipe.steps = [RecipeStep(index: 0, text: "Scramble the eggs over medium heat.")]
+        XCTAssertTrue(PrepDetector.tasks(for: recipe).isEmpty)
+    }
+}
+
+final class WeekPlannerTests: XCTestCase {
+
+    private func makeRecipe(_ title: String, rating: Int? = nil, pantryFriendly: Bool = false) -> Recipe {
+        let recipe = Recipe(title: title)
+        recipe.rating = rating
+        recipe.ingredients = [RecipeIngredient(name: pantryFriendly ? "Rice" : "Saffron", sortIndex: 0)]
+        recipe.steps = [RecipeStep(index: 0, text: "Cook.")]
+        return recipe
+    }
+
+    func testDraftFillsRequestedSlotsWithoutImmediateRepeats() {
+        let recipes = (1...5).map { makeRecipe("Recipe \($0)") }
+        let input = WeekPlanner.Input(
+            days: 3,
+            mealTypes: [.dinner],
+            useLeftovers: false,
+            recipes: recipes,
+            pantry: [],
+            leftovers: [],
+            recentSessions: []
+        )
+        let slots = WeekPlanner.draft(input)
+
+        XCTAssertEqual(slots.count, 3)
+        XCTAssertTrue(slots.allSatisfy { $0.recipe != nil })
+        // With 5 recipes and 3 slots, no recipe should repeat.
+        let titles = slots.compactMap { $0.recipe?.title }
+        XCTAssertEqual(Set(titles).count, 3)
+    }
+
+    func testLeftoversClaimLunchSlots() {
+        let recipes = (1...4).map { makeRecipe("Recipe \($0)") }
+        let leftover = Leftover(title: "Chili", servingsRemaining: 2)
+        let input = WeekPlanner.Input(
+            days: 2,
+            mealTypes: [.lunch, .dinner],
+            useLeftovers: true,
+            recipes: recipes,
+            pantry: [],
+            leftovers: [leftover],
+            recentSessions: []
+        )
+        let slots = WeekPlanner.draft(input)
+
+        let firstLunch = slots.first { $0.mealType == .lunch }
+        XCTAssertNotNil(firstLunch?.leftover)
+        XCTAssertEqual(firstLunch?.leftover?.title, "Chili")
+        // Dinners are still recipes.
+        XCTAssertTrue(slots.filter { $0.mealType == .dinner }.allSatisfy { $0.recipe != nil })
+    }
+
+    func testScoringPrefersPantryMatchAndRating() {
+        let pantryFriendly = makeRecipe("Fried Rice", rating: 5, pantryFriendly: true)
+        let exotic = makeRecipe("Saffron Risotto")
+        let pantry = [PantryItem(name: "Rice", category: .pantry)]
+        let input = WeekPlanner.Input(
+            days: 1,
+            mealTypes: [.dinner],
+            useLeftovers: false,
+            recipes: [exotic, pantryFriendly],
+            pantry: pantry,
+            leftovers: [],
+            recentSessions: []
+        )
+
+        let friendlyScore = WeekPlanner.score(recipe: pantryFriendly, input: input)
+        let exoticScore = WeekPlanner.score(recipe: exotic, input: input)
+        // Pantry match (3.0) + rating (2.5) dwarfs the 0.4 jitter.
+        XCTAssertGreaterThan(friendlyScore, exoticScore)
+
+        let slots = WeekPlanner.draft(input)
+        XCTAssertEqual(slots.first?.recipe?.title, "Fried Rice")
+    }
+
+    func testSwapAvoidsCurrentRecipe() {
+        let recipes = (1...3).map { makeRecipe("Recipe \($0)") }
+        let input = WeekPlanner.Input(
+            days: 1,
+            mealTypes: [.dinner],
+            useLeftovers: false,
+            recipes: recipes,
+            pantry: [],
+            leftovers: [],
+            recentSessions: []
+        )
+        var slots = WeekPlanner.draft(input)
+        let original = slots[0].recipe
+        let replacement = WeekPlanner.swap(slot: slots[0], in: slots, input: input)
+
+        XCTAssertNotNil(replacement)
+        XCTAssertFalse(replacement === original)
+        slots[0].recipe = replacement
+    }
+}

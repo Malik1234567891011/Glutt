@@ -19,6 +19,11 @@ struct MealCard: View {
                         .font(.gluttCaption)
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
+                if meal.status == .planned, let start = meal.suggestedStartTime {
+                    Label("Start cooking by \(start.formatted(date: .omitted, time: .shortened))", systemImage: "timer")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.Colors.warning)
+                }
             }
             Spacer()
             statusBadge

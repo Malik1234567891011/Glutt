@@ -16,6 +16,7 @@ struct RecipeDetailView: View {
     @State private var versionLabel = ""
     @State private var isCooking = false
     @State private var isShowingPreCookChecklist = false
+    @State private var isAddingToPlan = false
 
     init(recipe: Recipe) {
         self.recipe = recipe
@@ -83,6 +84,9 @@ struct RecipeDetailView: View {
         }
         .sheet(isPresented: $isShowingEditor) {
             RecipeEditorView(recipe: recipe)
+        }
+        .sheet(isPresented: $isAddingToPlan) {
+            AddMealSheet(day: Calendar.current.startOfDay(for: .now), fixedRecipe: recipe)
         }
         .confirmationDialog("Delete this recipe?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
@@ -356,6 +360,7 @@ struct RecipeDetailView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button("Edit", systemImage: "pencil") { isShowingEditor = true }
+                Button("Add to plan", systemImage: "calendar.badge.plus") { isAddingToPlan = true }
                 Button("Save as version", systemImage: "square.on.square") { isNamingVersion = true }
                 collectionsMenu
                 Divider()

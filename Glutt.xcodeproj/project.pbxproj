@@ -1,0 +1,612 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		08FE391A0E5C23B8C0F3F888 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D56EF729F22F6F3DED29543 /* Theme.swift */; };
+		117E9C022592C581920CEFBE /* Recipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5BE7E113C0145B67F0556D3 /* Recipe.swift */; };
+		133DA52F0F3517E70483BC89 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5FAEB880AAA56380423FBD3 /* TodayView.swift */; };
+		177643D1D447412BD360D00D /* MealCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B2D2424ABEF907C0982F2D9 /* MealCard.swift */; };
+		2C69CC2242F748A1C4A03834 /* Kitchen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 412DD0B2F37BE98BAAEB523D /* Kitchen.swift */; };
+		3BEF446EA4E6D8F141D53A4C /* Chip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21809502CBC21424D65A50E4 /* Chip.swift */; };
+		40C39A65B30A85E2207F4D44 /* GluttTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849E4D814CBE9FB1D1E619C /* GluttTests.swift */; };
+		4B642F3ABF9E931C1F8D5604 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CF0F20EF027AE118381BF8D /* RootView.swift */; };
+		658FF063B7D0C83A48CE0A3B /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61F5AFC37B586B18C2468CF /* Typography.swift */; };
+		812D77EB9384E9BB9C3FBD71 /* GluttApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F79B61859BDDE45588788FE2 /* GluttApp.swift */; };
+		8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */; };
+		9767E9BEFE39E296BEF059B1 /* RecipesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9411345D042807ED2D743474 /* RecipesView.swift */; };
+		97937012B8CA51D69C342C90 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA609EF5F72CEDE2E9F697F /* EmptyStateView.swift */; };
+		98D52307F99E058349AA1999 /* PlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289532428C48086D19FF6C54 /* PlanView.swift */; };
+		9F207D5AA64EE4DB6437BE3B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 03E4B5038BD3A803FFA377AD /* Assets.xcassets */; };
+		A5D13C7DD0ADCAC196619502 /* RecipeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A982408D84D1386F5B24B7C /* RecipeCard.swift */; };
+		ABFCA4853F7794491D82C568 /* ProgressTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221C1254C1FB19CCB0DCC84B /* ProgressTabView.swift */; };
+		B6CED88B5EC73EDD8D259730 /* SeedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151A0FD46C1B36361CD24372 /* SeedData.swift */; };
+		B997F7F5C96448B424A74DAD /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECDB51EACA72CE8D071EAD9 /* Enums.swift */; };
+		BA0FE6D4B901D5BF7DF2B8B9 /* Planning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C277290BDB320A5FFBB935 /* Planning.swift */; };
+		C73CEBD239B974D03530F7FF /* Buttons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 420CD47E5C2004D61B7D0B32 /* Buttons.swift */; };
+		D36B7671B485CD49168BCA7C /* ConfidenceBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21CC5F0D4C0BF8DF830CA4E1 /* ConfidenceBadge.swift */; };
+		DC45CAD57614CC9D6259F9D8 /* UserPrefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA37957DBDDC577B2780A3E /* UserPrefs.swift */; };
+		EAB06B1CEB7F2CF3DF02C083 /* KitchenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAC0FFFECF313768192EAFA2 /* KitchenView.swift */; };
+		F27C480C64FF7FB31D3D86EC /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224D234069FFF372F1A687A9 /* Router.swift */; };
+		F7E4A0E616661F6E90B0CB19 /* CaptureActionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D139D25BBBE8E494F7AA325 /* CaptureActionSheet.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B1E1AE9D0AF663D25FD4B13E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FFD4FEE5A17C97AA807A3959 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 78E449F1B7F92FE7B4997C4F;
+			remoteInfo = Glutt;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		03E4B5038BD3A803FFA377AD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		151A0FD46C1B36361CD24372 /* SeedData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedData.swift; sourceTree = "<group>"; };
+		15C277290BDB320A5FFBB935 /* Planning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Planning.swift; sourceTree = "<group>"; };
+		1B2D2424ABEF907C0982F2D9 /* MealCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealCard.swift; sourceTree = "<group>"; };
+		1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientCanonicalizer.swift; sourceTree = "<group>"; };
+		21809502CBC21424D65A50E4 /* Chip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chip.swift; sourceTree = "<group>"; };
+		21CC5F0D4C0BF8DF830CA4E1 /* ConfidenceBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfidenceBadge.swift; sourceTree = "<group>"; };
+		221C1254C1FB19CCB0DCC84B /* ProgressTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressTabView.swift; sourceTree = "<group>"; };
+		224D234069FFF372F1A687A9 /* Router.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Router.swift; sourceTree = "<group>"; };
+		289532428C48086D19FF6C54 /* PlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanView.swift; sourceTree = "<group>"; };
+		2A982408D84D1386F5B24B7C /* RecipeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeCard.swift; sourceTree = "<group>"; };
+		2CF0F20EF027AE118381BF8D /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		2D56EF729F22F6F3DED29543 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		37434BCF14AD5C72CF078B97 /* Glutt.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Glutt.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3D139D25BBBE8E494F7AA325 /* CaptureActionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureActionSheet.swift; sourceTree = "<group>"; };
+		412DD0B2F37BE98BAAEB523D /* Kitchen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kitchen.swift; sourceTree = "<group>"; };
+		420CD47E5C2004D61B7D0B32 /* Buttons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Buttons.swift; sourceTree = "<group>"; };
+		4AA37957DBDDC577B2780A3E /* UserPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPrefs.swift; sourceTree = "<group>"; };
+		5EFB5FAA0EF9CA829EE21DFA /* GluttTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GluttTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9411345D042807ED2D743474 /* RecipesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipesView.swift; sourceTree = "<group>"; };
+		95B528E2683D5365F8DF91FA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		9849E4D814CBE9FB1D1E619C /* GluttTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttTests.swift; sourceTree = "<group>"; };
+		AECDB51EACA72CE8D071EAD9 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
+		B5FAEB880AAA56380423FBD3 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		CAC0FFFECF313768192EAFA2 /* KitchenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitchenView.swift; sourceTree = "<group>"; };
+		DDA609EF5F72CEDE2E9F697F /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
+		F5BE7E113C0145B67F0556D3 /* Recipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recipe.swift; sourceTree = "<group>"; };
+		F61F5AFC37B586B18C2468CF /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
+		F79B61859BDDE45588788FE2 /* GluttApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		00597C7ACFFC686AE715D397 /* Capture */ = {
+			isa = PBXGroup;
+			children = (
+				3D139D25BBBE8E494F7AA325 /* CaptureActionSheet.swift */,
+			);
+			path = Capture;
+			sourceTree = "<group>";
+		};
+		0B88492E5AD96393AB6353B2 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				00597C7ACFFC686AE715D397 /* Capture */,
+				9D8B59D32238D556A930853E /* Kitchen */,
+				9164B5F4ECF14AFD399A7D65 /* Plan */,
+				A5BA62F727FBF7ED5F34E335 /* Progress */,
+				ADD22DC369608B86A867151C /* Recipes */,
+				4D5A9040F8A03E33BBEC0077 /* Today */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		0C712ADCA91ED11234084BB9 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				F79B61859BDDE45588788FE2 /* GluttApp.swift */,
+				2CF0F20EF027AE118381BF8D /* RootView.swift */,
+				224D234069FFF372F1A687A9 /* Router.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		2136078E2601E8C2B7CB1837 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				03E4B5038BD3A803FFA377AD /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		244BA45EC6E8E198A0370AE5 /* GluttTests */ = {
+			isa = PBXGroup;
+			children = (
+				9849E4D814CBE9FB1D1E619C /* GluttTests.swift */,
+			);
+			path = GluttTests;
+			sourceTree = "<group>";
+		};
+		3B6CE36E69F9C081AAA102AE = {
+			isa = PBXGroup;
+			children = (
+				E33CE2C84CFAC375CAC4A6CA /* Glutt */,
+				244BA45EC6E8E198A0370AE5 /* GluttTests */,
+				93320BEA85A48EB5C2314B4B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4D5A9040F8A03E33BBEC0077 /* Today */ = {
+			isa = PBXGroup;
+			children = (
+				B5FAEB880AAA56380423FBD3 /* TodayView.swift */,
+			);
+			path = Today;
+			sourceTree = "<group>";
+		};
+		9164B5F4ECF14AFD399A7D65 /* Plan */ = {
+			isa = PBXGroup;
+			children = (
+				289532428C48086D19FF6C54 /* PlanView.swift */,
+			);
+			path = Plan;
+			sourceTree = "<group>";
+		};
+		93320BEA85A48EB5C2314B4B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				37434BCF14AD5C72CF078B97 /* Glutt.app */,
+				5EFB5FAA0EF9CA829EE21DFA /* GluttTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		95A2A28A0B32E42837D0783A /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		9D8B59D32238D556A930853E /* Kitchen */ = {
+			isa = PBXGroup;
+			children = (
+				CAC0FFFECF313768192EAFA2 /* KitchenView.swift */,
+			);
+			path = Kitchen;
+			sourceTree = "<group>";
+		};
+		9F63F523725D48B37AA154AF /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				420CD47E5C2004D61B7D0B32 /* Buttons.swift */,
+				21809502CBC21424D65A50E4 /* Chip.swift */,
+				21CC5F0D4C0BF8DF830CA4E1 /* ConfidenceBadge.swift */,
+				DDA609EF5F72CEDE2E9F697F /* EmptyStateView.swift */,
+				1B2D2424ABEF907C0982F2D9 /* MealCard.swift */,
+				2A982408D84D1386F5B24B7C /* RecipeCard.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		A5BA62F727FBF7ED5F34E335 /* Progress */ = {
+			isa = PBXGroup;
+			children = (
+				221C1254C1FB19CCB0DCC84B /* ProgressTabView.swift */,
+			);
+			path = Progress;
+			sourceTree = "<group>";
+		};
+		ADD22DC369608B86A867151C /* Recipes */ = {
+			isa = PBXGroup;
+			children = (
+				9411345D042807ED2D743474 /* RecipesView.swift */,
+			);
+			path = Recipes;
+			sourceTree = "<group>";
+		};
+		BB1B039809C258CEFAF9FCB0 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				AECDB51EACA72CE8D071EAD9 /* Enums.swift */,
+				412DD0B2F37BE98BAAEB523D /* Kitchen.swift */,
+				15C277290BDB320A5FFBB935 /* Planning.swift */,
+				F5BE7E113C0145B67F0556D3 /* Recipe.swift */,
+				151A0FD46C1B36361CD24372 /* SeedData.swift */,
+				4AA37957DBDDC577B2780A3E /* UserPrefs.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		E33CE2C84CFAC375CAC4A6CA /* Glutt */ = {
+			isa = PBXGroup;
+			children = (
+				95B528E2683D5365F8DF91FA /* Info.plist */,
+				0C712ADCA91ED11234084BB9 /* App */,
+				F9F19240DC57ADC4598CD650 /* DesignSystem */,
+				0B88492E5AD96393AB6353B2 /* Features */,
+				BB1B039809C258CEFAF9FCB0 /* Models */,
+				2136078E2601E8C2B7CB1837 /* Resources */,
+				95A2A28A0B32E42837D0783A /* Services */,
+			);
+			path = Glutt;
+			sourceTree = "<group>";
+		};
+		F9F19240DC57ADC4598CD650 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				2D56EF729F22F6F3DED29543 /* Theme.swift */,
+				F61F5AFC37B586B18C2468CF /* Typography.swift */,
+				9F63F523725D48B37AA154AF /* Components */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		51F0E9D9CAFC3FF8EC182851 /* GluttTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 186E5B26A8EF93074E956B7F /* Build configuration list for PBXNativeTarget "GluttTests" */;
+			buildPhases = (
+				04AE690AA4FA4F477A6EE818 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FCD81CA0C8258BA1D9DA0278 /* PBXTargetDependency */,
+			);
+			name = GluttTests;
+			packageProductDependencies = (
+			);
+			productName = GluttTests;
+			productReference = 5EFB5FAA0EF9CA829EE21DFA /* GluttTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		78E449F1B7F92FE7B4997C4F /* Glutt */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A49F5CD24CD455F6414637A4 /* Build configuration list for PBXNativeTarget "Glutt" */;
+			buildPhases = (
+				457E5B5948435D61386DA00C /* Sources */,
+				85CAD221C33EC7BBC6918D0B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Glutt;
+			packageProductDependencies = (
+			);
+			productName = Glutt;
+			productReference = 37434BCF14AD5C72CF078B97 /* Glutt.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FFD4FEE5A17C97AA807A3959 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					51F0E9D9CAFC3FF8EC182851 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					78E449F1B7F92FE7B4997C4F = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 8388BE35219BBFBB280FFE97 /* Build configuration list for PBXProject "Glutt" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 3B6CE36E69F9C081AAA102AE;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 93320BEA85A48EB5C2314B4B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				78E449F1B7F92FE7B4997C4F /* Glutt */,
+				51F0E9D9CAFC3FF8EC182851 /* GluttTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		85CAD221C33EC7BBC6918D0B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9F207D5AA64EE4DB6437BE3B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		04AE690AA4FA4F477A6EE818 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				40C39A65B30A85E2207F4D44 /* GluttTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		457E5B5948435D61386DA00C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C73CEBD239B974D03530F7FF /* Buttons.swift in Sources */,
+				F7E4A0E616661F6E90B0CB19 /* CaptureActionSheet.swift in Sources */,
+				3BEF446EA4E6D8F141D53A4C /* Chip.swift in Sources */,
+				D36B7671B485CD49168BCA7C /* ConfidenceBadge.swift in Sources */,
+				97937012B8CA51D69C342C90 /* EmptyStateView.swift in Sources */,
+				B997F7F5C96448B424A74DAD /* Enums.swift in Sources */,
+				812D77EB9384E9BB9C3FBD71 /* GluttApp.swift in Sources */,
+				8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */,
+				2C69CC2242F748A1C4A03834 /* Kitchen.swift in Sources */,
+				EAB06B1CEB7F2CF3DF02C083 /* KitchenView.swift in Sources */,
+				177643D1D447412BD360D00D /* MealCard.swift in Sources */,
+				98D52307F99E058349AA1999 /* PlanView.swift in Sources */,
+				BA0FE6D4B901D5BF7DF2B8B9 /* Planning.swift in Sources */,
+				ABFCA4853F7794491D82C568 /* ProgressTabView.swift in Sources */,
+				117E9C022592C581920CEFBE /* Recipe.swift in Sources */,
+				A5D13C7DD0ADCAC196619502 /* RecipeCard.swift in Sources */,
+				9767E9BEFE39E296BEF059B1 /* RecipesView.swift in Sources */,
+				4B642F3ABF9E931C1F8D5604 /* RootView.swift in Sources */,
+				F27C480C64FF7FB31D3D86EC /* Router.swift in Sources */,
+				B6CED88B5EC73EDD8D259730 /* SeedData.swift in Sources */,
+				08FE391A0E5C23B8C0F3F888 /* Theme.swift in Sources */,
+				133DA52F0F3517E70483BC89 /* TodayView.swift in Sources */,
+				658FF063B7D0C83A48CE0A3B /* Typography.swift in Sources */,
+				DC45CAD57614CC9D6259F9D8 /* UserPrefs.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		FCD81CA0C8258BA1D9DA0278 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 78E449F1B7F92FE7B4997C4F /* Glutt */;
+			targetProxy = B1E1AE9D0AF663D25FD4B13E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		235A7F12E55BC09D7E6F0F32 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.malik.GluttTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Glutt.app/Glutt";
+			};
+			name = Release;
+		};
+		3329F11E5CC54B6DE01070C9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				INFOPLIST_FILE = Glutt/Info.plist;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		5B16F6CBAD63B1A54C6AFA49 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.malik.GluttTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Glutt.app/Glutt";
+			};
+			name = Debug;
+		};
+		B91B06AA40DF27D1EA7DD929 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Release;
+		};
+		F7CA5C93A5016F491CD7B522 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Debug;
+		};
+		FFCB3DE62BCBE67268C81805 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				INFOPLIST_FILE = Glutt/Info.plist;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		186E5B26A8EF93074E956B7F /* Build configuration list for PBXNativeTarget "GluttTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5B16F6CBAD63B1A54C6AFA49 /* Debug */,
+				235A7F12E55BC09D7E6F0F32 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8388BE35219BBFBB280FFE97 /* Build configuration list for PBXProject "Glutt" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F7CA5C93A5016F491CD7B522 /* Debug */,
+				B91B06AA40DF27D1EA7DD929 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A49F5CD24CD455F6414637A4 /* Build configuration list for PBXNativeTarget "Glutt" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FFCB3DE62BCBE67268C81805 /* Debug */,
+				3329F11E5CC54B6DE01070C9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = FFD4FEE5A17C97AA807A3959 /* Project object */;
+}

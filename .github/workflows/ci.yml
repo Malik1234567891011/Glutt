@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app || sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project Glutt.xcodeproj \
+            -scheme Glutt \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify --renderer github-actions || \
+          xcodebuild build \
+            -project Glutt.xcodeproj \
+            -scheme Glutt \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Test
+        run: |
+          DEST_ID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; ids=[dev['udid'] for rt,devs in d.items() if 'iOS' in rt for dev in devs if 'iPhone' in dev['name']]; print(ids[-1])")
+          xcodebuild test \
+            -project Glutt.xcodeproj \
+            -scheme Glutt \
+            -destination "id=$DEST_ID" \
+            CODE_SIGNING_ALLOWED=NO

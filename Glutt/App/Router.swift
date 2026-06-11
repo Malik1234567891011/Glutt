@@ -76,14 +76,23 @@ final class Router {
     var isCaptureSheetPresented = false
     /// Set when a deep link or capture action requests a flow that isn't built yet.
     var pendingAction: CaptureAction?
+    /// URL waiting to be imported (from share extension or glutt://import?url=...).
+    var pendingImportURL: URL?
 
     init() {
-        // Launch-argument hook for UI tests and tooling: `-tab recipes`
+        // Launch-argument hooks for UI tests and tooling: `-tab recipes`, `-importURL https://...`
         let arguments = ProcessInfo.processInfo.arguments
         if let flagIndex = arguments.firstIndex(of: "-tab"),
            arguments.indices.contains(flagIndex + 1),
            let tab = AppTab(rawValue: arguments[flagIndex + 1]) {
             selectedTab = tab
+        }
+        if let flagIndex = arguments.firstIndex(of: "-importURL"),
+           arguments.indices.contains(flagIndex + 1),
+           let url = URL(string: arguments[flagIndex + 1]) {
+            pendingImportURL = url
+            selectedTab = .recipes
+            pendingAction = .importRecipe
         }
     }
 
@@ -96,9 +105,22 @@ final class Router {
         case "kitchen": selectedTab = .kitchen
         case "progress": selectedTab = .progress
         case "import":
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            if let urlParameter = components?.queryItems?.first(where: { $0.name == "url" })?.value {
+                pendingImportURL = URL(string: urlParameter)
+            }
             selectedTab = .recipes
             pendingAction = .importRecipe
         default: break
+        }
+    }
+
+    /// Called when the app foregrounds: picks up URLs saved by the share extension.
+    func checkForSharedImport() {
+        if let url = PendingImportStore.consume() {
+            pendingImportURL = url
+            selectedTab = .recipes
+            pendingAction = .importRecipe
         }
     }
 

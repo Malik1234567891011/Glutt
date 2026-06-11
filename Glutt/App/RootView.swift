@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(Router.self) private var router
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         @Bindable var router = router
@@ -25,6 +26,11 @@ struct RootView: View {
                 .presentationDetents([.medium])
                 .presentationCornerRadius(Theme.Radius.sheet)
                 .presentationBackground(Theme.Colors.background)
+        }
+        .onChange(of: scenePhase) {
+            if scenePhase == .active {
+                router.checkForSharedImport()
+            }
         }
     }
 

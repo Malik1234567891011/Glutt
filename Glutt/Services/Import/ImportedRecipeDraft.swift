@@ -1,0 +1,50 @@
+import Foundation
+
+/// Intermediate result of any import pipeline (link, screenshot, share extension).
+/// The Import Review screen edits this before it becomes a saved `Recipe`.
+struct ImportedRecipeDraft {
+    var title: String?
+    var summary: String?
+    var imageURL: String?
+    var creator: String?
+    var sourceURL: String?
+    var platform: SourcePlatform = .website
+    var caption: String?
+    var servings: Int?
+    var prepMinutes: Int?
+    var cookMinutes: Int?
+    var ingredientLines: [String] = []
+    var stepTexts: [String] = []
+    var tags: [String] = []
+    var calories: Int?
+    var proteinGrams: Int?
+
+    /// Human-readable problems found during extraction, shown on the review screen.
+    var issues: [String] = []
+
+    /// 0–1 score based on how complete and parseable the extraction was.
+    var confidence: Double {
+        var score = 0.0
+        if let title, !title.isEmpty { score += 0.15 } 
+        if imageURL != nil { score += 0.1 }
+        if !ingredientLines.isEmpty {
+            score += 0.3
+            // Bonus when most ingredient lines have a recognizable quantity.
+            let parsed = ingredientLines.map(IngredientLineParser.parse)
+            let withQuantity = parsed.filter { $0.quantity != nil }.count
+            if Double(withQuantity) >= Double(ingredientLines.count) * 0.6 { score += 0.05 }
+        }
+        if !stepTexts.isEmpty { score += 0.3 }
+        if prepMinutes != nil || cookMinutes != nil { score += 0.05 }
+        if servings != nil { score += 0.05 }
+        return min(score, 1.0)
+    }
+
+    static func platform(for url: URL) -> SourcePlatform {
+        let host = (url.host ?? "").lowercased()
+        if host.contains("tiktok") { return .tiktok }
+        if host.contains("instagram") { return .instagram }
+        if host.contains("youtube") || host.contains("youtu.be") { return .youtube }
+        return .website
+    }
+}

@@ -62,6 +62,169 @@ final class UnitConverterTests: XCTestCase {
     }
 }
 
+final class IngredientLineParserTests: XCTestCase {
+
+    func testSimpleQuantityUnitName() {
+        let result = IngredientLineParser.parse("2 cups basmati rice")
+        XCTAssertEqual(result.quantity, 2)
+        XCTAssertEqual(result.unit, "cups")
+        XCTAssertEqual(result.name, "basmati rice")
+    }
+
+    func testFractionsAndCompounds() {
+        XCTAssertEqual(IngredientLineParser.parse("1/2 cup Greek yogurt").quantity, 0.5)
+        XCTAssertEqual(IngredientLineParser.parse("1 1/2 lbs chicken thighs").quantity, 1.5)
+        XCTAssertEqual(IngredientLineParser.parse("½ tsp salt").quantity, 0.5)
+        XCTAssertEqual(IngredientLineParser.parse("1½ cups flour").quantity, 1.5)
+    }
+
+    func testNotesAndBullets() {
+        let comma = IngredientLineParser.parse("2 lbs chicken thighs, boneless and skinless")
+        XCTAssertEqual(comma.name, "chicken thighs")
+        XCTAssertEqual(comma.note, "boneless and skinless")
+
+        let parens = IngredientLineParser.parse("- 1 can chickpeas (drained)")
+        XCTAssertEqual(parens.quantity, 1)
+        XCTAssertEqual(parens.unit, "can")
+        XCTAssertEqual(parens.name, "chickpeas")
+        XCTAssertEqual(parens.note, "drained")
+    }
+
+    func testOfIsDropped() {
+        XCTAssertEqual(IngredientLineParser.parse("2 cups of rice").name, "rice")
+    }
+
+    func testNoQuantityFallsBackToFullLine() {
+        let result = IngredientLineParser.parse("Salt and pepper to taste")
+        XCTAssertNil(result.quantity)
+        XCTAssertEqual(result.name, "Salt and pepper to taste")
+    }
+}
+
+final class RecipeHTMLParserTests: XCTestCase {
+
+    private let jsonLDFixture = """
+    <html><head>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {"@type": "WebSite", "name": "Some Food Blog"},
+        {
+          "@type": "Recipe",
+          "name": "Spicy Honey Chicken Bowls",
+          "description": "Sweet &amp; spicy weeknight bowls.",
+          "image": ["https://example.com/photo.jpg"],
+          "author": {"@type": "Person", "name": "Chef Test"},
+          "prepTime": "PT15M",
+          "cookTime": "PT1H10M",
+          "recipeYield": "4 servings",
+          "keywords": "dinner, chicken, spicy",
+          "recipeIngredient": ["500 g chicken thighs", "2 tbsp honey", "1 cup rice"],
+          "recipeInstructions": [
+            {"@type": "HowToStep", "text": "Marinate the chicken."},
+            {"@type": "HowToStep", "text": "Cook rice for 15 minutes."}
+          ],
+          "nutrition": {"@type": "NutritionInformation", "calories": "640 calories", "proteinContent": "42 g"}
+        }
+      ]
+    }
+    </script>
+    </head><body></body></html>
+    """
+
+    func testJSONLDExtraction() throws {
+        let url = try XCTUnwrap(URL(string: "https://example.com/spicy-honey-chicken"))
+        let draft = RecipeHTMLParser.parse(html: jsonLDFixture, sourceURL: url)
+
+        XCTAssertEqual(draft.title, "Spicy Honey Chicken Bowls")
+        XCTAssertEqual(draft.summary, "Sweet & spicy weeknight bowls.")
+        XCTAssertEqual(draft.imageURL, "https://example.com/photo.jpg")
+        XCTAssertEqual(draft.creator, "Chef Test")
+        XCTAssertEqual(draft.prepMinutes, 15)
+        XCTAssertEqual(draft.cookMinutes, 70)
+        XCTAssertEqual(draft.servings, 4)
+        XCTAssertEqual(draft.ingredientLines.count, 3)
+        XCTAssertEqual(draft.stepTexts.count, 2)
+        XCTAssertEqual(draft.tags, ["dinner", "chicken", "spicy"])
+        XCTAssertEqual(draft.calories, 640)
+        XCTAssertEqual(draft.proteinGrams, 42)
+        XCTAssertGreaterThan(draft.confidence, 0.8)
+    }
+
+    func testMetaFallbackForSocialPages() throws {
+        let html = """
+        <html><head>
+        <meta property="og:title" content="INSANE garlic butter steak bites 🔥" />
+        <meta property="og:image" content="https://cdn.example.com/thumb.jpg" />
+        <meta property="og:description" content="Recipe below!
+        Ingredients:
+        1 lb sirloin steak
+        3 tbsp butter
+        4 cloves garlic
+        Instructions:
+        1. Cube the steak and season.
+        2. Sear in a hot pan 2 minutes per side.
+        3. Add butter and garlic, baste." />
+        </head><body></body></html>
+        """
+        let url = try XCTUnwrap(URL(string: "https://www.tiktok.com/@cook/video/123"))
+        let draft = RecipeHTMLParser.parse(html: html, sourceURL: url)
+
+        XCTAssertEqual(draft.platform, .tiktok)
+        XCTAssertEqual(draft.imageURL, "https://cdn.example.com/thumb.jpg")
+        XCTAssertEqual(draft.ingredientLines.count, 3)
+        XCTAssertEqual(draft.stepTexts.count, 3)
+    }
+
+    func testISODurations() {
+        XCTAssertEqual(RecipeHTMLParser.isoDurationMinutes("PT30M"), 30)
+        XCTAssertEqual(RecipeHTMLParser.isoDurationMinutes("PT1H30M"), 90)
+        XCTAssertEqual(RecipeHTMLParser.isoDurationMinutes("PT2H"), 120)
+        XCTAssertNil(RecipeHTMLParser.isoDurationMinutes(nil))
+    }
+}
+
+final class TextRecipeParserTests: XCTestCase {
+
+    func testOCRStyleText() {
+        let text = """
+        Creamy Tuscan Chicken
+
+        Ingredients
+        2 chicken breasts
+        1 cup heavy cream
+        2 cups spinach
+        ½ cup sun-dried tomatoes
+
+        Instructions
+        1. Season and sear the chicken.
+        2. Make the cream sauce.
+        3. Add spinach and tomatoes, simmer.
+
+        Serves 4
+        """
+        let draft = TextRecipeParser.parse(text: text)
+        XCTAssertEqual(draft.title, "Creamy Tuscan Chicken")
+        XCTAssertEqual(draft.ingredientLines.count, 4)
+        XCTAssertEqual(draft.stepTexts.count, 3)
+        XCTAssertEqual(draft.stepTexts.first, "Season and sear the chicken.")
+        XCTAssertEqual(draft.servings, 4)
+    }
+
+    func testCaptionWithoutHeaders() {
+        let text = """
+        you NEED to try this 😍 #fyp #cooking
+        2 cups rice
+        1 lb ground beef
+        1 tbsp gochujang
+        """
+        let draft = TextRecipeParser.parse(text: text)
+        XCTAssertEqual(draft.ingredientLines.count, 3)
+        XCTAssertTrue(draft.issues.contains { $0.contains("guessed") })
+    }
+}
+
 final class ModelTests: XCTestCase {
 
     @MainActor

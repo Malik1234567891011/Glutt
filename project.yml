@@ -38,6 +38,32 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: "0.1.0"
         ENABLE_USER_SCRIPT_SANDBOXING: true
+        CODE_SIGN_ENTITLEMENTS: Glutt/Glutt.entitlements
+    dependencies:
+      - target: GluttShare
+
+  GluttShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - GluttShare
+    info:
+      path: GluttShare/Info.plist
+      properties:
+        CFBundleDisplayName: Glutt
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.malik.glutt.share
+        CODE_SIGN_ENTITLEMENTS: GluttShare/GluttShare.entitlements
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "0.1.0"
+        SKIP_INSTALL: true
 
   GluttTests:
     type: bundle.unit-test

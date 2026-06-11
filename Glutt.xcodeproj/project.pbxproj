@@ -9,14 +9,19 @@
 /* Begin PBXBuildFile section */
 		05BB66E74C0B7C6DA7810156 /* RecipeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4363923FEEBD03D4E229DC /* RecipeDetailView.swift */; };
 		08FE391A0E5C23B8C0F3F888 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D56EF729F22F6F3DED29543 /* Theme.swift */; };
+		0962ABDAA0B5C83097E4E2A1 /* IngredientLineParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB6518A327FD79D55E715D5 /* IngredientLineParser.swift */; };
 		117E9C022592C581920CEFBE /* Recipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5BE7E113C0145B67F0556D3 /* Recipe.swift */; };
 		133DA52F0F3517E70483BC89 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5FAEB880AAA56380423FBD3 /* TodayView.swift */; };
 		177643D1D447412BD360D00D /* MealCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B2D2424ABEF907C0982F2D9 /* MealCard.swift */; };
+		1B82B84680A299EABA5B7B76 /* ImportReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2F97AA4C16C61F7F73AC7 /* ImportReviewView.swift */; };
+		2309BBAC09BF2C93876CD0EE /* GluttShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2C69CC2242F748A1C4A03834 /* Kitchen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 412DD0B2F37BE98BAAEB523D /* Kitchen.swift */; };
+		2E22D7543240ED83B3350F7C /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5D72BFDA83AFBD303E2775 /* ShareViewController.swift */; };
 		3BEF446EA4E6D8F141D53A4C /* Chip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21809502CBC21424D65A50E4 /* Chip.swift */; };
 		40C39A65B30A85E2207F4D44 /* GluttTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849E4D814CBE9FB1D1E619C /* GluttTests.swift */; };
 		47CA4B0E6B9F7F7BD4ABE64C /* UnitConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E76DBE2577BBC32D76A29AB /* UnitConverter.swift */; };
 		4B642F3ABF9E931C1F8D5604 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CF0F20EF027AE118381BF8D /* RootView.swift */; };
+		51DCE52A4E8E7DEE3C077A98 /* ImportedRecipeDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA97A87700CD96961371CCC /* ImportedRecipeDraft.swift */; };
 		658FF063B7D0C83A48CE0A3B /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61F5AFC37B586B18C2468CF /* Typography.swift */; };
 		812D77EB9384E9BB9C3FBD71 /* GluttApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F79B61859BDDE45588788FE2 /* GluttApp.swift */; };
 		8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */; };
@@ -25,15 +30,20 @@
 		98D52307F99E058349AA1999 /* PlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289532428C48086D19FF6C54 /* PlanView.swift */; };
 		9F207D5AA64EE4DB6437BE3B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 03E4B5038BD3A803FFA377AD /* Assets.xcassets */; };
 		A5D13C7DD0ADCAC196619502 /* RecipeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A982408D84D1386F5B24B7C /* RecipeCard.swift */; };
+		A71A0874129B8FA9A557B7A2 /* TextRecipeParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF4058EECD1BCDBB2359125 /* TextRecipeParser.swift */; };
 		ABFCA4853F7794491D82C568 /* ProgressTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221C1254C1FB19CCB0DCC84B /* ProgressTabView.swift */; };
 		AE8AF2E65EFED70286B8935B /* RecipeEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2179632ACE3988876F4F4170 /* RecipeEditorView.swift */; };
+		B0113D10FAE441E211B6533C /* ImportRecipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A748BA2D60B7B0EC30568652 /* ImportRecipeView.swift */; };
 		B6CED88B5EC73EDD8D259730 /* SeedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151A0FD46C1B36361CD24372 /* SeedData.swift */; };
+		B739F625633B47DD0E0EC0D0 /* PendingImportStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D008D8C56984B887EAC430 /* PendingImportStore.swift */; };
 		B95774AAB89E3BF80B7815E9 /* CollectionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34662C1AB1C5078CE9DA61C /* CollectionDetailView.swift */; };
 		B997F7F5C96448B424A74DAD /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECDB51EACA72CE8D071EAD9 /* Enums.swift */; };
 		BA0FE6D4B901D5BF7DF2B8B9 /* Planning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C277290BDB320A5FFBB935 /* Planning.swift */; };
 		C0EA5EC76EE823FB5CF68A5F /* RecipeImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C63684C7E494372CA1A8B5 /* RecipeImageView.swift */; };
 		C73CEBD239B974D03530F7FF /* Buttons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 420CD47E5C2004D61B7D0B32 /* Buttons.swift */; };
 		D36B7671B485CD49168BCA7C /* ConfidenceBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21CC5F0D4C0BF8DF830CA4E1 /* ConfidenceBadge.swift */; };
+		D741C0DBC4873E973635045D /* RecipeImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 598FB7658D86B414965B6432 /* RecipeImportService.swift */; };
+		D9F6403C8798CDBD06320027 /* RecipeHTMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */; };
 		DC45CAD57614CC9D6259F9D8 /* UserPrefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA37957DBDDC577B2780A3E /* UserPrefs.swift */; };
 		EAB06B1CEB7F2CF3DF02C083 /* KitchenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAC0FFFECF313768192EAFA2 /* KitchenView.swift */; };
 		F27C480C64FF7FB31D3D86EC /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224D234069FFF372F1A687A9 /* Router.swift */; };
@@ -41,6 +51,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		2CCAD2B24FEA527FE29A24AF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FFD4FEE5A17C97AA807A3959 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E09B0FD3B99CB91DF3A88489;
+			remoteInfo = GluttShare;
+		};
 		B1E1AE9D0AF663D25FD4B13E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = FFD4FEE5A17C97AA807A3959 /* Project object */;
@@ -49,6 +66,20 @@
 			remoteInfo = Glutt;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AF1B9C57395EAAC7ADB75BAC /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				2309BBAC09BF2C93876CD0EE /* GluttShare.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		03E4B5038BD3A803FFA377AD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -63,28 +94,41 @@
 		221C1254C1FB19CCB0DCC84B /* ProgressTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressTabView.swift; sourceTree = "<group>"; };
 		224D234069FFF372F1A687A9 /* Router.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Router.swift; sourceTree = "<group>"; };
 		289532428C48086D19FF6C54 /* PlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanView.swift; sourceTree = "<group>"; };
+		2A8D21FE9E43E058A9534A87 /* Glutt.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Glutt.entitlements; sourceTree = "<group>"; };
 		2A982408D84D1386F5B24B7C /* RecipeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeCard.swift; sourceTree = "<group>"; };
+		2BA97A87700CD96961371CCC /* ImportedRecipeDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedRecipeDraft.swift; sourceTree = "<group>"; };
 		2CF0F20EF027AE118381BF8D /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		2D56EF729F22F6F3DED29543 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		2E4363923FEEBD03D4E229DC /* RecipeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeDetailView.swift; sourceTree = "<group>"; };
 		37434BCF14AD5C72CF078B97 /* Glutt.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Glutt.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3CF4058EECD1BCDBB2359125 /* TextRecipeParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextRecipeParser.swift; sourceTree = "<group>"; };
 		3D139D25BBBE8E494F7AA325 /* CaptureActionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureActionSheet.swift; sourceTree = "<group>"; };
 		412DD0B2F37BE98BAAEB523D /* Kitchen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kitchen.swift; sourceTree = "<group>"; };
 		420CD47E5C2004D61B7D0B32 /* Buttons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Buttons.swift; sourceTree = "<group>"; };
 		4AA37957DBDDC577B2780A3E /* UserPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPrefs.swift; sourceTree = "<group>"; };
+		598FB7658D86B414965B6432 /* RecipeImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImportService.swift; sourceTree = "<group>"; };
 		5EFB5FAA0EF9CA829EE21DFA /* GluttTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GluttTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		86AF68B5E21FB9F75B865388 /* GluttShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GluttShare.entitlements; sourceTree = "<group>"; };
+		87D008D8C56984B887EAC430 /* PendingImportStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingImportStore.swift; sourceTree = "<group>"; };
+		8CB6518A327FD79D55E715D5 /* IngredientLineParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientLineParser.swift; sourceTree = "<group>"; };
 		9411345D042807ED2D743474 /* RecipesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipesView.swift; sourceTree = "<group>"; };
 		95B528E2683D5365F8DF91FA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9849E4D814CBE9FB1D1E619C /* GluttTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttTests.swift; sourceTree = "<group>"; };
+		A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeHTMLParser.swift; sourceTree = "<group>"; };
 		A34662C1AB1C5078CE9DA61C /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
+		A748BA2D60B7B0EC30568652 /* ImportRecipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportRecipeView.swift; sourceTree = "<group>"; };
+		AA5D72BFDA83AFBD303E2775 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		AECDB51EACA72CE8D071EAD9 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
 		B2C63684C7E494372CA1A8B5 /* RecipeImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImageView.swift; sourceTree = "<group>"; };
 		B5FAEB880AAA56380423FBD3 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		BE64D349C0DD327246EE5500 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CAC0FFFECF313768192EAFA2 /* KitchenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitchenView.swift; sourceTree = "<group>"; };
 		DDA609EF5F72CEDE2E9F697F /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
+		F1A2F97AA4C16C61F7F73AC7 /* ImportReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportReviewView.swift; sourceTree = "<group>"; };
 		F5BE7E113C0145B67F0556D3 /* Recipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recipe.swift; sourceTree = "<group>"; };
 		F61F5AFC37B586B18C2468CF /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		F79B61859BDDE45588788FE2 /* GluttApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttApp.swift; sourceTree = "<group>"; };
+		FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = GluttShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -100,6 +144,7 @@
 			isa = PBXGroup;
 			children = (
 				00597C7ACFFC686AE715D397 /* Capture */,
+				2EC989CD5E7DF9239B56944E /* Import */,
 				9D8B59D32238D556A930853E /* Kitchen */,
 				9164B5F4ECF14AFD399A7D65 /* Plan */,
 				A5BA62F727FBF7ED5F34E335 /* Progress */,
@@ -135,10 +180,20 @@
 			path = GluttTests;
 			sourceTree = "<group>";
 		};
+		2EC989CD5E7DF9239B56944E /* Import */ = {
+			isa = PBXGroup;
+			children = (
+				A748BA2D60B7B0EC30568652 /* ImportRecipeView.swift */,
+				F1A2F97AA4C16C61F7F73AC7 /* ImportReviewView.swift */,
+			);
+			path = Import;
+			sourceTree = "<group>";
+		};
 		3B6CE36E69F9C081AAA102AE = {
 			isa = PBXGroup;
 			children = (
 				E33CE2C84CFAC375CAC4A6CA /* Glutt */,
+				EA1ABBAC4FF05A4BBA68C2FA /* GluttShare */,
 				244BA45EC6E8E198A0370AE5 /* GluttTests */,
 				93320BEA85A48EB5C2314B4B /* Products */,
 			);
@@ -164,6 +219,7 @@
 			isa = PBXGroup;
 			children = (
 				37434BCF14AD5C72CF078B97 /* Glutt.app */,
+				FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */,
 				5EFB5FAA0EF9CA829EE21DFA /* GluttTests.xctest */,
 			);
 			name = Products;
@@ -174,8 +230,22 @@
 			children = (
 				1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */,
 				1E76DBE2577BBC32D76A29AB /* UnitConverter.swift */,
+				9D8742D0954484537BE1910A /* Import */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		9D8742D0954484537BE1910A /* Import */ = {
+			isa = PBXGroup;
+			children = (
+				2BA97A87700CD96961371CCC /* ImportedRecipeDraft.swift */,
+				8CB6518A327FD79D55E715D5 /* IngredientLineParser.swift */,
+				87D008D8C56984B887EAC430 /* PendingImportStore.swift */,
+				A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */,
+				598FB7658D86B414965B6432 /* RecipeImportService.swift */,
+				3CF4058EECD1BCDBB2359125 /* TextRecipeParser.swift */,
+			);
+			path = Import;
 			sourceTree = "<group>";
 		};
 		9D8B59D32238D556A930853E /* Kitchen */ = {
@@ -235,6 +305,7 @@
 		E33CE2C84CFAC375CAC4A6CA /* Glutt */ = {
 			isa = PBXGroup;
 			children = (
+				2A8D21FE9E43E058A9534A87 /* Glutt.entitlements */,
 				95B528E2683D5365F8DF91FA /* Info.plist */,
 				0C712ADCA91ED11234084BB9 /* App */,
 				F9F19240DC57ADC4598CD650 /* DesignSystem */,
@@ -244,6 +315,16 @@
 				95A2A28A0B32E42837D0783A /* Services */,
 			);
 			path = Glutt;
+			sourceTree = "<group>";
+		};
+		EA1ABBAC4FF05A4BBA68C2FA /* GluttShare */ = {
+			isa = PBXGroup;
+			children = (
+				86AF68B5E21FB9F75B865388 /* GluttShare.entitlements */,
+				BE64D349C0DD327246EE5500 /* Info.plist */,
+				AA5D72BFDA83AFBD303E2775 /* ShareViewController.swift */,
+			);
+			path = GluttShare;
 			sourceTree = "<group>";
 		};
 		F9F19240DC57ADC4598CD650 /* DesignSystem */ = {
@@ -283,10 +364,12 @@
 			buildPhases = (
 				457E5B5948435D61386DA00C /* Sources */,
 				85CAD221C33EC7BBC6918D0B /* Resources */,
+				AF1B9C57395EAAC7ADB75BAC /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BF6AA322AE0A86695092D24B /* PBXTargetDependency */,
 			);
 			name = Glutt;
 			packageProductDependencies = (
@@ -294,6 +377,23 @@
 			productName = Glutt;
 			productReference = 37434BCF14AD5C72CF078B97 /* Glutt.app */;
 			productType = "com.apple.product-type.application";
+		};
+		E09B0FD3B99CB91DF3A88489 /* GluttShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E1640700A7FE5E20A9D7BE03 /* Build configuration list for PBXNativeTarget "GluttShare" */;
+			buildPhases = (
+				A2721534726979EA31F02926 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GluttShare;
+			packageProductDependencies = (
+			);
+			productName = GluttShare;
+			productReference = FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -309,6 +409,10 @@
 						ProvisioningStyle = Automatic;
 					};
 					78E449F1B7F92FE7B4997C4F = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					E09B0FD3B99CB91DF3A88489 = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
@@ -329,6 +433,7 @@
 			projectRoot = "";
 			targets = (
 				78E449F1B7F92FE7B4997C4F /* Glutt */,
+				E09B0FD3B99CB91DF3A88489 /* GluttShare */,
 				51F0E9D9CAFC3FF8EC182851 /* GluttTests */,
 			);
 		};
@@ -366,10 +471,15 @@
 				97937012B8CA51D69C342C90 /* EmptyStateView.swift in Sources */,
 				B997F7F5C96448B424A74DAD /* Enums.swift in Sources */,
 				812D77EB9384E9BB9C3FBD71 /* GluttApp.swift in Sources */,
+				B0113D10FAE441E211B6533C /* ImportRecipeView.swift in Sources */,
+				1B82B84680A299EABA5B7B76 /* ImportReviewView.swift in Sources */,
+				51DCE52A4E8E7DEE3C077A98 /* ImportedRecipeDraft.swift in Sources */,
 				8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */,
+				0962ABDAA0B5C83097E4E2A1 /* IngredientLineParser.swift in Sources */,
 				2C69CC2242F748A1C4A03834 /* Kitchen.swift in Sources */,
 				EAB06B1CEB7F2CF3DF02C083 /* KitchenView.swift in Sources */,
 				177643D1D447412BD360D00D /* MealCard.swift in Sources */,
+				B739F625633B47DD0E0EC0D0 /* PendingImportStore.swift in Sources */,
 				98D52307F99E058349AA1999 /* PlanView.swift in Sources */,
 				BA0FE6D4B901D5BF7DF2B8B9 /* Planning.swift in Sources */,
 				ABFCA4853F7794491D82C568 /* ProgressTabView.swift in Sources */,
@@ -377,11 +487,14 @@
 				A5D13C7DD0ADCAC196619502 /* RecipeCard.swift in Sources */,
 				05BB66E74C0B7C6DA7810156 /* RecipeDetailView.swift in Sources */,
 				AE8AF2E65EFED70286B8935B /* RecipeEditorView.swift in Sources */,
+				D9F6403C8798CDBD06320027 /* RecipeHTMLParser.swift in Sources */,
 				C0EA5EC76EE823FB5CF68A5F /* RecipeImageView.swift in Sources */,
+				D741C0DBC4873E973635045D /* RecipeImportService.swift in Sources */,
 				9767E9BEFE39E296BEF059B1 /* RecipesView.swift in Sources */,
 				4B642F3ABF9E931C1F8D5604 /* RootView.swift in Sources */,
 				F27C480C64FF7FB31D3D86EC /* Router.swift in Sources */,
 				B6CED88B5EC73EDD8D259730 /* SeedData.swift in Sources */,
+				A71A0874129B8FA9A557B7A2 /* TextRecipeParser.swift in Sources */,
 				08FE391A0E5C23B8C0F3F888 /* Theme.swift in Sources */,
 				133DA52F0F3517E70483BC89 /* TodayView.swift in Sources */,
 				658FF063B7D0C83A48CE0A3B /* Typography.swift in Sources */,
@@ -390,9 +503,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A2721534726979EA31F02926 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2E22D7543240ED83B3350F7C /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		BF6AA322AE0A86695092D24B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E09B0FD3B99CB91DF3A88489 /* GluttShare */;
+			targetProxy = 2CCAD2B24FEA527FE29A24AF /* PBXContainerItemProxy */;
+		};
 		FCD81CA0C8258BA1D9DA0278 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 78E449F1B7F92FE7B4997C4F /* Glutt */;
@@ -401,6 +527,25 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		0E9B6A2282E6DF3362829DA4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = GluttShare/GluttShare.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = GluttShare/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt.share;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		235A7F12E55BC09D7E6F0F32 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -421,6 +566,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Glutt/Glutt.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -452,6 +598,25 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Glutt.app/Glutt";
 			};
 			name = Debug;
+		};
+		A2C3358FD124F7A186A8BD3D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = GluttShare/GluttShare.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = GluttShare/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt.share;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
 		};
 		B91B06AA40DF27D1EA7DD929 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -580,6 +745,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Glutt/Glutt.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -622,6 +788,15 @@
 			buildConfigurations = (
 				FFCB3DE62BCBE67268C81805 /* Debug */,
 				3329F11E5CC54B6DE01070C9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E1640700A7FE5E20A9D7BE03 /* Build configuration list for PBXNativeTarget "GluttShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0E9B6A2282E6DF3362829DA4 /* Debug */,
+				A2C3358FD124F7A186A8BD3D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

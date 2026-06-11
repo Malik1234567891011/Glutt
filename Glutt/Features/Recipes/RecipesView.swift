@@ -4,6 +4,7 @@ import SwiftUI
 /// The recipe library: search, filters, collections, and the recipe list.
 struct RecipesView: View {
     @Environment(\.modelContext) private var context
+    @Environment(Router.self) private var router
     @Query(sort: \Recipe.createdAt, order: .reverse) private var allRecipes: [Recipe]
     @Query(sort: \RecipeCollection.createdAt) private var collections: [RecipeCollection]
 
@@ -11,6 +12,7 @@ struct RecipesView: View {
     @State private var selectedFilter: String?
     @State private var sortOrder: SortOrder = .recentlySaved
     @State private var isShowingEditor = false
+    @State private var isShowingImport = false
     @State private var isNamingCollection = false
     @State private var newCollectionName = ""
 
@@ -132,8 +134,13 @@ struct RecipesView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isShowingEditor = true
+                    Menu {
+                        Button("Import from link or screenshot", systemImage: "link") {
+                            isShowingImport = true
+                        }
+                        Button("Create manually", systemImage: "square.and.pencil") {
+                            isShowingEditor = true
+                        }
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -142,6 +149,11 @@ struct RecipesView: View {
             .sheet(isPresented: $isShowingEditor) {
                 RecipeEditorView(recipe: nil)
             }
+            .sheet(isPresented: $isShowingImport, onDismiss: { router.pendingImportURL = nil }) {
+                ImportRecipeView(initialURL: router.pendingImportURL)
+            }
+            .onAppear(perform: handlePendingImport)
+            .onChange(of: router.pendingAction) { handlePendingImport() }
             .alert("New collection", isPresented: $isNamingCollection) {
                 TextField("Name", text: $newCollectionName)
                 Button("Create") {
@@ -153,6 +165,13 @@ struct RecipesView: View {
                 }
                 Button("Cancel", role: .cancel) { newCollectionName = "" }
             }
+        }
+    }
+
+    private func handlePendingImport() {
+        if router.pendingAction == .importRecipe {
+            router.pendingAction = nil
+            isShowingImport = true
         }
     }
 

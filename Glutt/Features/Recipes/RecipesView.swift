@@ -7,6 +7,7 @@ struct RecipesView: View {
     @Environment(Router.self) private var router
     @Query(sort: \Recipe.createdAt, order: .reverse) private var allRecipes: [Recipe]
     @Query(sort: \RecipeCollection.createdAt) private var collections: [RecipeCollection]
+    @Query private var pantryItems: [PantryItem]
 
     @State private var searchText = ""
     @State private var selectedFilter: String?
@@ -98,7 +99,11 @@ struct RecipesView: View {
                         LazyVStack(spacing: Theme.Spacing.md) {
                             ForEach(visibleRecipes) { recipe in
                                 NavigationLink(value: recipe) {
-                                    RecipeCard(recipe: recipe)
+                                    let match = PantryMatcher.match(recipe: recipe, pantry: pantryItems)
+                                    RecipeCard(
+                                        recipe: recipe,
+                                        pantryMatch: (match.ownedCount, match.totalCount)
+                                    )
                                 }
                                 .buttonStyle(.plain)
                             }

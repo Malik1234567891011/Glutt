@@ -4,8 +4,8 @@ import SwiftUI
 /// and a slot for the pantry-match indicator ("You have 6/9 ingredients").
 struct RecipeCard: View {
     let recipe: Recipe
-    /// Pantry match, filled in once Kitchen exists (Phase 4). Nil hides the indicator.
-    var ingredientsOwned: Int?
+    /// Pantry match (owned, total non-optional). Nil hides the indicator.
+    var pantryMatch: (owned: Int, total: Int)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -39,8 +39,8 @@ struct RecipeCard: View {
                     }
                 }
 
-                if let ingredientsOwned {
-                    ingredientMatchIndicator(owned: ingredientsOwned)
+                if let pantryMatch {
+                    ingredientMatchIndicator(owned: pantryMatch.owned, total: pantryMatch.total)
                 }
             }
             .padding(Theme.Spacing.md)
@@ -55,8 +55,7 @@ struct RecipeCard: View {
             .frame(height: 170)
     }
 
-    private func ingredientMatchIndicator(owned: Int) -> some View {
-        let total = recipe.ingredients.count
+    private func ingredientMatchIndicator(owned: Int, total: Int) -> some View {
         let hasAll = owned >= total && total > 0
         return HStack(spacing: 4) {
             Image(systemName: hasAll ? "checkmark.circle.fill" : "basket")

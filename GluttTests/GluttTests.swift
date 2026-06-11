@@ -225,6 +225,91 @@ final class TextRecipeParserTests: XCTestCase {
     }
 }
 
+final class PantryMatcherTests: XCTestCase {
+
+    private func makeRecipe() -> Recipe {
+        let recipe = Recipe(title: "Test Bowl")
+        recipe.ingredients = [
+            RecipeIngredient(name: "Chicken thighs", quantity: 600, unit: "g", sortIndex: 0),
+            RecipeIngredient(name: "Basmati rice", quantity: 2, unit: "cups", sortIndex: 1),
+            RecipeIngredient(name: "Heavy cream", quantity: 1, unit: "cup", sortIndex: 2),
+            RecipeIngredient(name: "Salt", sortIndex: 3),
+            RecipeIngredient(name: "Parsley", isOptional: true, sortIndex: 4),
+        ]
+        return recipe
+    }
+
+    func testMatchCountsAndCategories() {
+        let pantry = [
+            PantryItem(name: "Chicken thighs", category: .meat),
+            PantryItem(name: "Rice", category: .pantry),
+        ]
+        let result = PantryMatcher.match(recipe: makeRecipe(), pantry: pantry)
+
+        // Owned: chicken (exact), basmati rice (subset match), salt (staple)
+        XCTAssertEqual(result.ownedCount, 3)
+        // Missing: heavy cream. Parsley is optional -> missingOptional.
+        XCTAssertEqual(result.missing.map(\.name), ["Heavy cream"])
+        XCTAssertEqual(result.missingOptional.map(\.name), ["Parsley"])
+        XCTAssertEqual(result.totalCount, 4)
+        XCTAssertFalse(result.hasEverything)
+    }
+
+    func testOutOfStockDoesNotCount() {
+        let pantry = [PantryItem(name: "Chicken thighs", roughQuantity: .out)]
+        let result = PantryMatcher.match(recipe: makeRecipe(), pantry: pantry)
+        XCTAssertTrue(result.missing.contains { $0.name == "Chicken thighs" })
+    }
+}
+
+final class GroceryListBuilderTests: XCTestCase {
+
+    func testCategorizer() {
+        XCTAssertEqual(GroceryCategorizer.categorize("Lemons"), .produce)
+        XCTAssertEqual(GroceryCategorizer.categorize("Chicken breast"), .meat)
+        XCTAssertEqual(GroceryCategorizer.categorize("Greek yogurt"), .dairy)
+        XCTAssertEqual(GroceryCategorizer.categorize("Basmati rice"), .pantry)
+        XCTAssertEqual(GroceryCategorizer.categorize("Paprika"), .spices)
+        XCTAssertEqual(GroceryCategorizer.categorize("Mystery item"), .other)
+    }
+
+    @MainActor
+    func testCombinesDuplicates() throws {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: GroceryItem.self, configurations: config)
+        let context = container.mainContext
+
+        let recipeA = Recipe(title: "Recipe A")
+        let onionA = RecipeIngredient(name: "Onions", quantity: 2)
+        GroceryListBuilder.add(ingredients: [onionA], from: recipeA, existing: [], context: context)
+
+        let existing = try context.fetch(FetchDescriptor<GroceryItem>())
+        XCTAssertEqual(existing.count, 1)
+
+        let recipeB = Recipe(title: "Recipe B")
+        let onionB = RecipeIngredient(name: "onion", quantity: 1)
+        GroceryListBuilder.add(ingredients: [onionB], from: recipeB, existing: existing, context: context)
+
+        let after = try context.fetch(FetchDescriptor<GroceryItem>())
+        XCTAssertEqual(after.count, 1)
+        XCTAssertEqual(after.first?.quantity, 3)
+        XCTAssertEqual(after.first?.sourceRecipeTitles.count, 2)
+    }
+
+    func testSubstitutionsRespectPantry() {
+        let pantry = [
+            PantryItem(name: "Greek yogurt", category: .dairy),
+            PantryItem(name: "Butter", category: .dairy),
+        ]
+        let available = SubstitutionService.availableSubstitutions(for: "heavy cream", pantry: pantry)
+        XCTAssertTrue(available.contains { $0.name == "Greek yogurt + butter" })
+
+        let withoutButter = [PantryItem(name: "Greek yogurt", category: .dairy)]
+        let unavailable = SubstitutionService.availableSubstitutions(for: "heavy cream", pantry: withoutButter)
+        XCTAssertFalse(unavailable.contains { $0.name == "Greek yogurt + butter" })
+    }
+}
+
 final class CookModeTests: XCTestCase {
 
     func testStepIngredientMatching() {

@@ -39,6 +39,10 @@ final class PantryItem {
 final class GroceryItem {
     var name: String
     var canonicalName: String
+    /// Structured quantity for combining duplicates across recipes.
+    var quantity: Double?
+    var unit: String?
+    /// Free-text quantity for manual entries ("1 tub").
     var quantityText: String?
     var category: GroceryCategory
     var isChecked: Bool

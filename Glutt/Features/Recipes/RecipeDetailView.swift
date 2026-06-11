@@ -4,6 +4,8 @@ import SwiftUI
 struct RecipeDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Query private var pantryItems: [PantryItem]
+    @Query private var groceryItems: [GroceryItem]
     @Bindable var recipe: Recipe
 
     @State private var displayServings: Int
@@ -13,6 +15,7 @@ struct RecipeDetailView: View {
     @State private var isNamingVersion = false
     @State private var versionLabel = ""
     @State private var isCooking = false
+    @State private var isShowingPreCookChecklist = false
 
     init(recipe: Recipe) {
         self.recipe = recipe
@@ -26,6 +29,10 @@ struct RecipeDetailView: View {
 
     private var sessions: [CookSession] {
         recipe.cookSessions(in: context)
+    }
+
+    private var pantryMatch: PantryMatcher.MatchResult {
+        PantryMatcher.match(recipe: recipe, pantry: pantryItems)
     }
 
     var body: some View {
@@ -53,7 +60,11 @@ struct RecipeDetailView: View {
         .toolbar { toolbarMenu }
         .safeAreaInset(edge: .bottom) {
             Button {
-                isCooking = true
+                if pantryMatch.missing.isEmpty {
+                    isCooking = true
+                } else {
+                    isShowingPreCookChecklist = true
+                }
             } label: {
                 Label("Cook", systemImage: "frying.pan")
             }
@@ -64,6 +75,11 @@ struct RecipeDetailView: View {
         }
         .fullScreenCover(isPresented: $isCooking) {
             CookModeView(recipe: recipe, scale: scale)
+        }
+        .sheet(isPresented: $isShowingPreCookChecklist) {
+            PreCookChecklistView(recipe: recipe) {
+                isCooking = true
+            }
         }
         .sheet(isPresented: $isShowingEditor) {
             RecipeEditorView(recipe: recipe)
@@ -171,10 +187,37 @@ struct RecipeDetailView: View {
     private var ingredientsSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             SectionHeader(title: "Ingredients")
+
+            if pantryMatch.totalCount > 0 {
+                HStack {
+                    Label(
+                        pantryMatch.hasEverything
+                            ? "You have everything"
+                            : "You have \(pantryMatch.ownedCount)/\(pantryMatch.totalCount)",
+                        systemImage: pantryMatch.hasEverything ? "checkmark.circle.fill" : "basket"
+                    )
+                    .font(.gluttCaption.weight(.medium))
+                    .foregroundStyle(pantryMatch.hasEverything ? Theme.Colors.accent : Theme.Colors.warning)
+                    Spacer()
+                    if !pantryMatch.missing.isEmpty {
+                        Button("Add missing to groceries") {
+                            GroceryListBuilder.add(
+                                ingredients: pantryMatch.missing,
+                                from: recipe,
+                                existing: groceryItems,
+                                context: context
+                            )
+                        }
+                        .buttonStyle(.gluttPill)
+                    }
+                }
+            }
+
             VStack(spacing: 0) {
                 let sorted = recipe.ingredients.sorted { $0.sortIndex < $1.sortIndex }
                 ForEach(sorted) { ingredient in
                     HStack {
+                        ownershipIcon(for: ingredient)
                         Text(ingredient.name)
                             .font(.gluttBody)
                             .foregroundStyle(Theme.Colors.textPrimary)
@@ -204,6 +247,16 @@ struct RecipeDetailView: View {
             .padding(.horizontal, Theme.Spacing.md)
             .cardStyle(padding: Theme.Spacing.xs)
         }
+    }
+
+    private func ownershipIcon(for ingredient: RecipeIngredient) -> some View {
+        let owned = pantryMatch.owned.contains { $0 === ingredient }
+        let optionalMissing = pantryMatch.missingOptional.contains { $0 === ingredient }
+        return Image(systemName: owned ? "checkmark.circle.fill" : "circle")
+            .font(.caption)
+            .foregroundStyle(
+                owned ? Theme.Colors.accent : (optionalMissing ? Theme.Colors.border : Theme.Colors.warning)
+            )
     }
 
     private var stepsSection: some View {

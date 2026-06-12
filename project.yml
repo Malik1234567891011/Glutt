@@ -88,3 +88,14 @@ schemes:
       config: Debug
     archive:
       config: Release
+
+  # The TestFlight experience: Release build, no seeded demo data,
+  # onboarding from zero. Use this to test what beta testers will get.
+  Glutt Beta:
+    build:
+      targets:
+        Glutt: all
+    run:
+      config: Release
+    archive:
+      config: Release

@@ -15,6 +15,9 @@ struct WhatToCookView: View {
     @State private var mood: MealRecommender.Mood = .any
     @State private var recommendations: [MealRecommender.Recommendation]?
     @State private var planningRecipe: Recipe?
+    @State private var askText = ""
+    @State private var isAsking = false
+    @State private var headline: String?
 
     private static let timeOptions: [(label: String, minutes: Int?)] = [
         ("Any", nil), ("15 min", 15), ("30 min", 30), ("45 min", 45), ("1 hr+", 90),
@@ -24,7 +27,25 @@ struct WhatToCookView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                    askCard
                     questionCard
+
+                    if isAsking {
+                        HStack(spacing: Theme.Spacing.sm) {
+                            ProgressView()
+                            Text("Thinking about your kitchen…")
+                                .font(.gluttCaption)
+                                .foregroundStyle(Theme.Colors.textSecondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Theme.Spacing.md)
+                    }
+
+                    if let headline {
+                        Text(headline)
+                            .font(.gluttHeadline)
+                            .foregroundStyle(Theme.Colors.accent)
+                    }
 
                     if let recommendations {
                         if recommendations.isEmpty {
@@ -66,6 +87,57 @@ struct WhatToCookView: View {
                     generate()
                 }
             }
+        }
+    }
+
+    // MARK: - Ask anything
+
+    /// The "just say it" path: type what you're feeling, get real options.
+    private var askCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Text("Just tell me")
+                .font(.gluttHeadline)
+                .foregroundStyle(Theme.Colors.textPrimary)
+            HStack(spacing: Theme.Spacing.sm) {
+                TextField("\"something quick and savory with chicken\"", text: $askText, axis: .vertical)
+                    .lineLimit(1...3)
+                    .padding(Theme.Spacing.sm)
+                    .background(Theme.Colors.background)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
+                    .onSubmit(ask)
+                Button(action: ask) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.title)
+                        .foregroundStyle(
+                            askText.trimmingCharacters(in: .whitespaces).isEmpty
+                                ? Theme.Colors.border : Theme.Colors.accent
+                        )
+                }
+                .disabled(askText.trimmingCharacters(in: .whitespaces).isEmpty || isAsking)
+            }
+        }
+        .cardStyle()
+    }
+
+    private func ask() {
+        let query = askText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty, !isAsking else { return }
+        isAsking = true
+        headline = nil
+        recommendations = nil
+        let prefs = UserPrefs.current(in: context)
+        Task {
+            let answer = await AskGlutt.ask(
+                query: query,
+                recipes: recipes,
+                pantry: pantryItems,
+                leftovers: leftovers,
+                sessions: sessions,
+                prefs: prefs
+            )
+            recommendations = answer.recommendations
+            headline = answer.headline
+            isAsking = false
         }
     }
 
@@ -187,6 +259,7 @@ struct WhatToCookView: View {
     }
 
     private func generate() {
+        headline = nil
         let prefs = UserPrefs.current(in: context)
         recommendations = MealRecommender.recommend(MealRecommender.Request(
             maxMinutes: maxMinutes,

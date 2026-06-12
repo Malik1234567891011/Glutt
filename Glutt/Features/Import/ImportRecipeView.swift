@@ -11,7 +11,7 @@ struct ImportRecipeView: View {
 
     enum Phase {
         case input
-        case loading
+        case loading(String)
         case failed(String)
         case review(ImportedRecipeDraft)
     }
@@ -26,8 +26,8 @@ struct ImportRecipeView: View {
                 switch phase {
                 case .input:
                     inputView
-                case .loading:
-                    loadingView
+                case .loading(let message):
+                    loadingView(message)
                 case .failed(let message):
                     failureView(message)
                 case .review(let draft):
@@ -124,13 +124,14 @@ struct ImportRecipeView: View {
         }
     }
 
-    private var loadingView: some View {
+    private func loadingView(_ message: String) -> some View {
         VStack(spacing: Theme.Spacing.md) {
             ProgressView()
                 .controlSize(.large)
-            Text("Reading the recipe…")
+            Text(message)
                 .font(.gluttBody)
                 .foregroundStyle(Theme.Colors.textSecondary)
+                .contentTransition(.opacity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -151,11 +152,15 @@ struct ImportRecipeView: View {
     // MARK: - Actions
 
     private func startLinkImport() {
-        phase = .loading
+        phase = .loading("Reading the recipe…")
         let urlString = urlText
         Task {
             do {
-                let draft = try await RecipeImportService.importFrom(urlString: urlString)
+                var draft = try await RecipeImportService.importFrom(urlString: urlString)
+                if DraftCleanup.wouldImprove(draft) {
+                    phase = .loading("Cleaning it up with AI…")
+                    draft = await DraftCleanup.cleanUp(draft)
+                }
                 phase = .review(draft)
             } catch {
                 phase = .failed(error.localizedDescription)
@@ -164,13 +169,17 @@ struct ImportRecipeView: View {
     }
 
     private func startPhotoImport() {
-        phase = .loading
+        phase = .loading("Reading the screenshot…")
         Task {
             do {
                 guard let data = try await photoItem?.loadTransferable(type: Data.self) else {
                     throw ImportError.unreadableImage
                 }
-                let draft = try await RecipeImportService.importFrom(imageData: data)
+                var draft = try await RecipeImportService.importFrom(imageData: data)
+                if DraftCleanup.wouldImprove(draft) {
+                    phase = .loading("Cleaning it up with AI…")
+                    draft = await DraftCleanup.cleanUp(draft)
+                }
                 phase = .review(draft)
             } catch {
                 phase = .failed(error.localizedDescription)

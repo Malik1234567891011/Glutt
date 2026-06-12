@@ -176,19 +176,26 @@ struct SettingsView: View {
 
     private var aiSection: some View {
         Section {
-            SecureField("API key", text: $apiKey)
+            if LLMClient.usesEmbeddedKey {
+                Label("AI enabled (beta)", systemImage: "sparkles")
+                    .font(.gluttCaption)
+                    .foregroundStyle(Theme.Colors.accent)
+            }
+            SecureField("API key (optional override)", text: $apiKey)
             TextField("Model", text: $model)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
-            if LLMClient.isConfigured {
-                Label("AI features enabled", systemImage: "sparkles")
+            if LLMClient.isConfigured && !LLMClient.usesEmbeddedKey {
+                Label("AI features enabled (your key)", systemImage: "sparkles")
                     .font(.gluttCaption)
                     .foregroundStyle(Theme.Colors.accent)
             }
         } header: {
-            Text("AI (optional)")
+            Text("AI")
         } footer: {
-            Text("Everything in Glutt works without this. An OpenAI-compatible key upgrades search, substitutions, and suggestions over time.")
+            Text(LLMClient.isConfigured
+                ? "AI powers import cleanup, \"just tell me\" suggestions, and smarter explanations. Everything still works offline."
+                : "Everything in Glutt works without this. An OpenAI-compatible key upgrades imports, search, and suggestions.")
         }
     }
 }

@@ -94,8 +94,3 @@ enum RecipeImportService {
     }
 }
 
-/// Hook for the Phase 6 AI layer: re-extract or clean up a draft with an LLM.
-/// Everything compiles and works without it — AI is never load-bearing.
-protocol DraftCleanupService {
-    func cleanUp(draft: ImportedRecipeDraft) async throws -> ImportedRecipeDraft
-}

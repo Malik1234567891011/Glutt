@@ -16,8 +16,7 @@ struct ImportReviewView: View {
     @State private var cookMinutes: Int
     @State private var ingredientLines: [EditableLine]
     @State private var stepLines: [EditableLine]
-    @State private var savedRecipe: Recipe?
-    @State private var isShowingPostSave = false
+    @State private var selectedCollections: Set<PersistentIdentifier> = []
 
     struct EditableLine: Identifiable {
         let id = UUID()
@@ -52,6 +51,9 @@ struct ImportReviewView: View {
                 basicsCard
                 ingredientsCard
                 stepsCard
+                if !collections.isEmpty {
+                    collectionsCard
+                }
 
                 Button("Save recipe") { save() }
                     .buttonStyle(.gluttPrimary)
@@ -60,20 +62,37 @@ struct ImportReviewView: View {
             .padding(Theme.Spacing.md)
         }
         .background(Theme.Colors.background)
-        .confirmationDialog("Saved to your library", isPresented: $isShowingPostSave, titleVisibility: .visible) {
-            ForEach(collections) { collection in
-                Button("Add to “\(collection.name)”") {
-                    if let savedRecipe {
-                        collection.recipes.append(savedRecipe)
-                    }
-                    onDone()
-                }
-            }
-            Button("Done", role: .cancel) { onDone() }
-        }
     }
 
     // MARK: - Sections
+
+    /// Optional, pre-save: tap to toggle. No dialog, no pressure.
+    private var collectionsCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Text("ADD TO A COLLECTION — OPTIONAL")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Theme.Colors.textSecondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Spacing.sm) {
+                    ForEach(collections) { collection in
+                        let isSelected = selectedCollections.contains(collection.persistentModelID)
+                        Button {
+                            if isSelected {
+                                selectedCollections.remove(collection.persistentModelID)
+                            } else {
+                                selectedCollections.insert(collection.persistentModelID)
+                            }
+                        } label: {
+                            Chip(label: collection.name, isSelected: isSelected)
+                                .fixedSize()
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .cardStyle()
+    }
 
     private var confidenceHeader: some View {
         HStack {
@@ -232,13 +251,10 @@ struct ImportReviewView: View {
             }
 
         context.insert(recipe)
-        savedRecipe = recipe
-
-        if collections.isEmpty {
-            onDone()
-        } else {
-            isShowingPostSave = true
+        for collection in collections where selectedCollections.contains(collection.persistentModelID) {
+            collection.recipes.append(recipe)
         }
+        onDone()
     }
 
     /// "simmer for 10 minutes" -> 600 seconds. Powers Cook Mode timers later.

@@ -4,6 +4,7 @@ import SwiftUI
 struct RecipeDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(Router.self) private var router
     @Query private var pantryItems: [PantryItem]
     @Query private var groceryItems: [GroceryItem]
     @Bindable var recipe: Recipe
@@ -99,6 +100,9 @@ struct RecipeDetailView: View {
             Button("Create") { createVersion() }
             Button("Cancel", role: .cancel) { versionLabel = "" }
         }
+        // The floating + would sit right on top of the Cook button.
+        .onAppear { router.floatingButtonSuppressors += 1 }
+        .onDisappear { router.floatingButtonSuppressors -= 1 }
     }
 
     // MARK: - Sections
@@ -136,9 +140,14 @@ struct RecipeDetailView: View {
             .font(.gluttCaption)
             .foregroundStyle(Theme.Colors.textSecondary)
 
-            HStack(spacing: Theme.Spacing.xs) {
-                ForEach(recipe.tags, id: \.self) { tag in
-                    Chip(label: tag)
+            if !recipe.tags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        ForEach(recipe.tags, id: \.self) { tag in
+                            Chip(label: tag)
+                                .fixedSize()
+                        }
+                    }
                 }
             }
 
@@ -153,18 +162,27 @@ struct RecipeDetailView: View {
         let original = recipe.parentRecipe ?? recipe
         let allVersions = [original] + original.versions
         if allVersions.count > 1 {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Spacing.sm) {
-                    ForEach(allVersions) { version in
-                        NavigationLink(value: version) {
-                            Chip(
-                                label: version === original ? "Original" : (version.versionLabel ?? "My version"),
-                                isSelected: version === recipe
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(version === recipe)
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                Text("MY VERSIONS OF THIS RECIPE")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                versionChips(allVersions, original: original)
+            }
+        }
+    }
+
+    private func versionChips(_ allVersions: [Recipe], original: Recipe) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Spacing.sm) {
+                ForEach(allVersions) { version in
+                    NavigationLink(value: version) {
+                        Chip(
+                            label: version === original ? "Original" : (version.versionLabel ?? "My version"),
+                            isSelected: version === recipe
+                        )
                     }
+                    .buttonStyle(.plain)
+                    .disabled(version === recipe)
                 }
             }
         }
@@ -221,15 +239,22 @@ struct RecipeDetailView: View {
                 let sorted = recipe.ingredients.sorted { $0.sortIndex < $1.sortIndex }
                 ForEach(sorted) { ingredient in
                     HStack {
-                        ownershipIcon(for: ingredient)
-                        Text(ingredient.name)
-                            .font(.gluttBody)
-                            .foregroundStyle(Theme.Colors.textPrimary)
-                        if ingredient.isOptional {
-                            Text("optional")
-                                .font(.caption2)
-                                .foregroundStyle(Theme.Colors.textSecondary)
+                        Button {
+                            toggleOwnership(of: ingredient)
+                        } label: {
+                            HStack {
+                                ownershipIcon(for: ingredient)
+                                Text(ingredient.name)
+                                    .font(.gluttBody)
+                                    .foregroundStyle(Theme.Colors.textPrimary)
+                                if ingredient.isOptional {
+                                    Text("optional")
+                                        .font(.caption2)
+                                        .foregroundStyle(Theme.Colors.textSecondary)
+                                }
+                            }
                         }
+                        .buttonStyle(.plain)
                         Spacer()
                         if let display = UnitConverter.display(
                             quantity: ingredient.quantity,
@@ -257,10 +282,41 @@ struct RecipeDetailView: View {
         let owned = pantryMatch.owned.contains { $0 === ingredient }
         let optionalMissing = pantryMatch.missingOptional.contains { $0 === ingredient }
         return Image(systemName: owned ? "checkmark.circle.fill" : "circle")
-            .font(.caption)
+            .font(.body)
             .foregroundStyle(
                 owned ? Theme.Colors.accent : (optionalMissing ? Theme.Colors.border : Theme.Colors.warning)
             )
+    }
+
+    /// Tap an ingredient to flip "I have this" — updates the pantry directly
+    /// so the user doesn't have to detour through Kitchen → Inventory.
+    private func toggleOwnership(of ingredient: RecipeIngredient) {
+        let canonical = ingredient.canonicalName
+        let isOwned = pantryMatch.owned.contains { $0 === ingredient }
+
+        if isOwned {
+            if let item = PantryMatcher.item(covering: canonical, in: pantryItems) {
+                item.roughQuantity = .out
+            } else if PantryMatcher.staples.contains(canonical) {
+                // Staples have no pantry row; create one marked as out.
+                let item = PantryItem(
+                    name: ingredient.name,
+                    category: GroceryCategorizer.categorize(ingredient.name),
+                    roughQuantity: .out
+                )
+                context.insert(item)
+            }
+        } else {
+            if let item = PantryMatcher.item(covering: canonical, in: pantryItems) {
+                item.roughQuantity = .full
+            } else {
+                let item = PantryItem(
+                    name: ingredient.name,
+                    category: GroceryCategorizer.categorize(ingredient.name)
+                )
+                context.insert(item)
+            }
+        }
     }
 
     private var stepsSection: some View {

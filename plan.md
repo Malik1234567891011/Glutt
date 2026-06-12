@@ -275,6 +275,9 @@ iOS-first native app (Swift / SwiftUI / Xcode). This document breaks down the en
 
 ### 6.4 "What should I cook?" assistant (killer flow)
 - [ ] Entry: Today tab button + universal "+" sheet
+- [ ] Voice mode: open the app and just talk — "fuck I'm in a rush, what can I cook in 30 mins?",
+      "craving something savory with chicken", "I want something really sweet" → speech-to-text →
+      assistant parses constraints (time, mood, ingredient) → same recommendation cards
 - [ ] Quick context capture: time available, hungry now/later, use what's home?, lazy/chef mode, gym goal (if enabled)
 - [ ] Recommendation engine combines: pantry match, use-soon items, taste profile, recency, time constraint, dietary rules
 - [ ] Returns 3–5 option cards: best match / fastest / high-protein / uses use-soon items / wildcard
@@ -303,6 +306,7 @@ iOS-first native app (Swift / SwiftUI / Xcode). This document breaks down the en
 - [ ] Quick-add common foods (eggs, protein shake, coffee, rice bowl…) — user-customizable list
 - [ ] Restaurant/fast-food logging: search common items, save "restaurant meal memory" for repeats
 - [ ] Photo calorie estimation: photo → vision/LLM → estimate with **confidence range** ("probably 700–900 cal")
+- [ ] Photo of leftovers → estimate servings remaining (so the app never suggests a leftover meal that isn't actually enough food)
 - [ ] Manual correction always available, never buried
 - [ ] Log leftovers as eaten (links to Leftover, decrements servings)
 - [ ] Barcode scan → nutrition lookup (open food database)
@@ -428,6 +432,8 @@ Ordered roughly by value:
 15. Apple Watch app (timers, grocery check-off)
 16. iCloud sync / multi-device
 17. Android
+18. Instacart / local store integration: one tap sends the grocery list to a delivery service or
+    pre-fills a cart at a store near the user (some apps already do this — big mental-load win)
 
 ---
 

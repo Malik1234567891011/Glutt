@@ -10,6 +10,11 @@ struct RecipeImageView: View {
             content
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 .clipped()
+                // .clipped() only clips drawing — the scaledToFill image still
+                // hit-tests far outside its frame, stealing taps from views
+                // above/below the card. The image is decorative, so opt it out.
+                .allowsHitTesting(false)
+                .contentShape(Rectangle())
         }
     }
 

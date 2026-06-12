@@ -21,7 +21,9 @@ struct RootView: View {
             }
             .tint(Theme.Colors.accent)
 
-            captureButton
+            if router.floatingButtonSuppressors == 0 {
+                captureButton
+            }
         }
         .sheet(isPresented: $router.isCaptureSheetPresented) {
             CaptureActionSheet()

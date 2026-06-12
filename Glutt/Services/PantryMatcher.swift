@@ -25,7 +25,13 @@ enum PantryMatcher {
         var result = MatchResult()
 
         for ingredient in recipe.ingredients.sorted(by: { $0.sortIndex < $1.sortIndex }) {
-            if owns(ingredientNamed: ingredient.canonicalName, available: available) {
+            let canonical = ingredient.canonicalName
+            let coveredByAvailable = item(covering: canonical, in: available) != nil
+            // A staple counts as owned unless an explicit pantry row says it's out.
+            let explicitlyOut = !coveredByAvailable && item(covering: canonical, in: pantry) != nil
+            let owned = coveredByAvailable || (staples.contains(canonical) && !explicitlyOut)
+
+            if owned {
                 result.owned.append(ingredient)
             } else if ingredient.isOptional {
                 result.missingOptional.append(ingredient)
@@ -38,9 +44,14 @@ enum PantryMatcher {
 
     static func owns(ingredientNamed canonicalName: String, available: [PantryItem]) -> Bool {
         if staples.contains(canonicalName) { return true }
+        return item(covering: canonicalName, in: available) != nil
+    }
 
+    /// The pantry item that satisfies an ingredient, if any
+    /// (regardless of stock level — callers filter on roughQuantity).
+    static func item(covering canonicalName: String, in pantry: [PantryItem]) -> PantryItem? {
         let ingredientWords = Set(canonicalName.split(separator: " ").map(String.init))
-        return available.contains { item in
+        return pantry.first { item in
             if item.canonicalName == canonicalName { return true }
             // Subset match: pantry "rice" covers "basmati rice";
             // pantry "chicken thigh" covers "chicken thigh fillets".

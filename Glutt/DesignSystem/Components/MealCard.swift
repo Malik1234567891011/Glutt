@@ -6,6 +6,8 @@ struct MealCard: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
+            thumbnail
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(meal.mealType.label)
                     .font(.gluttCaption.weight(.semibold))
@@ -14,11 +16,16 @@ struct MealCard: View {
                     .font(.gluttHeadline)
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .lineLimit(1)
-                if let time = meal.exactTime {
-                    Text(time, style: .time)
-                        .font(.gluttCaption)
-                        .foregroundStyle(Theme.Colors.textSecondary)
+                HStack(spacing: Theme.Spacing.sm) {
+                    if let time = meal.exactTime {
+                        Text(time, style: .time)
+                    }
+                    if let recipe = meal.recipe {
+                        Label("\(recipe.totalMinutes) min", systemImage: "clock")
+                    }
                 }
+                .font(.gluttCaption)
+                .foregroundStyle(Theme.Colors.textSecondary)
                 if meal.status == .planned, let start = meal.suggestedStartTime {
                     Label("Start cooking by \(start.formatted(date: .omitted, time: .shortened))", systemImage: "timer")
                         .font(.caption2)
@@ -29,6 +36,23 @@ struct MealCard: View {
             statusBadge
         }
         .cardStyle()
+    }
+
+    @ViewBuilder
+    private var thumbnail: some View {
+        if let recipe = meal.recipe ?? meal.leftover?.sourceRecipe {
+            RecipeImageView(recipe: recipe)
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
+        } else {
+            RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous)
+                .fill(Theme.Colors.accent.opacity(0.1))
+                .frame(width: 56, height: 56)
+                .overlay {
+                    Image(systemName: meal.leftover != nil ? "takeoutbag.and.cup.and.straw" : "fork.knife")
+                        .foregroundStyle(Theme.Colors.accent.opacity(0.6))
+                }
+        }
     }
 
     private var statusBadge: some View {

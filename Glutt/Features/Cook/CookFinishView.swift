@@ -13,18 +13,33 @@ struct CookFinishView: View {
     let onComplete: () -> Void
 
     @State private var servingsMade: Double
-    @State private var servingsEaten: Double = 1
+    @State private var eatenFraction: Double
     @State private var saveLeftovers = true
     @State private var rating = 0
     @State private var worthTheEffort: Bool?
     @State private var wouldMakeAgain: Bool?
     @State private var note = ""
 
+    /// "How much of it did you eat?" — fractions are how people actually think
+    /// about a pot of food, and accurate leftovers depend on this answer.
+    private static let portionOptions: [(label: String, fraction: Double)] = [
+        ("None", 0), ("¼", 0.25), ("½", 0.5), ("¾", 0.75), ("All", 1),
+    ]
+
     init(recipe: Recipe, scale: Double, onComplete: @escaping () -> Void) {
         self.recipe = recipe
         self.scale = scale
         self.onComplete = onComplete
-        _servingsMade = State(initialValue: Double(recipe.servings) * scale)
+        let made = Double(recipe.servings) * scale
+        _servingsMade = State(initialValue: made)
+        // Start near "one person ate one serving", snapped to a portion chip.
+        let oneServing = made > 0 ? 1 / made : 1
+        let snapped = Self.portionOptions.min { abs($0.fraction - oneServing) < abs($1.fraction - oneServing) }!
+        _eatenFraction = State(initialValue: snapped.fraction)
+    }
+
+    private var servingsEaten: Double {
+        (servingsMade * eatenFraction * 2).rounded() / 2
     }
 
     private var leftoverServings: Double {
@@ -80,40 +95,55 @@ struct CookFinishView: View {
     }
 
     private var servingsCard: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            stepperRow(
-                title: "Servings made",
-                value: $servingsMade,
-                range: 0.5...24
-            )
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            HStack {
+                Text("Servings made")
+                    .font(.gluttBody)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                Spacer()
+                Stepper(value: $servingsMade, in: 0.5...24, step: 0.5) {
+                    Text(servingsMade.formatted())
+                        .font(.gluttHeadline)
+                        .foregroundStyle(Theme.Colors.accent)
+                        .frame(minWidth: 36)
+                }
+                .fixedSize()
+            }
+
             Divider().overlay(Theme.Colors.border)
-            stepperRow(
-                title: "How much did you eat?",
-                value: $servingsEaten,
-                range: 0...servingsMade
-            )
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                Text("How much of it did you eat?")
+                    .font(.gluttBody)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                HStack(spacing: Theme.Spacing.sm) {
+                    ForEach(Self.portionOptions, id: \.fraction) { option in
+                        Button {
+                            eatenFraction = option.fraction
+                        } label: {
+                            Text(option.label)
+                                .font(.gluttHeadline)
+                                .foregroundStyle(eatenFraction == option.fraction ? .white : Theme.Colors.textPrimary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, Theme.Spacing.sm)
+                                .background(
+                                    eatenFraction == option.fraction
+                                        ? Theme.Colors.accent
+                                        : Theme.Colors.accent.opacity(0.08)
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                if eatenFraction > 0 {
+                    Text("≈ \(servingsEaten.formatted()) of \(servingsMade.formatted()) servings")
+                        .font(.gluttCaption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+            }
         }
         .cardStyle()
-    }
-
-    private func stepperRow(title: String, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
-        HStack {
-            Text(title)
-                .font(.gluttBody)
-                .foregroundStyle(Theme.Colors.textPrimary)
-            Spacer()
-            Stepper(
-                value: value,
-                in: range,
-                step: 0.5
-            ) {
-                Text(value.wrappedValue.formatted())
-                    .font(.gluttHeadline)
-                    .foregroundStyle(Theme.Colors.accent)
-                    .frame(minWidth: 36)
-            }
-            .fixedSize()
-        }
     }
 
     private var leftoversCard: some View {

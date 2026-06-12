@@ -103,6 +103,26 @@ final class IngredientLineParserTests: XCTestCase {
 
 final class RecipeHTMLParserTests: XCTestCase {
 
+    func testCleanTitleStripsSiteSuffixes() {
+        XCTAssertEqual(
+            RecipeHTMLParser.cleanTitle("Glossy Fudge Brownies Recipe | BraveTart"),
+            "Glossy Fudge Brownies Recipe"
+        )
+        XCTAssertEqual(
+            RecipeHTMLParser.cleanTitle("Chicken Adobo — Serious Eats"),
+            "Chicken Adobo"
+        )
+        XCTAssertEqual(
+            RecipeHTMLParser.cleanTitle("One-Pot Pasta - Budget Bytes"),
+            "One-Pot Pasta"
+        )
+        // Titles without a site suffix pass through untouched.
+        XCTAssertEqual(
+            RecipeHTMLParser.cleanTitle("Sweet-and-Sour Pork"),
+            "Sweet-and-Sour Pork"
+        )
+    }
+
     private let jsonLDFixture = """
     <html><head>
     <script type="application/ld+json">
@@ -237,6 +257,20 @@ final class PantryMatcherTests: XCTestCase {
             RecipeIngredient(name: "Parsley", isOptional: true, sortIndex: 4),
         ]
         return recipe
+    }
+
+    func testStapleMarkedOutCountsAsMissing() {
+        let recipe = Recipe(title: "Seasoned Thing")
+        recipe.ingredients = [RecipeIngredient(name: "Salt", sortIndex: 0)]
+
+        // No pantry row: salt is a staple, assumed owned.
+        XCTAssertEqual(PantryMatcher.match(recipe: recipe, pantry: []).ownedCount, 1)
+
+        // Explicit "out" row overrides the staple assumption.
+        let outOfSalt = PantryItem(name: "Salt", category: .spices, roughQuantity: .out)
+        let result = PantryMatcher.match(recipe: recipe, pantry: [outOfSalt])
+        XCTAssertEqual(result.ownedCount, 0)
+        XCTAssertEqual(result.missing.map(\.name), ["Salt"])
     }
 
     func testMatchCountsAndCategories() {

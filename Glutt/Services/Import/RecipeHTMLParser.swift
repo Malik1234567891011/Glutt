@@ -65,7 +65,7 @@ enum RecipeHTMLParser {
         var draft = ImportedRecipeDraft()
         draft.sourceURL = sourceURL.absoluteString
 
-        draft.title = recipe["name"] as? String
+        draft.title = (recipe["name"] as? String).map { cleanTitle(decodeEntities($0)) }
         draft.summary = (recipe["description"] as? String).map(decodeEntities)
         draft.imageURL = imageURLString(recipe["image"])
         draft.creator = authorName(recipe["author"])
@@ -81,7 +81,8 @@ enum RecipeHTMLParser {
         }
 
         draft.servings = yieldCount(recipe["recipeYield"])
-        draft.tags = keywordTags(recipe["keywords"])
+        // Sites stuff dozens of SEO keywords in here; keep it scannable.
+        draft.tags = Array(keywordTags(recipe["keywords"]).prefix(6))
 
         if let nutrition = recipe["nutrition"] as? [String: Any] {
             draft.calories = leadingInt(nutrition["calories"] as? String)
@@ -171,6 +172,28 @@ enum RecipeHTMLParser {
         return Int(digits)
     }
 
+    /// Strips site-name suffixes: "Glossy Fudge Brownies Recipe | BraveTart" -> "Glossy Fudge Brownies Recipe".
+    static func cleanTitle(_ title: String) -> String {
+        var cleaned = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        for separator in [" | ", " — ", " – ", " :: "] {
+            if let range = cleaned.range(of: separator, options: .backwards) {
+                let before = cleaned[..<range.lowerBound]
+                if before.count >= 8 {
+                    cleaned = String(before)
+                }
+            }
+        }
+        // " - Site Name" only when the tail looks like a short brand, not part of the dish.
+        if let range = cleaned.range(of: " - ", options: .backwards) {
+            let before = cleaned[..<range.lowerBound]
+            let after = cleaned[range.upperBound...]
+            if before.count >= 8, after.count <= 25, !after.lowercased().contains("recipe") {
+                cleaned = String(before)
+            }
+        }
+        return cleaned.trimmingCharacters(in: .whitespaces)
+    }
+
     private static func decodeEntities(_ text: String) -> String {
         text
             .replacingOccurrences(of: "&amp;", with: "&")
@@ -198,7 +221,7 @@ enum RecipeHTMLParser {
         }
 
         if draft.title == nil || draft.title?.isEmpty == true {
-            draft.title = title.map(decodeEntities)
+            draft.title = title.map { cleanTitle(decodeEntities($0)) }
         }
         draft.imageURL = draft.imageURL ?? image
         draft.caption = description

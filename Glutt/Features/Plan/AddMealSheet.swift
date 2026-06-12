@@ -212,7 +212,8 @@ struct AddMealSheet: View {
     }
 }
 
-/// Edit an existing planned meal: time, type, status, day.
+/// Tap a planned meal -> this sheet. Everything you'd want to do with it:
+/// view the recipe, mark status, change time/type, move it, remove it.
 struct EditMealSheet: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -231,24 +232,54 @@ struct EditMealSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text(meal.displayTitle)
-                        .font(.gluttHeadline)
-                }
-                Picker("Meal", selection: $meal.mealType) {
-                    ForEach(MealType.allCases) { type in
-                        Text(type.label).tag(type)
+                    HStack {
+                        Text(meal.displayTitle)
+                            .font(.gluttHeadline)
+                        Spacer()
+                        Text(meal.date.formatted(.dateTime.weekday(.wide)))
+                            .font(.gluttCaption)
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                    }
+                    if let recipe = meal.recipe {
+                        NavigationLink("View recipe") {
+                            RecipeDetailView(recipe: recipe)
+                        }
                     }
                 }
-                Picker("Status", selection: $meal.status) {
-                    Text("Planned").tag(MealStatus.planned)
-                    Text("Cooked").tag(MealStatus.cooked)
-                    Text("Eaten").tag(MealStatus.eaten)
-                    Text("Skipped").tag(MealStatus.skipped)
-                    Text("Replaced").tag(MealStatus.replaced)
+
+                Section("Status") {
+                    Picker("Status", selection: $meal.status) {
+                        Text("Planned").tag(MealStatus.planned)
+                        Text("Cooked").tag(MealStatus.cooked)
+                        Text("Eaten").tag(MealStatus.eaten)
+                        Text("Skipped").tag(MealStatus.skipped)
+                    }
+                    .pickerStyle(.segmented)
                 }
-                Toggle("Exact time", isOn: $hasExactTime)
-                if hasExactTime {
-                    DatePicker("At", selection: $exactTime, displayedComponents: .hourAndMinute)
+
+                Section {
+                    Picker("Meal", selection: $meal.mealType) {
+                        ForEach(MealType.allCases) { type in
+                            Text(type.label).tag(type)
+                        }
+                    }
+                    Toggle("Exact time", isOn: $hasExactTime)
+                    if hasExactTime {
+                        DatePicker("At", selection: $exactTime, displayedComponents: .hourAndMinute)
+                    }
+                }
+
+                Section {
+                    Button("Move to tomorrow", systemImage: "arrow.right") {
+                        meal.date = Calendar.current.date(byAdding: .day, value: 1, to: meal.date)!
+                        ReminderScheduler.schedule(for: meal)
+                        dismiss()
+                    }
+                    Button("Remove from plan", systemImage: "trash", role: .destructive) {
+                        ReminderScheduler.cancel(for: meal)
+                        context.delete(meal)
+                        dismiss()
+                    }
                 }
             }
             .scrollContentBackground(.hidden)

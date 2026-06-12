@@ -78,6 +78,9 @@ final class Router {
     var pendingAction: CaptureAction?
     /// URL waiting to be imported (from share extension or glutt://import?url=...).
     var pendingImportURL: URL?
+    /// Screens with their own bottom action bar (e.g. recipe detail's Cook button)
+    /// bump this to hide the floating + button while they're visible.
+    var floatingButtonSuppressors = 0
     /// Dev/testing hook (`-demoCook`): opens Cook Mode for the first recipe on launch.
     var demoCookOnLaunch = false
     /// Dev/testing hook (`-demoWizard`): opens the week planner wizard on launch.

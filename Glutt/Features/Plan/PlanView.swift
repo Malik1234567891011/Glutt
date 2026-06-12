@@ -59,7 +59,7 @@ struct PlanView: View {
             }
             .sheet(item: $editingMeal) { meal in
                 EditMealSheet(meal: meal)
-                    .presentationDetents([.medium])
+                    .presentationDetents([.medium, .large])
             }
             .sheet(isPresented: $isShowingWizard) {
                 WeekPlannerWizard()
@@ -143,25 +143,44 @@ struct PlanView: View {
             .flatMap(PrepDetector.tasks(for:))
 
         return VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            HStack {
+            HStack(spacing: Theme.Spacing.sm) {
+                Text(day.formatted(.dateTime.day()))
+                    .font(.gluttHeadline)
+                    .foregroundStyle(day == today ? .white : Theme.Colors.textSecondary)
+                    .frame(width: 32, height: 32)
+                    .background(day == today ? Theme.Colors.accent : Theme.Colors.accent.opacity(0.08))
+                    .clipShape(Circle())
                 Text(dayLabel(day))
                     .font(.gluttHeadline)
-                    .foregroundStyle(day == today ? Theme.Colors.accent : Theme.Colors.textSecondary)
+                    .foregroundStyle(day == today ? Theme.Colors.accent : Theme.Colors.textPrimary)
                 Spacer()
                 Button {
                     addingMealForDay = day
                 } label: {
-                    Image(systemName: "plus.circle")
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
                         .foregroundStyle(Theme.Colors.accent)
                 }
             }
 
             if meals.isEmpty {
-                Text("Nothing planned")
-                    .font(.gluttCaption)
-                    .foregroundStyle(Theme.Colors.textSecondary.opacity(0.6))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, Theme.Spacing.sm)
+                Button {
+                    addingMealForDay = day
+                } label: {
+                    HStack {
+                        Image(systemName: "plus")
+                        Text("Add a meal")
+                    }
+                    .font(.gluttCaption.weight(.medium))
+                    .foregroundStyle(Theme.Colors.textSecondary.opacity(0.7))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Theme.Spacing.md)
+                    .background(
+                        RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                            .strokeBorder(Theme.Colors.border, style: StrokeStyle(lineWidth: 1, dash: [6]))
+                    )
+                }
+                .buttonStyle(.plain)
             } else {
                 ForEach(meals) { meal in
                     mealRow(meal)
@@ -176,40 +195,18 @@ struct PlanView: View {
     }
 
     private func mealRow(_ meal: PlannedMeal) -> some View {
-        Group {
-            if let recipe = meal.recipe {
-                NavigationLink(value: recipe) {
-                    MealCard(meal: meal)
-                }
-                .buttonStyle(.plain)
-            } else {
-                MealCard(meal: meal)
-            }
+        Button {
+            editingMeal = meal
+        } label: {
+            MealCard(meal: meal)
         }
-        .contextMenu {
-            Button("Edit…", systemImage: "pencil") { editingMeal = meal }
-            Menu("Mark as") {
-                ForEach([MealStatus.eaten, .cooked, .skipped, .replaced], id: \.self) { status in
-                    Button(String(describing: status).capitalized) {
-                        meal.status = status
-                    }
-                }
-            }
-            Button("Move to tomorrow", systemImage: "arrow.right") {
-                meal.date = calendar.date(byAdding: .day, value: 1, to: meal.date)!
-                ReminderScheduler.schedule(for: meal)
-            }
-            Button("Remove", systemImage: "trash", role: .destructive) {
-                ReminderScheduler.cancel(for: meal)
-                context.delete(meal)
-            }
-        }
+        .buttonStyle(.plain)
     }
 
     private func dayLabel(_ day: Date) -> String {
         if day == today { return "Today" }
         if day == calendar.date(byAdding: .day, value: 1, to: today) { return "Tomorrow" }
-        return day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())
+        return day.formatted(.dateTime.weekday(.wide))
     }
 }
 

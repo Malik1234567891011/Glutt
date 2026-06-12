@@ -36,6 +36,7 @@ struct ProgressTabView: View {
                 }
                 .padding(Theme.Spacing.md)
             }
+            .contentMargins(.bottom, 56, for: .scrollContent)
             .background(Theme.Colors.background)
             .navigationTitle("Progress")
             .sheet(isPresented: $isShowingSettings) {

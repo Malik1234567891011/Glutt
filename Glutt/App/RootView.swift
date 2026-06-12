@@ -68,20 +68,22 @@ struct RootView: View {
         }
     }
 
-    /// Floating universal capture button, raised above the tab bar center.
+    /// Floating universal capture button. Deliberately quiet: it should read
+    /// as part of the tab bar system, not compete with on-screen CTAs.
     private var captureButton: some View {
         Button {
             router.isCaptureSheetPresented = true
         } label: {
             Image(systemName: "plus")
-                .font(.title2.weight(.semibold))
+                .font(.body.weight(.semibold))
                 .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
+                .frame(width: 48, height: 48)
                 .background(Theme.Colors.accent)
                 .clipShape(Circle())
-                .shadow(color: Theme.Colors.accent.opacity(0.35), radius: 10, x: 0, y: 4)
+                .overlay(Circle().strokeBorder(Theme.Colors.background, lineWidth: 3))
+                .shadow(color: Theme.Colors.textPrimary.opacity(0.18), radius: 5, x: 0, y: 2)
         }
-        .offset(y: -38)
+        .offset(y: -34)
         .accessibilityLabel("Add or import")
     }
 }

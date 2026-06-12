@@ -40,6 +40,7 @@ struct PlanView: View {
                 }
                 .padding(Theme.Spacing.md)
             }
+            .contentMargins(.bottom, 56, for: .scrollContent)
             .background(Theme.Colors.background)
             .navigationTitle("Plan")
             .navigationDestination(for: Recipe.self) { recipe in
@@ -51,7 +52,10 @@ struct PlanView: View {
                         isShowingWizard = true
                     } label: {
                         Label("Plan my week", systemImage: "wand.and.stars")
+                            .labelStyle(.titleAndIcon)
+                            .font(.gluttCaption.weight(.semibold))
                     }
+                    .buttonStyle(.gluttPillFilled)
                 }
             }
             .sheet(item: $addingMealForDay) { day in

@@ -47,7 +47,11 @@ struct RecipeCard: View {
         }
         .background(Theme.Colors.card)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-        .shadow(color: Theme.Colors.textPrimary.opacity(0.06), radius: 8, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .strokeBorder(Theme.Colors.border.opacity(0.55), lineWidth: 1)
+        )
+        .shadow(color: Theme.Colors.textPrimary.opacity(0.07), radius: 10, x: 0, y: 3)
     }
 
     private var recipeImage: some View {

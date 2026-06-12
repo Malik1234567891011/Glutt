@@ -48,11 +48,11 @@ enum CaptureAction: String, CaseIterable, Identifiable {
 
     var subtitle: String {
         switch self {
-        case .importRecipe: "Paste a link or share from TikTok, Instagram, YouTube"
-        case .scanPantry: "Point the camera, confirm what you have"
-        case .logFood: "Photo, search, or quick-add"
-        case .addGroceryItem: "Add something to the shopping list"
-        case .askWhatToCook: "Get ideas based on your kitchen and time"
+        case .importRecipe: "TikTok, Instagram, or any link"
+        case .scanPantry: "Point the camera, confirm"
+        case .logFood: "Photo, search, or quick add"
+        case .addGroceryItem: "Straight to your list"
+        case .askWhatToCook: "Ideas from your kitchen"
         }
     }
 

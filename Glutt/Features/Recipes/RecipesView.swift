@@ -120,6 +120,7 @@ struct RecipesView: View {
                 }
                 .padding(.vertical, Theme.Spacing.md)
             }
+            .contentMargins(.bottom, 56, for: .scrollContent)
             .background(Theme.Colors.background)
             .navigationTitle("Recipes")
             .navigationDestination(for: Recipe.self) { recipe in

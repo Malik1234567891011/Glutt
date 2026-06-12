@@ -73,6 +73,7 @@ struct TodayView: View {
                 }
                 .padding(Theme.Spacing.md)
             }
+            .contentMargins(.bottom, 56, for: .scrollContent)
             .background(Theme.Colors.background)
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: Recipe.self) { recipe in
@@ -195,51 +196,47 @@ struct TodayView: View {
                 .font(.gluttCaption)
                 .foregroundStyle(Theme.Colors.textSecondary)
 
+                // Missing ingredients live in one connected strip with their
+                // own labeled fixes — not floating icon buttons.
                 if let missingLine {
-                    Text(missingLine)
-                        .font(.gluttCaption.weight(.medium))
-                        .foregroundStyle(Theme.Colors.warning)
+                    VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                        Text(missingLine)
+                            .font(.gluttCaption.weight(.medium))
+                            .foregroundStyle(Theme.Colors.warning)
+                        HStack(spacing: Theme.Spacing.sm) {
+                            Button("Add missing to list") {
+                                let missing = GroceryListBuilder.missingIngredients(for: recipe, pantry: pantryItems)
+                                GroceryListBuilder.add(
+                                    ingredients: missing,
+                                    from: recipe,
+                                    existing: groceryItems,
+                                    context: context
+                                )
+                            }
+                            .buttonStyle(.gluttPillFilled)
+                            Button("Use what I have") {
+                                optimizingRecipe = recipe
+                            }
+                            .buttonStyle(.gluttPill)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(Theme.Spacing.sm)
+                    .background(Theme.Colors.warningTint)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                 }
 
-                HStack(spacing: Theme.Spacing.sm) {
-                    Button {
-                        if hasMissing {
-                            checklistRecipe = recipe
-                        } else {
-                            cookingRecipe = recipe
-                        }
-                    } label: {
-                        Label("Cook", systemImage: "frying.pan")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.gluttPrimary)
-
+                Button {
                     if hasMissing {
-                        Button {
-                            optimizingRecipe = recipe
-                        } label: {
-                            Image(systemName: "sparkles")
-                                .frame(width: 44)
-                        }
-                        .buttonStyle(.gluttSecondary)
-                        .accessibilityLabel("Use what I have")
-
-                        Button {
-                            let missing = GroceryListBuilder.missingIngredients(for: recipe, pantry: pantryItems)
-                            GroceryListBuilder.add(
-                                ingredients: missing,
-                                from: recipe,
-                                existing: groceryItems,
-                                context: context
-                            )
-                        } label: {
-                            Image(systemName: "cart.badge.plus")
-                                .frame(width: 44)
-                        }
-                        .buttonStyle(.gluttSecondary)
-                        .accessibilityLabel("Add missing to groceries")
+                        checklistRecipe = recipe
+                    } else {
+                        cookingRecipe = recipe
                     }
+                } label: {
+                    Label("Cook", systemImage: "frying.pan")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.gluttPrimary)
             }
             .padding(Theme.Spacing.md)
         }
@@ -281,20 +278,21 @@ struct TodayView: View {
         }
     }
 
+    /// Deliberately quiet: utilities, not destinations. The hero card is the star.
     private func quickAction(_ label: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: Theme.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.body)
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.Colors.accent)
+                    .frame(width: 40, height: 40)
+                    .background(Theme.Colors.accent.opacity(0.09))
+                    .clipShape(Circle())
                 Text(label)
                     .font(.caption2.weight(.medium))
-                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .foregroundStyle(Theme.Colors.textSecondary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, Theme.Spacing.sm)
-            .background(Theme.Colors.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -334,7 +332,7 @@ struct TodayView: View {
             Button("Find a recipe") {
                 isAskingWhatToCook = true
             }
-            .buttonStyle(.gluttPill)
+            .buttonStyle(.gluttPillFilled)
         }
         .padding(Theme.Spacing.md)
         .background(Theme.Colors.warningTint)
@@ -358,7 +356,7 @@ struct TodayView: View {
             Button("Eat one") {
                 logLeftoverEaten(leftover)
             }
-            .buttonStyle(.gluttPill)
+            .buttonStyle(.gluttPillFilled)
         }
         .padding(Theme.Spacing.md)
         .background(Theme.Colors.successTint)

@@ -32,6 +32,7 @@ struct KitchenView: View {
                 case .leftovers: LeftoversView()
                 }
             }
+            .contentMargins(.bottom, 56, for: .scrollContent)
             .background(Theme.Colors.background)
             .navigationTitle("Kitchen")
         }

@@ -7,20 +7,20 @@ enum Theme {
     // MARK: - Colors
 
     enum Colors {
-        /// Cream / off-white app background.
-        static let background = Color(red: 0.98, green: 0.96, blue: 0.93)
+        /// Cream app background — deep enough that white cards visibly lift off it.
+        static let background = Color(red: 0.965, green: 0.94, blue: 0.90)
         /// Card surfaces — slightly whiter than the background.
         static let card = Color.white
-        /// Deep green primary accent.
-        static let accent = Color(red: 0.18, green: 0.37, blue: 0.24)
+        /// Deep herb-green primary accent.
+        static let accent = Color(red: 0.15, green: 0.35, blue: 0.21)
         /// Tomato red — destructive actions and appetite highlights.
         static let tomato = Color(red: 0.85, green: 0.28, blue: 0.17)
         /// Warm near-black text.
-        static let textPrimary = Color(red: 0.17, green: 0.14, blue: 0.12)
-        /// Warm brown-gray secondary text.
-        static let textSecondary = Color(red: 0.45, green: 0.40, blue: 0.36)
+        static let textPrimary = Color(red: 0.15, green: 0.12, blue: 0.10)
+        /// Warm brown-gray secondary text — dark enough to read in a kitchen.
+        static let textSecondary = Color(red: 0.40, green: 0.35, blue: 0.31)
         /// Subtle warm divider/border.
-        static let border = Color(red: 0.90, green: 0.87, blue: 0.82)
+        static let border = Color(red: 0.88, green: 0.84, blue: 0.79)
         /// Soft green tint for success/"you have it" states.
         static let successTint = Color(red: 0.89, green: 0.94, blue: 0.88)
         /// Soft amber tint for warnings/"use soon" states.
@@ -64,7 +64,11 @@ struct CardStyle: ViewModifier {
             .padding(padding)
             .background(Theme.Colors.card)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-            .shadow(color: Theme.Colors.textPrimary.opacity(0.06), radius: 8, x: 0, y: 2)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                    .strokeBorder(Theme.Colors.border.opacity(0.55), lineWidth: 1)
+            )
+            .shadow(color: Theme.Colors.textPrimary.opacity(0.07), radius: 10, x: 0, y: 3)
     }
 }
 

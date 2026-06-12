@@ -44,6 +44,23 @@ struct PillButtonStyle: ButtonStyle {
     }
 }
 
+/// Filled capsule — the CTA on smart cards. Small but unmistakably tappable.
+struct FilledPillButtonStyle: ButtonStyle {
+    var tint: Color = Theme.Colors.accent
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.gluttCaption.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(tint.opacity(configuration.isPressed ? 0.85 : 1))
+            .clipShape(Capsule())
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
 extension ButtonStyle where Self == PrimaryButtonStyle {
     static var gluttPrimary: PrimaryButtonStyle { PrimaryButtonStyle() }
 }
@@ -54,4 +71,8 @@ extension ButtonStyle where Self == SecondaryButtonStyle {
 
 extension ButtonStyle where Self == PillButtonStyle {
     static var gluttPill: PillButtonStyle { PillButtonStyle() }
+}
+
+extension ButtonStyle where Self == FilledPillButtonStyle {
+    static var gluttPillFilled: FilledPillButtonStyle { FilledPillButtonStyle() }
 }

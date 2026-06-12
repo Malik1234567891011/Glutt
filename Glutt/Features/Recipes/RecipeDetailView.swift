@@ -45,6 +45,7 @@ struct RecipeDetailView: View {
                 hero
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     header
+                    actionRow
                     dietWarnings
                     versionPicker
                     servingsAndUnits
@@ -155,6 +156,28 @@ struct RecipeDetailView: View {
         case .allergy: Theme.Colors.tomato
         case .rule: Theme.Colors.warning
         case .dislike: Theme.Colors.textSecondary
+        }
+    }
+
+    /// The things you'd do with a recipe besides cooking it, visible —
+    /// not buried in the ⋯ menu where nobody looks.
+    private var actionRow: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            if LLMClient.isConfigured {
+                Button {
+                    isAdjusting = true
+                } label: {
+                    Label("Make it…", systemImage: "sparkles")
+                }
+                .buttonStyle(.gluttPillFilled)
+            }
+            Button {
+                isAddingToPlan = true
+            } label: {
+                Label("Add to plan", systemImage: "calendar.badge.plus")
+            }
+            .buttonStyle(.gluttPill)
+            Spacer()
         }
     }
 
@@ -521,11 +544,6 @@ struct RecipeDetailView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button("Edit", systemImage: "pencil") { isShowingEditor = true }
-                Button("Add to plan", systemImage: "calendar.badge.plus") { isAddingToPlan = true }
-                Button("Use what I have", systemImage: "sparkles") { isOptimizing = true }
-                if LLMClient.isConfigured {
-                    Button("Adjust with AI", systemImage: "slider.horizontal.3") { isAdjusting = true }
-                }
                 Button("Save as version", systemImage: "square.on.square") { isNamingVersion = true }
                 collectionsMenu
                 Divider()

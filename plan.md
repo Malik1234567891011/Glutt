@@ -434,6 +434,9 @@ Ordered roughly by value:
 17. Android
 18. Instacart / local store integration: one tap sends the grocery list to a delivery service or
     pre-fills a cart at a store near the user (some apps already do this — big mental-load win)
+19. Proper dark theme — app is deliberately light-only for now (locked via
+    `UIUserInterfaceStyle: Light` in both app + share-extension Info.plists;
+    a real dark palette needs its own design pass)
 
 ---
 

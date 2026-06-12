@@ -63,6 +63,9 @@ struct GluttApp: App {
         WindowGroup {
             RootView()
                 .environment(router)
+                // Light-only by design (cream/green identity); also enforced
+                // via UIUserInterfaceStyle in Info.plist. Dark theme: backlog.
+                .preferredColorScheme(.light)
                 .onOpenURL { url in
                     router.handle(url: url)
                 }

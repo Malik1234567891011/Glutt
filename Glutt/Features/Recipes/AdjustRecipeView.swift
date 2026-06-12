@@ -44,7 +44,7 @@ struct AdjustRecipeView: View {
                 .padding(Theme.Spacing.md)
             }
             .background(Theme.Colors.background)
-            .navigationTitle("Adjust recipe")
+            .navigationTitle("Make it…")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

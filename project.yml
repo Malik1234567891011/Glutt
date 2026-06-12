@@ -23,6 +23,10 @@ targets:
       properties:
         CFBundleDisplayName: Glutt
         UILaunchScreen: {}
+        # The design system is a deliberate light (cream/green) identity.
+        # Must live HERE, not as INFOPLIST_KEY_* build setting — those are
+        # ignored when a custom Info.plist file is used. Dark theme: backlog.
+        UIUserInterfaceStyle: Light
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
@@ -33,7 +37,6 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.malik.glutt
-        INFOPLIST_KEY_UIUserInterfaceStyle: Light
         TARGETED_DEVICE_FAMILY: "1"
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: "0.1.0"
@@ -51,6 +54,7 @@ targets:
       path: GluttShare/Info.plist
       properties:
         CFBundleDisplayName: Glutt
+        UIUserInterfaceStyle: Light
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController

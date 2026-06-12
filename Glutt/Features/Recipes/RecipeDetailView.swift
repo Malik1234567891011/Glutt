@@ -19,6 +19,7 @@ struct RecipeDetailView: View {
     @State private var isShowingPreCookChecklist = false
     @State private var isAddingToPlan = false
     @State private var isOptimizing = false
+    @State private var isAdjusting = false
 
     init(recipe: Recipe) {
         self.recipe = recipe
@@ -94,6 +95,9 @@ struct RecipeDetailView: View {
         }
         .sheet(isPresented: $isOptimizing) {
             OptimizeRecipeView(recipe: recipe)
+        }
+        .sheet(isPresented: $isAdjusting) {
+            AdjustRecipeView(recipe: recipe)
         }
         .confirmationDialog("Delete this recipe?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
@@ -510,10 +514,18 @@ struct RecipeDetailView: View {
     @ToolbarContentBuilder
     private var toolbarMenu: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
+            ShareLink(item: RecipeShareService.shareText(for: recipe, servings: displayServings)) {
+                Image(systemName: "square.and.arrow.up")
+            }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button("Edit", systemImage: "pencil") { isShowingEditor = true }
                 Button("Add to plan", systemImage: "calendar.badge.plus") { isAddingToPlan = true }
                 Button("Use what I have", systemImage: "sparkles") { isOptimizing = true }
+                if LLMClient.isConfigured {
+                    Button("Adjust with AI", systemImage: "slider.horizontal.3") { isAdjusting = true }
+                }
                 Button("Save as version", systemImage: "square.on.square") { isNamingVersion = true }
                 collectionsMenu
                 Divider()

@@ -8,6 +8,7 @@ struct LeftoversView: View {
 
     @State private var isAddingManually = false
     @State private var planningLeftover: Leftover?
+    @State private var remixingLeftover: Leftover?
 
     private var fresh: [Leftover] { leftovers.filter { !$0.isFrozen && $0.servingsRemaining > 0 } }
     private var frozen: [Leftover] { leftovers.filter { $0.isFrozen && $0.servingsRemaining > 0 } }
@@ -51,6 +52,10 @@ struct LeftoversView: View {
             PlanLeftoverSheet(leftover: leftover)
                 .presentationDetents([.medium])
         }
+        .sheet(item: $remixingLeftover) { leftover in
+            LeftoverRemixSheet(leftover: leftover)
+                .presentationDetents([.medium, .large])
+        }
     }
 
     private func leftoverCard(_ leftover: Leftover) -> some View {
@@ -74,6 +79,8 @@ struct LeftoversView: View {
             HStack(spacing: Theme.Spacing.sm) {
                 Button("Log as eaten") { eat(leftover) }
                     .buttonStyle(.gluttPill)
+                Button("Remix") { remixingLeftover = leftover }
+                    .buttonStyle(.gluttPillFilled)
                 Button("Add to plan") { planningLeftover = leftover }
                     .buttonStyle(.gluttPill)
                 Button(leftover.isFrozen ? "Thaw" : "Freeze") {

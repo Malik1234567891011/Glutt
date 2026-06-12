@@ -20,7 +20,9 @@ final class PlannedMeal {
     var reminderID: UUID?
 
     var displayTitle: String {
-        recipe?.title ?? leftover?.title ?? freeformTitle ?? "Meal"
+        // Freeform beats leftover: a remixed leftover ("Beef tacos (from
+        // Korean beef bowls)") should show its new name, not the original's.
+        recipe?.title ?? freeformTitle ?? leftover?.title ?? "Meal"
     }
 
     /// When the user should start cooking, based on the recipe's total time plus a buffer.

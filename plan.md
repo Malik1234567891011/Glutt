@@ -421,11 +421,11 @@ Ordered roughly by value:
 4. Multi-recipe cooking schedule / smart prep sheet for menus
 5. Meal-plan auto-balancer (calories/protein/budget across the week)
 6. Budget mode (cost per serving, cheap alternatives)
-7. Leftover transformation ideas ("turn leftover chicken + rice into…")
-8. Recipe health adjustment (make it higher-protein / cheaper / halal)
+7. ~~Leftover transformation ideas~~ → **SHIPPED pre-beta**: "Remix" button on every leftover; offline idea table + LLM personalization with pantry/rules; plan for tomorrow + add needs to grocery list
+8. ~~Recipe health adjustment~~ → **SHIPPED pre-beta (small version)**: "Adjust with AI" on recipe detail — higher protein / lighter / cheaper / match my food rules; saves as a version with a change list
 9. Freezer deep tracking, expiry intelligence
 10. Collaborative household pantry + family meal planning
-11. Recipe sharing to friends
+11. ~~Recipe sharing to friends~~ → **SHIPPED pre-beta (simple form)**: share button on recipe detail sends a clean cook-from-it text card (no accounts, no feed)
 12. Social: meal posts, private friend groups, Strava-style feed
 13. Creator/community published recipes
 14. Occasion planning (dinner party, Ramadan iftar, meal-prep Sunday)

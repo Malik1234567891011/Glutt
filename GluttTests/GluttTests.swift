@@ -954,3 +954,67 @@ final class DietGuardTests: XCTestCase {
         XCTAssertFalse(subs.contains { $0.name.lowercased().contains("ghee") })
     }
 }
+
+// MARK: - Sharing & leftovers remix
+
+final class RecipeShareServiceTests: XCTestCase {
+
+    func testShareTextContainsEverythingNeededToCook() {
+        let recipe = Recipe(title: "Garlic Butter Pasta", servings: 2, prepMinutes: 5, cookMinutes: 15)
+        recipe.ingredients = [
+            RecipeIngredient(name: "Spaghetti", quantity: 200, unit: "g", sortIndex: 0),
+            RecipeIngredient(name: "Garlic", quantity: 3, unit: "clove", sortIndex: 1),
+            RecipeIngredient(name: "Chili flakes", isOptional: true, sortIndex: 2),
+        ]
+        recipe.steps = [
+            RecipeStep(index: 0, text: "Boil the pasta."),
+            RecipeStep(index: 1, text: "Fry garlic in butter, toss with pasta."),
+        ]
+        recipe.sourceURL = "https://example.com/pasta"
+
+        let text = RecipeShareService.shareText(for: recipe)
+
+        XCTAssertTrue(text.contains("Garlic Butter Pasta"))
+        XCTAssertTrue(text.contains("serves 2 · 20 min"))
+        XCTAssertTrue(text.contains("INGREDIENTS"))
+        XCTAssertTrue(text.contains("Garlic"))
+        XCTAssertTrue(text.contains("(optional)"))
+        XCTAssertTrue(text.contains("1. Boil the pasta."))
+        XCTAssertTrue(text.contains("https://example.com/pasta"))
+        XCTAssertTrue(text.contains("Glutt"))
+    }
+
+    func testShareTextOmitsEmptySections() {
+        let recipe = Recipe(title: "Mystery Dish")
+        let text = RecipeShareService.shareText(for: recipe)
+        XCTAssertFalse(text.contains("INGREDIENTS"))
+        XCTAssertFalse(text.contains("STEPS"))
+        XCTAssertFalse(text.contains("Original:"))
+    }
+}
+
+final class LeftoverRemixTests: XCTestCase {
+
+    func testChickenLeftoversGetChickenIdeas() {
+        let ideas = LeftoverRemix.tableIdeas(for: "Hot Honey Chicken Rice")
+        XCTAssertFalse(ideas.isEmpty)
+        XCTAssertTrue(ideas.contains { $0.title.lowercased().contains("chicken") })
+    }
+
+    func testUnknownLeftoversStillGetGenericIdeas() {
+        let ideas = LeftoverRemix.tableIdeas(for: "Grandma's casserole")
+        XCTAssertFalse(ideas.isEmpty)
+        XCTAssertTrue(ideas.allSatisfy { !$0.how.isEmpty })
+    }
+
+    func testRemixedMealShowsItsNewName() {
+        let leftover = Leftover(title: "Korean beef bowls", servingsRemaining: 2)
+        let meal = PlannedMeal(
+            date: .now,
+            mealType: .lunch,
+            leftover: leftover,
+            freeformTitle: "Beef tacos (from Korean beef bowls)"
+        )
+        XCTAssertEqual(meal.displayTitle, "Beef tacos (from Korean beef bowls)")
+    }
+}

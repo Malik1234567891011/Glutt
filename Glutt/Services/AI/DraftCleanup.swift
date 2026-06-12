@@ -88,11 +88,79 @@ enum DraftCleanup {
                 result.tags = Array(Set(result.tags + tags.map { $0.lowercased() })).sorted()
                 result.tags = Array(result.tags.prefix(6))
             }
+            // Drop issues the cleanup just resolved — stale warnings above a
+            // perfectly good ingredient list make the import look broken.
+            if !result.ingredientLines.isEmpty {
+                result.issues.removeAll {
+                    $0.localizedCaseInsensitiveContains("ingredient")
+                        || $0.localizedCaseInsensitiveContains("full recipe")
+                }
+            }
+            if !result.stepTexts.isEmpty {
+                result.issues.removeAll { $0.localizedCaseInsensitiveContains("steps") }
+            }
             result.issues.removeAll { $0.contains("double-check") }
             result.issues.append("Cleaned up with AI — give it a once-over")
             return result
         } catch {
             // AI is never load-bearing: any failure returns the original.
+            return draft
+        }
+    }
+
+    // MARK: - Reconstruction
+
+    /// Last resort for video imports: the caption was "recipe in comments 👇"
+    /// or just vibes, so there is nothing to extract. Draft a standard home
+    /// version of the dish from its name — honestly labeled as Glutt's draft,
+    /// never passed off as the creator's recipe.
+    static func reconstruct(_ draft: ImportedRecipeDraft) async -> ImportedRecipeDraft {
+        guard LLMClient.isConfigured, draft.ingredientLines.isEmpty else { return draft }
+
+        let dish = [draft.title, draft.caption].compactMap { $0 }.joined(separator: "\n")
+        guard dish.count > 3 else { return draft }
+
+        let system = """
+        A user saved a cooking video, but its caption doesn't contain the recipe.
+        From the dish name and caption, write a sensible STANDARD HOME version of that dish.
+        Return JSON only:
+        {"title": str, "summary": str, "servings": int, "prepMinutes": int, "cookMinutes": int,
+         "ingredients": [str], "steps": [str], "tags": [str]}
+
+        Rules:
+        - This is your best-guess standard version, so keep it simple and classic — no chef flourishes.
+        - ingredients: "quantity unit ingredient" per line, realistic home quantities.
+        - steps: clear imperative sentences, one action per step.
+        - tags: up to 5 lowercase tags.
+        - If you cannot tell what dish this is, return {}.
+        """
+
+        do {
+            let drafted = try await LLMClient.chatJSON(
+                CleanedDraft.self,
+                system: system,
+                user: String(dish.prefix(2000)),
+                temperature: 0.3
+            )
+            guard let ingredients = drafted.ingredients, !ingredients.isEmpty,
+                  let steps = drafted.steps, !steps.isEmpty
+            else { return draft }
+
+            var result = draft
+            if let title = drafted.title, !title.isEmpty { result.title = title }
+            if let summary = drafted.summary, !summary.isEmpty { result.summary = summary }
+            if let servings = drafted.servings, servings > 0 { result.servings = servings }
+            if let prep = drafted.prepMinutes, prep >= 0 { result.prepMinutes = prep }
+            if let cook = drafted.cookMinutes, cook >= 0 { result.cookMinutes = cook }
+            result.ingredientLines = ingredients
+            result.stepTexts = steps
+            if let tags = drafted.tags, !tags.isEmpty {
+                result.tags = Array(tags.map { $0.lowercased() }.prefix(6))
+            }
+            result.issues.removeAll()
+            result.issues.append("Glutt drafted this from the video — check it against what you watched")
+            return result
+        } catch {
             return draft
         }
     }

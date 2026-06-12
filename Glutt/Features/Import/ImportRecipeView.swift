@@ -161,6 +161,10 @@ struct ImportRecipeView: View {
                     phase = .loading("Cleaning it up with AI…")
                     draft = await DraftCleanup.cleanUp(draft)
                 }
+                if draft.ingredientLines.isEmpty, draft.isSocialVideo {
+                    phase = .loading("No recipe in the caption — drafting the dish…")
+                    draft = await DraftCleanup.reconstruct(draft)
+                }
                 phase = .review(draft)
             } catch {
                 phase = .failed(error.localizedDescription)

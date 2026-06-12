@@ -35,6 +35,17 @@ enum RecipeImportService {
     }
 
     static func importFrom(url: URL) async throws -> ImportedRecipeDraft {
+        // Video platforms: the recipe is in the caption/description, which
+        // oEmbed serves cleanly. Scraping their HTML gets a JS shell instead.
+        if SocialMediaImport.canHandle(url) {
+            if let draft = try? await SocialMediaImport.importFrom(url: url),
+               draft.title != nil || draft.caption != nil {
+                return draft
+            }
+            // oEmbed failed (private/removed video, region block) —
+            // fall through and give the HTML scrape a chance.
+        }
+
         var request = URLRequest(url: url, timeoutInterval: 15)
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("text/html", forHTTPHeaderField: "Accept")

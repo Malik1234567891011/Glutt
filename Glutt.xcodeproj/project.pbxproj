@@ -45,6 +45,7 @@
 		6BD892D3347E8504FBCB7405 /* StoreModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4013BCB69BEE4E7DCC7FFE7D /* StoreModeView.swift */; };
 		812D77EB9384E9BB9C3FBD71 /* GluttApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F79B61859BDDE45588788FE2 /* GluttApp.swift */; };
 		8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */; };
+		91E09FBEA927C5B65D548293 /* SocialMediaImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD93233274D874B07BC71E66 /* SocialMediaImport.swift */; };
 		954D8568F4EF068DAB418092 /* TodayPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B33363AD7887FCF10B7DCB0 /* TodayPlanner.swift */; };
 		9767E9BEFE39E296BEF059B1 /* RecipesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9411345D042807ED2D743474 /* RecipesView.swift */; };
 		97937012B8CA51D69C342C90 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA609EF5F72CEDE2E9F697F /* EmptyStateView.swift */; };
@@ -185,6 +186,7 @@
 		B65CA9BF4B9DCA0A18E7D5C4 /* RecipeAdjuster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeAdjuster.swift; sourceTree = "<group>"; };
 		B8856B0F901006AF8EEC3BE3 /* MealRecommender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealRecommender.swift; sourceTree = "<group>"; };
 		BC964F22F5D3BA6FB34297B0 /* RecipeOptimizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeOptimizer.swift; sourceTree = "<group>"; };
+		BD93233274D874B07BC71E66 /* SocialMediaImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialMediaImport.swift; sourceTree = "<group>"; };
 		BD98A66D770537AED45AC622 /* WeekPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekPlanner.swift; sourceTree = "<group>"; };
 		BE64D349C0DD327246EE5500 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BF96F3FA7AE1145E7946CB47 /* NutritionEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionEstimator.swift; sourceTree = "<group>"; };
@@ -388,6 +390,7 @@
 				87D008D8C56984B887EAC430 /* PendingImportStore.swift */,
 				A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */,
 				598FB7658D86B414965B6432 /* RecipeImportService.swift */,
+				BD93233274D874B07BC71E66 /* SocialMediaImport.swift */,
 				3CF4058EECD1BCDBB2359125 /* TextRecipeParser.swift */,
 			);
 			path = Import;
@@ -685,6 +688,7 @@
 				DF4B8699153B8E7A40B14DDF /* Secrets.swift in Sources */,
 				B6CED88B5EC73EDD8D259730 /* SeedData.swift in Sources */,
 				0E91673079F01566867E6A54 /* SettingsView.swift in Sources */,
+				91E09FBEA927C5B65D548293 /* SocialMediaImport.swift in Sources */,
 				16B9A16071EB1350972B7E98 /* StarterRecipes.swift in Sources */,
 				6BD892D3347E8504FBCB7405 /* StoreModeView.swift in Sources */,
 				C20923926C15E4C565BF7C20 /* SubstitutionService.swift in Sources */,

@@ -40,6 +40,12 @@ struct ImportedRecipeDraft {
         return min(score, 1.0)
     }
 
+    /// Video/social sources where "draft the dish from its name" is a fair
+    /// fallback — the user clearly wants THIS dish, we just can't see the video.
+    var isSocialVideo: Bool {
+        platform == .tiktok || platform == .instagram || platform == .youtube
+    }
+
     static func platform(for url: URL) -> SourcePlatform {
         let host = (url.host ?? "").lowercased()
         if host.contains("tiktok") { return .tiktok }

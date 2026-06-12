@@ -1018,3 +1018,55 @@ final class LeftoverRemixTests: XCTestCase {
         XCTAssertEqual(meal.displayTitle, "Beef tacos (from Korean beef bowls)")
     }
 }
+
+// MARK: - Social media import
+
+final class SocialMediaImportTests: XCTestCase {
+
+    func testRecognizesVideoPlatformURLs() {
+        XCTAssertTrue(SocialMediaImport.canHandle(URL(string: "https://www.tiktok.com/@chef/video/7299")!))
+        XCTAssertTrue(SocialMediaImport.canHandle(URL(string: "https://vm.tiktok.com/ZMabc123/")!))
+        XCTAssertTrue(SocialMediaImport.canHandle(URL(string: "https://www.youtube.com/watch?v=abc")!))
+        XCTAssertTrue(SocialMediaImport.canHandle(URL(string: "https://youtu.be/abc")!))
+        XCTAssertTrue(SocialMediaImport.canHandle(URL(string: "https://www.youtube.com/shorts/abc")!))
+        // Instagram has no public oEmbed — it stays on the HTML path.
+        XCTAssertFalse(SocialMediaImport.canHandle(URL(string: "https://www.instagram.com/reel/abc/")!))
+        XCTAssertFalse(SocialMediaImport.canHandle(URL(string: "https://www.allrecipes.com/recipe/1234")!))
+    }
+
+    func testExtractsYouTubeDescriptionFromPlayerJSON() {
+        let html = #"""
+        <html><script>var ytInitialPlayerResponse = {"videoDetails":{"videoId":"x",
+        "shortDescription":"The best fried rice!\n\nINGREDIENTS:\n- 2 cups day-old rice\n- 2 eggs\n\u0026 a wok","author":"Chef"}};</script></html>
+        """#
+        let description = SocialMediaImport.extractYouTubeDescription(html: html)
+        XCTAssertNotNil(description)
+        XCTAssertTrue(description!.contains("INGREDIENTS:"))
+        XCTAssertTrue(description!.contains("2 cups day-old rice"))
+        XCTAssertTrue(description!.contains("& a wok"), "JSON escapes should be decoded")
+        XCTAssertTrue(description!.contains("\n"), "Escaped newlines should become real newlines")
+    }
+
+    func testExtractReturnsNilWhenNoDescription() {
+        XCTAssertNil(SocialMediaImport.extractYouTubeDescription(html: "<html><body>nothing here</body></html>"))
+    }
+
+    func testCaptionTitleStripsHashtagsAndMentions() {
+        let title = SocialMediaImport.captionTitle(
+            "Creamy garlic chicken pasta 🤤 #fyp #easyrecipe @somecook\nFull recipe below!"
+        )
+        XCTAssertEqual(title, "Creamy garlic chicken pasta 🤤")
+    }
+
+    func testCaptionTitleTruncatesLongCaptions() {
+        let caption = String(repeating: "very tasty food ", count: 20)
+        let title = SocialMediaImport.captionTitle(caption)
+        XCTAssertNotNil(title)
+        XCTAssertLessThanOrEqual(title!.count, 75)
+        XCTAssertTrue(title!.hasSuffix("…"))
+    }
+
+    func testEmptyCaptionGivesNoTitle() {
+        XCTAssertNil(SocialMediaImport.captionTitle("#fyp #food"))
+    }
+}

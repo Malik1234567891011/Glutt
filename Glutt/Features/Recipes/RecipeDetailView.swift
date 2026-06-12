@@ -46,6 +46,7 @@ struct RecipeDetailView: View {
                     header
                     versionPicker
                     servingsAndUnits
+                    nutritionLine
                     ingredientsSection
                     stepsSection
                     notesSection
@@ -208,6 +209,36 @@ struct RecipeDetailView: View {
             .frame(width: 150)
         }
         .cardStyle()
+    }
+
+    /// Nutrition only appears when the user opted into tracking — and it's
+    /// transparent about being an estimate, never fake-precise.
+    @ViewBuilder
+    private var nutritionLine: some View {
+        let prefs = UserPrefs.current(in: context)
+        if prefs.nutritionMode.showsNutrition, let estimate = NutritionEstimator.estimate(for: recipe) {
+            HStack(spacing: Theme.Spacing.md) {
+                Image(systemName: "chart.bar")
+                    .foregroundStyle(Theme.Colors.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("~\(estimate.calories) cal · \(estimate.proteinGrams)g protein per serving")
+                        .font(.gluttHeadline)
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                    Text("Estimated from \(estimate.matchedCount)/\(estimate.totalCount) ingredients — likely \(estimate.caloriesRange.lowerBound)–\(estimate.caloriesRange.upperBound) cal")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+                Spacer()
+            }
+            .cardStyle()
+            .onAppear {
+                // Cache so cook-finish logging and meal cards can reuse it.
+                if recipe.calories == nil {
+                    recipe.calories = estimate.calories
+                    recipe.proteinGrams = estimate.proteinGrams
+                }
+            }
+        }
     }
 
     private var ingredientsSection: some View {

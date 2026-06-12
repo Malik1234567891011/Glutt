@@ -668,6 +668,93 @@ final class RecipeOptimizerTests: XCTestCase {
     }
 }
 
+final class NutritionEstimatorTests: XCTestCase {
+
+    func testEstimatesKnownIngredientsPerServing() throws {
+        let recipe = Recipe(title: "Chicken & Rice", servings: 2)
+        recipe.ingredients = [
+            RecipeIngredient(name: "Chicken breast", quantity: 400, unit: "g", sortIndex: 0),
+            RecipeIngredient(name: "Rice", quantity: 200, unit: "g", sortIndex: 1),
+        ]
+
+        let estimate = try XCTUnwrap(NutritionEstimator.estimate(for: recipe))
+        // 400g chicken breast (660 cal) + 200g rice (260 cal) = 920 / 2 servings = 460.
+        XCTAssertEqual(estimate.calories, 460)
+        // 124g protein + 5.4g = ~65/serving
+        XCTAssertEqual(estimate.proteinGrams, 65)
+        XCTAssertEqual(estimate.confidence, 1.0)
+        XCTAssertTrue(estimate.caloriesRange.contains(estimate.calories))
+    }
+
+    func testConfidenceDropsWithUnknownIngredients() throws {
+        let recipe = Recipe(title: "Mystery Bowl", servings: 1)
+        recipe.ingredients = [
+            RecipeIngredient(name: "Rice", quantity: 100, unit: "g", sortIndex: 0),
+            RecipeIngredient(name: "Dragonfruit foam", sortIndex: 1),
+        ]
+        let estimate = try XCTUnwrap(NutritionEstimator.estimate(for: recipe))
+        XCTAssertEqual(estimate.confidence, 0.5)
+        XCTAssertEqual(estimate.matchedCount, 1)
+    }
+
+    func testNoMatchesMeansNoEstimate() {
+        let recipe = Recipe(title: "Alien Cuisine", servings: 2)
+        recipe.ingredients = [RecipeIngredient(name: "Quantum jelly", sortIndex: 0)]
+        XCTAssertNil(NutritionEstimator.estimate(for: recipe))
+    }
+
+    func testPieceWeightsForUnitlessIngredients() {
+        let egg = RecipeIngredient(name: "Eggs", quantity: 2)
+        XCTAssertEqual(NutritionEstimator.estimatedGrams(for: egg), 100)
+    }
+}
+
+final class ProgressStatsTests: XCTestCase {
+
+    private func session(daysAgo: Int, recipe: Recipe? = nil) -> CookSession {
+        let date = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now)!
+        return CookSession(date: date, servingsMade: 2, recipe: recipe)
+    }
+
+    func testStreakCountsConsecutiveDays() {
+        let sessions = [session(daysAgo: 0), session(daysAgo: 1), session(daysAgo: 2), session(daysAgo: 5)]
+        XCTAssertEqual(ProgressStats.cookingStreak(sessions: sessions), 3)
+    }
+
+    func testStreakSurvivesIfCookedYesterdayButNotToday() {
+        let sessions = [session(daysAgo: 1), session(daysAgo: 2)]
+        XCTAssertEqual(ProgressStats.cookingStreak(sessions: sessions), 2)
+    }
+
+    func testStreakBreaksAfterAGap() {
+        let sessions = [session(daysAgo: 3), session(daysAgo: 4)]
+        XCTAssertEqual(ProgressStats.cookingStreak(sessions: sessions), 0)
+    }
+
+    func testFrequentMealsNeedAtLeastTwoLogs() {
+        let logs = [
+            FoodLog(title: "Protein shake", source: .quickAdd),
+            FoodLog(title: "Protein shake", source: .quickAdd),
+            FoodLog(title: "One-off salad", source: .manual),
+        ]
+        let frequents = ProgressStats.frequentMeals(logs: logs)
+        XCTAssertEqual(frequents, ["Protein shake"])
+    }
+
+    func testRecipesTriedCountsDistinct() {
+        let recipeA = Recipe(title: "A")
+        let recipeB = Recipe(title: "B")
+        let sessions = [
+            session(daysAgo: 2, recipe: recipeA),
+            session(daysAgo: 1, recipe: recipeA),
+            session(daysAgo: 40, recipe: recipeB),
+        ]
+        let tried = ProgressStats.recipesTried(sessions: sessions)
+        XCTAssertEqual(tried.total, 2)
+        XCTAssertEqual(tried.newThisMonth, 1)
+    }
+}
+
 final class TasteProfileBuilderTests: XCTestCase {
 
     func testLovedTagsFloatToTheTop() {

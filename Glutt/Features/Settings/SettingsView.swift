@@ -11,10 +11,13 @@ struct SettingsView: View {
 
     @State private var apiKey = LLMClient.apiKey
     @State private var model = LLMClient.model
+    @State private var calorieGoalText = ""
+    @State private var proteinGoalText = ""
 
     var body: some View {
         NavigationStack {
             Form {
+                nutritionSection
                 tasteProfileSection
                 dietarySection
                 aiSection
@@ -28,6 +31,8 @@ struct SettingsView: View {
                     Button("Done") {
                         LLMClient.apiKey = apiKey
                         LLMClient.model = model
+                        prefs.dailyCalorieGoal = Int(calorieGoalText)
+                        prefs.dailyProteinGoal = Int(proteinGoalText)
                         dismiss()
                     }
                 }
@@ -37,6 +42,49 @@ struct SettingsView: View {
 
     private var prefs: UserPrefs {
         UserPrefs.current(in: context)
+    }
+
+    private var nutritionSection: some View {
+        Section {
+            Picker("Mode", selection: Binding(
+                get: { prefs.nutritionMode },
+                set: { prefs.nutritionMode = $0 }
+            )) {
+                ForEach(NutritionMode.allCases, id: \.self) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            if prefs.nutritionMode.showsNutrition {
+                HStack {
+                    Text("Daily calories")
+                    Spacer()
+                    TextField("e.g. 2400", text: $calorieGoalText)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 100)
+                }
+                HStack {
+                    Text("Daily protein (g)")
+                    Spacer()
+                    TextField("e.g. 160", text: $proteinGoalText)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 100)
+                }
+            }
+        } header: {
+            Text("Nutrition")
+        } footer: {
+            Text(prefs.nutritionMode == .cookingOnly
+                ? "Just cooking: no calories, no macros, anywhere. Switch anytime."
+                : "Goals show on Today and Progress. Estimates are ranges — treat them as direction, not gospel.")
+        }
+        .onAppear {
+            calorieGoalText = prefs.dailyCalorieGoal.map(String.init) ?? ""
+            proteinGoalText = prefs.dailyProteinGoal.map(String.init) ?? ""
+        }
     }
 
     private var tasteProfileSection: some View {

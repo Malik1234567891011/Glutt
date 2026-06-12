@@ -9,6 +9,7 @@ struct PlanView: View {
     @Query(sort: \PlannedMeal.date) private var allMeals: [PlannedMeal]
     @Query private var pantryItems: [PantryItem]
     @Query private var groceryItems: [GroceryItem]
+    @Query private var leftovers: [Leftover]
 
     @State private var addingMealForDay: Date?
     @State private var editingMeal: PlannedMeal?
@@ -94,6 +95,29 @@ struct PlanView: View {
                 summaryStat(value: cookingTimeLabel, label: "cooking time")
                 summaryStat(value: "\(groceryItems.filter { !$0.isChecked }.count)", label: "items to buy")
             }
+
+            // One or two live status lines — the plan should feel like it
+            // knows your kitchen, not just count rows.
+            if let coverage = pantryCoverage {
+                Label(
+                    coverage >= 100
+                        ? "You already have everything for this week"
+                        : "You already have \(coverage)% of this week's ingredients",
+                    systemImage: coverage >= 100 ? "checkmark.circle.fill" : "basket"
+                )
+                .font(.gluttCaption.weight(.medium))
+                .foregroundStyle(coverage >= 70 ? Theme.Colors.accent : Theme.Colors.warning)
+            }
+            let reusable = leftovers.filter { $0.servingsRemaining > 0 && !$0.isFrozen }.count
+            if reusable > 0 {
+                Label(
+                    "^[\(reusable) leftover](inflect: true) ready to reuse",
+                    systemImage: "takeoutbag.and.cup.and.straw"
+                )
+                .font(.gluttCaption.weight(.medium))
+                .foregroundStyle(Theme.Colors.accent)
+            }
+
             Button("Generate grocery list from plan") {
                 generateGroceries()
             }
@@ -112,6 +136,21 @@ struct PlanView: View {
                 .font(.caption2)
                 .foregroundStyle(Theme.Colors.textSecondary)
         }
+    }
+
+    /// Aggregate pantry coverage across the week's recipe meals (nil when no recipes planned).
+    private var pantryCoverage: Int? {
+        let recipes = weekMeals.compactMap(\.recipe)
+        guard !recipes.isEmpty else { return nil }
+        var owned = 0
+        var total = 0
+        for recipe in recipes {
+            let match = PantryMatcher.match(recipe: recipe, pantry: pantryItems)
+            owned += match.ownedCount
+            total += match.totalCount
+        }
+        guard total > 0 else { return nil }
+        return Int((Double(owned) / Double(total) * 100).rounded())
     }
 
     private var cookingTimeLabel: String {

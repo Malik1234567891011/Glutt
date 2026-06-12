@@ -287,29 +287,40 @@ struct RecipeDetailView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             SectionHeader(title: "Ingredients")
 
+            // The decision layer: can I cook this, and if not, what's the fix?
             if pantryMatch.totalCount > 0 {
-                HStack {
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                     Label(
                         pantryMatch.hasEverything
                             ? "You have everything"
-                            : "You have \(pantryMatch.ownedCount)/\(pantryMatch.totalCount)",
+                            : "You have \(pantryMatch.ownedCount) of \(pantryMatch.totalCount) — missing \(pantryMatch.missing.count)",
                         systemImage: pantryMatch.hasEverything ? "checkmark.circle.fill" : "basket"
                     )
-                    .font(.gluttCaption.weight(.medium))
+                    .font(.gluttCaption.weight(.semibold))
                     .foregroundStyle(pantryMatch.hasEverything ? Theme.Colors.accent : Theme.Colors.warning)
-                    Spacer()
+
                     if !pantryMatch.missing.isEmpty {
-                        Button("Add missing to groceries") {
-                            GroceryListBuilder.add(
-                                ingredients: pantryMatch.missing,
-                                from: recipe,
-                                existing: groceryItems,
-                                context: context
-                            )
+                        HStack(spacing: Theme.Spacing.sm) {
+                            Button("Add missing to groceries") {
+                                GroceryListBuilder.add(
+                                    ingredients: pantryMatch.missing,
+                                    from: recipe,
+                                    existing: groceryItems,
+                                    context: context
+                                )
+                            }
+                            .buttonStyle(.gluttPillFilled)
+                            Button("Use what I have") {
+                                isOptimizing = true
+                            }
+                            .buttonStyle(.gluttPill)
                         }
-                        .buttonStyle(.gluttPill)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(Theme.Spacing.sm)
+                .background(pantryMatch.hasEverything ? Theme.Colors.successTint : Theme.Colors.warningTint)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
             }
 
             VStack(spacing: 0) {
@@ -323,7 +334,7 @@ struct RecipeDetailView: View {
                                 ownershipIcon(for: ingredient)
                                 Text(ingredient.name)
                                     .font(.gluttBody)
-                                    .foregroundStyle(Theme.Colors.textPrimary)
+                                    .foregroundStyle(nameColor(for: ingredient))
                                 if ingredient.isOptional {
                                     Text("optional")
                                         .font(.caption2)
@@ -353,6 +364,14 @@ struct RecipeDetailView: View {
             .padding(.horizontal, Theme.Spacing.md)
             .cardStyle(padding: Theme.Spacing.xs)
         }
+    }
+
+    /// Missing required ingredients read in warning gold — scannable at a glance.
+    private func nameColor(for ingredient: RecipeIngredient) -> Color {
+        let owned = pantryMatch.owned.contains { $0 === ingredient }
+        let optionalMissing = pantryMatch.missingOptional.contains { $0 === ingredient }
+        if owned { return Theme.Colors.textPrimary }
+        return optionalMissing ? Theme.Colors.textSecondary : Theme.Colors.warning
     }
 
     private func ownershipIcon(for ingredient: RecipeIngredient) -> some View {
@@ -436,7 +455,7 @@ struct RecipeDetailView: View {
 
     private var ratingSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            SectionHeader(title: "My rating")
+            SectionHeader(title: "How was it?")
             HStack(spacing: Theme.Spacing.sm) {
                 ForEach(1...5, id: \.self) { star in
                     Button {

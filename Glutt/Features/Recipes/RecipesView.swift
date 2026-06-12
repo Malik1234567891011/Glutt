@@ -8,6 +8,7 @@ struct RecipesView: View {
     @Query(sort: \Recipe.createdAt, order: .reverse) private var allRecipes: [Recipe]
     @Query(sort: \RecipeCollection.createdAt) private var collections: [RecipeCollection]
     @Query private var pantryItems: [PantryItem]
+    @Query private var cookHistory: [CookSession]
 
     @State private var searchText = ""
     @State private var selectedFilter: String?
@@ -60,20 +61,17 @@ struct RecipesView: View {
             }
         }
 
-        if !searchText.isEmpty {
-            let query = searchText.lowercased()
-            recipes = recipes.filter { recipe in
-                recipe.title.lowercased().contains(query)
-                    || recipe.tags.contains { $0.lowercased().contains(query) }
-                    || recipe.ingredients.contains { $0.name.lowercased().contains(query) }
-            }
-        }
-
         switch sortOrder {
         case .recentlySaved: return recipes
         case .alphabetical: return recipes.sorted { $0.title < $1.title }
         case .quickest: return recipes.sorted { $0.totalMinutes < $1.totalMinutes }
         }
+    }
+
+    /// Semantic search: "that creamy lemon chicken thing" works.
+    /// Results carry "why it matched" reasons shown under each card.
+    private var searchResults: [RecipeSearchEngine.SearchResult] {
+        RecipeSearchEngine.search(query: searchText, recipes: visibleRecipes, sessions: cookHistory)
     }
 
     var body: some View {
@@ -85,30 +83,39 @@ struct RecipesView: View {
                     }
                     ChipRow(labels: filterChips, selection: $selectedFilter)
 
-                    if visibleRecipes.isEmpty {
-                        EmptyStateView(
-                            icon: "book",
-                            title: searchText.isEmpty ? "No recipes yet" : "Nothing matches",
-                            message: searchText.isEmpty
-                                ? "Import your first recipe from TikTok, Instagram, or any website — or add one yourself."
-                                : "Try a different search or clear the filter.",
-                            actionLabel: searchText.isEmpty ? "Add a recipe" : nil,
-                            action: searchText.isEmpty ? { isShowingEditor = true } : nil
-                        )
-                    } else {
-                        LazyVStack(spacing: Theme.Spacing.md) {
-                            ForEach(visibleRecipes) { recipe in
-                                NavigationLink(value: recipe) {
-                                    let match = PantryMatcher.match(recipe: recipe, pantry: pantryItems)
-                                    RecipeCard(
-                                        recipe: recipe,
-                                        pantryMatch: (match.ownedCount, match.totalCount)
-                                    )
+                    if searchText.isEmpty {
+                        if visibleRecipes.isEmpty {
+                            EmptyStateView(
+                                icon: "book",
+                                title: "No recipes yet",
+                                message: "Import your first recipe from TikTok, Instagram, or any website — or add one yourself.",
+                                actionLabel: "Add a recipe",
+                                action: { isShowingEditor = true }
+                            )
+                        } else {
+                            LazyVStack(spacing: Theme.Spacing.md) {
+                                ForEach(visibleRecipes) { recipe in
+                                    recipeLink(recipe, reasons: [])
                                 }
-                                .buttonStyle(.plain)
                             }
+                            .padding(.horizontal, Theme.Spacing.md)
                         }
-                        .padding(.horizontal, Theme.Spacing.md)
+                    } else {
+                        let results = searchResults
+                        if results.isEmpty {
+                            EmptyStateView(
+                                icon: "magnifyingglass",
+                                title: "Nothing matches",
+                                message: "Try describing it differently — flavor, ingredient, or mood all work."
+                            )
+                        } else {
+                            LazyVStack(spacing: Theme.Spacing.md) {
+                                ForEach(results, id: \.recipe.persistentModelID) { result in
+                                    recipeLink(result.recipe, reasons: result.reasons)
+                                }
+                            }
+                            .padding(.horizontal, Theme.Spacing.md)
+                        }
                     }
                 }
                 .padding(.vertical, Theme.Spacing.md)
@@ -171,6 +178,31 @@ struct RecipesView: View {
                 Button("Cancel", role: .cancel) { newCollectionName = "" }
             }
         }
+    }
+
+    private func recipeLink(_ recipe: Recipe, reasons: [String]) -> some View {
+        NavigationLink(value: recipe) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                let match = PantryMatcher.match(recipe: recipe, pantry: pantryItems)
+                RecipeCard(
+                    recipe: recipe,
+                    pantryMatch: (match.ownedCount, match.totalCount)
+                )
+                if !reasons.isEmpty {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        Image(systemName: "sparkle.magnifyingglass")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.Colors.accent)
+                        ForEach(reasons, id: \.self) { reason in
+                            Chip(label: reason)
+                                .fixedSize()
+                        }
+                    }
+                    .padding(.leading, Theme.Spacing.xs)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private func handlePendingImport() {

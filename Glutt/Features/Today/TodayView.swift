@@ -1,11 +1,15 @@
 import SwiftData
 import SwiftUI
 
-/// Phase 0 placeholder. The full Today command center is Phase 8 —
-/// it composes plan, pantry, leftovers, and logs, so it's built last.
+/// Phase 0 placeholder growing up: today's meals, leftovers nudge, and the
+/// "what should I cook?" assistant. The full command center lands in Phase 8.
 struct TodayView: View {
+    @Environment(Router.self) private var router
     @Query private var meals: [PlannedMeal]
     @Query private var leftovers: [Leftover]
+
+    @State private var isAskingWhatToCook = false
+    @State private var isShowingSettings = false
 
     private var todaysMeals: [PlannedMeal] {
         let today = Calendar.current.startOfDay(for: .now)
@@ -21,6 +25,8 @@ struct TodayView: View {
                     Text(greeting)
                         .font(.gluttLargeTitle)
                         .foregroundStyle(Theme.Colors.textPrimary)
+
+                    askButton
 
                     if todaysMeals.isEmpty {
                         EmptyStateView(
@@ -43,7 +49,57 @@ struct TodayView: View {
             }
             .background(Theme.Colors.background)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                }
+            }
+            .sheet(isPresented: $isAskingWhatToCook) {
+                WhatToCookView()
+            }
+            .sheet(isPresented: $isShowingSettings) {
+                SettingsView()
+            }
+            .onAppear(perform: handlePendingAction)
+            .onChange(of: router.pendingAction) { handlePendingAction() }
         }
+    }
+
+    private func handlePendingAction() {
+        if router.pendingAction == .askWhatToCook {
+            router.pendingAction = nil
+            isAskingWhatToCook = true
+        }
+    }
+
+    private var askButton: some View {
+        Button {
+            isAskingWhatToCook = true
+        } label: {
+            HStack(spacing: Theme.Spacing.md) {
+                Image(systemName: "sparkles")
+                    .font(.title3)
+                    .foregroundStyle(Theme.Colors.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("What should I cook?")
+                        .font(.gluttHeadline)
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                    Text("Based on your kitchen, your time, and your mood")
+                        .font(.gluttCaption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .cardStyle()
     }
 
     private var greeting: String {

@@ -13,6 +13,8 @@ struct PreCookChecklistView: View {
     let recipe: Recipe
     let onCookAnyway: () -> Void
 
+    @State private var isOptimizing = false
+
     private var match: PantryMatcher.MatchResult {
         PantryMatcher.match(recipe: recipe, pantry: pantryItems)
     }
@@ -45,6 +47,11 @@ struct PreCookChecklistView: View {
                         }
                         .buttonStyle(.gluttSecondary)
 
+                        Button("Use what I have instead") {
+                            isOptimizing = true
+                        }
+                        .buttonStyle(.gluttSecondary)
+
                         Button("Cook anyway") {
                             dismiss()
                             onCookAnyway()
@@ -61,6 +68,9 @@ struct PreCookChecklistView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $isOptimizing) {
+                OptimizeRecipeView(recipe: recipe)
             }
         }
     }

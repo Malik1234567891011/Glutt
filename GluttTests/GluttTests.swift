@@ -549,3 +549,141 @@ final class WeekPlannerTests: XCTestCase {
         slots[0].recipe = replacement
     }
 }
+
+final class RecipeSearchEngineTests: XCTestCase {
+
+    private func makeLibrary() -> [Recipe] {
+        let chicken = Recipe(title: "Creamy Lemon Chicken Rice Bowl", tags: ["creamy", "weeknight"])
+        chicken.ingredients = [
+            RecipeIngredient(name: "Chicken thighs", sortIndex: 0),
+            RecipeIngredient(name: "Heavy cream", sortIndex: 1),
+            RecipeIngredient(name: "Lemon", sortIndex: 2),
+        ]
+        chicken.steps = [RecipeStep(index: 0, text: "Cook.")]
+
+        let brownies = Recipe(title: "Fudgy Brownies", tags: ["dessert", "chocolate"])
+        brownies.ingredients = [RecipeIngredient(name: "Dark chocolate", sortIndex: 0)]
+        brownies.steps = [RecipeStep(index: 0, text: "Bake.")]
+        return [chicken, brownies]
+    }
+
+    func testStopWordsAreFiltered() {
+        let words = RecipeSearchEngine.significantWords(in: "that creamy lemon chicken thing")
+        XCTAssertEqual(words, ["creamy", "lemon", "chicken"])
+    }
+
+    func testVagueQueryFindsTheRightRecipe() {
+        let results = RecipeSearchEngine.search(query: "that creamy lemon chicken thing", recipes: makeLibrary())
+        XCTAssertEqual(results.first?.recipe.title, "Creamy Lemon Chicken Rice Bowl")
+        XCTAssertFalse(results.first?.reasons.isEmpty ?? true)
+    }
+
+    func testSearchByIngredientNotInTitle() {
+        let results = RecipeSearchEngine.search(query: "chocolate", recipes: makeLibrary())
+        XCTAssertEqual(results.first?.recipe.title, "Fudgy Brownies")
+    }
+}
+
+final class MealRecommenderTests: XCTestCase {
+
+    private func makeRecipe(_ title: String, minutes: Int, tags: [String] = [], ingredients: [String] = []) -> Recipe {
+        let recipe = Recipe(title: title, prepMinutes: 0, cookMinutes: minutes, tags: tags)
+        recipe.ingredients = ingredients.enumerated().map { RecipeIngredient(name: $1, sortIndex: $0) }
+        recipe.steps = [RecipeStep(index: 0, text: "Cook.")]
+        return recipe
+    }
+
+    func testTimeLimitIsAHardCutoff() {
+        let slow = makeRecipe("Sunday Roast", minutes: 120)
+        let fast = makeRecipe("Fried Rice", minutes: 20)
+        let request = MealRecommender.Request(
+            maxMinutes: 30, recipes: [slow, fast], pantry: [], leftovers: [], sessions: []
+        )
+        let picks = MealRecommender.recommend(request)
+
+        XCTAssertFalse(picks.contains { $0.recipe.title == "Sunday Roast" })
+        XCTAssertTrue(picks.contains { $0.recipe.title == "Fried Rice" })
+    }
+
+    func testMoodBoostsMatchingRecipes() {
+        let sweet = makeRecipe("Chocolate Brownies", minutes: 40, tags: ["dessert"], ingredients: ["chocolate", "sugar"])
+        let savory = makeRecipe("Garlic Steak", minutes: 30, tags: [], ingredients: ["steak", "garlic"])
+        let request = MealRecommender.Request(
+            mood: .sweet, recipes: [savory, sweet], pantry: [], leftovers: [], sessions: []
+        )
+        let picks = MealRecommender.recommend(request)
+
+        XCTAssertEqual(picks.first?.recipe.title, "Chocolate Brownies")
+        XCTAssertEqual(picks.first?.badge, "Best match")
+    }
+
+    func testPantryMatchWinsWhenPreferred() {
+        let stocked = makeRecipe("Rice Bowl", minutes: 30, ingredients: ["rice", "egg"])
+        let exotic = makeRecipe("Saffron Paella", minutes: 30, ingredients: ["saffron", "shrimp"])
+        let pantry = [PantryItem(name: "rice"), PantryItem(name: "egg")]
+        let request = MealRecommender.Request(
+            recipes: [exotic, stocked], pantry: pantry, leftovers: [], sessions: []
+        )
+        let picks = MealRecommender.recommend(request)
+
+        XCTAssertEqual(picks.first?.recipe.title, "Rice Bowl")
+        XCTAssertEqual(picks.first?.missingCount, 0)
+    }
+}
+
+final class RecipeOptimizerTests: XCTestCase {
+
+    @MainActor
+    func testPlanSwapsAndAppliesAsVersion() throws {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: Recipe.self, configurations: config)
+        let context = container.mainContext
+
+        let recipe = Recipe(title: "Creamy Pasta")
+        recipe.ingredients = [
+            RecipeIngredient(name: "Pasta", sortIndex: 0),
+            RecipeIngredient(name: "Heavy cream", sortIndex: 1),
+        ]
+        recipe.steps = [RecipeStep(index: 0, text: "Cook.")]
+        context.insert(recipe)
+
+        // Greek yogurt + butter in pantry -> heavy cream is swappable.
+        let pantry = [
+            PantryItem(name: "Pasta"),
+            PantryItem(name: "Greek yogurt", category: .dairy),
+            PantryItem(name: "Butter", category: .dairy),
+        ]
+
+        let plan = RecipeOptimizer.plan(for: recipe, pantry: pantry)
+        XCTAssertEqual(plan.swaps.count, 1)
+        XCTAssertEqual(plan.swaps.first?.original.name, "Heavy cream")
+        XCTAssertFalse(plan.swaps.first?.reason.isEmpty ?? true)
+
+        let version = RecipeOptimizer.apply(plan, to: recipe, context: context)
+        XCTAssertEqual(version.versionLabel, "Pantry version")
+        XCTAssertTrue(version.parentRecipe === recipe)
+        XCTAssertTrue(version.ingredients.contains { $0.name == plan.swaps.first?.substituteName })
+        // Original untouched.
+        XCTAssertTrue(recipe.ingredients.contains { $0.name == "Heavy cream" })
+    }
+}
+
+final class TasteProfileBuilderTests: XCTestCase {
+
+    func testLovedTagsFloatToTheTop() {
+        let loved = Recipe(title: "Spicy Noodles", tags: ["spicy", "noodles"])
+        loved.rating = 5
+        let meh = Recipe(title: "Plain Toast", tags: ["bland"])
+        meh.rating = 2
+
+        let sessions = [
+            CookSession(servingsMade: 2, recipe: loved),
+            CookSession(servingsMade: 2, recipe: loved),
+        ]
+
+        let profile = TasteProfileBuilder.descriptors(recipes: [loved, meh], sessions: sessions)
+        // Both loved tags carry equal weight; both must rank, "bland" must not.
+        XCTAssertEqual(Set(profile.prefix(2)), Set(["spicy", "noodles"]))
+        XCTAssertFalse(profile.contains("bland"))
+    }
+}

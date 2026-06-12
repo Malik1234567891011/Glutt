@@ -102,6 +102,10 @@ final class Router {
             pendingAction = .importRecipe
         }
         demoCookOnLaunch = arguments.contains("-demoCook")
+        if arguments.contains("-ask") {
+            selectedTab = .today
+            pendingAction = .askWhatToCook
+        }
         if arguments.contains("-demoWizard") {
             demoWizardOnLaunch = true
             selectedTab = .plan

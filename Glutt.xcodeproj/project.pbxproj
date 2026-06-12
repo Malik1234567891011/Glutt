@@ -40,6 +40,7 @@
 		6BD892D3347E8504FBCB7405 /* StoreModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4013BCB69BEE4E7DCC7FFE7D /* StoreModeView.swift */; };
 		812D77EB9384E9BB9C3FBD71 /* GluttApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F79B61859BDDE45588788FE2 /* GluttApp.swift */; };
 		8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */; };
+		954D8568F4EF068DAB418092 /* TodayPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B33363AD7887FCF10B7DCB0 /* TodayPlanner.swift */; };
 		9767E9BEFE39E296BEF059B1 /* RecipesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9411345D042807ED2D743474 /* RecipesView.swift */; };
 		97937012B8CA51D69C342C90 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA609EF5F72CEDE2E9F697F /* EmptyStateView.swift */; };
 		98D52307F99E058349AA1999 /* PlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289532428C48086D19FF6C54 /* PlanView.swift */; };
@@ -110,6 +111,7 @@
 /* Begin PBXFileReference section */
 		02024086020F095CDDF5F628 /* PreCookChecklistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreCookChecklistView.swift; sourceTree = "<group>"; };
 		03E4B5038BD3A803FFA377AD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		0B33363AD7887FCF10B7DCB0 /* TodayPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayPlanner.swift; sourceTree = "<group>"; };
 		151A0FD46C1B36361CD24372 /* SeedData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedData.swift; sourceTree = "<group>"; };
 		15C277290BDB320A5FFBB935 /* Planning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Planning.swift; sourceTree = "<group>"; };
 		1B2D2424ABEF907C0982F2D9 /* MealCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealCard.swift; sourceTree = "<group>"; };
@@ -331,6 +333,7 @@
 				F04DC9E02007A6E7D3264D4D /* ReminderScheduler.swift */,
 				E8608EAECE0CF4A45B2C0B7F /* SubstitutionService.swift */,
 				98053B3FFC4BD7D0C20C75CB /* TimerManager.swift */,
+				0B33363AD7887FCF10B7DCB0 /* TodayPlanner.swift */,
 				1E76DBE2577BBC32D76A29AB /* UnitConverter.swift */,
 				BD98A66D770537AED45AC622 /* WeekPlanner.swift */,
 				006BBD89C922604BC44581EE /* AI */,
@@ -637,6 +640,7 @@
 				A71A0874129B8FA9A557B7A2 /* TextRecipeParser.swift in Sources */,
 				08FE391A0E5C23B8C0F3F888 /* Theme.swift in Sources */,
 				3913B7130EDC0551C2390651 /* TimerManager.swift in Sources */,
+				954D8568F4EF068DAB418092 /* TodayPlanner.swift in Sources */,
 				133DA52F0F3517E70483BC89 /* TodayView.swift in Sources */,
 				658FF063B7D0C83A48CE0A3B /* Typography.swift in Sources */,
 				47CA4B0E6B9F7F7BD4ABE64C /* UnitConverter.swift in Sources */,

@@ -774,3 +774,81 @@ final class TasteProfileBuilderTests: XCTestCase {
         XCTAssertFalse(profile.contains("bland"))
     }
 }
+
+// MARK: - Phase 8: Today planner
+
+final class TodayPlannerTests: XCTestCase {
+
+    private func meal(
+        _ type: MealType,
+        daysFromNow: Int = 0,
+        exactTime: Date? = nil,
+        status: MealStatus = .planned
+    ) -> PlannedMeal {
+        let date = Calendar.current.date(byAdding: .day, value: daysFromNow, to: .now)!
+        return PlannedMeal(date: date, mealType: type, exactTime: exactTime, status: status)
+    }
+
+    func testNextUpPicksEarliestMealTypeWhenNoExactTimes() {
+        let dinner = meal(.dinner)
+        let lunch = meal(.lunch)
+        let next = TodayPlanner.nextUp(meals: [dinner, lunch])
+        XCTAssertIdentical(next, lunch)
+    }
+
+    func testNextUpPrefersExactTimesOverMealTypeOrder() {
+        let earlyDinner = meal(.dinner, exactTime: Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: .now))
+        let untimedLunch = meal(.lunch)
+        let next = TodayPlanner.nextUp(meals: [untimedLunch, earlyDinner])
+        XCTAssertIdentical(next, earlyDinner)
+    }
+
+    func testNextUpSkipsResolvedMealsAndOtherDays() {
+        let eaten = meal(.breakfast, status: .eaten)
+        let tomorrow = meal(.lunch, daysFromNow: 1)
+        let dinner = meal(.dinner)
+        let next = TodayPlanner.nextUp(meals: [eaten, tomorrow, dinner])
+        XCTAssertIdentical(next, dinner)
+    }
+
+    func testNextUpReturnsNilWhenNothingPlannedToday() {
+        let tomorrow = meal(.dinner, daysFromNow: 1)
+        XCTAssertNil(TodayPlanner.nextUp(meals: [tomorrow]))
+    }
+
+    func testUseSoonExcludesOutOfStockAndSortsByUrgency() {
+        let urgent = PantryItem(name: "Spinach", useSoonDate: .now)
+        let later = PantryItem(name: "Yogurt", useSoonDate: Calendar.current.date(byAdding: .day, value: 2, to: .now))
+        let out = PantryItem(name: "Milk", roughQuantity: .out, useSoonDate: .now)
+        let normal = PantryItem(name: "Rice")
+
+        let items = TodayPlanner.useSoonItems(pantry: [later, out, urgent, normal])
+        XCTAssertEqual(items.map(\.name), ["Spinach", "Yogurt"])
+    }
+
+    func testMissingLineNamesFirstMissingAndCountsRest() {
+        let recipe = Recipe(title: "Curry")
+        recipe.ingredients = [
+            RecipeIngredient(name: "Saffron", sortIndex: 0),
+            RecipeIngredient(name: "Dragon fruit", sortIndex: 1),
+        ]
+        let line = TodayPlanner.missingLine(for: recipe, pantry: [])
+        XCTAssertEqual(line, "Missing: saffron + 1 more")
+    }
+
+    func testMissingLineIsNilWhenPantryCoversEverything() {
+        let recipe = Recipe(title: "Rice Bowl")
+        recipe.ingredients = [RecipeIngredient(name: "Rice", sortIndex: 0)]
+        let line = TodayPlanner.missingLine(for: recipe, pantry: [PantryItem(name: "Rice")])
+        XCTAssertNil(line)
+    }
+
+    func testMissingLineSuggestsSwapWhenPantryHasSubstitute() {
+        let recipe = Recipe(title: "Pasta")
+        recipe.ingredients = [RecipeIngredient(name: "Heavy cream", sortIndex: 0)]
+        let pantry = [PantryItem(name: "Greek yogurt"), PantryItem(name: "Butter")]
+        let line = TodayPlanner.missingLine(for: recipe, pantry: pantry)
+        XCTAssertNotNil(line)
+        XCTAssertTrue(line!.contains("Swap:"), "expected a swap suggestion, got \(line!)")
+    }
+}

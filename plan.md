@@ -346,24 +346,24 @@ iOS-first native app (Swift / SwiftUI / Xcode). This document breaks down the en
 ## Phase 8 — Today Tab (the command center — built last, composes everything)
 
 ### 8.1 Header & next meal
-- [ ] Greeting + date header
-- [ ] "Next up" meal card: recipe, meal time, computed start-cooking time
-- [ ] Missing-ingredients line with available swaps ("Missing: heavy cream · Swap: Greek yogurt + butter")
-- [ ] Card actions: Cook / Optimize / Add missing to list
-- [ ] Empty state: "Nothing planned — what should I cook?" → assistant
+- [x] Greeting + date header
+- [x] "Next up" meal card: recipe, meal time, computed start-cooking time
+- [x] Missing-ingredients line with available swaps ("Missing: heavy cream · Swap: Greek yogurt + butter")
+- [x] Card actions: Cook / Optimize / Add missing to list
+- [x] Empty state: "Nothing planned — what should I cook?" → assistant
 
 ### 8.2 Timeline & smart cards
-- [ ] Today timeline: breakfast/lunch/dinner/snacks, planned vs. actually eaten, tap to resolve
-- [ ] Quick action row: Import / Scan / Log / Ask what to cook
-- [ ] Leftovers reminder card ("2 servings of beef stew left")
-- [ ] Use-soon alert card ("Spinach needs using")
-- [ ] Optional nutrition summary strip (gym mode only, hidden otherwise)
-- [ ] Smart card priority logic (what shows when — don't stack 6 cards)
+- [x] Today timeline: breakfast/lunch/dinner/snacks, planned vs. actually eaten, tap to resolve
+- [x] Quick action row: Import / Scan / Log / Ask what to cook
+- [x] Leftovers reminder card ("2 servings of beef stew left") — with one-tap "Eat one" logging
+- [x] Use-soon alert card ("Spinach needs using") → opens assistant
+- [x] Optional nutrition summary strip (gym mode only, hidden otherwise)
+- [x] Smart card priority logic (use-soon first, then leftovers; max two cards)
 
 ### 8.3 Make it the launch screen
-- [ ] App opens to Today
-- [ ] Performance pass: Today must render instantly from local data
-- [ ] Widget (stretch): next meal + start time on home screen
+- [x] App opens to Today
+- [x] Performance pass: Today must render instantly from local data (all local SwiftData queries, no async work)
+- [ ] Widget (stretch): next meal + start time on home screen — deferred to post-MVP
 
 ---
 

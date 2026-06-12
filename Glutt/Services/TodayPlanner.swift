@@ -28,7 +28,12 @@ enum TodayPlanner {
     }
 
     /// "Missing: heavy cream · Swap: Greek yogurt + butter" — one honest line.
-    static func missingLine(for recipe: Recipe, pantry: [PantryItem]) -> String? {
+    static func missingLine(
+        for recipe: Recipe,
+        pantry: [PantryItem],
+        rules: [DietaryRule] = [],
+        allergies: [String] = []
+    ) -> String? {
         let match = PantryMatcher.match(recipe: recipe, pantry: pantry)
         guard let firstMissing = match.missing.first else { return nil }
 
@@ -40,7 +45,9 @@ enum TodayPlanner {
         }
         if let swap = SubstitutionService.availableSubstitutions(
             for: firstMissing.canonicalName,
-            pantry: pantry
+            pantry: pantry,
+            rules: rules,
+            allergies: allergies
         ).first {
             line += " · Swap: \(swap.name)"
         }

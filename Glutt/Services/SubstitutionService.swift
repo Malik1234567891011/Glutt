@@ -89,19 +89,22 @@ enum SubstitutionService {
         return doNotSubstitute.contains { canonical.contains($0) }
     }
 
-    /// Substitutions the user can actually make right now with their pantry.
+    /// Substitutions the user can actually make right now with their pantry —
+    /// and that don't trade one problem for another (rules, allergies).
     static func availableSubstitutions(
         for ingredientName: String,
-        pantry: [PantryItem]
+        pantry: [PantryItem],
+        rules: [DietaryRule] = [],
+        allergies: [String] = []
     ) -> [Substitution] {
         substitutions(for: ingredientName).filter { substitution in
             // Compound subs ("Greek yogurt + butter") need every part.
-            substitution.name
-                .split(separator: "+")
-                .map { IngredientCanonicalizer.canonicalize(String($0)) }
-                .allSatisfy { part in
-                    PantryMatcher.owns(ingredientNamed: part, available: pantry.filter { $0.roughQuantity != .out })
-                }
+            let parts = substitution.name.split(separator: "+").map(String.init)
+            return parts.allSatisfy { part in
+                let canonical = IngredientCanonicalizer.canonicalize(part)
+                return PantryMatcher.owns(ingredientNamed: canonical, available: pantry.filter { $0.roughQuantity != .out })
+                    && DietGuard.isAllowed(ingredientName: part, rules: rules, allergies: allergies)
+            }
         }
     }
 }

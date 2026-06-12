@@ -369,15 +369,15 @@ iOS-first native app (Swift / SwiftUI / Xcode). This document breaks down the en
 
 ## Phase 9 — Onboarding & First-Run Experience
 
-- [ ] Screen 1: "What do you want this app for?" (multi-select goals)
-- [ ] Screen 2: Food rules (halal, no pork, vegan, vegetarian, gluten-free, allergies, dislikes)
-- [ ] Screen 3: Nutrition tracking choice (no / light / gym mode)
-- [ ] Screen 4: Import your first recipe (paste link / screenshot / browse starter suggestions)
-- [ ] Starter recipe pack for users with nothing to import
-- [ ] Skip everything possible — learn from usage instead
-- [ ] Allergy safety: allergy warnings wired through recipes, suggestions, substitutions (must-have if allergies collected)
-- [ ] Halal mode: filtering + substitution behavior wired through suggestions and optimize
-- [ ] Permission priming screens (notifications, camera) shown in context, not in onboarding
+- [x] Screen 1: "What do you want this app for?" (multi-select goals)
+- [x] Screen 2: Food rules (halal, no pork, vegan, vegetarian, gluten-free, allergies, dislikes)
+- [x] Screen 3: Nutrition tracking choice (no / light / gym mode)
+- [x] Screen 4: Import your first recipe (paste link / share extension / starter pack)
+- [x] Starter recipe pack for users with nothing to import (6 easy recipes)
+- [x] Skip everything possible — learn from usage instead (Skip always visible, every screen optional)
+- [x] Allergy safety: allergy warnings wired through recipes, suggestions, substitutions (DietGuard service)
+- [x] Halal mode: filtering + substitution behavior wired through suggestions and optimize
+- [x] Permission priming screens (notifications, camera) shown in context, not in onboarding (already the case: notifications prompt on first reminder, camera on first scan)
 
 ---
 

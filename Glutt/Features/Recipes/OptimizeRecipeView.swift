@@ -13,7 +13,13 @@ struct OptimizeRecipeView: View {
     @State private var didSave = false
 
     private var plan: RecipeOptimizer.Plan {
-        RecipeOptimizer.plan(for: recipe, pantry: pantryItems)
+        let prefs = UserPrefs.current(in: context)
+        return RecipeOptimizer.plan(
+            for: recipe,
+            pantry: pantryItems,
+            rules: prefs.dietaryRules,
+            allergies: prefs.allergies
+        )
     }
 
     var body: some View {

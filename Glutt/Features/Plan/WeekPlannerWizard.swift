@@ -31,7 +31,9 @@ struct WeekPlannerWizard: View {
             recipes: recipes,
             pantry: pantryItems,
             leftovers: leftovers,
-            recentSessions: cookSessions
+            recentSessions: cookSessions,
+            rules: UserPrefs.current(in: context).dietaryRules,
+            allergies: UserPrefs.current(in: context).allergies
         )
     }
 

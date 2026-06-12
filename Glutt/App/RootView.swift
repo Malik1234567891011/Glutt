@@ -5,6 +5,11 @@ struct RootView: View {
     @Environment(Router.self) private var router
     @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \Recipe.createdAt) private var recipes: [Recipe]
+    @Query private var allPrefs: [UserPrefs]
+
+    private var needsOnboarding: Bool {
+        router.forceOnboarding || allPrefs.first?.hasCompletedOnboarding != true
+    }
 
     var body: some View {
         @Bindable var router = router
@@ -40,6 +45,15 @@ struct RootView: View {
             if let recipe = recipes.first {
                 CookModeView(recipe: recipe)
             }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { needsOnboarding },
+            set: { if !$0 { router.forceOnboarding = false } }
+        )) {
+            OnboardingView {
+                router.forceOnboarding = false
+            }
+            .interactiveDismissDisabled()
         }
     }
 

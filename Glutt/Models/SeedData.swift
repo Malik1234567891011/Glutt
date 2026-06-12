@@ -506,6 +506,8 @@ enum SeedData {
         let prefs = UserPrefs.current(in: context)
         prefs.displayName = "Malik"
         prefs.dietaryRules = [.halal]
+        // Seeded dev builds skip the first-run flow (use `-onboarding` to see it).
+        prefs.hasCompletedOnboarding = true
 
         try? context.save()
     }

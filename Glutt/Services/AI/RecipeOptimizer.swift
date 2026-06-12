@@ -24,7 +24,12 @@ enum RecipeOptimizer {
         var isWorthIt: Bool { !swaps.isEmpty }
     }
 
-    static func plan(for recipe: Recipe, pantry: [PantryItem]) -> Plan {
+    static func plan(
+        for recipe: Recipe,
+        pantry: [PantryItem],
+        rules: [DietaryRule] = [],
+        allergies: [String] = []
+    ) -> Plan {
         var plan = Plan()
         let match = PantryMatcher.match(recipe: recipe, pantry: pantry)
 
@@ -36,7 +41,12 @@ enum RecipeOptimizer {
                 continue
             }
 
-            let available = SubstitutionService.availableSubstitutions(for: canonical, pantry: pantry)
+            let available = SubstitutionService.availableSubstitutions(
+                for: canonical,
+                pantry: pantry,
+                rules: rules,
+                allergies: allergies
+            )
             if let best = available.first {
                 plan.swaps.append(Swap(
                     original: ingredient,

@@ -14,12 +14,14 @@
 		117E9C022592C581920CEFBE /* Recipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5BE7E113C0145B67F0556D3 /* Recipe.swift */; };
 		133DA52F0F3517E70483BC89 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5FAEB880AAA56380423FBD3 /* TodayView.swift */; };
 		1661179CF6A104D217CAD7F1 /* GroceriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB8FA604EA35D2EE6E94CE4A /* GroceriesView.swift */; };
+		16B9A16071EB1350972B7E98 /* StarterRecipes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3800A614501862AB11EC98A2 /* StarterRecipes.swift */; };
 		16D3B3AE34C06307AB52F183 /* WhatToCookView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4A1A1F5EF2FE2B0B6641E98 /* WhatToCookView.swift */; };
 		177643D1D447412BD360D00D /* MealCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B2D2424ABEF907C0982F2D9 /* MealCard.swift */; };
 		18A06021F18EFAB77EC116F2 /* GroceryListBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 476DE0FF02A984E39531A7EF /* GroceryListBuilder.swift */; };
 		1902F2B1529C08A6A3BD001B /* LogFoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82602CD57473794501B5CA97 /* LogFoodView.swift */; };
 		19D5DE8E0D64A73F1756C3FD /* CookModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8234C61CD0352DE70ED0462 /* CookModeView.swift */; };
 		1B82B84680A299EABA5B7B76 /* ImportReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2F97AA4C16C61F7F73AC7 /* ImportReviewView.swift */; };
+		1D7AADB5298899998C304AB6 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00431AF9CF20BE00C177D30 /* OnboardingView.swift */; };
 		2309BBAC09BF2C93876CD0EE /* GluttShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2C69CC2242F748A1C4A03834 /* Kitchen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 412DD0B2F37BE98BAAEB523D /* Kitchen.swift */; };
 		2E22D7543240ED83B3350F7C /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5D72BFDA83AFBD303E2775 /* ShareViewController.swift */; };
@@ -75,6 +77,7 @@
 		F27C480C64FF7FB31D3D86EC /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224D234069FFF372F1A687A9 /* Router.swift */; };
 		F28F7DAFE3AD2E7FD1BF40CB /* CookFinishView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D7C6652E2AA87A3E2E92ED3 /* CookFinishView.swift */; };
 		F7E4A0E616661F6E90B0CB19 /* CaptureActionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D139D25BBBE8E494F7AA325 /* CaptureActionSheet.swift */; };
+		FDA468B0515CCE15FA0C5D16 /* DietGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F29983D8888CD4C7C082CBB /* DietGuard.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -130,6 +133,7 @@
 		2D56EF729F22F6F3DED29543 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		2E4363923FEEBD03D4E229DC /* RecipeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeDetailView.swift; sourceTree = "<group>"; };
 		37434BCF14AD5C72CF078B97 /* Glutt.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Glutt.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3800A614501862AB11EC98A2 /* StarterRecipes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarterRecipes.swift; sourceTree = "<group>"; };
 		38DA703EAADAF63891512242 /* WeekPlannerWizard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekPlannerWizard.swift; sourceTree = "<group>"; };
 		3CF4058EECD1BCDBB2359125 /* TextRecipeParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextRecipeParser.swift; sourceTree = "<group>"; };
 		3D139D25BBBE8E494F7AA325 /* CaptureActionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureActionSheet.swift; sourceTree = "<group>"; };
@@ -141,6 +145,7 @@
 		4AA37957DBDDC577B2780A3E /* UserPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPrefs.swift; sourceTree = "<group>"; };
 		598FB7658D86B414965B6432 /* RecipeImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImportService.swift; sourceTree = "<group>"; };
 		5EFB5FAA0EF9CA829EE21DFA /* GluttTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GluttTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6F29983D8888CD4C7C082CBB /* DietGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietGuard.swift; sourceTree = "<group>"; };
 		792E07A262DF875373B88FBE /* TasteProfileBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasteProfileBuilder.swift; sourceTree = "<group>"; };
 		7A6DEE84F181C8336CA87482 /* AddMealSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMealSheet.swift; sourceTree = "<group>"; };
 		8165290CCC188E3B7D66BDC1 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -154,6 +159,7 @@
 		95B528E2683D5365F8DF91FA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		98053B3FFC4BD7D0C20C75CB /* TimerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerManager.swift; sourceTree = "<group>"; };
 		9849E4D814CBE9FB1D1E619C /* GluttTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttTests.swift; sourceTree = "<group>"; };
+		A00431AF9CF20BE00C177D30 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeHTMLParser.swift; sourceTree = "<group>"; };
 		A34662C1AB1C5078CE9DA61C /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
 		A581E002B169649AB5C28EB6 /* RecipeSearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeSearchEngine.swift; sourceTree = "<group>"; };
@@ -215,6 +221,7 @@
 				2EC989CD5E7DF9239B56944E /* Import */,
 				9D8B59D32238D556A930853E /* Kitchen */,
 				EBAC88B98DD3F923764D9620 /* Log */,
+				979E2590EBF3B795CAAC4659 /* Onboarding */,
 				9164B5F4ECF14AFD399A7D65 /* Plan */,
 				A5BA62F727FBF7ED5F34E335 /* Progress */,
 				ADD22DC369608B86A867151C /* Recipes */,
@@ -325,6 +332,7 @@
 		95A2A28A0B32E42837D0783A /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				6F29983D8888CD4C7C082CBB /* DietGuard.swift */,
 				476DE0FF02A984E39531A7EF /* GroceryListBuilder.swift */,
 				1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */,
 				BF96F3FA7AE1145E7946CB47 /* NutritionEstimator.swift */,
@@ -340,6 +348,14 @@
 				9D8742D0954484537BE1910A /* Import */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		979E2590EBF3B795CAAC4659 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				A00431AF9CF20BE00C177D30 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
 			sourceTree = "<group>";
 		};
 		9D8742D0954484537BE1910A /* Import */ = {
@@ -410,6 +426,7 @@
 				15C277290BDB320A5FFBB935 /* Planning.swift */,
 				F5BE7E113C0145B67F0556D3 /* Recipe.swift */,
 				151A0FD46C1B36361CD24372 /* SeedData.swift */,
+				3800A614501862AB11EC98A2 /* StarterRecipes.swift */,
 				4AA37957DBDDC577B2780A3E /* UserPrefs.swift */,
 			);
 			path = Models;
@@ -592,6 +609,7 @@
 				D36B7671B485CD49168BCA7C /* ConfidenceBadge.swift in Sources */,
 				F28F7DAFE3AD2E7FD1BF40CB /* CookFinishView.swift in Sources */,
 				19D5DE8E0D64A73F1756C3FD /* CookModeView.swift in Sources */,
+				FDA468B0515CCE15FA0C5D16 /* DietGuard.swift in Sources */,
 				97937012B8CA51D69C342C90 /* EmptyStateView.swift in Sources */,
 				B997F7F5C96448B424A74DAD /* Enums.swift in Sources */,
 				812D77EB9384E9BB9C3FBD71 /* GluttApp.swift in Sources */,
@@ -611,6 +629,7 @@
 				177643D1D447412BD360D00D /* MealCard.swift in Sources */,
 				5FFAC0C77C80660EA97C9D2B /* MealRecommender.swift in Sources */,
 				E9E62465FDE3533A7CE521B1 /* NutritionEstimator.swift in Sources */,
+				1D7AADB5298899998C304AB6 /* OnboardingView.swift in Sources */,
 				E00E0565BC59F9EFB40F594E /* OptimizeRecipeView.swift in Sources */,
 				CC57BF53936FE16D9F56E804 /* PantryMatcher.swift in Sources */,
 				B739F625633B47DD0E0EC0D0 /* PendingImportStore.swift in Sources */,
@@ -634,6 +653,7 @@
 				F27C480C64FF7FB31D3D86EC /* Router.swift in Sources */,
 				B6CED88B5EC73EDD8D259730 /* SeedData.swift in Sources */,
 				0E91673079F01566867E6A54 /* SettingsView.swift in Sources */,
+				16B9A16071EB1350972B7E98 /* StarterRecipes.swift in Sources */,
 				6BD892D3347E8504FBCB7405 /* StoreModeView.swift in Sources */,
 				C20923926C15E4C565BF7C20 /* SubstitutionService.swift in Sources */,
 				31DED7CE48FF3308E5FB97F2 /* TasteProfileBuilder.swift in Sources */,

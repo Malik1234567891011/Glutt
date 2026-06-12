@@ -24,6 +24,16 @@ enum WeekPlanner {
         var pantry: [PantryItem]
         var leftovers: [Leftover]
         var recentSessions: [CookSession]
+        /// Hard filters: never plan something that breaks a rule or allergy.
+        var rules: [DietaryRule] = []
+        var allergies: [String] = []
+    }
+
+    private static func candidates(_ input: Input) -> [Recipe] {
+        input.recipes.filter {
+            $0.parentRecipe == nil && !$0.steps.isEmpty
+                && DietGuard.isSuggestable($0, rules: input.rules, allergies: input.allergies)
+        }
     }
 
     static func draft(_ input: Input) -> [DraftSlot] {
@@ -31,8 +41,7 @@ enum WeekPlanner {
         let startDay = calendar.startOfDay(for: .now)
 
         // Score every candidate recipe once.
-        let ranked = input.recipes
-            .filter { $0.parentRecipe == nil && !$0.steps.isEmpty }
+        let ranked = candidates(input)
             .map { (recipe: $0, score: score(recipe: $0, input: input)) }
             .sorted { $0.score > $1.score }
             .map(\.recipe)
@@ -65,8 +74,7 @@ enum WeekPlanner {
     /// Replacement candidate for a slot the user doesn't like.
     static func swap(slot: DraftSlot, in slots: [DraftSlot], input: Input) -> Recipe? {
         let used = slots.compactMap(\.recipe) + (slot.recipe.map { [$0] } ?? [])
-        let ranked = input.recipes
-            .filter { $0.parentRecipe == nil && !$0.steps.isEmpty }
+        let ranked = candidates(input)
             .map { (recipe: $0, score: score(recipe: $0, input: input)) }
             .sorted { $0.score > $1.score }
             .map(\.recipe)

@@ -85,6 +85,8 @@ final class Router {
     var demoCookOnLaunch = false
     /// Dev/testing hook (`-demoWizard`): opens the week planner wizard on launch.
     var demoWizardOnLaunch = false
+    /// Dev/testing hook (`-onboarding`): forces the first-run flow even when completed.
+    var forceOnboarding = false
 
     init() {
         // Launch-argument hooks for UI tests and tooling: `-tab recipes`, `-importURL https://...`
@@ -110,6 +112,7 @@ final class Router {
             demoWizardOnLaunch = true
             selectedTab = .plan
         }
+        forceOnboarding = arguments.contains("-onboarding")
     }
 
     func handle(url: URL) {

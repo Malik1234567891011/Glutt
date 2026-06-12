@@ -195,7 +195,9 @@ struct WhatToCookView: View {
             pantry: pantryItems,
             leftovers: leftovers,
             sessions: sessions,
-            tasteProfile: prefs.tasteProfile
+            tasteProfile: prefs.tasteProfile,
+            rules: prefs.dietaryRules,
+            allergies: prefs.allergies
         ))
     }
 }

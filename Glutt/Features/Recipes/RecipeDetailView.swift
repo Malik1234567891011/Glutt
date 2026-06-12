@@ -44,6 +44,7 @@ struct RecipeDetailView: View {
                 hero
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     header
+                    dietWarnings
                     versionPicker
                     servingsAndUnits
                     nutritionLine
@@ -111,6 +112,47 @@ struct RecipeDetailView: View {
     }
 
     // MARK: - Sections
+
+    /// Allergy and rule conflicts, shown plainly — never silently hidden,
+    /// because the user may be cooking for someone else.
+    @ViewBuilder
+    private var dietWarnings: some View {
+        let prefs = UserPrefs.current(in: context)
+        let conflicts = DietGuard.conflicts(
+            in: recipe,
+            rules: prefs.dietaryRules,
+            allergies: prefs.allergies,
+            dislikes: prefs.dislikedIngredients
+        )
+        if !conflicts.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                ForEach(conflicts) { conflict in
+                    Label(
+                        conflict.message,
+                        systemImage: conflict.isBlocking ? "exclamationmark.triangle.fill" : "hand.thumbsdown"
+                    )
+                    .font(.gluttCaption.weight(.medium))
+                    .foregroundStyle(conflictColor(conflict))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Spacing.md)
+            .background(
+                conflicts.contains { $0.severity == .allergy }
+                    ? Theme.Colors.tomato.opacity(0.12)
+                    : Theme.Colors.warningTint
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        }
+    }
+
+    private func conflictColor(_ conflict: DietGuard.Conflict) -> Color {
+        switch conflict.severity {
+        case .allergy: Theme.Colors.tomato
+        case .rule: Theme.Colors.warning
+        case .dislike: Theme.Colors.textSecondary
+        }
+    }
 
     private var hero: some View {
         RecipeImageView(recipe: recipe)

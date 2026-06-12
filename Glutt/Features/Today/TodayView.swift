@@ -148,7 +148,12 @@ struct TodayView: View {
 
     private func nextUpCard(_ meal: PlannedMeal) -> some View {
         let recipe = meal.recipe!
-        let missingLine = TodayPlanner.missingLine(for: recipe, pantry: pantryItems)
+        let missingLine = TodayPlanner.missingLine(
+            for: recipe,
+            pantry: pantryItems,
+            rules: prefs.dietaryRules,
+            allergies: prefs.allergies
+        )
         let hasMissing = missingLine != nil
 
         return VStack(alignment: .leading, spacing: 0) {

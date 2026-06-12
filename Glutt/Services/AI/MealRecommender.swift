@@ -35,6 +35,9 @@ enum MealRecommender {
         var sessions: [CookSession]
         /// Learned descriptors ("creamy", "spicy") — nudges, never dominates.
         var tasteProfile: [String] = []
+        /// Hard filters: never suggest something that breaks a rule or allergy.
+        var rules: [DietaryRule] = []
+        var allergies: [String] = []
     }
 
     struct Recommendation: Identifiable {
@@ -46,7 +49,10 @@ enum MealRecommender {
     }
 
     static func recommend(_ request: Request) -> [Recommendation] {
-        let candidates = request.recipes.filter { $0.parentRecipe == nil && !$0.steps.isEmpty }
+        let candidates = request.recipes.filter {
+            $0.parentRecipe == nil && !$0.steps.isEmpty
+                && DietGuard.isSuggestable($0, rules: request.rules, allergies: request.allergies)
+        }
         guard !candidates.isEmpty else { return [] }
 
         let scored = candidates.map { recipe in

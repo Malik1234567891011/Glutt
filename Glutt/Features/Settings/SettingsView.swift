@@ -13,6 +13,8 @@ struct SettingsView: View {
     @State private var model = LLMClient.model
     @State private var calorieGoalText = ""
     @State private var proteinGoalText = ""
+    @State private var allergyText = ""
+    @State private var dislikeText = ""
 
     var body: some View {
         NavigationStack {
@@ -33,6 +35,8 @@ struct SettingsView: View {
                         LLMClient.model = model
                         prefs.dailyCalorieGoal = Int(calorieGoalText)
                         prefs.dailyProteinGoal = Int(proteinGoalText)
+                        prefs.allergies = splitList(allergyText)
+                        prefs.dislikedIngredients = splitList(dislikeText)
                         dismiss()
                     }
                 }
@@ -127,7 +131,7 @@ struct SettingsView: View {
     }
 
     private var dietarySection: some View {
-        Section("Dietary rules") {
+        Section {
             ForEach(DietaryRule.allCases) { rule in
                 Toggle(rule.label, isOn: Binding(
                     get: { prefs.dietaryRules.contains(rule) },
@@ -141,7 +145,33 @@ struct SettingsView: View {
                 ))
                 .tint(Theme.Colors.accent)
             }
+            HStack {
+                Text("Allergies")
+                Spacer()
+                TextField("peanuts, shellfish…", text: $allergyText)
+                    .multilineTextAlignment(.trailing)
+            }
+            HStack {
+                Text("Dislikes")
+                Spacer()
+                TextField("cilantro, olives…", text: $dislikeText)
+                    .multilineTextAlignment(.trailing)
+            }
+        } header: {
+            Text("Food rules")
+        } footer: {
+            Text("Respected in suggestions, planning, and substitutions. Allergies always get a hard warning on recipes. Comma-separated.")
         }
+        .onAppear {
+            allergyText = prefs.allergies.joined(separator: ", ")
+            dislikeText = prefs.dislikedIngredients.joined(separator: ", ")
+        }
+    }
+
+    private func splitList(_ text: String) -> [String] {
+        text.split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
     }
 
     private var aiSection: some View {

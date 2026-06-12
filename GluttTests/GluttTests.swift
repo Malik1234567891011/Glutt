@@ -852,3 +852,105 @@ final class TodayPlannerTests: XCTestCase {
         XCTAssertTrue(line!.contains("Swap:"), "expected a swap suggestion, got \(line!)")
     }
 }
+
+// MARK: - Phase 9: Diet guard
+
+final class DietGuardTests: XCTestCase {
+
+    private func recipe(_ title: String, ingredients: [String]) -> Recipe {
+        let recipe = Recipe(title: title)
+        recipe.ingredients = ingredients.enumerated().map { index, name in
+            RecipeIngredient(name: name, sortIndex: index)
+        }
+        recipe.steps = [RecipeStep(index: 0, text: "Cook.")]
+        return recipe
+    }
+
+    func testHalalFlagsPorkAndAlcohol() {
+        let carbonara = recipe("Carbonara", ingredients: ["Bacon", "White wine", "Eggs", "Parmesan"])
+        let conflicts = DietGuard.conflicts(in: carbonara, rules: [.halal], allergies: [])
+        XCTAssertEqual(conflicts.count, 2)
+        XCTAssertTrue(conflicts.allSatisfy(\.isBlocking))
+    }
+
+    func testAllergyOutranksRuleConflicts() {
+        let dish = recipe("Satay", ingredients: ["Pork", "Peanut butter"])
+        let conflicts = DietGuard.conflicts(in: dish, rules: [.noPork], allergies: ["peanut"])
+        XCTAssertEqual(conflicts.first?.severity, .allergy)
+    }
+
+    func testDislikeIsFlaggedButNotBlocking() {
+        let salsa = recipe("Salsa", ingredients: ["Tomato", "Cilantro"])
+        let conflicts = DietGuard.conflicts(in: salsa, rules: [], allergies: [], dislikes: ["cilantro"])
+        XCTAssertEqual(conflicts.count, 1)
+        XCTAssertFalse(conflicts[0].isBlocking)
+        XCTAssertTrue(DietGuard.isSuggestable(salsa, rules: [], allergies: []))
+    }
+
+    func testWordBoundaryAvoidsFalsePositives() {
+        // "ham" must not flag shawarma; "egg" must not flag eggplant.
+        let shawarma = recipe("Shawarma", ingredients: ["Chicken shawarma spice", "Eggplant"])
+        XCTAssertTrue(DietGuard.conflicts(in: shawarma, rules: [.noPork], allergies: ["egg"]).isEmpty)
+    }
+
+    func testPluralsMatchBothWays() {
+        let cookies = recipe("Cookies", ingredients: ["Eggs", "Flour"])
+        let conflicts = DietGuard.conflicts(in: cookies, rules: [], allergies: ["egg"])
+        XCTAssertEqual(conflicts.count, 1)
+        XCTAssertEqual(conflicts.first?.severity, .allergy)
+    }
+
+    func testVeganBlocksDairyMeatAndHoney() {
+        let bowl = recipe("Honey Chicken", ingredients: ["Chicken", "Honey", "Butter", "Rice"])
+        let conflicts = DietGuard.conflicts(in: bowl, rules: [.vegan], allergies: [])
+        XCTAssertEqual(conflicts.count, 3)
+        XCTAssertFalse(DietGuard.isSuggestable(bowl, rules: [.vegan], allergies: []))
+    }
+
+    func testRecommenderNeverSuggestsBlockedRecipes() {
+        let porkDish = recipe("Pork Stir Fry", ingredients: ["Pork", "Rice"])
+        let safeDish = recipe("Veggie Stir Fry", ingredients: ["Broccoli", "Rice"])
+        porkDish.rating = 5
+        safeDish.rating = 5
+        let picks = MealRecommender.recommend(MealRecommender.Request(
+            recipes: [porkDish, safeDish],
+            pantry: [],
+            leftovers: [],
+            sessions: [],
+            rules: [.noPork],
+            allergies: []
+        ))
+        XCTAssertFalse(picks.contains { $0.recipe === porkDish })
+        XCTAssertTrue(picks.contains { $0.recipe === safeDish })
+    }
+
+    func testWeekPlannerNeverPlansAllergens() {
+        let peanutDish = recipe("Peanut Noodles", ingredients: ["Peanuts", "Noodles"])
+        let safeDish = recipe("Tomato Pasta", ingredients: ["Tomato", "Pasta"])
+        let slots = WeekPlanner.draft(WeekPlanner.Input(
+            days: 2,
+            mealTypes: [.dinner],
+            useLeftovers: false,
+            recipes: [peanutDish, safeDish],
+            pantry: [],
+            leftovers: [],
+            recentSessions: [],
+            rules: [],
+            allergies: ["peanut"]
+        ))
+        XCTAssertFalse(slots.contains { $0.recipe === peanutDish })
+    }
+
+    func testSubstitutionsRespectRules() {
+        // Dairy-free user missing butter: pantry has margarine and... butter? No —
+        // a substitute that is itself dairy must never be offered.
+        let pantry = [PantryItem(name: "Ghee"), PantryItem(name: "Olive oil")]
+        let subs = SubstitutionService.availableSubstitutions(
+            for: "butter",
+            pantry: pantry,
+            rules: [.dairyFree],
+            allergies: []
+        )
+        XCTAssertFalse(subs.contains { $0.name.lowercased().contains("ghee") })
+    }
+}

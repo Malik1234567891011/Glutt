@@ -1070,3 +1070,32 @@ final class SocialMediaImportTests: XCTestCase {
         XCTAssertNil(SocialMediaImport.captionTitle("#fyp #food"))
     }
 }
+
+// MARK: - Pantry scan
+
+final class PantryScanTests: XCTestCase {
+
+    func testQuantityMappingDefaultsToFull() {
+        XCTAssertEqual(PantryScan.mapQuantity("half"), .half)
+        XCTAssertEqual(PantryScan.mapQuantity("low"), .low)
+        XCTAssertEqual(PantryScan.mapQuantity("full"), .full)
+        XCTAssertEqual(PantryScan.mapQuantity("overflowing"), .full)
+        XCTAssertEqual(PantryScan.mapQuantity(nil), .full)
+    }
+
+    func testCategoryMappingTrustsModelThenFallsBack() {
+        XCTAssertEqual(PantryScan.mapCategory("dairy", name: "whatever"), .dairy)
+        XCTAssertEqual(PantryScan.mapCategory("Produce", name: "whatever"), .produce)
+        // Garbage category falls back to the keyword categorizer.
+        XCTAssertEqual(PantryScan.mapCategory("beverages", name: "milk"), GroceryCategorizer.categorize("milk"))
+        XCTAssertEqual(PantryScan.mapCategory(nil, name: "chicken breast"), GroceryCategorizer.categorize("chicken breast"))
+    }
+
+    func testReplacedMealStatusFlow() {
+        let meal = PlannedMeal(date: .now, mealType: .dinner, freeformTitle: "Chicken rice bowl")
+        XCTAssertEqual(meal.status, .planned)
+        // The log-food flow marks it replaced when the user ate something else.
+        meal.status = .replaced
+        XCTAssertEqual(meal.status, .replaced)
+    }
+}

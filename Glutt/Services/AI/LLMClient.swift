@@ -59,9 +59,11 @@ enum LLMClient {
     }
 
     /// Single-turn chat completion. Keep prompts structured; parse strictly.
+    /// Pass `imageData` (JPEG, pre-downscaled via `ImagePrep`) for vision calls.
     static func chat(
         system: String,
         user: String,
+        imageData: Data? = nil,
         temperature: Double = 0.4,
         jsonMode: Bool = false,
         timeout: TimeInterval = 30
@@ -76,12 +78,24 @@ enum LLMClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(effectiveKey)", forHTTPHeaderField: "Authorization")
 
+        let userContent: Any
+        if let imageData {
+            userContent = [
+                ["type": "text", "text": user],
+                ["type": "image_url", "image_url": [
+                    "url": "data:image/jpeg;base64,\(imageData.base64EncodedString())",
+                ]],
+            ]
+        } else {
+            userContent = user
+        }
+
         var body: [String: Any] = [
             "model": model,
             "temperature": temperature,
             "messages": [
                 ["role": "system", "content": system],
-                ["role": "user", "content": user],
+                ["role": "user", "content": userContent],
             ],
         ]
         if jsonMode {
@@ -118,12 +132,14 @@ enum LLMClient {
         _ type: T.Type,
         system: String,
         user: String,
+        imageData: Data? = nil,
         temperature: Double = 0.2,
         timeout: TimeInterval = 30
     ) async throws -> T {
         let raw = try await chat(
             system: system,
             user: user,
+            imageData: imageData,
             temperature: temperature,
             jsonMode: true,
             timeout: timeout

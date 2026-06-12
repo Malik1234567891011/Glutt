@@ -14,6 +14,7 @@ struct KitchenView: View {
     @State private var segment: Segment = .inventory
     @State private var isAddingPantryItem = false
     @State private var isAddingGroceryItem = false
+    @State private var isScanningPantry = false
 
     var body: some View {
         NavigationStack {
@@ -38,6 +39,9 @@ struct KitchenView: View {
         }
         .onAppear(perform: handlePendingAction)
         .onChange(of: router.pendingAction) { handlePendingAction() }
+        .sheet(isPresented: $isScanningPantry) {
+            PantryScanView()
+        }
     }
 
     private func handlePendingAction() {
@@ -47,10 +51,14 @@ struct KitchenView: View {
             segment = .groceries
             isAddingGroceryItem = true
         case .scanPantry:
-            // Camera scan is a later milestone — land on manual add for now.
             router.pendingAction = nil
             segment = .inventory
-            isAddingPantryItem = true
+            // AI photo scan when available; manual add as the offline path.
+            if LLMClient.isConfigured {
+                isScanningPantry = true
+            } else {
+                isAddingPantryItem = true
+            }
         default:
             break
         }

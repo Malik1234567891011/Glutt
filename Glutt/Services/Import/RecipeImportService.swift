@@ -7,6 +7,7 @@ enum ImportError: LocalizedError {
     case fetchFailed
     case unreadableImage
     case nothingFound
+    case instagramBlocked
 
     var errorDescription: String? {
         switch self {
@@ -14,6 +15,8 @@ enum ImportError: LocalizedError {
         case .fetchFailed: "Couldn't load that page. Check the link and your connection."
         case .unreadableImage: "Couldn't read any text from that image."
         case .nothingFound: "Couldn't find a recipe there."
+        case .instagramBlocked:
+            "Instagram doesn't let apps read captions. Screenshot the caption (or the recipe) and use the screenshot import instead — it works great."
         }
     }
 }
@@ -63,7 +66,16 @@ enum RecipeImportService {
         }
 
         let finalURL = http.url ?? url
-        return RecipeHTMLParser.parse(html: html, sourceURL: finalURL)
+        let draft = RecipeHTMLParser.parse(html: html, sourceURL: finalURL)
+
+        // Instagram's login wall usually strips every og: tag — if we got
+        // literally nothing, say why honestly instead of "no recipe found".
+        if draft.platform == .instagram,
+           draft.title == nil, draft.ingredientLines.isEmpty,
+           (draft.caption ?? "").isEmpty {
+            throw ImportError.instagramBlocked
+        }
+        return draft
     }
 
     // MARK: - Screenshot / photo import (on-device OCR)

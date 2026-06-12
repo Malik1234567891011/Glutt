@@ -10,6 +10,7 @@ struct LogFoodView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \FoodLog.timestamp, order: .reverse) private var allLogs: [FoodLog]
     @Query private var leftovers: [Leftover]
+    @Query private var allMeals: [PlannedMeal]
 
     /// Common foods with rough nutrition — one tap to log.
     private static let quickFoods: [(title: String, calories: Int, protein: Int)] = [
@@ -26,6 +27,19 @@ struct LogFoodView: View {
     @State private var photoData: Data?
     @State private var justLogged: String?
 
+    // Photo estimate flow
+    @State private var estimatePhotoItem: PhotosPickerItem?
+    @State private var isShowingCamera = false
+    @State private var isEstimating = false
+    @State private var estimateError: String?
+    @State private var estimate: MealPhotoEstimator.Estimate?
+    @State private var estimatePhotoData: Data?
+    @State private var estimateTitle = ""
+    @State private var estimateCalories = ""
+    @State private var estimateProtein = ""
+    /// nil = "just extra", otherwise the planned meal this food replaced.
+    @State private var replacingMeal: PlannedMeal?
+
     private var availableLeftovers: [Leftover] {
         leftovers.filter { $0.servingsRemaining > 0 }
     }
@@ -34,12 +48,23 @@ struct LogFoodView: View {
         ProgressStats.frequentMeals(logs: allLogs)
     }
 
+    /// Today's still-planned meals — candidates for "this replaced dinner".
+    private var replaceableMeals: [PlannedMeal] {
+        let today = Calendar.current.startOfDay(for: .now)
+        return allMeals
+            .filter { $0.date == today && $0.status == .planned }
+            .sorted { $0.mealType.sortOrder < $1.mealType.sortOrder }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     if let justLogged {
                         confirmationBanner(justLogged)
+                    }
+                    if LLMClient.isConfigured {
+                        photoEstimateCard
                     }
                     quickAddCard
                     if !frequentMeals.isEmpty {
@@ -61,6 +86,185 @@ struct LogFoodView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Photo estimate
+
+    /// The McDonald's flow: snap the plate, get a name + honest calorie range,
+    /// fix anything, choose whether it replaced a planned meal, log it.
+    private var photoEstimateCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            SectionHeader(title: "Snap your plate")
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                if isEstimating {
+                    HStack(spacing: Theme.Spacing.sm) {
+                        ProgressView()
+                        Text("Sizing up your meal…")
+                            .font(.gluttCaption)
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Theme.Spacing.md)
+                } else if estimate != nil {
+                    estimateResult
+                } else {
+                    Text("Glutt estimates the meal and calories — you correct anything it gets wrong.")
+                        .font(.gluttCaption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                    HStack(spacing: Theme.Spacing.sm) {
+                        if CameraPicker.isAvailable {
+                            Button {
+                                isShowingCamera = true
+                            } label: {
+                                Label("Camera", systemImage: "camera")
+                            }
+                            .buttonStyle(.gluttPillFilled)
+                        }
+                        PhotosPicker(selection: $estimatePhotoItem, matching: .images) {
+                            Label("Photo library", systemImage: "photo.on.rectangle")
+                                .font(.gluttCaption.weight(.semibold))
+                        }
+                        .buttonStyle(.gluttPill)
+                    }
+                    if let estimateError {
+                        Text(estimateError)
+                            .font(.gluttCaption)
+                            .foregroundStyle(Theme.Colors.tomato)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardStyle()
+        }
+        .onChange(of: estimatePhotoItem) {
+            guard estimatePhotoItem != nil else { return }
+            Task {
+                if let data = try? await estimatePhotoItem?.loadTransferable(type: Data.self) {
+                    await runEstimate(data)
+                }
+                estimatePhotoItem = nil
+            }
+        }
+        .fullScreenCover(isPresented: $isShowingCamera) {
+            CameraPicker { data in
+                Task { await runEstimate(data) }
+            }
+            .ignoresSafeArea()
+        }
+    }
+
+    private var estimateResult: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            TextField("Meal name", text: $estimateTitle)
+                .font(.gluttHeadline)
+            HStack(spacing: Theme.Spacing.sm) {
+                TextField("Calories", text: $estimateCalories)
+                    .keyboardType(.numberPad)
+                TextField("Protein g", text: $estimateProtein)
+                    .keyboardType(.numberPad)
+            }
+            .font(.gluttBody)
+
+            if let range = estimate?.rangeLabel {
+                Text("\(range)\(estimate?.note.map { " · \($0)" } ?? "")")
+                    .font(.gluttCaption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+
+            if !replaceableMeals.isEmpty {
+                replacementPicker
+            }
+
+            HStack(spacing: Theme.Spacing.sm) {
+                Button("Log it") {
+                    logEstimate()
+                }
+                .buttonStyle(.gluttPrimary)
+                Button("Retake") {
+                    resetEstimate()
+                }
+                .buttonStyle(.gluttSecondary)
+            }
+        }
+    }
+
+    /// "Was this instead of dinner?" — the planned-vs-actual link.
+    private var replacementPicker: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            Text("Was this instead of a planned meal?")
+                .font(.gluttCaption.weight(.semibold))
+                .foregroundStyle(Theme.Colors.textPrimary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Spacing.xs) {
+                    Button {
+                        replacingMeal = nil
+                    } label: {
+                        Chip(label: "Just extra", isSelected: replacingMeal == nil)
+                    }
+                    .buttonStyle(.plain)
+                    ForEach(replaceableMeals) { meal in
+                        Button {
+                            replacingMeal = meal
+                        } label: {
+                            Chip(
+                                label: "Instead of \(meal.mealType.label.lowercased()) (\(meal.displayTitle))",
+                                isSelected: replacingMeal === meal
+                            )
+                            .fixedSize()
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private func runEstimate(_ rawData: Data) async {
+        isEstimating = true
+        estimateError = nil
+        guard let prepared = ImagePrep.prepareForVision(rawData) else {
+            estimateError = "Couldn't read that image."
+            isEstimating = false
+            return
+        }
+        do {
+            let result = try await MealPhotoEstimator.estimate(imageData: prepared)
+            estimate = result
+            estimatePhotoData = rawData
+            estimateTitle = result.title
+            estimateCalories = String(result.calories)
+            estimateProtein = String(result.proteinGrams)
+            replacingMeal = nil
+        } catch {
+            estimateError = error.localizedDescription
+        }
+        isEstimating = false
+    }
+
+    private func logEstimate() {
+        let entry = FoodLog(
+            title: estimateTitle.trimmingCharacters(in: .whitespaces),
+            source: .photo,
+            calories: Int(estimateCalories),
+            proteinGrams: Int(estimateProtein),
+            plannedMeal: replacingMeal
+        )
+        entry.photoData = estimatePhotoData
+        if let replacingMeal {
+            replacingMeal.status = .replaced
+        }
+        log(entry)
+        resetEstimate()
+    }
+
+    private func resetEstimate() {
+        estimate = nil
+        estimatePhotoData = nil
+        estimateTitle = ""
+        estimateCalories = ""
+        estimateProtein = ""
+        estimateError = nil
+        replacingMeal = nil
     }
 
     // MARK: - Sections
@@ -155,6 +359,9 @@ struct LogFoodView: View {
                         .font(.gluttCaption.weight(.medium))
                         .foregroundStyle(Theme.Colors.accent)
                 }
+                if !replaceableMeals.isEmpty {
+                    replacementPicker
+                }
                 Button("Log it") {
                     logManual()
                 }
@@ -194,9 +401,13 @@ struct LogFoodView: View {
             title: manualTitle.trimmingCharacters(in: .whitespaces),
             source: isRestaurant ? .restaurant : .manual,
             calories: Int(manualCalories),
-            proteinGrams: Int(manualProtein)
+            proteinGrams: Int(manualProtein),
+            plannedMeal: replacingMeal
         )
         entry.photoData = photoData
+        if let replacingMeal {
+            replacingMeal.status = .replaced
+        }
         log(entry)
         manualTitle = ""
         manualCalories = ""
@@ -204,6 +415,7 @@ struct LogFoodView: View {
         photoData = nil
         photoItem = nil
         isRestaurant = false
+        replacingMeal = nil
     }
 }
 

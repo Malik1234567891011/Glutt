@@ -302,16 +302,17 @@ iOS-first native app (Swift / SwiftUI / Xcode). This document breaks down the en
 ## Phase 7 — Food Logging & Progress Tab
 
 ### 7.1 Food logging
-- [ ] Log flow from "+" button: photo / search / quick-add / leftovers / repeat frequent meal
-- [ ] Quick-add common foods (eggs, protein shake, coffee, rice bowl…) — user-customizable list
-- [ ] Restaurant/fast-food logging: search common items, save "restaurant meal memory" for repeats
-- [ ] Photo calorie estimation: photo → vision/LLM → estimate with **confidence range** ("probably 700–900 cal")
-- [ ] Photo of leftovers → estimate servings remaining (so the app never suggests a leftover meal that isn't actually enough food)
-- [ ] Manual correction always available, never buried
-- [ ] Log leftovers as eaten (links to Leftover, decrements servings)
-- [ ] Barcode scan → nutrition lookup (open food database)
-- [ ] Nutrition label scan (Vision OCR → macros)
-- [ ] Every log updates Today timeline + Progress
+- [x] Log flow from "+" button: photo / search / quick-add / leftovers / repeat frequent meal
+- [x] Quick-add common foods (eggs, protein shake, coffee, rice bowl…)
+- [x] Restaurant/fast-food logging (manual + restaurant toggle; "meal memory" via frequents)
+- [x] Photo calorie estimation: photo → GPT-4o vision → estimate with **confidence range** ("likely 600–700 cal") + editable before logging
+- [x] "Was this instead of a planned meal?" — replace planned meal (status → replaced) or log as extra
+- [ ] Photo of leftovers → estimate servings remaining
+- [x] Manual correction always available, never buried
+- [x] Log leftovers as eaten (links to Leftover, decrements servings)
+- [ ] Barcode scan → nutrition lookup (open food database) — post-beta
+- [ ] Nutrition label scan (Vision OCR → macros) — post-beta
+- [x] Every log updates Today timeline + Progress
 
 ### 7.2 Planned vs. actual (killer feature)
 - [ ] Each PlannedMeal resolves to: eaten as planned / replaced (with what) / skipped / partial
@@ -415,7 +416,7 @@ iOS-first native app (Swift / SwiftUI / Xcode). This document breaks down the en
 
 Ordered roughly by value:
 
-1. Video pantry scan (full video → inventory)
+1. Video pantry scan (full video → inventory) — **photo version SHIPPED pre-beta**: one photo → GPT-4o vision lists candidates → user confirms/untoggles + sets rough amounts → inventory updates (merges with existing items); video stays post-MVP
 2. Voice cooking assistant full conversational mode ("substitute cream?")
 3. Trending recipe discovery + trend-pantry matching
 4. Multi-recipe cooking schedule / smart prep sheet for menus

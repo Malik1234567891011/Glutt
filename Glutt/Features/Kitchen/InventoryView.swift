@@ -8,6 +8,7 @@ struct InventoryView: View {
     @Query(sort: \PantryItem.name) private var items: [PantryItem]
     @Binding var isAddingItem: Bool
     @State private var searchText = ""
+    @State private var isScanning = false
 
     private var visibleItems: [PantryItem] {
         guard !searchText.isEmpty else { return items }
@@ -29,8 +30,14 @@ struct InventoryView: View {
                         icon: "refrigerator",
                         title: "Your kitchen is a mystery",
                         message: "Add what you have and recipes will show what you can already cook.",
-                        actionLabel: "Add items",
-                        action: { isAddingItem = true }
+                        actionLabel: LLMClient.isConfigured ? "Scan it with a photo" : "Add items",
+                        action: {
+                            if LLMClient.isConfigured {
+                                isScanning = true
+                            } else {
+                                isAddingItem = true
+                            }
+                        }
                     )
                 } else {
                     if !useSoonItems.isEmpty {
@@ -47,12 +54,20 @@ struct InventoryView: View {
             .padding(Theme.Spacing.md)
         }
         .toolbar {
+            if LLMClient.isConfigured {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { isScanning = true } label: { Image(systemName: "camera.viewfinder") }
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { isAddingItem = true } label: { Image(systemName: "plus") }
             }
         }
         .sheet(isPresented: $isAddingItem) {
             PantryItemEditorView()
+        }
+        .sheet(isPresented: $isScanning) {
+            PantryScanView()
         }
     }
 

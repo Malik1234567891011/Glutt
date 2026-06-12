@@ -29,6 +29,7 @@ targets:
         UIUserInterfaceStyle: Light
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        NSCameraUsageDescription: Glutt uses the camera to scan your fridge or pantry and to estimate meals you log from photos.
         ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:
           - CFBundleURLName: com.malik.glutt

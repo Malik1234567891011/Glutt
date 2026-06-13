@@ -11,11 +11,14 @@ struct TodayView: View {
     @Query private var leftovers: [Leftover]
     @Query private var pantryItems: [PantryItem]
     @Query private var groceryItems: [GroceryItem]
+    @Query private var recipes: [Recipe]
     @Query(sort: \FoodLog.timestamp, order: .reverse) private var logs: [FoodLog]
 
     @State private var isAskingWhatToCook = false
     @State private var isShowingSettings = false
     @State private var isLoggingFood = false
+    @State private var isShowingShareSetup = false
+    @State private var gettingStartedCollapsed = false
     @State private var editingMeal: PlannedMeal?
     @State private var cookingRecipe: Recipe?
     @State private var checklistRecipe: Recipe?
@@ -47,9 +50,13 @@ struct TodayView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                     header
 
+                    if showGettingStarted {
+                        gettingStartedCard
+                    }
+
                     if let nextUp, nextUp.recipe != nil {
                         nextUpCard(nextUp)
-                    } else if todaysMeals.isEmpty {
+                    } else if todaysMeals.isEmpty, !showGettingStarted {
                         emptyDayCard
                     }
 
@@ -91,6 +98,7 @@ struct TodayView: View {
             .sheet(isPresented: $isAskingWhatToCook) { WhatToCookView() }
             .sheet(isPresented: $isShowingSettings) { SettingsView() }
             .sheet(isPresented: $isLoggingFood) { LogFoodView() }
+            .sheet(isPresented: $isShowingShareSetup) { ShareSheetSetupView() }
             .sheet(item: $editingMeal) { meal in
                 EditMealSheet(meal: meal)
                     .presentationDetents([.medium, .large])
@@ -143,6 +151,106 @@ struct TodayView: View {
         case 12..<17: "Good afternoon"
         default: "Good evening"
         }
+    }
+
+    // MARK: - Getting started
+
+    /// A self-dismissing checklist (à la ReciMe). Surfaces the three things a
+    /// new user needs to discover, then disappears for good once they're done.
+    /// Nothing here is the *only* path to a feature — it's a shortcut, so
+    /// dismissing it never costs discoverability.
+    private struct GettingStartedStep: Identifiable {
+        let id = UUID()
+        let title: String
+        let done: Bool
+        let action: () -> Void
+    }
+
+    private var gettingStartedSteps: [GettingStartedStep] {
+        [
+            GettingStartedStep(
+                title: "Add your first recipe",
+                done: !recipes.isEmpty,
+                action: { router.perform(.importRecipe) }
+            ),
+            GettingStartedStep(
+                title: "Save from TikTok & Instagram",
+                done: prefs.hasSeenShareGuide,
+                action: { isShowingShareSetup = true }
+            ),
+            GettingStartedStep(
+                title: "Plan a meal",
+                done: !meals.isEmpty,
+                action: { router.selectedTab = .plan }
+            ),
+        ]
+    }
+
+    private var showGettingStarted: Bool {
+        guard !prefs.didDismissGettingStarted else { return false }
+        return gettingStartedSteps.contains { !$0.done }
+    }
+
+    private var gettingStartedCard: some View {
+        let steps = gettingStartedSteps
+        let doneCount = steps.filter(\.done).count
+
+        return VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Let's get cooking")
+                        .font(.gluttHeadline)
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                    Text("\(doneCount) of \(steps.count) complete")
+                        .font(.gluttCaption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+                Spacer()
+                Button {
+                    withAnimation { gettingStartedCollapsed.toggle() }
+                } label: {
+                    Image(systemName: gettingStartedCollapsed ? "chevron.down" : "chevron.up")
+                        .font(.gluttCaption.weight(.semibold))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+                Button {
+                    withAnimation { prefs.didDismissGettingStarted = true }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.gluttCaption.weight(.semibold))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+                .accessibilityLabel("Dismiss checklist")
+            }
+
+            if !gettingStartedCollapsed {
+                VStack(spacing: 0) {
+                    ForEach(steps) { step in
+                        Button(action: step.action) {
+                            HStack(spacing: Theme.Spacing.sm) {
+                                Image(systemName: step.done ? "checkmark.circle.fill" : "circle")
+                                    .font(.title3)
+                                    .foregroundStyle(step.done ? Theme.Colors.accent : Theme.Colors.border)
+                                Text(step.title)
+                                    .font(.gluttBody)
+                                    .foregroundStyle(step.done ? Theme.Colors.textSecondary : Theme.Colors.textPrimary)
+                                    .strikethrough(step.done, color: Theme.Colors.textSecondary)
+                                Spacer()
+                                if !step.done {
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.Colors.textSecondary)
+                                }
+                            }
+                            .padding(.vertical, Theme.Spacing.sm)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(step.done)
+                    }
+                }
+            }
+        }
+        .cardStyle()
     }
 
     // MARK: - Next up

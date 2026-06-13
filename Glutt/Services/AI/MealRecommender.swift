@@ -25,9 +25,52 @@ enum MealRecommender {
         }
     }
 
+    /// Which meal we're likely choosing for, inferred from the clock unless the
+    /// user overrides it. Biases — never hard-filters — toward fitting dishes.
+    enum MealSlot: String, CaseIterable, Identifiable {
+        case any = "Any meal"
+        case breakfast = "Breakfast"
+        case lunch = "Lunch"
+        case dinner = "Dinner"
+        case snack = "Snack"
+
+        var id: String { rawValue }
+
+        /// Best guess from the current hour.
+        static func current(at date: Date = .now) -> MealSlot {
+            switch Calendar.current.component(.hour, from: date) {
+            case 4..<11: .breakfast
+            case 11..<15: .lunch
+            case 15..<21: .dinner
+            default: .snack
+            }
+        }
+
+        var keywords: Set<String> {
+            switch self {
+            case .any: []
+            case .breakfast: ["breakfast", "egg", "eggs", "oat", "oats", "oatmeal", "pancake", "waffle",
+                              "toast", "smoothie", "yogurt", "granola", "bagel", "cereal", "brunch", "omelette", "omelet"]
+            case .lunch: ["lunch", "salad", "sandwich", "wrap", "bowl", "soup", "leftover", "quick", "wrap"]
+            case .dinner: ["dinner", "roast", "pasta", "curry", "stew", "bake", "steak", "casserole", "stir-fry", "stir fry"]
+            case .snack: ["snack", "bite", "dip", "smoothie", "bar", "protein", "shake", "toast"]
+            }
+        }
+
+        /// Slots whose dishes feel wrong for this slot (gentle down-weight).
+        var clashes: Set<String> {
+            switch self {
+            case .breakfast: ["dinner", "roast", "curry", "stew", "casserole", "steak"]
+            case .dinner, .lunch: ["pancake", "waffle", "cereal", "oatmeal"]
+            default: []
+            }
+        }
+    }
+
     struct Request {
         var maxMinutes: Int?
         var mood: Mood = .any
+        var mealSlot: MealSlot = .any
         var preferPantry = true
         var recipes: [Recipe]
         var pantry: [PantryItem]
@@ -38,6 +81,8 @@ enum MealRecommender {
         /// Hard filters: never suggest something that breaks a rule or allergy.
         var rules: [DietaryRule] = []
         var allergies: [String] = []
+        /// Lowercased titles the user already ate today — don't re-suggest the same thing.
+        var eatenTodayTitles: [String] = []
     }
 
     struct Recommendation: Identifiable {
@@ -136,11 +181,33 @@ enum MealRecommender {
             }
         }
 
+        let recipeText = (recipe.title + " " + recipe.tags.joined(separator: " ") + " "
+            + recipe.ingredients.map(\.name).joined(separator: " ")).lowercased()
+
+        // Already eaten today: don't put the same dish back on the table.
+        if !request.eatenTodayTitles.isEmpty {
+            let title = recipe.title.lowercased()
+            if request.eatenTodayTitles.contains(where: { title == $0 || title.contains($0) || $0.contains(title) }) {
+                details.score -= 3.0
+            }
+        }
+
+        // Time of day: nudge toward dishes that fit the current meal.
+        if request.mealSlot != .any {
+            let slotHits = request.mealSlot.keywords.filter { recipeText.contains($0) }
+            let clashes = request.mealSlot.clashes.filter { recipeText.contains($0) }
+            if !slotHits.isEmpty {
+                details.score += 1.2
+                details.reasons.append("good for \(request.mealSlot.rawValue.lowercased())")
+            }
+            if !clashes.isEmpty {
+                details.score -= 1.0
+            }
+        }
+
         // Mood via tags/title/ingredients.
         if request.mood != .any {
-            let text = (recipe.title + " " + recipe.tags.joined(separator: " ") + " "
-                + recipe.ingredients.map(\.name).joined(separator: " ")).lowercased()
-            let hits = request.mood.keywords.filter { text.contains($0) }
+            let hits = request.mood.keywords.filter { recipeText.contains($0) }
             if hits.isEmpty {
                 details.score -= 1.5
             } else {

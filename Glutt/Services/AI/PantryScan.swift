@@ -28,21 +28,34 @@ enum PantryScan {
 
     static func scan(imageData: Data, existingPantry: [PantryItem]) async throws -> [ScannedItem] {
         let system = """
-        You identify food items in a photo of someone's fridge, pantry, or counter.
+        You identify food, drinks, and cooking ingredients in a photo of someone's kitchen,
+        fridge, pantry, or counter — including packaged goods.
+
+        CRITICAL: Read any visible text on bags, boxes, jars, cans, and labels to identify
+        items. Many pantry staples are in packaging that doesn't look like raw food — protein
+        powder, pasta, rice, flour, cereal, sauces, canned goods, spices, snacks, drinks. Use
+        the label text to name them. Do NOT skip an item just because it's in a bag or box.
+
         Return JSON: {"items": [{"name": str, "quantity": "full"|"half"|"low", "category": str}]}
 
         Rules:
-        - name: the generic grocery name, singular where natural ("milk", "eggs", "chicken thighs"). No brands.
-        - Only food and drink. Skip containers you can't identify, condiment packets, and anything you're not reasonably sure about.
-        - quantity: how much appears to be left, your best guess. Default "full".
-        - category: one of produce, meat, dairy, pantry, frozen, spices, other.
-        - Max 25 items. If there is no food in the photo, return {"items": []}.
+        - name: a useful generic grocery name. Keep the type/flavor when the label shows it and
+          it matters for cooking ("whey protein powder", "marinara sauce", "basmati rice",
+          "matcha latte protein powder"). Drop pure marketing words and brand names.
+        - Include any edible or drinkable item or cooking ingredient, fresh OR packaged. Skip
+          only clearly non-food things (cleaning supplies, utensils, dishware) and items whose
+          label you truly cannot read or recognize.
+        - quantity: how full the package/item looks, best guess. Default "full".
+        - category: one of produce, meat, dairy, pantry, frozen, spices, other. Packaged dry
+          goods, protein powder, canned goods, sauces, and snacks are "pantry".
+        - Max 25 items. Only return {"items": []} if there is genuinely nothing edible or
+          ingredient-like in the photo.
         """
 
         let response = try await LLMClient.chatJSON(
             Response.self,
             system: system,
-            user: "What food items are in this photo?",
+            user: "Identify every food, drink, and grocery item here. Read the labels and packaging text to name packaged items.",
             imageData: imageData,
             timeout: 45
         )

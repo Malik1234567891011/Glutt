@@ -43,7 +43,11 @@ struct ImportReviewView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                confidenceHeader
+                if draft.isAIGenerated {
+                    inventedBanner
+                } else {
+                    confidenceHeader
+                }
                 if !draft.issues.isEmpty {
                     issuesCard
                 }
@@ -92,6 +96,26 @@ struct ImportReviewView: View {
             }
         }
         .cardStyle()
+    }
+
+    private var inventedBanner: some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+            Image(systemName: "sparkles")
+                .font(.title3)
+                .foregroundStyle(Theme.Colors.accent)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Glutt invented this from what you have")
+                    .font(.gluttHeadline)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                Text("It's a fresh idea, not one of your saved recipes. Read it over, adjust amounts, and make it yours.")
+                    .font(.gluttCaption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+        }
+        .padding(Theme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Colors.accent.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
     }
 
     private var confidenceHeader: some View {
@@ -188,6 +212,20 @@ struct ImportReviewView: View {
     private var stepsCard: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             SectionHeader(title: "Steps")
+            if draft.stepsAreAISuggested {
+                HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+                    Image(systemName: "sparkles")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Colors.accent)
+                    Text("The source had no method, so Glutt drafted these from the dish and ingredients. Give them a read and tweak anything off.")
+                        .font(.gluttCaption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+                .padding(Theme.Spacing.sm)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.Colors.accent.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
+            }
             ForEach(Array($stepLines.enumerated()), id: \.element.id) { index, $line in
                 HStack(alignment: .top, spacing: Theme.Spacing.sm) {
                     Text("\(index + 1).")

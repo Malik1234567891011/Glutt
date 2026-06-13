@@ -19,6 +19,7 @@ struct ImportRecipeView: View {
     @State private var phase: Phase = .input
     @State private var urlText = ""
     @State private var photoItem: PhotosPickerItem?
+    @State private var isShowingShareSetup = false
 
     var body: some View {
         NavigationStack {
@@ -62,6 +63,8 @@ struct ImportRecipeView: View {
     private var inputView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                shareCard
+
                 VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                     Text("Paste a link")
                         .font(.gluttHeadline)
@@ -122,6 +125,34 @@ struct ImportRecipeView: View {
             }
             .padding(Theme.Spacing.md)
         }
+        .sheet(isPresented: $isShowingShareSetup) {
+            ShareSheetSetupView()
+        }
+    }
+
+    /// The best import path is also the least obvious, so it leads.
+    private var shareCard: some View {
+        Button {
+            isShowingShareSetup = true
+        } label: {
+            HStack(spacing: Theme.Spacing.md) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.title3)
+                    .foregroundStyle(Theme.Colors.accent)
+                    .frame(width: 32)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Save straight from TikTok & Instagram")
+                        .font(.gluttHeadline)
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                    Text("Tap Share in any app → Glutt. See how →")
+                        .font(.gluttCaption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+                Spacer()
+            }
+            .cardStyle()
+        }
+        .buttonStyle(.plain)
     }
 
     private func loadingView(_ message: String) -> some View {
@@ -165,6 +196,10 @@ struct ImportRecipeView: View {
                     phase = .loading("No recipe in the caption — drafting the dish…")
                     draft = await DraftCleanup.reconstruct(draft)
                 }
+                if draft.stepTexts.isEmpty, !draft.ingredientLines.isEmpty {
+                    phase = .loading("No method listed — drafting the steps…")
+                    draft = await DraftCleanup.inferSteps(draft)
+                }
                 phase = .review(draft)
             } catch {
                 phase = .failed(error.localizedDescription)
@@ -183,6 +218,10 @@ struct ImportRecipeView: View {
                 if DraftCleanup.wouldImprove(draft) {
                     phase = .loading("Cleaning it up with AI…")
                     draft = await DraftCleanup.cleanUp(draft)
+                }
+                if draft.stepTexts.isEmpty, !draft.ingredientLines.isEmpty {
+                    phase = .loading("No method listed — drafting the steps…")
+                    draft = await DraftCleanup.inferSteps(draft)
                 }
                 phase = .review(draft)
             } catch {

@@ -15,14 +15,19 @@ struct SettingsView: View {
     @State private var proteinGoalText = ""
     @State private var allergyText = ""
     @State private var dislikeText = ""
+    @State private var isShowingImportGuide = false
 
     var body: some View {
         NavigationStack {
             Form {
+                helpSection
                 nutritionSection
                 tasteProfileSection
                 dietarySection
                 aiSection
+            }
+            .sheet(isPresented: $isShowingImportGuide) {
+                ImportGuideView()
             }
             .scrollContentBackground(.hidden)
             .background(Theme.Colors.background)
@@ -46,6 +51,23 @@ struct SettingsView: View {
 
     private var prefs: UserPrefs {
         UserPrefs.current(in: context)
+    }
+
+    private var helpSection: some View {
+        Section {
+            Button {
+                isShowingImportGuide = true
+            } label: {
+                HStack {
+                    Label("How to import recipes", systemImage: "square.and.arrow.up")
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+            }
+        }
     }
 
     private var nutritionSection: some View {

@@ -629,6 +629,49 @@ final class MealRecommenderTests: XCTestCase {
         XCTAssertEqual(picks.first?.recipe.title, "Rice Bowl")
         XCTAssertEqual(picks.first?.missingCount, 0)
     }
+
+    func testMealSlotInferredFromHour() {
+        func slot(_ hour: Int) -> MealRecommender.MealSlot {
+            let date = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: .now)!
+            return MealRecommender.MealSlot.current(at: date)
+        }
+        XCTAssertEqual(slot(8), .breakfast)
+        XCTAssertEqual(slot(13), .lunch)
+        XCTAssertEqual(slot(19), .dinner)
+        XCTAssertEqual(slot(23), .snack)
+    }
+
+    func testBreakfastSlotFavorsBreakfastDishes() {
+        let pancakes = makeRecipe("Fluffy Pancakes", minutes: 20, tags: ["breakfast"], ingredients: ["flour", "egg"])
+        let curry = makeRecipe("Beef Curry", minutes: 20, tags: ["dinner"], ingredients: ["beef"])
+        let request = MealRecommender.Request(
+            mealSlot: .breakfast, recipes: [curry, pancakes], pantry: [], leftovers: [], sessions: []
+        )
+        let picks = MealRecommender.recommend(request)
+
+        XCTAssertEqual(picks.first?.recipe.title, "Fluffy Pancakes")
+    }
+
+    func testAlreadyEatenTodayIsDownweighted() {
+        // Both are equally strong (5★ + fully stocked); the only difference is
+        // that one was already eaten today, which should push it below the other.
+        let repeated = makeRecipe("Greek Salad", minutes: 15, ingredients: ["cucumber", "feta"])
+        repeated.rating = 5
+        let fresh = makeRecipe("Tomato Soup", minutes: 15, ingredients: ["tomato"])
+        fresh.rating = 5
+        let pantry = [PantryItem(name: "cucumber"), PantryItem(name: "feta"), PantryItem(name: "tomato")]
+        let request = MealRecommender.Request(
+            recipes: [repeated, fresh],
+            pantry: pantry,
+            leftovers: [],
+            sessions: [],
+            eatenTodayTitles: ["greek salad"]
+        )
+        let picks = MealRecommender.recommend(request)
+
+        XCTAssertEqual(picks.first?.recipe.title, "Tomato Soup")
+        XCTAssertTrue(picks.contains { $0.recipe.title == "Greek Salad" })
+    }
 }
 
 final class RecipeOptimizerTests: XCTestCase {

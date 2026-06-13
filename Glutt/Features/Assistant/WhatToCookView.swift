@@ -10,14 +10,19 @@ struct WhatToCookView: View {
     @Query private var pantryItems: [PantryItem]
     @Query private var leftovers: [Leftover]
     @Query private var sessions: [CookSession]
+    @Query(sort: \FoodLog.timestamp, order: .reverse) private var logs: [FoodLog]
 
     @State private var maxMinutes: Int?
     @State private var mood: MealRecommender.Mood = .any
+    @State private var mealSlot: MealRecommender.MealSlot = .current()
     @State private var recommendations: [MealRecommender.Recommendation]?
     @State private var planningRecipe: Recipe?
     @State private var askText = ""
     @State private var isAsking = false
     @State private var headline: String?
+    @State private var isInventing = false
+    @State private var inventedDraft: ImportedRecipeDraft?
+    @State private var inventError: String?
 
     private static let timeOptions: [(label: String, minutes: Int?)] = [
         ("Any", nil), ("15 min", 15), ("30 min", 30), ("45 min", 45), ("1 hr+", 90),
@@ -28,6 +33,9 @@ struct WhatToCookView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     askCard
+                    if canInvent {
+                        inventCard
+                    }
                     questionCard
 
                     if isAsking {
@@ -81,6 +89,26 @@ struct WhatToCookView: View {
             .sheet(item: $planningRecipe) { recipe in
                 AddMealSheet(day: Calendar.current.startOfDay(for: .now), fixedRecipe: recipe)
             }
+            .sheet(item: $inventedDraft) { draft in
+                NavigationStack {
+                    ImportReviewView(draft: draft) { inventedDraft = nil }
+                        .navigationTitle("Your new recipe")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Cancel") { inventedDraft = nil }
+                            }
+                        }
+                }
+            }
+            .alert("Couldn't invent a dish", isPresented: Binding(
+                get: { inventError != nil },
+                set: { if !$0 { inventError = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(inventError ?? "")
+            }
             // Show options immediately; the questions refine from there.
             .onAppear {
                 if recommendations == nil {
@@ -119,6 +147,81 @@ struct WhatToCookView: View {
         .cardStyle()
     }
 
+    // MARK: - Invent from pantry
+
+    private var onHandItems: [PantryItem] {
+        pantryItems.filter { $0.roughQuantity != .out }
+    }
+
+    private var canInvent: Bool {
+        LLMClient.isConfigured && onHandItems.count >= 2
+    }
+
+    /// Create something new from scratch using what's in the kitchen —
+    /// distinct from matching saved recipes.
+    private var inventCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack(spacing: Theme.Spacing.sm) {
+                Image(systemName: "wand.and.stars")
+                    .font(.title3)
+                    .foregroundStyle(Theme.Colors.accent)
+                Text("Invent a dish from what I have")
+                    .font(.gluttHeadline)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+            }
+            Text("A brand-new recipe built around your \(pantryPreview) — not one of your saved ones.")
+                .font(.gluttCaption)
+                .foregroundStyle(Theme.Colors.textSecondary)
+
+            Button {
+                invent()
+            } label: {
+                HStack(spacing: Theme.Spacing.sm) {
+                    if isInventing { ProgressView().tint(.white) }
+                    Text(isInventing ? "Cooking up an idea…" : "Make something new")
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(.gluttPrimary)
+            .disabled(isInventing)
+        }
+        .cardStyle()
+    }
+
+    private var pantryPreview: String {
+        let names = onHandItems
+            .sorted { ($0.useSoonDate != nil ? 0 : 1) < ($1.useSoonDate != nil ? 0 : 1) }
+            .prefix(3)
+            .map { $0.name.lowercased() }
+        switch names.count {
+        case 0: return "ingredients"
+        case 1: return names[0]
+        case 2: return "\(names[0]) and \(names[1])"
+        default: return "\(names[0]), \(names[1]), and more"
+        }
+    }
+
+    private func invent() {
+        guard !isInventing else { return }
+        isInventing = true
+        let prefs = UserPrefs.current(in: context)
+        let hint = askText.trimmingCharacters(in: .whitespacesAndNewlines)
+        Task {
+            let draft = await PantryChef.invent(
+                pantry: pantryItems,
+                prefs: prefs,
+                hint: hint.isEmpty ? nil : hint,
+                maxMinutes: maxMinutes
+            )
+            isInventing = false
+            if let draft {
+                inventedDraft = draft
+            } else {
+                inventError = "Glutt couldn't spin up a dish from your pantry right now. Add a few more items, or try again."
+            }
+        }
+    }
+
     private func ask() {
         let query = askText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty, !isAsking else { return }
@@ -145,6 +248,22 @@ struct WhatToCookView: View {
 
     private var questionCard: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                Text("Cooking for…")
+                    .font(.gluttHeadline)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Spacing.sm) {
+                        ForEach(MealRecommender.MealSlot.allCases) { slot in
+                            selectableChip(slot.rawValue, isSelected: mealSlot == slot) {
+                                mealSlot = slot
+                                generate()
+                            }
+                        }
+                    }
+                }
+            }
+
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 Text("How much time do you have?")
                     .font(.gluttHeadline)
@@ -258,19 +377,28 @@ struct WhatToCookView: View {
         .cardStyle()
     }
 
+    private var eatenTodayTitles: [String] {
+        let today = Calendar.current.startOfDay(for: .now)
+        return logs
+            .filter { Calendar.current.startOfDay(for: $0.timestamp) == today }
+            .map { $0.title.lowercased() }
+    }
+
     private func generate() {
         headline = nil
         let prefs = UserPrefs.current(in: context)
         recommendations = MealRecommender.recommend(MealRecommender.Request(
             maxMinutes: maxMinutes,
             mood: mood,
+            mealSlot: mealSlot,
             recipes: recipes,
             pantry: pantryItems,
             leftovers: leftovers,
             sessions: sessions,
             tasteProfile: prefs.tasteProfile,
             rules: prefs.dietaryRules,
-            allergies: prefs.allergies
+            allergies: prefs.allergies,
+            eatenTodayTitles: eatenTodayTitles
         ))
     }
 }

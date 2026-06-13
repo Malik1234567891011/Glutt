@@ -2,7 +2,8 @@ import Foundation
 
 /// Intermediate result of any import pipeline (link, screenshot, share extension).
 /// The Import Review screen edits this before it becomes a saved `Recipe`.
-struct ImportedRecipeDraft {
+struct ImportedRecipeDraft: Identifiable {
+    let id = UUID()
     var title: String?
     var summary: String?
     var imageURL: String?
@@ -21,6 +22,14 @@ struct ImportedRecipeDraft {
 
     /// Human-readable problems found during extraction, shown on the review screen.
     var issues: [String] = []
+
+    /// True when the steps were drafted by AI because the source had none.
+    /// Surfaced honestly in the review screen, right above the steps.
+    var stepsAreAISuggested = false
+
+    /// True when the whole recipe was invented by Glutt from the user's pantry
+    /// (not imported from a source). Shown as a friendly banner in review.
+    var isAIGenerated = false
 
     /// 0–1 score based on how complete and parseable the extraction was.
     var confidence: Double {

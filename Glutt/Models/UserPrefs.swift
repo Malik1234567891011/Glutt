@@ -21,6 +21,12 @@ final class UserPrefs {
     /// Learned taste profile descriptors ("creamy", "spicy", "one-pan"). Grows over time, user-editable.
     var tasteProfile: [String]
 
+    /// True once the user has opened the "save from the share sheet" walkthrough.
+    /// Powers the getting-started checklist; inline default keeps migration lightweight.
+    var hasSeenShareGuide: Bool = false
+    /// User manually dismissed the getting-started checklist — never show it again.
+    var didDismissGettingStarted: Bool = false
+
     init() {
         self.hasCompletedOnboarding = false
         self.goals = []

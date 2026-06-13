@@ -419,6 +419,111 @@ iOS-first native app (Swift / SwiftUI / Xcode). This document breaks down the en
 
 ---
 
+## Discoverability & Simplicity — ReciMe comparison (Jun 13)
+
+Trigger: user fears we're drifting toward an "astronaut dashboard," but doesn't want
+to lose discoverability. Compared against ReciMe (v5.3.0) screenshots.
+
+### SHIPPED: "How to import" guide
+- New `ImportGuideView` (three ways to save) + `ShareSheetSetupView` (ReciMe-style
+  paged walkthrough with native schematic illustrations — no screenshots to go stale).
+- Our edge over ReciMe: our share extension auto-appears in the iOS share sheet, so the
+  guide is "tap Share → Glutt" + an *optional* "pin to Favorites", not a required setup.
+- Entry points: top of the Import screen (the share card now leads, it's the best path),
+  onboarding step 4 "Share from another app" (used to silently `finish()` — now teaches),
+  and Settings → "How to import recipes".
+
+### SHIPPED: Value-forward onboarding intro (Jun 13)
+- Problem: key features (invent-from-pantry, photo scan/log, leftover remix, recipe adjust,
+  share-sheet import) were undiscoverable unless explained in person.
+- Fix: new first onboarding screen "Hey — here's what I do" — 5 glanceable capability rows
+  (icon + one concrete example each), framed as nice-to-know, fully skippable, no interaction
+  ("you'll bump into all of it naturally"). Onboarding is now 5 light steps: highlights →
+  goals → rules → nutrition → first recipe.
+- Design stance: heavy feature *tours* get skipped; the durable pattern is light value intro
+  up front + in-context discovery (getting-started checklist, import guide, the "Make it…" /
+  "Invent" cards). This screen covers the "oh, it can do THAT?" moment without homework.
+- Possible follow-up (not built): lightweight contextual tips that fire the first time a
+  user lands on a screen with an under-used feature.
+
+### SHIPPED: Pantry scan reads packaging text + recommender knows the time (Jun 13)
+- **Scan reads labels.** `PantryScan` prompt rewritten to OCR text on bags/boxes/jars/cans
+  so packaged staples (protein powder, pasta, rice, sauces, snacks, drinks) get identified
+  instead of "no food detected". Keeps useful type/flavor, drops brands; packaged dry goods
+  → pantry category.
+- **Time-of-day + already-eaten awareness.** `MealRecommender.MealSlot` infers breakfast/
+  lunch/dinner/snack from the clock and biases (never hard-filters) toward fitting dishes;
+  dishes already eaten today are down-weighted so the same thing isn't re-suggested. Surfaced
+  in "What should I cook?" as a "Cooking for…" chip row that defaults to the current slot and
+  is adjustable. Tests added for slot inference, breakfast bias, and eaten-today down-weight.
+- Discoverability confirmed: reachable from Today's "Ask" quick action, the empty-day card,
+  and the + capture sheet.
+
+### SHIPPED: Invent-a-dish-from-my-pantry (Jun 13)
+- New `PantryChef.invent` *creates an original recipe from scratch* around on-hand
+  ingredients — distinct from "optimize for what I have" / `MealRecommender`, which only
+  match/rank existing saved recipes. (This is what the user actually meant: "tortillas +
+  eggs + mushrooms → spin up a dish," not "one of your recipes uses these.")
+- Prompt builds from non-empty pantry items (prioritizing "needs using soon"), assumes
+  basic staples, respects rules/allergies/dislikes, honors the time chip, and can take the
+  free-text "Just tell me" box as a hint.
+- Output flows through the normal review → edit → save screen as an `ImportedRecipeDraft`
+  (`isAIGenerated`), with a friendly accent banner: "Glutt invented this from what you
+  have… make it yours." Saved as a real recipe (creator = "Glutt", platform = manual).
+- Entry point: a "Invent a dish from what I have" card in **What should I cook?**, gated on
+  AI being on + ≥2 pantry items. AI-off / failure shows a gentle alert; nothing breaks.
+
+### SHIPPED: AI step inference for stepless imports (Jun 13)
+- When an import has ingredients + a dish name but **no method** (common for TikTok/IG
+  captions and ingredient-list screenshots), `DraftCleanup.inferSteps` drafts plausible
+  steps from the title + ingredient list instead of showing a dead-end "No steps detected".
+- Honestly labeled: the Steps section in the review screen shows a sparkle banner —
+  "The source had no method, so Glutt drafted these from the dish and ingredients. Give
+  them a read and tweak anything off." (`ImportedRecipeDraft.stepsAreAISuggested`).
+- Constrained to use only the listed ingredients; never invents new ones. AI-off and
+  failures fall back to the original draft untouched.
+
+### Notes: where ReciMe is simpler than us
+ReciMe's whole product is **save → plan → shop** (4 tabs: Cookbooks, Meal Plan, Groceries,
+More). No dashboard, no nutrition, no pantry, no cook mode. Every screen does one job with
+lots of whitespace, one accent, one primary button. We're a genuinely bigger product
+(save → cook → plan → pantry → nutrition → AI), so some density is earned — but it hides in
+four places:
+
+1. **5 tabs vs their 4.** `Progress` is always present even though it's empty/irrelevant
+   for `cookingOnly` users (our default). → *Proposed: hide the Progress tab unless
+   nutrition mode ≠ cooking-only; keep a compact nutrition strip on Today.* This alone
+   makes the app read as 4 tabs for most beta users. Low risk, biggest "feels simpler" win.
+2. **Today is doing 6 things** (next-up hero, 4 quick actions, nutrition, smart cards,
+   also-today, log). → *Proposed: lead with ONE hero + at most 2 supporting cards; demote
+   the rest.* ReciMe has no equivalent screen at all.
+3. **Kitchen tab is itself a mini-dashboard** (inventory + groceries + leftovers + store
+   mode). Fine, but it's where complexity accumulates. Lower priority — note only.
+4. **We're chip/badge-heavy** (filter chips, pantry "x/y" badges, "why it matched" reasons,
+   confidence badges). All useful, but collectively they read "busy." Per-screen audit for
+   "one clear primary action" recommended.
+
+### SHIPPED: Getting-started checklist (Jun 13)
+ReciMe's "Let's get cooking — 1 of 3 complete" pattern, on Today:
+- Three steps: *Add your first recipe* (done when any recipe exists) / *Save from TikTok &
+  Instagram* (done once the share walkthrough is opened — new `UserPrefs.hasSeenShareGuide`) /
+  *Plan a meal* (done when any planned meal exists). Each row is tappable straight to the action.
+- Collapsible, and **auto-removes for good** once all three are done. Also manually
+  dismissible (`UserPrefs.didDismissGettingStarted`) — safe, because every step is just a
+  shortcut to a feature that's still reachable elsewhere (the + button, Import screen,
+  Settings, tabs). So it adds discoverability without permanently adding weight.
+- For brand-new users the checklist takes the place of the empty "what should I cook?" card,
+  so the first run reads as a guided to-do list rather than empty prompts.
+
+### Decision: keeping all 5 tabs (constraint: no loss of features/discoverability)
+The conditional-Progress-tab idea (#1) was **dropped** — user was explicit that losing
+discoverability isn't acceptable right now. All five tabs stay. Today was *not* trimmed of
+any section either; the simplicity win came purely from the self-dismissing checklist guiding
+new users, not from removing anything. Reorganizing Today's hierarchy further remains an
+option for later, but only in ways that move/group — never remove.
+
+---
+
 ## Post-MVP Backlog (explicitly NOT in v1)
 
 Ordered roughly by value:

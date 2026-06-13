@@ -108,6 +108,57 @@ enum DraftCleanup {
         }
     }
 
+    // MARK: - Step inference
+
+    /// We have the dish and its ingredients, but the source listed no method
+    /// (common with TikTok/IG captions and screenshots of ingredient lists).
+    /// Rather than show a dead-end "No steps detected", draft plausible steps
+    /// from the title + ingredients — and flag them honestly as AI-suggested.
+    static func inferSteps(_ draft: ImportedRecipeDraft) async -> ImportedRecipeDraft {
+        guard LLMClient.isConfigured,
+              draft.stepTexts.isEmpty,
+              !draft.ingredientLines.isEmpty
+        else { return draft }
+
+        let dish = draft.title ?? "this dish"
+        let system = """
+        You write cooking method steps for a dish when only its name and ingredient
+        list are known (the original source had no instructions).
+        Return JSON only: {"steps": [str]}
+
+        Rules:
+        - Write a sensible STANDARD home method for the dish using ONLY the given ingredients.
+        - Clear imperative sentences, one action per step, in a logical order (prep → cook → finish/plate).
+        - Realistic, not fancy. Include obvious times/temps where standard (e.g. "simmer 10 minutes").
+        - Do NOT introduce ingredients that aren't in the list.
+        - 3 to 8 steps. If you genuinely cannot infer a method, return {"steps": []}.
+        """
+        let user = """
+        DISH: \(dish)
+        INGREDIENTS:
+        \(draft.ingredientLines.joined(separator: "\n"))
+        """
+
+        do {
+            let drafted = try await LLMClient.chatJSON(
+                CleanedDraft.self,
+                system: system,
+                user: String(user.prefix(4000)),
+                temperature: 0.3
+            )
+            guard let steps = drafted.steps, !steps.isEmpty else { return draft }
+
+            var result = draft
+            result.stepTexts = steps
+            result.stepsAreAISuggested = true
+            // The "no steps" warning is now resolved; replace it with an honest label.
+            result.issues.removeAll { $0.localizedCaseInsensitiveContains("steps") }
+            return result
+        } catch {
+            return draft
+        }
+    }
+
     // MARK: - Reconstruction
 
     /// Last resort for video imports: the caption was "recipe in comments 👇"

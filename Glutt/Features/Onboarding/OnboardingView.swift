@@ -14,6 +14,7 @@ struct OnboardingView: View {
     @State private var dislikeText = ""
     @State private var nutritionMode: NutritionMode = .cookingOnly
     @State private var didAddStarters = false
+    @State private var isShowingShareSetup = false
 
     let onFinish: () -> Void
 
@@ -31,10 +32,11 @@ struct OnboardingView: View {
             topBar
 
             TabView(selection: $step) {
-                goalsStep.tag(0)
-                rulesStep.tag(1)
-                nutritionStep.tag(2)
-                firstRecipeStep.tag(3)
+                highlightsStep.tag(0)
+                goalsStep.tag(1)
+                rulesStep.tag(2)
+                nutritionStep.tag(3)
+                firstRecipeStep.tag(4)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut, value: step)
@@ -42,6 +44,9 @@ struct OnboardingView: View {
             bottomBar
         }
         .background(Theme.Colors.background)
+        .sheet(isPresented: $isShowingShareSetup) {
+            ShareSheetSetupView()
+        }
     }
 
     // MARK: - Chrome
@@ -49,7 +54,7 @@ struct OnboardingView: View {
     private var topBar: some View {
         HStack {
             HStack(spacing: 6) {
-                ForEach(0..<4) { index in
+                ForEach(0..<5) { index in
                     Capsule()
                         .fill(index <= step ? Theme.Colors.accent : Theme.Colors.border)
                         .frame(width: index == step ? 24 : 8, height: 8)
@@ -73,18 +78,26 @@ struct OnboardingView: View {
             }
             Spacer()
             Button {
-                if step < 3 {
+                if step < 4 {
                     step += 1
                 } else {
                     finish()
                 }
             } label: {
-                Text(step < 3 ? "Continue" : "Let's cook")
+                Text(continueLabel)
                     .frame(minWidth: 120)
             }
             .buttonStyle(.gluttPrimary)
         }
         .padding(Theme.Spacing.md)
+    }
+
+    private var continueLabel: String {
+        switch step {
+        case 0: "Sounds good"
+        case 4: "Let's cook"
+        default: "Continue"
+        }
     }
 
     private func finish() {
@@ -102,6 +115,70 @@ struct OnboardingView: View {
         text.split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
+    }
+
+    // MARK: - Step 0: what Glutt does (a glance, not a tutorial)
+
+    private var highlightsStep: some View {
+        stepLayout(
+            title: "Hey — here's what I do",
+            subtitle: "A quick look at the good stuff. Skip whenever — you'll bump into all of it naturally."
+        ) {
+            VStack(spacing: Theme.Spacing.sm) {
+                featureRow(
+                    "square.and.arrow.up",
+                    "Save from anywhere",
+                    "Share a TikTok or paste a link and I'll pull out the recipe."
+                )
+                featureRow(
+                    "wand.and.stars",
+                    "Cook what you already have",
+                    "Tell me your ingredients and I'll invent a dish from scratch."
+                )
+                featureRow(
+                    "camera.viewfinder",
+                    "Just snap a photo",
+                    "Scan your fridge to fill your pantry, or a plate to log what you ate."
+                )
+                featureRow(
+                    "slider.horizontal.3",
+                    "Make any recipe yours",
+                    "Higher-protein, lighter, cheaper, or halal — in one tap."
+                )
+                featureRow(
+                    "takeoutbag.and.cup.and.straw",
+                    "Waste nothing",
+                    "I'll remix last night's leftovers into something new."
+                )
+            }
+        }
+    }
+
+    private func featureRow(_ icon: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.md) {
+            ZStack {
+                Circle()
+                    .fill(Theme.Colors.accent.opacity(0.12))
+                    .frame(width: 40, height: 40)
+                Image(systemName: icon)
+                    .font(.headline)
+                    .foregroundStyle(Theme.Colors.accent)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.gluttHeadline)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                Text(detail)
+                    .font(.gluttCaption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.sm)
+        .background(Theme.Colors.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
     }
 
     // MARK: - Step 1: goals
@@ -243,7 +320,7 @@ struct OnboardingView: View {
                     title: "Share from another app",
                     detail: "Use the share button in TikTok → Glutt"
                 ) {
-                    finish()
+                    isShowingShareSetup = true
                 }
                 firstRecipeOption(
                     icon: didAddStarters ? "checkmark.circle.fill" : "sparkles",

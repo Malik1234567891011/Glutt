@@ -395,6 +395,13 @@ iOS-first native app (Swift / SwiftUI / Xcode). This document breaks down the en
 - [ ] UI tests: import → save → plan → grocery → cook → log loop
 
 ### 10.2 Beta
+- [x] App Store review hardening: `PrivacyInfo.xcprivacy` for app + share extension
+      (UserDefaults required-reason: CA92.1 standard, 1C8F.1 app-group),
+      `ITSAppUsesNonExemptEncryption=false`, `NSCameraUsageDescription`, app icon
+      (1024², no alpha), version 1.0(1), Release build verified clean
+- [ ] App Store Connect: App Privacy questionnaire — disclose "User Content"
+      (recipe text + meal photos) sent to AI provider for App Functionality,
+      not linked to identity, not used for tracking
 - [ ] TestFlight internal build
 - [ ] Feedback channel in-app (shake to report or simple form)
 - [ ] External beta (10–50 real cooks)

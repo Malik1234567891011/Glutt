@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0357D9E19E7AB3EE1378A87B /* PantryScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91F167E4E8C32628B9047B00 /* PantryScan.swift */; };
+		04C0DB3AA64572165BE8E75A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F7FD87E0616AE17D79248663 /* PrivacyInfo.xcprivacy */; };
 		05BB66E74C0B7C6DA7810156 /* RecipeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4363923FEEBD03D4E229DC /* RecipeDetailView.swift */; };
 		08FE391A0E5C23B8C0F3F888 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D56EF729F22F6F3DED29543 /* Theme.swift */; };
 		0962ABDAA0B5C83097E4E2A1 /* IngredientLineParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB6518A327FD79D55E715D5 /* IngredientLineParser.swift */; };
@@ -41,6 +42,7 @@
 		51DCE52A4E8E7DEE3C077A98 /* ImportedRecipeDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA97A87700CD96961371CCC /* ImportedRecipeDraft.swift */; };
 		5FFAC0C77C80660EA97C9D2B /* MealRecommender.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8856B0F901006AF8EEC3BE3 /* MealRecommender.swift */; };
 		60F40CA16978E4326ADCE853 /* WeekPlannerWizard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38DA703EAADAF63891512242 /* WeekPlannerWizard.swift */; };
+		622AE48D9C10C09E3E26DACC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4BDDF12AA6FF33207013C566 /* PrivacyInfo.xcprivacy */; };
 		64097597701E495E3BC9BB4B /* DraftCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F7860B4A0705740CD7C55F /* DraftCleanup.swift */; };
 		658FF063B7D0C83A48CE0A3B /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61F5AFC37B586B18C2468CF /* Typography.swift */; };
 		66156BB845C8F181386BEB63 /* WeekPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD98A66D770537AED45AC622 /* WeekPlanner.swift */; };
@@ -160,6 +162,7 @@
 		476DE0FF02A984E39531A7EF /* GroceryListBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroceryListBuilder.swift; sourceTree = "<group>"; };
 		4A255073F3542D7946FDF4A5 /* LeftoversView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftoversView.swift; sourceTree = "<group>"; };
 		4AA37957DBDDC577B2780A3E /* UserPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPrefs.swift; sourceTree = "<group>"; };
+		4BDDF12AA6FF33207013C566 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		53221E3902EF93229BCAA624 /* LeftoverRemix.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftoverRemix.swift; sourceTree = "<group>"; };
 		598FB7658D86B414965B6432 /* RecipeImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImportService.swift; sourceTree = "<group>"; };
 		5EFB5FAA0EF9CA829EE21DFA /* GluttTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GluttTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -215,6 +218,7 @@
 		F5BE7E113C0145B67F0556D3 /* Recipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recipe.swift; sourceTree = "<group>"; };
 		F61F5AFC37B586B18C2468CF /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		F79B61859BDDE45588788FE2 /* GluttApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttApp.swift; sourceTree = "<group>"; };
+		F7FD87E0616AE17D79248663 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		FD66D2C60B184F432C6759F7 /* LeftoverRemixSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftoverRemixSheet.swift; sourceTree = "<group>"; };
 		FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = GluttShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -479,6 +483,7 @@
 			children = (
 				2A8D21FE9E43E058A9534A87 /* Glutt.entitlements */,
 				95B528E2683D5365F8DF91FA /* Info.plist */,
+				4BDDF12AA6FF33207013C566 /* PrivacyInfo.xcprivacy */,
 				0C712ADCA91ED11234084BB9 /* App */,
 				F9F19240DC57ADC4598CD650 /* DesignSystem */,
 				0B88492E5AD96393AB6353B2 /* Features */,
@@ -494,6 +499,7 @@
 			children = (
 				86AF68B5E21FB9F75B865388 /* GluttShare.entitlements */,
 				BE64D349C0DD327246EE5500 /* Info.plist */,
+				F7FD87E0616AE17D79248663 /* PrivacyInfo.xcprivacy */,
 				AA5D72BFDA83AFBD303E2775 /* ShareViewController.swift */,
 			);
 			path = GluttShare;
@@ -563,6 +569,7 @@
 			buildConfigurationList = E1640700A7FE5E20A9D7BE03 /* Build configuration list for PBXNativeTarget "GluttShare" */;
 			buildPhases = (
 				A2721534726979EA31F02926 /* Sources */,
+				28E1853E41471E7EA68F5320 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -620,11 +627,20 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		28E1853E41471E7EA68F5320 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				04C0DB3AA64572165BE8E75A /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		85CAD221C33EC7BBC6918D0B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				9F207D5AA64EE4DB6437BE3B /* Assets.xcassets in Resources */,
+				622AE48D9C10C09E3E26DACC /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -762,7 +778,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt.share;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -800,7 +816,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -835,7 +851,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt.share;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -979,7 +995,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;

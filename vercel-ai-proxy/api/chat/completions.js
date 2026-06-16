@@ -8,6 +8,9 @@ function resolveOpenAIKey() {
 }
 
 export default async function handler(req, res) {
+  const proxyVersion = "2026-06-16-redeploy-1";
+  res.setHeader("x-glutt-proxy-version", proxyVersion);
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed" });

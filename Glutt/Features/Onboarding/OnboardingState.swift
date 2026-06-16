@@ -55,7 +55,7 @@ final class OnboardingState {
 
     static func splitList(_ text: String) -> [String] {
         text.split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
     }
 }

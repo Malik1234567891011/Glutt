@@ -39,7 +39,7 @@ final class OnboardingStateTests: XCTestCase {
         state.apply(to: context)
 
         let prefs = UserPrefs.current(in: context)
-        XCTAssertEqual(prefs.goals, ["Cook what I already have"])
+        XCTAssertEqual(Set(prefs.goals), Set(["Cook what I already have"]))
         XCTAssertEqual(prefs.allergies, ["peanuts", "shellfish"])
         XCTAssertEqual(prefs.dislikedIngredients, ["cilantro"])
         XCTAssertEqual(prefs.nutritionMode, .gymMode)

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		002692B3AEC64E1C3DD84F06 /* RulesScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A5874C2E7B16225422F113 /* RulesScreen.swift */; };
 		0357D9E19E7AB3EE1378A87B /* PantryScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91F167E4E8C32628B9047B00 /* PantryScan.swift */; };
 		04C0DB3AA64572165BE8E75A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F7FD87E0616AE17D79248663 /* PrivacyInfo.xcprivacy */; };
 		05BB66E74C0B7C6DA7810156 /* RecipeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4363923FEEBD03D4E229DC /* RecipeDetailView.swift */; };
@@ -194,6 +195,7 @@
 		86AF68B5E21FB9F75B865388 /* GluttShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GluttShare.entitlements; sourceTree = "<group>"; };
 		87D008D8C56984B887EAC430 /* PendingImportStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingImportStore.swift; sourceTree = "<group>"; };
 		88C66B6470369431B509A068 /* InventoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryView.swift; sourceTree = "<group>"; };
+		89A5874C2E7B16225422F113 /* RulesScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesScreen.swift; sourceTree = "<group>"; };
 		8CB6518A327FD79D55E715D5 /* IngredientLineParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientLineParser.swift; sourceTree = "<group>"; };
 		8D7C6652E2AA87A3E2E92ED3 /* CookFinishView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookFinishView.swift; sourceTree = "<group>"; };
 		91F167E4E8C32628B9047B00 /* PantryScan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PantryScan.swift; sourceTree = "<group>"; };
@@ -519,6 +521,7 @@
 			isa = PBXGroup;
 			children = (
 				B818CF52EDB53A89E054A608 /* GoalsScreen.swift */,
+				89A5874C2E7B16225422F113 /* RulesScreen.swift */,
 				2F84662B04EA6B5290FE76FA /* WelcomeScreen.swift */,
 			);
 			path = Screens;
@@ -776,6 +779,7 @@
 				E64633C36A04C6F3ED776864 /* ReminderScheduler.swift in Sources */,
 				4B642F3ABF9E931C1F8D5604 /* RootView.swift in Sources */,
 				F27C480C64FF7FB31D3D86EC /* Router.swift in Sources */,
+				002692B3AEC64E1C3DD84F06 /* RulesScreen.swift in Sources */,
 				DF4B8699153B8E7A40B14DDF /* Secrets.swift in Sources */,
 				B6CED88B5EC73EDD8D259730 /* SeedData.swift in Sources */,
 				0E91673079F01566867E6A54 /* SettingsView.swift in Sources */,

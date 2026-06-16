@@ -18,18 +18,18 @@
 - **Every step is skippable** — the top chrome always exposes "Skip", which finishes onboarding (matches current behavior).
 - XcodeGen globs the `Glutt/` and `GluttTests/` folders, so new files are picked up by re-running `xcodegen generate`. Commit the regenerated `Glutt.xcodeproj/project.pbxproj` alongside new files.
 
-**Canonical commands** (copy-paste; substitute the simulator if needed):
+**Canonical commands** (copy-paste; verified against this machine):
 
 ```bash
-# If a command can't find the simulator, list installed ones and substitute the name:
-#   xcrun simctl list devices available | grep iPhone
-SIM='platform=iOS Simulator,name=iPhone 16'
+# BUILD — regenerate project + compile. Uses the GENERIC simulator destination,
+# which is unambiguous and doesn't boot a sim (plain `name=iPhone 16` is ambiguous
+# here — the same name exists across OS 18.6/26.x). Run after adding/removing files:
+xcodegen generate && xcodebuild build -scheme Glutt -destination 'generic/platform=iOS Simulator' -quiet
 
-# BUILD — regenerate project + compile (run after adding/removing files):
-xcodegen generate && xcodebuild build -scheme Glutt -destination "$SIM" -quiet
-
-# TEST a suite — e.g. TEST GluttTests/OnboardingStateTests:
-xcodebuild test -scheme Glutt -destination "$SIM" -only-testing:GluttTests/OnboardingStateTests -quiet
+# TEST a suite — targets the one installed plain "iPhone 16" sim by UDID (unique).
+# Refresh the id with: xcrun simctl list devices available | grep 'iPhone 16 ('
+TEST_DEST='id=1EEC6A07-E689-4149-ABC7-FF36F702BBF6'
+xcodebuild test -scheme Glutt -destination "$TEST_DEST" -only-testing:GluttTests/OnboardingStateTests -quiet
 ```
 
 > **Verification honesty:** Pure-visual views (backgrounds, screens, mocks) are not meaningfully unit-tested. Their verification step is a successful **BUILD** plus the SwiftUI `#Preview` and the manual checklist in Task 13 — not a fabricated `XCTest`. Real `XCTest`s exist only where there is real logic: `OnboardingState` (Task 3) and `TutorialPhase` (Task 11).

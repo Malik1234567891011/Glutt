@@ -27,7 +27,6 @@
 		1902F2B1529C08A6A3BD001B /* LogFoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82602CD57473794501B5CA97 /* LogFoodView.swift */; };
 		19D5DE8E0D64A73F1756C3FD /* CookModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8234C61CD0352DE70ED0462 /* CookModeView.swift */; };
 		1B82B84680A299EABA5B7B76 /* ImportReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2F97AA4C16C61F7F73AC7 /* ImportReviewView.swift */; };
-		1D7AADB5298899998C304AB6 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00431AF9CF20BE00C177D30 /* OnboardingView.swift */; };
 		2309BBAC09BF2C93876CD0EE /* GluttShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2C69CC2242F748A1C4A03834 /* Kitchen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 412DD0B2F37BE98BAAEB523D /* Kitchen.swift */; };
 		2E22D7543240ED83B3350F7C /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5D72BFDA83AFBD303E2775 /* ShareViewController.swift */; };
@@ -212,7 +211,6 @@
 		95B528E2683D5365F8DF91FA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		98053B3FFC4BD7D0C20C75CB /* TimerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerManager.swift; sourceTree = "<group>"; };
 		9849E4D814CBE9FB1D1E619C /* GluttTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttTests.swift; sourceTree = "<group>"; };
-		A00431AF9CF20BE00C177D30 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeHTMLParser.swift; sourceTree = "<group>"; };
 		A34662C1AB1C5078CE9DA61C /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
 		A581E002B169649AB5C28EB6 /* RecipeSearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeSearchEngine.swift; sourceTree = "<group>"; };
@@ -444,7 +442,6 @@
 			children = (
 				1DD1434AE00BB088C7F840DE /* OnboardingFlow.swift */,
 				4365A28A0C4D406680BB297B /* OnboardingState.swift */,
-				A00431AF9CF20BE00C177D30 /* OnboardingView.swift */,
 				DC318B685DBF3DA3872370BC /* Screens */,
 				756D188E5C35D8536659B7EA /* Support */,
 			);
@@ -774,7 +771,6 @@
 				8FDC70AABCFEFF1B61118F05 /* OnboardingPaywallHook.swift in Sources */,
 				DC7C749A037C376B47BF6471 /* OnboardingScaffold.swift in Sources */,
 				7578E86DAC97748DD73B1531 /* OnboardingState.swift in Sources */,
-				1D7AADB5298899998C304AB6 /* OnboardingView.swift in Sources */,
 				E00E0565BC59F9EFB40F594E /* OptimizeRecipeView.swift in Sources */,
 				50C6D17ADB0F198DF499F211 /* OptionRow.swift in Sources */,
 				C42B6B77FB6D723A71FCC19B /* PantryChef.swift in Sources */,

@@ -50,7 +50,7 @@ struct RootView: View {
             get: { needsOnboarding },
             set: { if !$0 { router.forceOnboarding = false } }
         )) {
-            OnboardingView {
+            OnboardingFlow {
                 router.forceOnboarding = false
             }
             .interactiveDismissDisabled()

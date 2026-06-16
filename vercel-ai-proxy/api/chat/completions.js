@@ -1,14 +1,19 @@
+function resolveOpenAIKey() {
+  return (
+    process.env.OPENAI_API_KEY ||
+    process.env.glutt_proxy_prod ||
+    process.env.GLUTT_PROXY_PROD ||
+    ""
+  ).trim();
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const openAIKey =
-    process.env.OPENAI_API_KEY ||
-    process.env.glutt_proxy_prod ||
-    process.env.GLUTT_PROXY_PROD ||
-    "";
+  const openAIKey = resolveOpenAIKey();
   const openAIBaseURL = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
   const expectedProxyKey = process.env.GLUTT_PROXY_CLIENT_KEY || "";
 

@@ -4,7 +4,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const openAIKey = process.env.OPENAI_API_KEY || "";
+  const openAIKey =
+    process.env.OPENAI_API_KEY ||
+    process.env.glutt_proxy_prod ||
+    process.env.GLUTT_PROXY_PROD ||
+    "";
   const openAIBaseURL = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
   const expectedProxyKey = process.env.GLUTT_PROXY_CLIENT_KEY || "";
 

@@ -59,7 +59,7 @@ struct OnboardingFlow: View {
 
     private var topBar: some View {
         HStack(spacing: Theme.Spacing.md) {
-            if let _ = backTarget {
+            if backTarget != nil {
                 Button { goBack() } label: {
                     Image(systemName: "chevron.left").font(.headline)
                 }
@@ -84,11 +84,13 @@ struct OnboardingFlow: View {
         .frame(height: 6)
     }
 
-    /// Progress across the chrome'd steps (goals…tutorial); welcome is pre-progress.
+    /// Progress across only the chrome'd steps (goals → notifications). Welcome and
+    /// tutorial are full-bleed and show no bar, so the bar fills to 100% on the last
+    /// visible step rather than stalling partway.
     private var progressFraction: CGFloat {
-        let total = CGFloat(Step.allCases.count - 1) // exclude welcome
-        let done = CGFloat(max(0, step.rawValue))    // goals == 1
-        return min(1, done / total)
+        let chromeSteps = Step.allCases.filter(\.usesChrome)
+        guard let index = chromeSteps.firstIndex(of: step) else { return 1 }
+        return CGFloat(index + 1) / CGFloat(chromeSteps.count)
     }
 
     private var standardFooter: some View {

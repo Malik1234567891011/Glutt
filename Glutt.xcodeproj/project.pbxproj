@@ -45,6 +45,7 @@
 		50C6D17ADB0F198DF499F211 /* OptionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F53E9D323C8F67248EAD82D /* OptionRow.swift */; };
 		51DCE52A4E8E7DEE3C077A98 /* ImportedRecipeDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA97A87700CD96961371CCC /* ImportedRecipeDraft.swift */; };
 		5520541095BB606F7B9519F9 /* WelcomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F84662B04EA6B5290FE76FA /* WelcomeScreen.swift */; };
+		58064EE63A6F290EDCD7E768 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD1434AE00BB088C7F840DE /* OnboardingFlow.swift */; };
 		5AA88A1CBF83178870EAEE1B /* TutorialPhaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B067A8625DCC25F94D369DFC /* TutorialPhaseTests.swift */; };
 		5B1FA996B31768F987F6537B /* NutritionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E58CC56FAC0BF5F276D3E1E3 /* NutritionScreen.swift */; };
 		5EE0AAEF34DFDF40C3A70620 /* NotificationPrimerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DD23D484539CDDA15AF9D1 /* NotificationPrimerScreen.swift */; };
@@ -153,6 +154,7 @@
 		16E1DE3B31751026516F5B8A /* PantryChef.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PantryChef.swift; sourceTree = "<group>"; };
 		1B2D2424ABEF907C0982F2D9 /* MealCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealCard.swift; sourceTree = "<group>"; };
 		1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientCanonicalizer.swift; sourceTree = "<group>"; };
+		1DD1434AE00BB088C7F840DE /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
 		1E76DBE2577BBC32D76A29AB /* UnitConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitConverter.swift; sourceTree = "<group>"; };
 		2179632ACE3988876F4F4170 /* RecipeEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeEditorView.swift; sourceTree = "<group>"; };
 		21809502CBC21424D65A50E4 /* Chip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chip.swift; sourceTree = "<group>"; };
@@ -440,6 +442,7 @@
 		979E2590EBF3B795CAAC4659 /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
+				1DD1434AE00BB088C7F840DE /* OnboardingFlow.swift */,
 				4365A28A0C4D406680BB297B /* OnboardingState.swift */,
 				A00431AF9CF20BE00C177D30 /* OnboardingView.swift */,
 				DC318B685DBF3DA3872370BC /* Screens */,
@@ -767,6 +770,7 @@
 				5EE0AAEF34DFDF40C3A70620 /* NotificationPrimerScreen.swift in Sources */,
 				E9E62465FDE3533A7CE521B1 /* NutritionEstimator.swift in Sources */,
 				5B1FA996B31768F987F6537B /* NutritionScreen.swift in Sources */,
+				58064EE63A6F290EDCD7E768 /* OnboardingFlow.swift in Sources */,
 				8FDC70AABCFEFF1B61118F05 /* OnboardingPaywallHook.swift in Sources */,
 				DC7C749A037C376B47BF6471 /* OnboardingScaffold.swift in Sources */,
 				7578E86DAC97748DD73B1531 /* OnboardingState.swift in Sources */,

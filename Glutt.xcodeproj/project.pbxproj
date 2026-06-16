@@ -39,6 +39,7 @@
 		40C39A65B30A85E2207F4D44 /* GluttTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849E4D814CBE9FB1D1E619C /* GluttTests.swift */; };
 		47CA4B0E6B9F7F7BD4ABE64C /* UnitConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E76DBE2577BBC32D76A29AB /* UnitConverter.swift */; };
 		4B642F3ABF9E931C1F8D5604 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CF0F20EF027AE118381BF8D /* RootView.swift */; };
+		50C6D17ADB0F198DF499F211 /* OptionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F53E9D323C8F67248EAD82D /* OptionRow.swift */; };
 		51DCE52A4E8E7DEE3C077A98 /* ImportedRecipeDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA97A87700CD96961371CCC /* ImportedRecipeDraft.swift */; };
 		5FFAC0C77C80660EA97C9D2B /* MealRecommender.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8856B0F901006AF8EEC3BE3 /* MealRecommender.swift */; };
 		60F40CA16978E4326ADCE853 /* WeekPlannerWizard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38DA703EAADAF63891512242 /* WeekPlannerWizard.swift */; };
@@ -169,6 +170,7 @@
 		53221E3902EF93229BCAA624 /* LeftoverRemix.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftoverRemix.swift; sourceTree = "<group>"; };
 		598FB7658D86B414965B6432 /* RecipeImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImportService.swift; sourceTree = "<group>"; };
 		5EFB5FAA0EF9CA829EE21DFA /* GluttTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GluttTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F53E9D323C8F67248EAD82D /* OptionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionRow.swift; sourceTree = "<group>"; };
 		625F2A2C31B9D7D640FBAF29 /* MealPhotoEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPhotoEstimator.swift; sourceTree = "<group>"; };
 		6F29983D8888CD4C7C082CBB /* DietGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietGuard.swift; sourceTree = "<group>"; };
 		790D532EB881A841E117F130 /* PantryScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PantryScanView.swift; sourceTree = "<group>"; };
@@ -442,6 +444,7 @@
 				21CC5F0D4C0BF8DF830CA4E1 /* ConfidenceBadge.swift */,
 				DDA609EF5F72CEDE2E9F697F /* EmptyStateView.swift */,
 				1B2D2424ABEF907C0982F2D9 /* MealCard.swift */,
+				5F53E9D323C8F67248EAD82D /* OptionRow.swift */,
 				2A982408D84D1386F5B24B7C /* RecipeCard.swift */,
 				B2C63684C7E494372CA1A8B5 /* RecipeImageView.swift */,
 			);
@@ -598,15 +601,15 @@
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					51F0E9D9CAFC3FF8EC182851 = {
-						DevelopmentTeam = K8MRHHZ85N;
+						DevelopmentTeam = Q7ZLXMG4SB;
 						ProvisioningStyle = Automatic;
 					};
 					78E449F1B7F92FE7B4997C4F = {
-						DevelopmentTeam = K8MRHHZ85N;
+						DevelopmentTeam = Q7ZLXMG4SB;
 						ProvisioningStyle = Automatic;
 					};
 					E09B0FD3B99CB91DF3A88489 = {
-						DevelopmentTeam = K8MRHHZ85N;
+						DevelopmentTeam = Q7ZLXMG4SB;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -704,6 +707,7 @@
 				E9E62465FDE3533A7CE521B1 /* NutritionEstimator.swift in Sources */,
 				1D7AADB5298899998C304AB6 /* OnboardingView.swift in Sources */,
 				E00E0565BC59F9EFB40F594E /* OptimizeRecipeView.swift in Sources */,
+				50C6D17ADB0F198DF499F211 /* OptionRow.swift in Sources */,
 				C42B6B77FB6D723A71FCC19B /* PantryChef.swift in Sources */,
 				CC57BF53936FE16D9F56E804 /* PantryMatcher.swift in Sources */,
 				0357D9E19E7AB3EE1378A87B /* PantryScan.swift in Sources */,
@@ -787,7 +791,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt.share;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarlahmimi.glutt.share;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -804,7 +808,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.malik.GluttTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarlahmimi.GluttTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Glutt.app/Glutt";
@@ -825,7 +829,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarlahmimi.glutt;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -841,7 +845,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.malik.GluttTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarlahmimi.GluttTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Glutt.app/Glutt";
@@ -860,7 +864,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt.share;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarlahmimi.glutt.share;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -903,7 +907,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = K8MRHHZ85N;
+				DEVELOPMENT_TEAM = Q7ZLXMG4SB;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -961,7 +965,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = K8MRHHZ85N;
+				DEVELOPMENT_TEAM = Q7ZLXMG4SB;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -1004,7 +1008,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarlahmimi.glutt;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};

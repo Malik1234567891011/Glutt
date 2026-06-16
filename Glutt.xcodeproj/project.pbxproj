@@ -48,6 +48,7 @@
 		658FF063B7D0C83A48CE0A3B /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61F5AFC37B586B18C2468CF /* Typography.swift */; };
 		66156BB845C8F181386BEB63 /* WeekPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD98A66D770537AED45AC622 /* WeekPlanner.swift */; };
 		6BD892D3347E8504FBCB7405 /* StoreModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4013BCB69BEE4E7DCC7FFE7D /* StoreModeView.swift */; };
+		7578E86DAC97748DD73B1531 /* OnboardingState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4365A28A0C4D406680BB297B /* OnboardingState.swift */; };
 		812D77EB9384E9BB9C3FBD71 /* GluttApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F79B61859BDDE45588788FE2 /* GluttApp.swift */; };
 		8332AA9E1C766FF024BEA4C2 /* ImagePrep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DEB872DB55EE7ADF76A5A7B /* ImagePrep.swift */; };
 		8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */; };
@@ -59,6 +60,7 @@
 		9F207D5AA64EE4DB6437BE3B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 03E4B5038BD3A803FFA377AD /* Assets.xcassets */; };
 		A5D13C7DD0ADCAC196619502 /* RecipeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A982408D84D1386F5B24B7C /* RecipeCard.swift */; };
 		A71A0874129B8FA9A557B7A2 /* TextRecipeParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF4058EECD1BCDBB2359125 /* TextRecipeParser.swift */; };
+		A7D36540FAFB3ACEABE90F95 /* OnboardingStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAAF9C3879AD077BB4FE8E2D /* OnboardingStateTests.swift */; };
 		ABFCA4853F7794491D82C568 /* ProgressTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221C1254C1FB19CCB0DCC84B /* ProgressTabView.swift */; };
 		AC406619DAD8BADC992A6542 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6471755924AE9ED5DAC77E /* CameraPicker.swift */; };
 		AE8AF2E65EFED70286B8935B /* RecipeEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2179632ACE3988876F4F4170 /* RecipeEditorView.swift */; };
@@ -164,6 +166,7 @@
 		4013BCB69BEE4E7DCC7FFE7D /* StoreModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreModeView.swift; sourceTree = "<group>"; };
 		412DD0B2F37BE98BAAEB523D /* Kitchen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kitchen.swift; sourceTree = "<group>"; };
 		420CD47E5C2004D61B7D0B32 /* Buttons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Buttons.swift; sourceTree = "<group>"; };
+		4365A28A0C4D406680BB297B /* OnboardingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingState.swift; sourceTree = "<group>"; };
 		476DE0FF02A984E39531A7EF /* GroceryListBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroceryListBuilder.swift; sourceTree = "<group>"; };
 		4A255073F3542D7946FDF4A5 /* LeftoversView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftoversView.swift; sourceTree = "<group>"; };
 		4AA37957DBDDC577B2780A3E /* UserPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPrefs.swift; sourceTree = "<group>"; };
@@ -227,6 +230,7 @@
 		F61F5AFC37B586B18C2468CF /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		F79B61859BDDE45588788FE2 /* GluttApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttApp.swift; sourceTree = "<group>"; };
 		F7FD87E0616AE17D79248663 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		FAAF9C3879AD077BB4FE8E2D /* OnboardingStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStateTests.swift; sourceTree = "<group>"; };
 		FD66D2C60B184F432C6759F7 /* LeftoverRemixSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftoverRemixSheet.swift; sourceTree = "<group>"; };
 		FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = GluttShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -302,6 +306,7 @@
 			isa = PBXGroup;
 			children = (
 				9849E4D814CBE9FB1D1E619C /* GluttTests.swift */,
+				FAAF9C3879AD077BB4FE8E2D /* OnboardingStateTests.swift */,
 			);
 			path = GluttTests;
 			sourceTree = "<group>";
@@ -404,6 +409,7 @@
 		979E2590EBF3B795CAAC4659 /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
+				4365A28A0C4D406680BB297B /* OnboardingState.swift */,
 				A00431AF9CF20BE00C177D30 /* OnboardingView.swift */,
 			);
 			path = Onboarding;
@@ -664,6 +670,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				40C39A65B30A85E2207F4D44 /* GluttTests.swift in Sources */,
+				A7D36540FAFB3ACEABE90F95 /* OnboardingStateTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -709,6 +716,7 @@
 				F414351CC012911B4E45E28F /* MealPhotoEstimator.swift in Sources */,
 				5FFAC0C77C80660EA97C9D2B /* MealRecommender.swift in Sources */,
 				E9E62465FDE3533A7CE521B1 /* NutritionEstimator.swift in Sources */,
+				7578E86DAC97748DD73B1531 /* OnboardingState.swift in Sources */,
 				1D7AADB5298899998C304AB6 /* OnboardingView.swift in Sources */,
 				E00E0565BC59F9EFB40F594E /* OptimizeRecipeView.swift in Sources */,
 				50C6D17ADB0F198DF499F211 /* OptionRow.swift in Sources */,

@@ -149,10 +149,13 @@ struct ImportTutorialScreen: View {
             (.showPost, 1.4), (.coachTapShare, 1.6), (.shareSheet, 1.8),
             (.importing, 1.4), (.success, 1.4), (.cta, 0.6),
         ]
-        for (next, delay) in timings {
-            try? await Task.sleep(for: .seconds(delay))
-            if Task.isCancelled { return }
-            withAnimation(.spring(duration: 0.5)) { phase = next }
+        for (target, delay) in timings {
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return // cancelled (view disappeared) — stop the script
+            }
+            withAnimation(.spring(duration: 0.5)) { phase = target }
         }
     }
 }

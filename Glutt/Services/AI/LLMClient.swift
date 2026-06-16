@@ -1,22 +1,12 @@
 import Foundation
 
 /// The cloud brain. Every AI feature in Glutt works without it —
-/// heuristics first, LLM as an upgrade when a key is available.
-/// OpenAI-compatible chat API (works with OpenAI, OpenRouter, local servers).
-///
-/// Key resolution: a key entered in Settings wins; otherwise the embedded
-/// beta key (`Secrets.embeddedAIKey`) is used.
+/// heuristics first, LLM as an upgrade when configured.
+/// Production path: backend proxy only (no direct provider keys in app).
 enum LLMClient {
 
     enum Keys {
-        static let apiKey = "glutt.llm.apiKey"
         static let model = "glutt.llm.model"
-        static let baseURL = "glutt.llm.baseURL"
-    }
-
-    static var apiKey: String {
-        get { UserDefaults.standard.string(forKey: Keys.apiKey) ?? "" }
-        set { UserDefaults.standard.set(newValue, forKey: Keys.apiKey) }
     }
 
     static var model: String {
@@ -24,24 +14,16 @@ enum LLMClient {
         set { UserDefaults.standard.set(newValue, forKey: Keys.model) }
     }
 
-    static var baseURL: String {
-        get { UserDefaults.standard.string(forKey: Keys.baseURL) ?? "https://api.openai.com/v1" }
-        set { UserDefaults.standard.set(newValue, forKey: Keys.baseURL) }
+    static var proxyBaseURL: String {
+        Secrets.aiProxyBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// Settings key beats embedded beta key.
-    static var effectiveKey: String {
-        let userKey = apiKey.trimmingCharacters(in: .whitespaces)
-        return userKey.isEmpty ? Secrets.embeddedAIKey : userKey
+    static var proxyClientKey: String {
+        Secrets.aiProxyClientKey.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     static var isConfigured: Bool {
-        !effectiveKey.isEmpty
-    }
-
-    /// True when AI runs on the baked-in beta key (no user key set).
-    static var usesEmbeddedKey: Bool {
-        apiKey.trimmingCharacters(in: .whitespaces).isEmpty && !Secrets.embeddedAIKey.isEmpty
+        !proxyBaseURL.isEmpty
     }
 
     enum LLMError: LocalizedError {
@@ -51,7 +33,7 @@ enum LLMClient {
 
         var errorDescription: String? {
             switch self {
-            case .notConfigured: "No AI key configured. Add one in Settings to enable this."
+            case .notConfigured: "AI cloud service is not configured for this build."
             case .timeout: "The AI took too long to respond."
             case .badResponse(let detail): "The AI response couldn't be read: \(detail)"
             }
@@ -69,14 +51,17 @@ enum LLMClient {
         timeout: TimeInterval = 30
     ) async throws -> String {
         guard isConfigured else { throw LLMError.notConfigured }
-        guard let url = URL(string: "\(baseURL)/chat/completions") else {
-            throw LLMError.badResponse("Bad base URL")
+        let urlString = "\(proxyBaseURL)/chat/completions"
+        guard let url = URL(string: urlString) else {
+            throw LLMError.badResponse("Bad AI endpoint URL")
         }
 
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(effectiveKey)", forHTTPHeaderField: "Authorization")
+        if !proxyClientKey.isEmpty {
+            request.setValue(proxyClientKey, forHTTPHeaderField: "x-glutt-proxy-key")
+        }
 
         let userContent: Any
         if let imageData {

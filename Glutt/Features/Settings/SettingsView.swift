@@ -6,11 +6,10 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @Query private var recipes: [Recipe]
     @Query private var sessions: [CookSession]
 
-    @State private var apiKey = LLMClient.apiKey
-    @State private var model = LLMClient.model
     @State private var calorieGoalText = ""
     @State private var proteinGoalText = ""
     @State private var allergyText = ""
@@ -36,8 +35,6 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        LLMClient.apiKey = apiKey
-                        LLMClient.model = model
                         prefs.dailyCalorieGoal = Int(calorieGoalText)
                         prefs.dailyProteinGoal = Int(proteinGoalText)
                         prefs.allergies = splitList(allergyText)
@@ -67,6 +64,37 @@ struct SettingsView: View {
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
             }
+            Button {
+                open(urlString: "https://glutt.org/privacy")
+            } label: {
+                rowLabel("Privacy Policy", icon: "lock.shield")
+            }
+            Button {
+                open(urlString: "https://glutt.org/terms")
+            } label: {
+                rowLabel("Terms of Service", icon: "doc.text")
+            }
+            Button {
+                open(urlString: "https://glutt.org/support")
+            } label: {
+                rowLabel("Support", icon: "questionmark.circle")
+            }
+        }
+    }
+
+    private func open(urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+        openURL(url)
+    }
+
+    private func rowLabel(_ text: String, icon: String) -> some View {
+        HStack {
+            Label(text, systemImage: icon)
+                .foregroundStyle(Theme.Colors.textPrimary)
+            Spacer()
+            Image(systemName: "arrow.up.right.square")
+                .font(.caption)
+                .foregroundStyle(Theme.Colors.textSecondary)
         }
     }
 
@@ -198,17 +226,11 @@ struct SettingsView: View {
 
     private var aiSection: some View {
         Section {
-            if LLMClient.usesEmbeddedKey {
-                Label("AI enabled (beta)", systemImage: "sparkles")
-                    .font(.gluttCaption)
-                    .foregroundStyle(Theme.Colors.accent)
-            }
-            SecureField("API key (optional override)", text: $apiKey)
-            TextField("Model", text: $model)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-            if LLMClient.isConfigured && !LLMClient.usesEmbeddedKey {
-                Label("AI features enabled (your key)", systemImage: "sparkles")
+            if LLMClient.isConfigured {
+                Label(
+                    "AI features enabled (secured backend)",
+                    systemImage: "sparkles"
+                )
                     .font(.gluttCaption)
                     .foregroundStyle(Theme.Colors.accent)
             }
@@ -216,8 +238,8 @@ struct SettingsView: View {
             Text("AI")
         } footer: {
             Text(LLMClient.isConfigured
-                ? "AI powers import cleanup, \"just tell me\" suggestions, and smarter explanations. Everything still works offline."
-                : "Everything in Glutt works without this. An OpenAI-compatible key upgrades imports, search, and suggestions.")
+                ? "AI powers imports, pantry/photo analysis, smart suggestions, and recipe adjustments. We send only what is needed for each request."
+                : "AI is currently unavailable. Glutt still works with offline heuristics for core flows.")
         }
     }
 }

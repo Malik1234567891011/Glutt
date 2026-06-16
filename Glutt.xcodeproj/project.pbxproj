@@ -45,6 +45,7 @@
 		51DCE52A4E8E7DEE3C077A98 /* ImportedRecipeDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA97A87700CD96961371CCC /* ImportedRecipeDraft.swift */; };
 		5520541095BB606F7B9519F9 /* WelcomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F84662B04EA6B5290FE76FA /* WelcomeScreen.swift */; };
 		5B1FA996B31768F987F6537B /* NutritionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E58CC56FAC0BF5F276D3E1E3 /* NutritionScreen.swift */; };
+		5EE0AAEF34DFDF40C3A70620 /* NotificationPrimerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DD23D484539CDDA15AF9D1 /* NotificationPrimerScreen.swift */; };
 		5FFAC0C77C80660EA97C9D2B /* MealRecommender.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8856B0F901006AF8EEC3BE3 /* MealRecommender.swift */; };
 		60F40CA16978E4326ADCE853 /* WeekPlannerWizard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38DA703EAADAF63891512242 /* WeekPlannerWizard.swift */; };
 		622AE48D9C10C09E3E26DACC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4BDDF12AA6FF33207013C566 /* PrivacyInfo.xcprivacy */; };
@@ -166,6 +167,7 @@
 		2D56EF729F22F6F3DED29543 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		2E4363923FEEBD03D4E229DC /* RecipeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeDetailView.swift; sourceTree = "<group>"; };
 		2F84662B04EA6B5290FE76FA /* WelcomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeScreen.swift; sourceTree = "<group>"; };
+		35DD23D484539CDDA15AF9D1 /* NotificationPrimerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPrimerScreen.swift; sourceTree = "<group>"; };
 		37434BCF14AD5C72CF078B97 /* Glutt.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Glutt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3800A614501862AB11EC98A2 /* StarterRecipes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarterRecipes.swift; sourceTree = "<group>"; };
 		38DA703EAADAF63891512242 /* WeekPlannerWizard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekPlannerWizard.swift; sourceTree = "<group>"; };
@@ -523,6 +525,7 @@
 			isa = PBXGroup;
 			children = (
 				B818CF52EDB53A89E054A608 /* GoalsScreen.swift */,
+				35DD23D484539CDDA15AF9D1 /* NotificationPrimerScreen.swift */,
 				E58CC56FAC0BF5F276D3E1E3 /* NutritionScreen.swift */,
 				89A5874C2E7B16225422F113 /* RulesScreen.swift */,
 				2F84662B04EA6B5290FE76FA /* WelcomeScreen.swift */,
@@ -750,6 +753,7 @@
 				177643D1D447412BD360D00D /* MealCard.swift in Sources */,
 				F414351CC012911B4E45E28F /* MealPhotoEstimator.swift in Sources */,
 				5FFAC0C77C80660EA97C9D2B /* MealRecommender.swift in Sources */,
+				5EE0AAEF34DFDF40C3A70620 /* NotificationPrimerScreen.swift in Sources */,
 				E9E62465FDE3533A7CE521B1 /* NutritionEstimator.swift in Sources */,
 				5B1FA996B31768F987F6537B /* NutritionScreen.swift in Sources */,
 				8FDC70AABCFEFF1B61118F05 /* OnboardingPaywallHook.swift in Sources */,

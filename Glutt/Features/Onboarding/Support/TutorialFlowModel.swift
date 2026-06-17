@@ -72,22 +72,26 @@ final class TutorialFlowModel {
 }
 
 extension TutorialFlowModel {
-    /// Hotspot rects are first guesses; tune them live in the simulator using
-    /// the DEBUG tap-coordinate print in `WalkthroughFrame` (see Task 5).
+    /// Hotspots measured from each screenshot; width/height ratio (~2.17) is chosen
+    /// so the ring renders as a circle on the ~0.46-aspect screenshots, not an
+    /// ellipse. Verify/refine live in the simulator via the DEBUG tap-coordinate
+    /// print in `WalkthroughFrame`.
     static let defaultSteps: [TutorialStep] = [
         TutorialStep(
             id: 0,
             imageName: "tutorialPost",
             headline: "Found a recipe you love?",
-            hotspot: CGRect(x: 0.78, y: 0.92, width: 0.18, height: 0.05),
-            pointer: .up,
+            // Instagram Send (paper-plane) icon — bottom action row, by "14.8K".
+            hotspot: CGRect(x: 0.45, y: 0.863, width: 0.16, height: 0.074),
+            pointer: .down, // bottom-row icon → native label sits above it
             showsLabel: true
         ),
         TutorialStep(
             id: 1,
             imageName: "tutorialShareSheetApp",
             headline: "Just tap Share \u{2192} Glutt",
-            hotspot: CGRect(x: 0.26, y: 0.85, width: 0.22, height: 0.08),
+            // Instagram share sheet — the "Share to…" button (2nd icon).
+            hotspot: CGRect(x: 0.24, y: 0.844, width: 0.20, height: 0.092),
             pointer: .down,
             showsLabel: false
         ),
@@ -95,7 +99,8 @@ extension TutorialFlowModel {
             id: 2,
             imageName: "tutorialShareSheetSystem",
             headline: "Just tap Share \u{2192} Glutt",
-            hotspot: CGRect(x: 0.27, y: 0.55, width: 0.18, height: 0.11),
+            // iOS share sheet — the Glutt app icon (2nd in the app row).
+            hotspot: CGRect(x: 0.235, y: 0.539, width: 0.22, height: 0.101),
             pointer: .up,
             showsLabel: false
         ),

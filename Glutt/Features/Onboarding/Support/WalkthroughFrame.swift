@@ -2,12 +2,13 @@ import SwiftUI
 
 /// Renders a tutorial screenshot fit-to-width and overlays a tappable, pulsing
 /// hotspot over a real button. Tap inside → `onHotspotTap`; tap elsewhere →
-/// `onMiss`; ~4s idle → `onHotspotTap` (safety net). Idle timer resets on any tap.
+/// `onMiss`; ~4s idle → `onIdle` (safety net). Idle timer resets on any tap.
 struct WalkthroughFrame: View {
     let step: TutorialStep
     let nudgeToken: Int
     let onHotspotTap: () -> Void
     let onMiss: () -> Void
+    let onIdle: () -> Void
 
     private static let idleSeconds: Double = 4
 
@@ -53,7 +54,7 @@ struct WalkthroughFrame: View {
             .task(id: "\(step.id)-\(idleResetToken)") {
                 try? await Task.sleep(for: .seconds(Self.idleSeconds))
                 guard !Task.isCancelled else { return }
-                onHotspotTap()
+                onIdle()
             }
     }
 

@@ -58,7 +58,8 @@ struct ImportTutorialScreen: View {
                     step: step,
                     nudgeToken: model.nudgeToken,
                     onHotspotTap: { model.tapHotspot() },
-                    onMiss: { model.tapMiss() }
+                    onMiss: { model.tapMiss() },
+                    onIdle: { model.idleFired() }
                 )
                 .padding(.horizontal, Theme.Spacing.md)
                 .transition(.opacity)

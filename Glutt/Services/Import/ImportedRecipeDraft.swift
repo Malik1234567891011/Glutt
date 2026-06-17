@@ -2,8 +2,8 @@ import Foundation
 
 /// Intermediate result of any import pipeline (link, screenshot, share extension).
 /// The Import Review screen edits this before it becomes a saved `Recipe`.
-struct ImportedRecipeDraft: Identifiable {
-    let id = UUID()
+struct ImportedRecipeDraft: Identifiable, Codable {
+    var id: UUID = UUID()
     var title: String?
     var summary: String?
     var imageURL: String?

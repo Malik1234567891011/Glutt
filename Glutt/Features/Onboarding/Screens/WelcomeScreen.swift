@@ -46,10 +46,18 @@ struct WelcomeScreen: View {
 
                 Spacer()
 
-                Button("Get started", action: onStart)
-                    .buttonStyle(.gluttPrimary)
-                    .padding(.horizontal, Theme.Spacing.md)
-                    .padding(.bottom, Theme.Spacing.lg)
+                VStack(spacing: Theme.Spacing.sm) {
+                    Button("Get started", action: onStart)
+                        .buttonStyle(.gluttPrimary)
+
+                    if let privacyURL = URL(string: "https://glutt.org/privacy") {
+                        Link("Privacy Policy", destination: privacyURL)
+                            .font(.system(.caption2, design: .rounded))
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                    }
+                }
+                .padding(.horizontal, Theme.Spacing.md)
+                .padding(.bottom, Theme.Spacing.lg)
             }
         }
         .onAppear {

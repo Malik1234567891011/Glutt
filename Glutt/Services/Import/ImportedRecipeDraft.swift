@@ -7,6 +7,10 @@ struct ImportedRecipeDraft: Identifiable, Codable {
     var title: String?
     var summary: String?
     var imageURL: String?
+    /// Raw image bytes when the share sheet hands us a preview image directly
+    /// (e.g. an Instagram reel thumbnail the page won't expose to scraping).
+    /// Preferred over `imageURL` only when no scrapable thumbnail was found.
+    var imageData: Data?
     var creator: String?
     var sourceURL: String?
     var platform: SourcePlatform = .website
@@ -35,7 +39,7 @@ struct ImportedRecipeDraft: Identifiable, Codable {
     var confidence: Double {
         var score = 0.0
         if let title, !title.isEmpty { score += 0.15 } 
-        if imageURL != nil { score += 0.1 }
+        if imageURL != nil || imageData != nil { score += 0.1 }
         if !ingredientLines.isEmpty {
             score += 0.3
             // Bonus when most ingredient lines have a recognizable quantity.

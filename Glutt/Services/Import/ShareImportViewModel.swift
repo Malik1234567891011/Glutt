@@ -24,20 +24,28 @@ final class ShareImportViewModel {
     private let urlString: String
     private let deps: ImportPipeline.Dependencies
     private let inbox: ImportInbox
+    /// Preview image the share sheet handed us, if any. Used as the recipe image
+    /// only when the import couldn't scrape a thumbnail (e.g. Instagram reels).
+    private let sharedImageData: Data?
 
     init(urlString: String,
          deps: ImportPipeline.Dependencies = .live,
-         inbox: ImportInbox = ImportInbox()) {
+         inbox: ImportInbox = ImportInbox(),
+         sharedImageData: Data? = nil) {
         self.urlString = urlString
         self.deps = deps
         self.inbox = inbox
+        self.sharedImageData = sharedImageData
     }
 
     func start() async {
         do {
-            let draft = try await ImportPipeline.run(urlString: urlString, deps: deps) { [weak self] message in
+            var draft = try await ImportPipeline.run(urlString: urlString, deps: deps) { [weak self] message in
                 guard let self, case .importing = self.state else { return }
                 self.state = .importing(message)
+            }
+            if draft.imageURL == nil, let sharedImageData {
+                draft.imageData = sharedImageData
             }
             self.draft = draft
             self.editableTitle = draft.title ?? ""

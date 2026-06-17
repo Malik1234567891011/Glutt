@@ -75,4 +75,26 @@ final class ShareImportViewModelTests: XCTestCase {
         guard case .failed(let message) = vm.state else { return XCTFail("expected failed, got \(vm.state)") }
         XCTAssertEqual(message, ImportError.fetchFailed.errorDescription)
     }
+
+    func testSharedImageUsedWhenNoScrapedThumbnail() async {
+        var draft = ImportedRecipeDraft()
+        draft.title = "Reel Recipe"
+        draft.imageURL = nil                       // nothing scrapable (e.g. Instagram)
+        let shared = Data([0xFF, 0xD8, 0xFF])       // stand-in JPEG bytes
+        let vm = ShareImportViewModel(urlString: "x", deps: deps(returning: draft),
+                                      inbox: ImportInbox(defaults: defaults), sharedImageData: shared)
+        await vm.start()
+        XCTAssertEqual(vm.draft?.imageData, shared, "shared image should fill in when no thumbnail was scraped")
+    }
+
+    func testSharedImageIgnoredWhenThumbnailScraped() async {
+        var draft = ImportedRecipeDraft()
+        draft.title = "TikTok Recipe"
+        draft.imageURL = "https://cdn.example.com/thumb.jpg"   // oembed/og thumbnail present
+        let vm = ShareImportViewModel(urlString: "x", deps: deps(returning: draft),
+                                      inbox: ImportInbox(defaults: defaults), sharedImageData: Data([0xFF, 0xD8]))
+        await vm.start()
+        XCTAssertNil(vm.draft?.imageData, "a scraped thumbnail should win over the shared image")
+        XCTAssertEqual(vm.draft?.imageURL, "https://cdn.example.com/thumb.jpg")
+    }
 }

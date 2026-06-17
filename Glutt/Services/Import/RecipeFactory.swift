@@ -22,6 +22,7 @@ enum RecipeFactory {
         )
         recipe.calories = draft.calories
         recipe.proteinGrams = draft.proteinGrams
+        recipe.imageData = draft.imageData
 
         recipe.ingredients = draft.ingredientLines
             .map { $0.trimmingCharacters(in: .whitespaces) }

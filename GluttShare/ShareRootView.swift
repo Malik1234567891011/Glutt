@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The share-sheet UI. Terminal actions (open app, close) are owned by the host
 /// controller, so they're passed in as closures.
@@ -39,16 +40,7 @@ struct ShareRootView: View {
     private var preview: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                if let urlString = viewModel.draft?.imageURL, let url = URL(string: urlString) {
-                    AsyncImage(url: url) { image in
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Rectangle().fill(Theme.Colors.accent.opacity(0.08))
-                    }
-                    .frame(height: 160)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-                }
+                recipeImage
 
                 TextField("Recipe title", text: $viewModel.editableTitle)
                     .font(.gluttTitle)
@@ -66,6 +58,28 @@ struct ShareRootView: View {
                     .font(.gluttCaption)
                     .foregroundStyle(Theme.Colors.textSecondary)
 
+                if let lines = viewModel.draft?.ingredientLines, !lines.isEmpty {
+                    section(title: "INGREDIENTS") {
+                        ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                            Text("•  \(line)")
+                                .font(.gluttBody)
+                                .foregroundStyle(Theme.Colors.textPrimary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+
+                if let steps = viewModel.draft?.stepTexts, !steps.isEmpty {
+                    section(title: "STEPS") {
+                        ForEach(Array(steps.enumerated()), id: \.offset) { index, text in
+                            Text("\(index + 1).  \(text)")
+                                .font(.gluttBody)
+                                .foregroundStyle(Theme.Colors.textPrimary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+
                 Button("Save recipe") { viewModel.save() }
                     .buttonStyle(.gluttPrimary)
                 Button("Discard", role: .destructive) { onClose() }
@@ -74,6 +88,42 @@ struct ShareRootView: View {
             }
             .padding(Theme.Spacing.md)
         }
+    }
+
+    /// Prefer the share sheet's image bytes (e.g. an IG reel thumbnail), then a
+    /// scraped/oembed URL. Shows nothing when neither is available.
+    @ViewBuilder
+    private var recipeImage: some View {
+        if let data = viewModel.draft?.imageData, let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(height: 160)
+                .frame(maxWidth: .infinity)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        } else if let urlString = viewModel.draft?.imageURL, let url = URL(string: urlString) {
+            AsyncImage(url: url) { image in
+                image.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+                Rectangle().fill(Theme.Colors.accent.opacity(0.08))
+            }
+            .frame(height: 160)
+            .frame(maxWidth: .infinity)
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        }
+    }
+
+    @ViewBuilder
+    private func section<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Theme.Colors.textSecondary)
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var saved: some View {

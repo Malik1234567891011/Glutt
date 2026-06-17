@@ -95,45 +95,21 @@ final class ShareViewController: UIViewController {
     /// `extensionContext.open` for a custom scheme, and the deprecated `openURL:`
     /// selector isn't honored on current iOS — so we reach `UIApplication` via the
     /// responder chain and call the modern `open(_:options:completionHandler:)`.
-    /// If that reports failure (or no UIApplication is reachable), we surface why
-    /// on screen instead of silently dismissing.
+    /// If no UIApplication is reachable we just dismiss: the recipe is already in
+    /// the inbox, so it still lands in the library next time the app opens.
     private func openApp(path: String) {
         guard let url = URL(string: "glutt://\(path)") else { close(); return }
 
         var responder: UIResponder? = self
-        var application: UIApplication?
         while let current = responder {
-            if let app = current as? UIApplication { application = app; break }
+            if let application = current as? UIApplication {
+                application.open(url, options: [:]) { [weak self] _ in
+                    self?.extensionContext?.completeRequest(returningItems: nil)
+                }
+                return
+            }
             responder = current.next
         }
-
-        guard let application else {
-            showOpenFailure(url, reason: "No UIApplication in the responder chain.")
-            return
-        }
-
-        application.open(url, options: [:]) { [weak self] success in
-            DispatchQueue.main.async {
-                if success {
-                    self?.extensionContext?.completeRequest(returningItems: nil)
-                } else {
-                    self?.showOpenFailure(url, reason: "UIApplication.open returned false.")
-                }
-            }
-        }
-    }
-
-    /// On-device diagnostic: when the host app won't launch, show what happened so
-    /// we can pinpoint the right mechanism rather than dismissing into silence.
-    private func showOpenFailure(_ url: URL, reason: String) {
-        let alert = UIAlertController(
-            title: "Couldn't open Glutt",
-            message: "\(reason)\nURL: \(url.absoluteString)",
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
-            self?.extensionContext?.completeRequest(returningItems: nil)
-        })
-        present(alert, animated: true)
+        close()
     }
 }

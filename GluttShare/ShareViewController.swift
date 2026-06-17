@@ -9,20 +9,37 @@ final class ShareViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 0.98, green: 0.96, blue: 0.93, alpha: 1)
-        loadSharedInput { [weak self] urlString, imageData in
-            self?.present(urlString: urlString, imageData: imageData)
+        // Flatten attachments across ALL shared items — some apps split the URL
+        // and a preview image into separate NSExtensionItems.
+        let attachments = (extensionContext?.inputItems as? [NSExtensionItem])?
+            .flatMap { $0.attachments ?? [] } ?? []
+        presentAttachmentDiagnostic(attachments) { [weak self] in
+            self?.loadSharedInput(from: attachments) { urlString, imageData in
+                self?.present(urlString: urlString, imageData: imageData)
+            }
         }
     }
 
     // MARK: - Shared input
 
+    /// TEMP diagnostic: list exactly what the source app handed the extension, so
+    /// we can see whether Instagram provides an image attachment at all.
+    private func presentAttachmentDiagnostic(_ attachments: [NSItemProvider], then proceed: @escaping () -> Void) {
+        let types = attachments.flatMap { $0.registeredTypeIdentifiers }
+        let alert = UIAlertController(
+            title: "Share attachments (\(attachments.count))",
+            message: types.isEmpty ? "(none)" : types.joined(separator: "\n"),
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Continue", style: .default) { _ in proceed() })
+        present(alert, animated: true)
+    }
+
     /// Loads the shared URL (required) and, when the source app also provides a
     /// preview image (e.g. an Instagram reel thumbnail), its bytes — so we can
     /// show/save an image even when the page exposes no scrapable thumbnail.
-    private func loadSharedInput(_ completion: @escaping (String?, Data?) -> Void) {
-        guard let item = extensionContext?.inputItems.first as? NSExtensionItem,
-              let attachments = item.attachments,
-              let urlProvider = attachments.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.url.identifier) })
+    private func loadSharedInput(from attachments: [NSItemProvider], _ completion: @escaping (String?, Data?) -> Void) {
+        guard let urlProvider = attachments.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.url.identifier) })
         else { completion(nil, nil); return }
 
         let imageProvider = attachments.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) })

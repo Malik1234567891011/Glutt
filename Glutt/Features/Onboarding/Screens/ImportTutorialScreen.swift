@@ -58,8 +58,7 @@ struct ImportTutorialScreen: View {
                     step: step,
                     nudgeToken: model.nudgeToken,
                     onHotspotTap: { model.tapHotspot() },
-                    onMiss: { model.tapMiss() },
-                    onIdle: { model.idleFired() }
+                    onMiss: { model.tapMiss() }
                 )
                 .padding(.horizontal, Theme.Spacing.md)
                 .transition(.opacity)
@@ -122,24 +121,61 @@ struct ImportTutorialScreen: View {
 
     // MARK: - Saved result (presentational only — no Recipe model / network)
 
+    /// A few real ingredients from the demoed reel, so the saved card reads like an
+    /// actual recipe rather than a bare title. Presentational only.
+    private let savedIngredients = [
+        "3 packs Otoki Cheesy Ramen",
+        "1 lb chicken breast",
+        "1 cup buttermilk",
+        "Mozzarella + heavy cream",
+        "Hot honey glaze",
+    ]
+
     private var savedCard: some View {
-        HStack(spacing: Theme.Spacing.md) {
-            RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
-                .fill(Theme.Colors.successTint)
-                .frame(width: 64, height: 64)
-                .overlay(Text("🍝").font(.title))
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Cheesy ramen")
-                    .font(.gluttHeadline)
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                Text("Saved to your recipes")
-                    .font(.gluttCaption)
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack(spacing: Theme.Spacing.md) {
+                RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+                    .fill(Theme.Colors.successTint)
+                    .frame(width: 56, height: 56)
+                    .overlay(Text("🍜").font(.title))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Crispy hot honey chicken bites")
+                        .font(.gluttHeadline)
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Saved to your recipes")
+                        .font(.gluttCaption)
+                        .foregroundStyle(Theme.Colors.accent)
+                }
+                Spacer()
+                Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Theme.Colors.accent)
+                    .font(.title2)
             }
-            Spacer()
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(Theme.Colors.accent)
-                .font(.title2)
+
+            Divider().padding(.vertical, 2)
+
+            Text("Ingredients")
+                .font(.gluttCaption.weight(.semibold))
+                .foregroundStyle(Theme.Colors.textSecondary)
+
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(savedIngredients, id: \.self) { item in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.Colors.accent.opacity(0.7))
+                        Text(item)
+                            .font(.gluttCaption)
+                            .foregroundStyle(Theme.Colors.textPrimary)
+                    }
+                }
+                Text("+ 4 more")
+                    .font(.gluttCaption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .padding(.leading, 20)
+            }
         }
         .padding(Theme.Spacing.md)
         .background(Theme.Colors.card)

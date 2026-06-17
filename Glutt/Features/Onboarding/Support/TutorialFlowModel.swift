@@ -53,9 +53,6 @@ final class TutorialFlowModel {
     /// User tapped the highlighted hotspot — advance.
     func tapHotspot() { advance() }
 
-    /// Idle timeout elapsed — advance anyway (safety net so no one gets stuck).
-    func idleFired() { advance() }
-
     /// User tapped outside the hotspot — nudge the mark, do not advance.
     func tapMiss() { nudgeToken += 1 }
 
@@ -81,10 +78,12 @@ extension TutorialFlowModel {
             id: 0,
             imageName: "tutorialPost",
             headline: "Found a recipe you love?",
-            // Instagram Send (paper-plane) icon — bottom action row, by "14.8K".
-            hotspot: CGRect(x: 0.45, y: 0.863, width: 0.16, height: 0.074),
-            pointer: .down, // bottom-row icon → native label sits above it
-            showsLabel: true
+            // Instagram Send (paper-plane) icon — bottom action row, left of "14.8K".
+            // Tighter than the others: this action icon is small, so a big ring reads
+            // as misplaced. Centered ~ (0.56, 0.940).
+            hotspot: CGRect(x: 0.51, y: 0.917, width: 0.10, height: 0.046),
+            pointer: .down,
+            showsLabel: false
         ),
         TutorialStep(
             id: 1,

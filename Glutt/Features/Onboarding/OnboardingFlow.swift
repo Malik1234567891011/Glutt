@@ -119,11 +119,17 @@ struct OnboardingFlow: View {
         }
     }
 
+    /// The recipe the tutorial demonstrates — the cheesy ramen reel shown in frame 0.
+    /// "Import my first recipe" imports it for real, so onboarding ends with a
+    /// relevant recipe landing in the user's library (via the normal review screen).
+    private static let demoImportURL = URL(string: "https://www.instagram.com/reel/DYxO-e7JPw3/")
+
     private func finish(thenImport: Bool) {
         state.apply(to: context)
         OnboardingPaywallHook.presentPostOnboarding {
             onFinish()
             if thenImport {
+                router.pendingImportURL = Self.demoImportURL
                 router.perform(.importRecipe)
             }
         }

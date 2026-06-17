@@ -20,12 +20,6 @@ final class TutorialFlowModelTests: XCTestCase {
         m.tapHotspot(); XCTAssertEqual(m.phase, .cta)         // cta is terminal
     }
 
-    func testIdleFiredAdvancesLikeTap() {
-        let m = TutorialFlowModel()
-        m.idleFired()
-        XCTAssertEqual(m.phase, .walkthrough(1))
-    }
-
     func testTapMissNudgesWithoutAdvancing() {
         let m = TutorialFlowModel()
         XCTAssertEqual(m.nudgeToken, 0)

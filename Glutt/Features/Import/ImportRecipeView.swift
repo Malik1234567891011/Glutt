@@ -187,18 +187,8 @@ struct ImportRecipeView: View {
         let urlString = urlText
         Task {
             do {
-                var draft = try await RecipeImportService.importFrom(urlString: urlString)
-                if DraftCleanup.wouldImprove(draft) {
-                    phase = .loading("Cleaning it up with AI…")
-                    draft = await DraftCleanup.cleanUp(draft)
-                }
-                if draft.ingredientLines.isEmpty, draft.isSocialVideo {
-                    phase = .loading("No recipe in the caption — drafting the dish…")
-                    draft = await DraftCleanup.reconstruct(draft)
-                }
-                if draft.stepTexts.isEmpty, !draft.ingredientLines.isEmpty {
-                    phase = .loading("No method listed — drafting the steps…")
-                    draft = await DraftCleanup.inferSteps(draft)
+                let draft = try await ImportPipeline.run(urlString: urlString) { message in
+                    phase = .loading(message)
                 }
                 phase = .review(draft)
             } catch {

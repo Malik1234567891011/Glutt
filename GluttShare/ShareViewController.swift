@@ -1,70 +1,72 @@
+import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// Receives shared URLs from Safari/TikTok/Instagram/YouTube, stashes them
-/// in the app group, and tells the user to open Glutt to finish the import.
+/// Runs the full recipe import inside the share sheet, then either closes
+/// (staying in the source app) or opens Glutt to the imported recipe.
 final class ShareViewController: UIViewController {
-
-    private let appGroupID = "group.com.malik.glutt"
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 0.98, green: 0.96, blue: 0.93, alpha: 1)
-        buildUI()
-        captureSharedURL()
+        loadSharedURL { [weak self] urlString in
+            self?.present(urlString: urlString)
+        }
     }
 
-    private func captureSharedURL() {
+    // MARK: - Shared URL
+
+    private func loadSharedURL(_ completion: @escaping (String?) -> Void) {
         guard let item = extensionContext?.inputItems.first as? NSExtensionItem,
               let provider = item.attachments?.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.url.identifier) })
-        else {
-            finish(after: 1.2)
-            return
-        }
+        else { completion(nil); return }
 
-        provider.loadItem(forTypeIdentifier: UTType.url.identifier) { [weak self] value, _ in
-            guard let self else { return }
-            if let url = value as? URL {
-                UserDefaults(suiteName: self.appGroupID)?.set(url.absoluteString, forKey: "pendingImportURL")
-            }
-            DispatchQueue.main.async {
-                self.finish(after: 1.2)
-            }
+        provider.loadItem(forTypeIdentifier: UTType.url.identifier) { value, _ in
+            let urlString = (value as? URL)?.absoluteString
+            DispatchQueue.main.async { completion(urlString) }
         }
     }
 
-    private func finish(after delay: TimeInterval) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+    private func present(urlString: String?) {
+        guard let urlString else { close(); return }
+
+        let viewModel = ShareImportViewModel(urlString: urlString)
+        let root = ShareRootView(
+            viewModel: viewModel,
+            sourceURLString: urlString,
+            onViewRecipe: { [weak self] id in self?.openApp(path: "recipe?import=\(id.uuidString)") },
+            onClose: { [weak self] in self?.close() },
+            onOpenInApp: { [weak self] url in
+                PendingImportStore.save(urlString: url)
+                self?.openApp(path: "import?url=\(url.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? url)")
+            }
+        )
+
+        let hosting = UIHostingController(rootView: root)
+        addChild(hosting)
+        hosting.view.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(hosting.view)
+        NSLayoutConstraint.activate([
+            hosting.view.topAnchor.constraint(equalTo: view.topAnchor),
+            hosting.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            hosting.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            hosting.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+        ])
+        hosting.didMove(toParent: self)
+    }
+
+    // MARK: - Terminal actions
+
+    private func close() {
+        extensionContext?.completeRequest(returningItems: nil)
+    }
+
+    /// Opens the host app via the custom scheme. `extensionContext.open` is the
+    /// only sanctioned way for a share extension to launch its container app.
+    private func openApp(path: String) {
+        guard let url = URL(string: "glutt://\(path)") else { close(); return }
+        extensionContext?.open(url) { [weak self] _ in
             self?.extensionContext?.completeRequest(returningItems: nil)
         }
-    }
-
-    private func buildUI() {
-        let checkmark = UIImageView(image: UIImage(systemName: "checkmark.circle.fill"))
-        checkmark.tintColor = UIColor(red: 0.18, green: 0.37, blue: 0.24, alpha: 1)
-        checkmark.contentMode = .scaleAspectFit
-
-        let label = UILabel()
-        label.text = "Saved! Open Glutt to review the import."
-        label.font = .preferredFont(forTextStyle: .headline)
-        label.textColor = UIColor(red: 0.17, green: 0.14, blue: 0.12, alpha: 1)
-        label.textAlignment = .center
-        label.numberOfLines = 0
-
-        let stack = UIStackView(arrangedSubviews: [checkmark, label])
-        stack.axis = .vertical
-        stack.spacing = 12
-        stack.alignment = .center
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
-
-        NSLayoutConstraint.activate([
-            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            stack.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -24),
-            checkmark.widthAnchor.constraint(equalToConstant: 48),
-            checkmark.heightAnchor.constraint(equalToConstant: 48),
-        ])
     }
 }

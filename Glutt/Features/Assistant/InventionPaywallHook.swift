@@ -12,6 +12,14 @@ import SuperwallKit
 enum InventionPaywallHook {
     static func presentBeforeInventing(completion: @escaping () -> Void) {
         Superwall.shared.register(placement: "invent_recipe") {
+            // Fail-closed gate: only run the paid feature when the user is
+            // actually entitled. Superwall calls this block immediately for
+            // active subscribers, and again right after a purchase completes
+            // (status flips to active before the block fires). A non-subscriber
+            // who merely dismisses the paywall stays inactive here, so the
+            // feature never unlocks for free — independent of the campaign's
+            // gating toggle.
+            guard Superwall.shared.subscriptionStatus.isActive else { return }
             completion()
         }
     }

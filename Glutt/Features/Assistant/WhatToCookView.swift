@@ -203,21 +203,26 @@ struct WhatToCookView: View {
 
     private func invent() {
         guard !isInventing else { return }
-        isInventing = true
-        let prefs = UserPrefs.current(in: context)
-        let hint = askText.trimmingCharacters(in: .whitespacesAndNewlines)
-        Task {
-            let draft = await PantryChef.invent(
-                pantry: pantryItems,
-                prefs: prefs,
-                hint: hint.isEmpty ? nil : hint,
-                maxMinutes: maxMinutes
-            )
-            isInventing = false
-            if let draft {
-                inventedDraft = draft
-            } else {
-                inventError = "Glutt couldn't spin up a dish from your pantry right now. Add a few more items, or try again."
+        // Premium gate: AI recipe invention is a paid feature. The gated
+        // `invent_recipe` placement only runs this block for subscribers
+        // (or after they subscribe); non-subscribers see the paywall instead.
+        InventionPaywallHook.presentBeforeInventing {
+            isInventing = true
+            let prefs = UserPrefs.current(in: context)
+            let hint = askText.trimmingCharacters(in: .whitespacesAndNewlines)
+            Task {
+                let draft = await PantryChef.invent(
+                    pantry: pantryItems,
+                    prefs: prefs,
+                    hint: hint.isEmpty ? nil : hint,
+                    maxMinutes: maxMinutes
+                )
+                isInventing = false
+                if let draft {
+                    inventedDraft = draft
+                } else {
+                    inventError = "Glutt couldn't spin up a dish from your pantry right now. Add a few more items, or try again."
+                }
             }
         }
     }

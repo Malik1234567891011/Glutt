@@ -34,6 +34,7 @@
 		22AA6B7E63246878771B566E /* ShareImportViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37334F4D4FCC0C8A3291B1C /* ShareImportViewModelTests.swift */; };
 		2309BBAC09BF2C93876CD0EE /* GluttShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		23E7BF0DC628E856DD9B8512 /* CoachMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200A1D18F9171A9AEC4E0A68 /* CoachMark.swift */; };
+		2A40DDC0A750E0ED5A5A930C /* InventionPaywallHook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4820516244572894C4395483 /* InventionPaywallHook.swift */; };
 		2C69CC2242F748A1C4A03834 /* Kitchen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 412DD0B2F37BE98BAAEB523D /* Kitchen.swift */; };
 		2DEF284227B22932F4575048 /* ImportPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60BCB66B0A792A4EAFB58AB /* ImportPipeline.swift */; };
 		2E22D7543240ED83B3350F7C /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5D72BFDA83AFBD303E2775 /* ShareViewController.swift */; };
@@ -220,6 +221,7 @@
 		421A2BD5A79AB7F890E43900 /* ImportInbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportInbox.swift; sourceTree = "<group>"; };
 		4365A28A0C4D406680BB297B /* OnboardingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingState.swift; sourceTree = "<group>"; };
 		476DE0FF02A984E39531A7EF /* GroceryListBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroceryListBuilder.swift; sourceTree = "<group>"; };
+		4820516244572894C4395483 /* InventionPaywallHook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventionPaywallHook.swift; sourceTree = "<group>"; };
 		4A255073F3542D7946FDF4A5 /* LeftoversView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftoversView.swift; sourceTree = "<group>"; };
 		4AA37957DBDDC577B2780A3E /* UserPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPrefs.swift; sourceTree = "<group>"; };
 		4BDDF12AA6FF33207013C566 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -436,6 +438,7 @@
 		698B8DBF3F57406F84A97E77 /* Assistant */ = {
 			isa = PBXGroup;
 			children = (
+				4820516244572894C4395483 /* InventionPaywallHook.swift */,
 				B4A1A1F5EF2FE2B0B6641E98 /* WhatToCookView.swift */,
 			);
 			path = Assistant;
@@ -842,6 +845,7 @@
 				51DCE52A4E8E7DEE3C077A98 /* ImportedRecipeDraft.swift in Sources */,
 				8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */,
 				0962ABDAA0B5C83097E4E2A1 /* IngredientLineParser.swift in Sources */,
+				2A40DDC0A750E0ED5A5A930C /* InventionPaywallHook.swift in Sources */,
 				CC9B2AD7644D261A33C6C0D6 /* InventoryView.swift in Sources */,
 				2C69CC2242F748A1C4A03834 /* Kitchen.swift in Sources */,
 				EAB06B1CEB7F2CF3DF02C083 /* KitchenView.swift in Sources */,

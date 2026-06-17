@@ -4,6 +4,7 @@ import SwiftUI
 struct RootView: View {
     @Environment(Router.self) private var router
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.modelContext) private var context
     @Query(sort: \Recipe.createdAt) private var recipes: [Recipe]
     @Query private var allPrefs: [UserPrefs]
 
@@ -39,8 +40,10 @@ struct RootView: View {
         .onChange(of: scenePhase) {
             if scenePhase == .active {
                 router.checkForSharedImport()
+                drainImportInbox()
             }
         }
+        .task { drainImportInbox() }
         .fullScreenCover(isPresented: $router.demoCookOnLaunch) {
             if let recipe = recipes.first {
                 CookModeView(recipe: recipe)
@@ -55,6 +58,21 @@ struct RootView: View {
             }
             .interactiveDismissDisabled()
         }
+    }
+
+    /// Materializes recipes the share extension finished into SwiftData, and
+    /// tells the router which import ids map to which saved recipes (so a
+    /// "View recipe" deep link can navigate to the right one).
+    private func drainImportInbox() {
+        let drafts = ImportInbox().drain()
+        guard !drafts.isEmpty else { return }
+        var map: [UUID: PersistentIdentifier] = [:]
+        for draft in drafts {
+            let recipe = RecipeFactory.make(from: draft)
+            context.insert(recipe)
+            map[draft.id] = recipe.persistentModelID
+        }
+        router.noteImported(map)
     }
 
     @ViewBuilder

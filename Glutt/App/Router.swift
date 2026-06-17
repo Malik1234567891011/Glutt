@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftData
 
 enum AppTab: String, CaseIterable, Identifiable {
     case today, recipes, plan, kitchen, progress
@@ -78,6 +79,13 @@ final class Router {
     var pendingAction: CaptureAction?
     /// URL waiting to be imported (from share extension or glutt://import?url=...).
     var pendingImportURL: URL?
+    /// SwiftData id of a freshly-imported recipe to open (set once the inbox is
+    /// drained AND a `glutt://recipe?import=` link is handled — order-independent).
+    var recipeToOpenID: PersistentIdentifier?
+    /// Import-uuid → SwiftData id for recipes drained this session.
+    private var importedThisSession: [UUID: PersistentIdentifier] = [:]
+    /// Import uuid requested by a "View recipe" deep link, awaiting its drain.
+    private var pendingOpenImportID: UUID?
     /// Screens with their own bottom action bar (e.g. recipe detail's Cook button)
     /// bump this to hide the floating + button while they're visible.
     var floatingButtonSuppressors = 0
@@ -130,6 +138,14 @@ final class Router {
             }
             selectedTab = .recipes
             pendingAction = .importRecipe
+        case "recipe":
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            if let raw = components?.queryItems?.first(where: { $0.name == "import" })?.value,
+               let uuid = UUID(uuidString: raw) {
+                requestOpenRecipe(importID: uuid)
+            } else {
+                selectedTab = .recipes
+            }
         default: break
         }
     }
@@ -141,6 +157,26 @@ final class Router {
             selectedTab = .recipes
             pendingAction = .importRecipe
         }
+    }
+
+    /// Called after the inbox is drained, mapping each draft's id to its new recipe.
+    func noteImported(_ map: [UUID: PersistentIdentifier]) {
+        importedThisSession.merge(map) { _, new in new }
+        resolvePendingNavigation()
+    }
+
+    /// Called when a `glutt://recipe?import=<uuid>` link is handled.
+    func requestOpenRecipe(importID: UUID) {
+        pendingOpenImportID = importID
+        selectedTab = .recipes
+        resolvePendingNavigation()
+    }
+
+    private func resolvePendingNavigation() {
+        guard let importID = pendingOpenImportID,
+              let id = importedThisSession[importID] else { return }
+        recipeToOpenID = id
+        pendingOpenImportID = nil
     }
 
     func perform(_ action: CaptureAction) {

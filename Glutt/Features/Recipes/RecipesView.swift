@@ -10,6 +10,7 @@ struct RecipesView: View {
     @Query private var pantryItems: [PantryItem]
     @Query private var cookHistory: [CookSession]
 
+    @State private var navPath: [Recipe] = []
     @State private var searchText = ""
     @State private var selectedFilter: String?
     @State private var sortOrder: SortOrder = .recentlySaved
@@ -75,7 +76,7 @@ struct RecipesView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                     if !collections.isEmpty {
@@ -167,6 +168,8 @@ struct RecipesView: View {
             }
             .onAppear(perform: handlePendingImport)
             .onChange(of: router.pendingAction) { handlePendingImport() }
+            .onChange(of: router.recipeToOpenID) { openRequestedRecipe() }
+            .onAppear(perform: openRequestedRecipe)
             .alert("New collection", isPresented: $isNamingCollection) {
                 TextField("Name", text: $newCollectionName)
                 Button("Create") {
@@ -211,6 +214,13 @@ struct RecipesView: View {
             router.pendingAction = nil
             isShowingImport = true
         }
+    }
+
+    private func openRequestedRecipe() {
+        guard let id = router.recipeToOpenID,
+              let recipe = allRecipes.first(where: { $0.persistentModelID == id }) else { return }
+        navPath = [recipe]
+        router.recipeToOpenID = nil
     }
 
     private var collectionsRow: some View {

@@ -1,0 +1,28 @@
+import Foundation
+import SwiftData
+
+/// Drains finished imports from the inbox into the model context and returns
+/// a draft-id → recipe-id map for "View recipe" deep-link navigation.
+/// Saves before capturing identifiers so each recipe has its PERMANENT
+/// `persistentModelID` (a newly-inserted, unsaved model has a temporary id
+/// that SwiftData remaps on autosave — capturing it pre-save makes the later
+/// `@Query` match fail intermittently).
+enum ImportInboxDrainer {
+    @MainActor
+    static func drain(_ inbox: ImportInbox = ImportInbox(), into context: ModelContext) -> [UUID: PersistentIdentifier] {
+        let drafts = inbox.drain()
+        guard !drafts.isEmpty else { return [:] }
+        var inserted: [(UUID, Recipe)] = []
+        for draft in drafts {
+            let recipe = RecipeFactory.make(from: draft)
+            context.insert(recipe)
+            inserted.append((draft.id, recipe))
+        }
+        try? context.save()   // make persistentModelIDs permanent before correlating
+        var map: [UUID: PersistentIdentifier] = [:]
+        for (id, recipe) in inserted {
+            map[id] = recipe.persistentModelID
+        }
+        return map
+    }
+}

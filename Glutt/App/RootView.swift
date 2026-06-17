@@ -64,15 +64,8 @@ struct RootView: View {
     /// tells the router which import ids map to which saved recipes (so a
     /// "View recipe" deep link can navigate to the right one).
     private func drainImportInbox() {
-        let drafts = ImportInbox().drain()
-        guard !drafts.isEmpty else { return }
-        var map: [UUID: PersistentIdentifier] = [:]
-        for draft in drafts {
-            let recipe = RecipeFactory.make(from: draft)
-            context.insert(recipe)
-            map[draft.id] = recipe.persistentModelID
-        }
-        router.noteImported(map)
+        let map = ImportInboxDrainer.drain(into: context)
+        if !map.isEmpty { router.noteImported(map) }
     }
 
     @ViewBuilder

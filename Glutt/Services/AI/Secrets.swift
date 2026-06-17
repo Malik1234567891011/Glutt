@@ -1,13 +1,19 @@
 import Foundation
 
-/// Beta-build secrets. For the TestFlight beta the AI key ships in the app —
-/// acceptable for a small trusted group with a spend cap on the key.
-/// TODO before public launch: move behind a proxy and rotate this key.
+/// App-level AI configuration.
 ///
-/// ⚠️ If you put a real key here, set a monthly spend limit on it at
-/// platform.openai.com → Settings → Limits.
+/// Real per-machine values live in a LOCAL, skip-worktree copy of this file so
+/// production secrets are never committed (this repository is public). The
+/// committed version keeps them empty — AI cloud features then fall back to
+/// on-device heuristics.
+///
+/// To set real values locally without committing them:
+///   git update-index --skip-worktree Glutt/Services/AI/Secrets.swift
+///   (then edit this file; git will ignore the change)
 enum Secrets {
-    /// OpenAI (or compatible) API key baked into beta builds.
-    /// Empty string = AI features fall back to on-device heuristics.
-    static let embeddedAIKey = ""
+    /// Backend proxy base URL. Empty string = AI cloud features disabled.
+    static let aiProxyBaseURL = ""
+
+    /// Optional shared secret for proxy requests. Keep empty in git.
+    static let aiProxyClientKey = ""
 }

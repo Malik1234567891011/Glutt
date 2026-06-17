@@ -13,27 +13,12 @@ final class ShareViewController: UIViewController {
         // and a preview image into separate NSExtensionItems.
         let attachments = (extensionContext?.inputItems as? [NSExtensionItem])?
             .flatMap { $0.attachments ?? [] } ?? []
-        presentAttachmentDiagnostic(attachments) { [weak self] in
-            self?.loadSharedInput(from: attachments) { urlString, imageData in
-                self?.present(urlString: urlString, imageData: imageData)
-            }
+        loadSharedInput(from: attachments) { [weak self] urlString, imageData in
+            self?.present(urlString: urlString, imageData: imageData)
         }
     }
 
     // MARK: - Shared input
-
-    /// TEMP diagnostic: list exactly what the source app handed the extension, so
-    /// we can see whether Instagram provides an image attachment at all.
-    private func presentAttachmentDiagnostic(_ attachments: [NSItemProvider], then proceed: @escaping () -> Void) {
-        let types = attachments.flatMap { $0.registeredTypeIdentifiers }
-        let alert = UIAlertController(
-            title: "Share attachments (\(attachments.count))",
-            message: types.isEmpty ? "(none)" : types.joined(separator: "\n"),
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "Continue", style: .default) { _ in proceed() })
-        present(alert, animated: true)
-    }
 
     /// Loads the shared URL (required) and, when the source app also provides a
     /// preview image (e.g. an Instagram reel thumbnail), its bytes — so we can

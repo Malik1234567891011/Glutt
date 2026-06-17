@@ -112,6 +112,18 @@ struct ShareRootView: View {
             .frame(maxWidth: .infinity)
             .clipped()
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        } else {
+            // No thumbnail available (e.g. Instagram reels, which expose none) —
+            // a branded placeholder reads as intentional, not broken.
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .fill(Theme.Colors.accent.opacity(0.08))
+                .frame(height: 160)
+                .frame(maxWidth: .infinity)
+                .overlay(
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 34))
+                        .foregroundStyle(Theme.Colors.accent.opacity(0.5))
+                )
         }
     }
 

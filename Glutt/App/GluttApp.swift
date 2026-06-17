@@ -50,9 +50,13 @@ struct GluttApp: App {
         ])
         do {
             let container = try ModelContainer(for: schema)
-            #if DEBUG
-            SeedData.seedIfNeeded(context: container.mainContext)
-            #endif
+            // Seed demo recipes only when launched with `-seed` (the "Glutt Beta"
+            // scheme passes it). Works when you run the scheme from Xcode; launch
+            // arguments do NOT survive a TestFlight/App Store upload, so distributed
+            // builds stay empty.
+            if ProcessInfo.processInfo.arguments.contains("-seed") {
+                SeedData.seedIfNeeded(context: container.mainContext)
+            }
             return container
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")

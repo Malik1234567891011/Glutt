@@ -2,7 +2,7 @@ import Foundation
 
 /// Hands shared URLs from the share extension to the main app via the app group.
 enum PendingImportStore {
-    static let appGroupID = "group.com.malik.glutt"
+    static let appGroupID = "group.com.omarlahmimi.glutt"
     private static let key = "pendingImportURL"
 
     static func save(urlString: String) {

@@ -1,6 +1,6 @@
 name: Glutt
 options:
-  bundleIdPrefix: com.malik
+  bundleIdPrefix: com.omarlahmimi
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -9,7 +9,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.10"
-    DEVELOPMENT_TEAM: K8MRHHZ85N
+    DEVELOPMENT_TEAM: Q7ZLXMG4SB
     CODE_SIGN_STYLE: Automatic
 
 targets:
@@ -32,12 +32,12 @@ targets:
         NSCameraUsageDescription: Glutt uses the camera to scan your fridge or pantry and to estimate meals you log from photos.
         ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:
-          - CFBundleURLName: com.malik.glutt
+          - CFBundleURLName: com.omarlahmimi.glutt
             CFBundleURLSchemes:
               - glutt
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.malik.glutt
+        PRODUCT_BUNDLE_IDENTIFIER: com.omarlahmimi.glutt
         TARGETED_DEVICE_FAMILY: "1"
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: "1.0"
@@ -51,6 +51,23 @@ targets:
     platform: iOS
     sources:
       - GluttShare
+      - path: Glutt/Models/Enums.swift
+      - path: Glutt/Services/Import/ImportedRecipeDraft.swift
+      - path: Glutt/Services/Import/RecipeImportService.swift
+      - path: Glutt/Services/Import/RecipeHTMLParser.swift
+      - path: Glutt/Services/Import/SocialMediaImport.swift
+      - path: Glutt/Services/Import/TextRecipeParser.swift
+      - path: Glutt/Services/Import/IngredientLineParser.swift
+      - path: Glutt/Services/Import/ImportPipeline.swift
+      - path: Glutt/Services/Import/ImportInbox.swift
+      - path: Glutt/Services/Import/ShareImportViewModel.swift
+      - path: Glutt/Services/Import/PendingImportStore.swift
+      - path: Glutt/Services/AI/LLMClient.swift
+      - path: Glutt/Services/AI/Secrets.swift
+      - path: Glutt/Services/AI/DraftCleanup.swift
+      - path: Glutt/DesignSystem/Theme.swift
+      - path: Glutt/DesignSystem/Typography.swift
+      - path: Glutt/DesignSystem/Components/Buttons.swift
     info:
       path: GluttShare/Info.plist
       properties:
@@ -64,7 +81,7 @@ targets:
               NSExtensionActivationSupportsWebURLWithMaxCount: 1
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.malik.glutt.share
+        PRODUCT_BUNDLE_IDENTIFIER: com.omarlahmimi.glutt.share
         CODE_SIGN_ENTITLEMENTS: GluttShare/GluttShare.entitlements
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: "1.0"
@@ -94,13 +111,17 @@ schemes:
     archive:
       config: Release
 
-  # The TestFlight experience: Release build, no seeded demo data,
-  # onboarding from zero. Use this to test what beta testers will get.
+  # Release-config scheme for testing a production-like build locally. Passes
+  # `-seed` so demo recipes are populated when you RUN it from Xcode (handy for
+  # testing with real-looking content). Note: launch arguments don't survive a
+  # TestFlight upload, so actual distributed beta/App Store builds still start empty.
   Glutt Beta:
     build:
       targets:
         Glutt: all
     run:
       config: Release
+      commandLineArguments:
+        "-seed": true
     archive:
       config: Release

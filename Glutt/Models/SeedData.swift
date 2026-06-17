@@ -1,9 +1,10 @@
-#if DEBUG
 import Foundation
 import SwiftData
 
-/// Development-only sample data so every screen has something to render.
-/// Bump `seedVersion` to wipe and reseed dev installs after content changes.
+/// Sample data for testing. Compiled into all build configs, but only ever
+/// invoked when the app is launched with `-seed` (the "Glutt Beta" scheme
+/// passes it), so distributed builds without that argument never seed.
+/// Bump `seedVersion` to wipe and reseed after content changes.
 enum SeedData {
 
     private static let seedVersion = 2
@@ -512,4 +513,3 @@ enum SeedData {
         try? context.save()
     }
 }
-#endif

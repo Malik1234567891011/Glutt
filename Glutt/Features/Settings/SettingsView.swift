@@ -1,3 +1,4 @@
+import SuperwallKit
 import SwiftData
 import SwiftUI
 
@@ -15,11 +16,14 @@ struct SettingsView: View {
     @State private var allergyText = ""
     @State private var dislikeText = ""
     @State private var isShowingImportGuide = false
+    @State private var isRestoring = false
+    @State private var didRestorePurchases = false
 
     var body: some View {
         NavigationStack {
             Form {
                 helpSection
+                subscriptionSection
                 nutritionSection
                 tasteProfileSection
                 dietarySection
@@ -27,6 +31,11 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $isShowingImportGuide) {
                 ImportGuideView()
+            }
+            .alert("Purchases Restored", isPresented: $didRestorePurchases) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Your Glutt Premium subscription is active.")
             }
             .scrollContentBackground(.hidden)
             .background(Theme.Colors.background)
@@ -95,6 +104,42 @@ struct SettingsView: View {
             Image(systemName: "arrow.up.right.square")
                 .font(.caption)
                 .foregroundStyle(Theme.Colors.textSecondary)
+        }
+    }
+
+    private var subscriptionSection: some View {
+        Section {
+            Button {
+                Task { await restorePurchases() }
+            } label: {
+                HStack {
+                    Label("Restore Purchases", systemImage: "arrow.clockwise")
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                    Spacer()
+                    if isRestoring {
+                        ProgressView()
+                    }
+                }
+            }
+            .disabled(isRestoring)
+        } header: {
+            Text("Subscription")
+        } footer: {
+            Text("Glutt Premium unlocks AI recipe invention. Already subscribed? Restore your purchase here. Manage or cancel anytime in the App Store.")
+        }
+    }
+
+    /// Restores a previous Glutt Premium purchase on user request (App Store
+    /// guideline 3.1.1). In Superwall's automatic mode, the SDK surfaces its own
+    /// alert when no active subscription is found, so we only confirm the success
+    /// path here to avoid showing two alerts.
+    @MainActor
+    private func restorePurchases() async {
+        isRestoring = true
+        _ = await Superwall.shared.restorePurchases()
+        isRestoring = false
+        if Superwall.shared.subscriptionStatus.isActive {
+            didRestorePurchases = true
         }
     }
 

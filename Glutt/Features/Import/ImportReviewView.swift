@@ -247,64 +247,19 @@ struct ImportReviewView: View {
     // MARK: - Save
 
     private func save() {
-        let recipe = Recipe(
-            title: title.trimmingCharacters(in: .whitespaces),
-            summary: draft.summary,
-            sourceCreator: draft.creator,
-            sourceURL: draft.sourceURL,
-            sourcePlatform: draft.platform,
-            sourceCaption: draft.caption,
-            importedAt: .now,
-            importConfidence: draft.confidence,
-            imageURL: draft.imageURL,
-            servings: servings,
-            prepMinutes: prepMinutes,
-            cookMinutes: cookMinutes,
-            tags: draft.tags
-        )
-        recipe.calories = draft.calories
-        recipe.proteinGrams = draft.proteinGrams
+        var edited = draft
+        edited.title = title.trimmingCharacters(in: .whitespaces)
+        edited.servings = servings
+        edited.prepMinutes = prepMinutes
+        edited.cookMinutes = cookMinutes
+        edited.ingredientLines = ingredientLines.map(\.text)
+        edited.stepTexts = stepLines.map(\.text)
 
-        recipe.ingredients = ingredientLines
-            .map { $0.text.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-            .enumerated()
-            .map { index, line in
-                let parsed = IngredientLineParser.parse(line)
-                return RecipeIngredient(
-                    name: parsed.name,
-                    quantity: parsed.quantity,
-                    unit: parsed.unit,
-                    note: parsed.note,
-                    sortIndex: index
-                )
-            }
-
-        recipe.steps = stepLines
-            .map { $0.text.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-            .enumerated()
-            .map { index, text in
-                RecipeStep(index: index, text: text, durationSeconds: detectDuration(in: text))
-            }
-
+        let recipe = RecipeFactory.make(from: edited)
         context.insert(recipe)
         for collection in collections where selectedCollections.contains(collection.persistentModelID) {
             collection.recipes.append(recipe)
         }
         onDone()
-    }
-
-    /// "simmer for 10 minutes" -> 600 seconds. Powers Cook Mode timers later.
-    private func detectDuration(in text: String) -> Int? {
-        let pattern = #"(\d+)\s*(?:-\s*\d+\s*)?(minutes|minute|mins|min|hours|hour|hrs|hr)\b"#
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
-              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-              let numberRange = Range(match.range(at: 1), in: text),
-              let unitRange = Range(match.range(at: 2), in: text),
-              let value = Int(text[numberRange])
-        else { return nil }
-        let unit = text[unitRange].lowercased()
-        return unit.hasPrefix("h") ? value * 3600 : value * 60
     }
 }

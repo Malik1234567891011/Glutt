@@ -12,6 +12,11 @@ settings:
     DEVELOPMENT_TEAM: Q7ZLXMG4SB
     CODE_SIGN_STYLE: Automatic
 
+packages:
+  SuperwallKit:
+    url: https://github.com/superwall/Superwall-iOS
+    from: "4.0.0"
+
 targets:
   Glutt:
     type: application
@@ -45,6 +50,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Glutt/Glutt.entitlements
     dependencies:
       - target: GluttShare
+      - package: SuperwallKit
 
   GluttShare:
     type: app-extension

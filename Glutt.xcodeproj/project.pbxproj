@@ -78,6 +78,7 @@
 		812D77EB9384E9BB9C3FBD71 /* GluttApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F79B61859BDDE45588788FE2 /* GluttApp.swift */; };
 		8332AA9E1C766FF024BEA4C2 /* ImagePrep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DEB872DB55EE7ADF76A5A7B /* ImagePrep.swift */; };
 		83C5802717F3D0FE2F1A2EDF /* TutorialFlowModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5EFBF02DCC36CCFF5BD0971 /* TutorialFlowModelTests.swift */; };
+		8587DC0BAF1A3EA34F5AE852 /* SuperwallKit in Frameworks */ = {isa = PBXBuildFile; productRef = 591C68092C0509ECBD9FC072 /* SuperwallKit */; };
 		8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */; };
 		8FDAE5FFBBFF30C41186E447 /* ImportTutorialScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCC4B7F485CFCE9647BE61E8 /* ImportTutorialScreen.swift */; };
 		8FDC70AABCFEFF1B61118F05 /* OnboardingPaywallHook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25F3CFECAB49DD92009FC400 /* OnboardingPaywallHook.swift */; };
@@ -301,6 +302,17 @@
 		FD66D2C60B184F432C6759F7 /* LeftoverRemixSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftoverRemixSheet.swift; sourceTree = "<group>"; };
 		FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = GluttShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		183147578ABF1430D5940916 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8587DC0BAF1A3EA34F5AE852 /* SuperwallKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		00597C7ACFFC686AE715D397 /* Capture */ = {
@@ -676,6 +688,7 @@
 			buildPhases = (
 				457E5B5948435D61386DA00C /* Sources */,
 				85CAD221C33EC7BBC6918D0B /* Resources */,
+				183147578ABF1430D5940916 /* Frameworks */,
 				AF1B9C57395EAAC7ADB75BAC /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -685,6 +698,7 @@
 			);
 			name = Glutt;
 			packageProductDependencies = (
+				591C68092C0509ECBD9FC072 /* SuperwallKit */,
 			);
 			productName = Glutt;
 			productReference = 37434BCF14AD5C72CF078B97 /* Glutt.app */;
@@ -740,6 +754,9 @@
 			);
 			mainGroup = 3B6CE36E69F9C081AAA102AE;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				705A23F7392CDB72FD70435D /* XCRemoteSwiftPackageReference "Superwall-iOS" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 93320BEA85A48EB5C2314B4B /* Products */;
 			projectDirPath = "";
@@ -1216,6 +1233,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		705A23F7392CDB72FD70435D /* XCRemoteSwiftPackageReference "Superwall-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/superwall/Superwall-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		591C68092C0509ECBD9FC072 /* SuperwallKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 705A23F7392CDB72FD70435D /* XCRemoteSwiftPackageReference "Superwall-iOS" */;
+			productName = SuperwallKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = FFD4FEE5A17C97AA807A3959 /* Project object */;
 }

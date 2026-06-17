@@ -1,3 +1,4 @@
+import SuperwallKit
 import SwiftData
 import SwiftUI
 import UserNotifications
@@ -29,7 +30,12 @@ struct GluttApp: App {
     @State private var router = Router()
     private let notificationDelegate = NotificationRoutingDelegate()
 
+    /// Superwall publishable key — safe to embed in the app binary.
+    /// Dashboard → Settings → API Keys.
+    private static let superwallPublicAPIKey = "pk_WahaBcbECKEDins7Lio-Q"
+
     init() {
+        Superwall.configure(apiKey: Self.superwallPublicAPIKey)
         notificationDelegate.router = router
         UNUserNotificationCenter.current().delegate = notificationDelegate
     }

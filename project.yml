@@ -27,6 +27,8 @@ targets:
       path: Glutt/Info.plist
       properties:
         CFBundleDisplayName: Glutt
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UILaunchScreen: {}
         # The design system is a deliberate light (cream/green) identity.
         # Must live HERE, not as INFOPLIST_KEY_* build setting — those are
@@ -78,6 +80,8 @@ targets:
       path: GluttShare/Info.plist
       properties:
         CFBundleDisplayName: Glutt
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UIUserInterfaceStyle: Light
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services

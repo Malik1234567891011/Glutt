@@ -25,3 +25,4 @@ xcuserdata/
 # Secrets
 *.env
 Secrets.xcconfig
+build-device/

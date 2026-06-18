@@ -41,6 +41,14 @@ re-enabling is a small, well-contained change.
    | `com.glutt.premium.yearly` | 1 year | $39.99 |
    | `com.glutt.premium.monthly` | 1 month | $7.99 |
    These IDs MUST match exactly what Superwall references (see below).
+
+   > ⚠️ **The original products were DELETED in June 2026** to ship the free
+   > build (Apple kept reviewing them and rejecting because they were attached
+   > to a free app). Apple generally does **not** allow reusing a deleted IAP's
+   > product ID, so when recreating, expect to need **new IDs** (e.g.
+   > `com.glutt.premium.yearly2` / `...monthly2`). If you change the IDs, also
+   > update the product references on Superwall **paywall 234287** (and this
+   > table) to match.
 3. **Metadata:** Privacy Policy URL = `https://glutt.org/privacy`; add the Terms
    of Use (EULA) link `https://glutt.org/terms` to the App Description (or paste
    the EULA into the License Agreement field).

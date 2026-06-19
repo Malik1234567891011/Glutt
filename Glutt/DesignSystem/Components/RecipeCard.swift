@@ -39,17 +39,19 @@ struct RecipeCard: View {
     }
 
     private var mediaBlock: some View {
-        ZStack(alignment: .topTrailing) {
-            panelTint
-            HStack(spacing: 0) {
-                RecipeImageView(recipe: recipe)
-                    .containerRelativeFrame(.horizontal) { w, _ in w * 0.63 }
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.photo, style: .continuous))
-                Spacer(minLength: 0)
-            }
-            if let tag = recipe.tags.first {
-                tagPill(tag)
-                    .padding(8)
+        GeometryReader { geo in
+            ZStack(alignment: .topTrailing) {
+                panelTint
+                HStack(spacing: 0) {
+                    RecipeImageView(recipe: recipe)
+                        .frame(width: geo.size.width * 0.63, height: geo.size.height)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.photo, style: .continuous))
+                    Spacer(minLength: 0)
+                }
+                if let tag = recipe.tags.first {
+                    tagPill(tag)
+                        .padding(8)
+                }
             }
         }
         .frame(height: 148)

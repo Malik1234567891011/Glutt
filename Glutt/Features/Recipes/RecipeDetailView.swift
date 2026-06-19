@@ -175,11 +175,23 @@ struct RecipeDetailView: View {
             if let summary = recipe.summary {
                 Text(summary).font(.gluttBody).foregroundStyle(Theme.Colors.textSecondary)
             }
+            Text(recipe.sourceCreator ?? recipe.sourcePlatform.label)
+                .font(.gluttCaption)
+                .foregroundStyle(Theme.Colors.textSecondary)
             HStack(spacing: 8) {
                 StatPill.time(recipe.timeLabel)
                 StatPill.difficulty(recipe.difficulty.label)
                 if let rating = recipe.rating { StatPill.rating("\(rating)") }
                 Spacer(minLength: 0)
+            }
+            if !recipe.tags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        ForEach(recipe.tags, id: \.self) { tag in
+                            Chip(label: tag).fixedSize()
+                        }
+                    }
+                }
             }
             if let confidence = recipe.importConfidence, confidence < 0.85 {
                 ConfidenceBadge(confidence: confidence)
@@ -258,6 +270,30 @@ struct RecipeDetailView: View {
     private var ingredientsTab: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             servingsStepper
+            if displayServings != recipe.servings {
+                HStack(spacing: Theme.Spacing.sm) {
+                    Label(
+                        "Scaled from \(recipe.servings) \(recipe.servings == 1 ? "serving" : "servings")",
+                        systemImage: "arrow.up.arrow.down"
+                    )
+                    .font(.gluttCaption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    Spacer()
+                    Button("Reset") { displayServings = recipe.servings }
+                        .font(.gluttCaption.weight(.semibold))
+                        .foregroundStyle(Theme.Colors.accent)
+                }
+            }
+            if pantryMatch.totalCount > 0 {
+                Label(
+                    pantryMatch.hasEverything
+                        ? "You have everything"
+                        : "You have \(pantryMatch.ownedCount) of \(pantryMatch.totalCount) — missing \(pantryMatch.missing.count)",
+                    systemImage: pantryMatch.hasEverything ? "checkmark.circle.fill" : "basket"
+                )
+                .font(.gluttCaption.weight(.semibold))
+                .foregroundStyle(pantryMatch.hasEverything ? Theme.Colors.accent : Theme.Colors.warning)
+            }
             ForEach(IngredientSection.allCases, id: \.self) { section in
                 let rows = sortedIngredients.filter { IngredientCategoryStyle.section(for: $0.name) == section }
                 if !rows.isEmpty {
@@ -320,7 +356,7 @@ struct RecipeDetailView: View {
                 Text(ingredient.name)
                     .font(.system(size: 15.5, weight: .bold, design: .rounded))
                     .strikethrough(owned, color: Theme.Colors.textSecondary)
-                    .foregroundStyle(owned ? Theme.Colors.textSecondary : Theme.Colors.textPrimary)
+                    .foregroundStyle(owned ? Theme.Colors.textSecondary : nameColor(for: ingredient))
                 HStack(spacing: 4) {
                     if let display = UnitConverter.display(quantity: ingredient.quantity, unit: ingredient.unit,
                                                            scale: scale, system: unitSystem) {

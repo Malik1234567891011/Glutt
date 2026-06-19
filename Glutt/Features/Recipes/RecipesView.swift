@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -14,6 +15,7 @@ struct RecipesView: View {
     @State private var searchText = ""
     @State private var selectedFilter: String?
     @State private var sortOrder: SortOrder = .recentlySaved
+    @State private var isGrid = false
     @State private var isShowingEditor = false
     @State private var isShowingImport = false
     @State private var isNamingCollection = false
@@ -46,6 +48,17 @@ struct RecipesView: View {
         let counted = Dictionary(grouping: tags, by: { $0 }).mapValues(\.count)
         chips += counted.sorted { $0.value > $1.value }.map(\.key)
         return chips
+    }
+
+    /// Tag-driven categories: the most-used real tags, each with a representative recipe.
+    private var categoryTags: [(tag: String, recipe: Recipe)] {
+        let special: Set = [Self.cookedBeforeFilter, Self.needsCleanupFilter]
+        return filterChips
+            .filter { !special.contains($0) }
+            .prefix(8)
+            .compactMap { tag in
+                libraryRecipes.first(where: { $0.tags.contains(tag) }).map { (tag, $0) }
+            }
     }
 
     private var visibleRecipes: [Recipe] {
@@ -82,6 +95,10 @@ struct RecipesView: View {
                     if !collections.isEmpty {
                         collectionsRow
                     }
+                    if !categoryTags.isEmpty {
+                        categoryRow
+                    }
+                    countHeader
                     ChipRow(labels: filterChips, selection: $selectedFilter)
 
                     if searchText.isEmpty {
@@ -93,6 +110,15 @@ struct RecipesView: View {
                                 actionLabel: "Add a recipe",
                                 action: { isShowingEditor = true }
                             )
+                        } else if isGrid {
+                            LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.md),
+                                                GridItem(.flexible(), spacing: Theme.Spacing.md)],
+                                      spacing: Theme.Spacing.md) {
+                                ForEach(visibleRecipes) { recipe in
+                                    recipeLink(recipe, reasons: [])
+                                }
+                            }
+                            .padding(.horizontal, Theme.Spacing.md)
                         } else {
                             LazyVStack(spacing: Theme.Spacing.md) {
                                 ForEach(visibleRecipes) { recipe in
@@ -121,7 +147,7 @@ struct RecipesView: View {
                 }
                 .padding(.vertical, Theme.Spacing.md)
             }
-            .contentMargins(.bottom, 56, for: .scrollContent)
+            .contentMargins(.bottom, 76, for: .scrollContent)
             .background(Theme.Colors.background)
             .navigationTitle("Recipes")
             .navigationDestination(for: Recipe.self) { recipe in
@@ -249,6 +275,43 @@ struct RecipesView: View {
             }
             .padding(.horizontal, Theme.Spacing.md)
         }
+    }
+
+    private var categoryRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 16) {
+                ForEach(categoryTags, id: \.tag) { item in
+                    CategoryCircle(
+                        label: item.tag,
+                        isActive: selectedFilter == item.tag,
+                        action: { selectedFilter = (selectedFilter == item.tag) ? nil : item.tag }
+                    ) {
+                        RecipeImageView(recipe: item.recipe)
+                    }
+                }
+            }
+            .padding(.horizontal, Theme.Spacing.md)
+        }
+    }
+
+    private var countHeader: some View {
+        HStack {
+            Text("^[\(visibleRecipes.count) recipe](inflect: true)")
+                .font(.system(size: 25, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.Colors.textPrimary)
+            Spacer()
+            Button { isGrid.toggle() } label: {
+                Ph.squaresFour.fill.resizable().scaledToFit().frame(width: 18, height: 18)
+                    .foregroundStyle(isGrid ? Theme.Colors.accent : Theme.Colors.textSecondary)
+                    .frame(width: 40, height: 40)
+                    .background(Theme.Colors.card)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+                        .strokeBorder(Theme.Colors.border, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, Theme.Spacing.md)
     }
 }
 

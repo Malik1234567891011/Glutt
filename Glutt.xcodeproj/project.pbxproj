@@ -80,6 +80,7 @@
 		8332AA9E1C766FF024BEA4C2 /* ImagePrep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DEB872DB55EE7ADF76A5A7B /* ImagePrep.swift */; };
 		83C5802717F3D0FE2F1A2EDF /* TutorialFlowModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5EFBF02DCC36CCFF5BD0971 /* TutorialFlowModelTests.swift */; };
 		8587DC0BAF1A3EA34F5AE852 /* SuperwallKit in Frameworks */ = {isa = PBXBuildFile; productRef = 591C68092C0509ECBD9FC072 /* SuperwallKit */; };
+		88C20E69DF305AA627CA5138 /* PhosphorSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 9D6EA50EAFA05362636FF132 /* PhosphorSwift */; };
 		8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */; };
 		8FDAE5FFBBFF30C41186E447 /* ImportTutorialScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCC4B7F485CFCE9647BE61E8 /* ImportTutorialScreen.swift */; };
 		8FDC70AABCFEFF1B61118F05 /* OnboardingPaywallHook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25F3CFECAB49DD92009FC400 /* OnboardingPaywallHook.swift */; };
@@ -311,6 +312,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8587DC0BAF1A3EA34F5AE852 /* SuperwallKit in Frameworks */,
+				88C20E69DF305AA627CA5138 /* PhosphorSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -679,8 +681,6 @@
 				FCD81CA0C8258BA1D9DA0278 /* PBXTargetDependency */,
 			);
 			name = GluttTests;
-			packageProductDependencies = (
-			);
 			productName = GluttTests;
 			productReference = 5EFB5FAA0EF9CA829EE21DFA /* GluttTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -702,6 +702,7 @@
 			name = Glutt;
 			packageProductDependencies = (
 				591C68092C0509ECBD9FC072 /* SuperwallKit */,
+				9D6EA50EAFA05362636FF132 /* PhosphorSwift */,
 			);
 			productName = Glutt;
 			productReference = 37434BCF14AD5C72CF078B97 /* Glutt.app */;
@@ -719,8 +720,6 @@
 			dependencies = (
 			);
 			name = GluttShare;
-			packageProductDependencies = (
-			);
 			productName = GluttShare;
 			productReference = FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -759,6 +758,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				705A23F7392CDB72FD70435D /* XCRemoteSwiftPackageReference "Superwall-iOS" */,
+				4CE70C0D224C315CCD14F059 /* XCRemoteSwiftPackageReference "swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 93320BEA85A48EB5C2314B4B /* Products */;
@@ -1239,6 +1239,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		4CE70C0D224C315CCD14F059 /* XCRemoteSwiftPackageReference "swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/phosphor-icons/swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
 		705A23F7392CDB72FD70435D /* XCRemoteSwiftPackageReference "Superwall-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/superwall/Superwall-iOS";
@@ -1254,6 +1262,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 705A23F7392CDB72FD70435D /* XCRemoteSwiftPackageReference "Superwall-iOS" */;
 			productName = SuperwallKit;
+		};
+		9D6EA50EAFA05362636FF132 /* PhosphorSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4CE70C0D224C315CCD14F059 /* XCRemoteSwiftPackageReference "swift" */;
+			productName = PhosphorSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

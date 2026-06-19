@@ -145,6 +145,7 @@
 		F7E4A0E616661F6E90B0CB19 /* CaptureActionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D139D25BBBE8E494F7AA325 /* CaptureActionSheet.swift */; };
 		F89EA26785D35F6C2E3A81E9 /* ImportPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60BCB66B0A792A4EAFB58AB /* ImportPipeline.swift */; };
 		FDA468B0515CCE15FA0C5D16 /* DietGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F29983D8888CD4C7C082CBB /* DietGuard.swift */; };
+		FED10CA49623BA871FF0FF92 /* StatPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 480AAE7FA467552262AE7814 /* StatPill.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -222,6 +223,7 @@
 		421A2BD5A79AB7F890E43900 /* ImportInbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportInbox.swift; sourceTree = "<group>"; };
 		4365A28A0C4D406680BB297B /* OnboardingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingState.swift; sourceTree = "<group>"; };
 		476DE0FF02A984E39531A7EF /* GroceryListBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroceryListBuilder.swift; sourceTree = "<group>"; };
+		480AAE7FA467552262AE7814 /* StatPill.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StatPill.swift; sourceTree = "<group>"; };
 		4820516244572894C4395483 /* InventionPaywallHook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventionPaywallHook.swift; sourceTree = "<group>"; };
 		4A255073F3542D7946FDF4A5 /* LeftoversView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftoversView.swift; sourceTree = "<group>"; };
 		4AA37957DBDDC577B2780A3E /* UserPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPrefs.swift; sourceTree = "<group>"; };
@@ -567,6 +569,7 @@
 				5F53E9D323C8F67248EAD82D /* OptionRow.swift */,
 				2A982408D84D1386F5B24B7C /* RecipeCard.swift */,
 				B2C63684C7E494372CA1A8B5 /* RecipeImageView.swift */,
+				480AAE7FA467552262AE7814 /* StatPill.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -917,6 +920,7 @@
 				60F40CA16978E4326ADCE853 /* WeekPlannerWizard.swift in Sources */,
 				5520541095BB606F7B9519F9 /* WelcomeScreen.swift in Sources */,
 				16D3B3AE34C06307AB52F183 /* WhatToCookView.swift in Sources */,
+				FED10CA49623BA871FF0FF92 /* StatPill.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

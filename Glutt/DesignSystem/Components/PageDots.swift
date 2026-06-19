@@ -10,7 +10,7 @@ struct PageDots: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            ForEach(0..<count, id: \.self) { i in
+            ForEach(Array(0..<count), id: \.self) { i in
                 Capsule(style: .continuous)
                     .fill(i == index ? active : inactive)
                     .frame(width: i == index ? 24 : 8, height: 8)

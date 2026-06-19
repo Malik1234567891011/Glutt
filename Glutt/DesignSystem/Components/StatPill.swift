@@ -23,7 +23,7 @@ struct StatPill: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
         .background(background)
-        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous))
     }
 
     /// ★ rating — herb-green on sage.

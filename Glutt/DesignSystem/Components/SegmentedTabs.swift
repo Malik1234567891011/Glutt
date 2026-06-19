@@ -21,7 +21,7 @@ struct SegmentedTabs: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 9)
                         .background(
-                            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous)
                                 .fill(isActive ? Theme.Colors.accent : Color.clear)
                         )
                 }
@@ -30,7 +30,7 @@ struct SegmentedTabs: View {
         }
         .padding(5)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.Radius.segment, style: .continuous)
                 .fill(Theme.Colors.segmentTrack)
         )
     }

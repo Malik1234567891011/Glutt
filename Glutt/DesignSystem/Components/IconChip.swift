@@ -16,7 +16,7 @@ struct IconChip: View {
             .foregroundColor(foreground)
             .frame(width: 36, height: 36)
             .background(background)
-            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous))
     }
 }
 

@@ -61,6 +61,10 @@ enum Theme {
         static let cardLarge: CGFloat = 26
         /// Photo tiles nested inside cards.
         static let photo: CGFloat = 18
+        /// Stat pills, icon chips, active segment.
+        static let pill: CGFloat = 11
+        /// Segmented-control track.
+        static let segment: CGFloat = 14
         static let sheet: CGFloat = 24
         static let button: CGFloat = 12
     }

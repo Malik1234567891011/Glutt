@@ -45,7 +45,7 @@ struct HighlightHeadline: View {
                     .padding(.vertical, word.style.background == nil ? 0 : 5)
                     .background {
                         if let bg = word.style.background {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous).fill(bg)
+                            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(bg)
                         }
                     }
             }

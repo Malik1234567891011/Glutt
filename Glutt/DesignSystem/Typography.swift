@@ -13,6 +13,30 @@ extension Font {
     static let gluttCaption = Font.system(.subheadline, design: .rounded)
     /// Cook Mode step text — large and readable from a distance.
     static let gluttCookStep = Font.system(size: 28, weight: .medium, design: .rounded)
+    /// Small uppercase section labels ("FRESH", "PANTRY", category headers).
+    static let gluttSectionLabel = Font.system(size: 12, weight: .heavy, design: .rounded)
+}
+
+/// Uppercase, letter-spaced, herb-green section label (FRESH / PANTRY / category headers).
+struct SectionLabel: View {
+    let text: String
+    var color: Color = Theme.Colors.accent
+
+    var body: some View {
+        Text(text.uppercased())
+            .font(.gluttSectionLabel)
+            .tracking(1.4)
+            .foregroundStyle(color)
+    }
+}
+
+#Preview("SectionLabel") {
+    VStack(alignment: .leading, spacing: 12) {
+        SectionLabel(text: "Fresh")
+        SectionLabel(text: "Pantry")
+    }
+    .padding()
+    .background(Theme.Colors.background)
 }
 
 struct SectionHeader: View {

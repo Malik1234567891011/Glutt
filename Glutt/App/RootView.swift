@@ -27,8 +27,9 @@ struct RootView: View {
             // removed with the custom bar; without this, toolbar/system controls
             // fall back to system blue). The hidden native bar ignores it.
             .tint(Theme.Colors.accent)
-
-            GluttTabBar(selection: $router.selectedTab)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                GluttTabBar(selection: $router.selectedTab)
+            }
 
             if router.floatingButtonSuppressors == 0 {
                 captureButton

@@ -28,6 +28,7 @@ struct CategoryCircle<Thumb: View>: View {
                         .foregroundColor(Theme.Colors.warning)
                         .offset(x: 4, y: -4)
                         .opacity(isActive ? 1 : 0)
+                        .allowsHitTesting(false)
                 }
                 .frame(width: 66, height: 66)            // reserve max slot → no sibling reflow on activate
                 Text(label)

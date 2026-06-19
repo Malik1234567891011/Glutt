@@ -10,7 +10,7 @@ struct RecipeCard: View {
 
     private var panelTint: Color {
         // stable per-recipe pick from the rotating decorative set
-        abs(recipe.persistentModelID.hashValue) % 2 == 0 ? Theme.Colors.sagePanel : Theme.Colors.peachPanel
+        recipe.persistentModelID.hashValue & 1 == 0 ? Theme.Colors.sagePanel : Theme.Colors.peachPanel
     }
 
     var body: some View {
@@ -41,7 +41,6 @@ struct RecipeCard: View {
     private var mediaBlock: some View {
         GeometryReader { geo in
             ZStack(alignment: .topTrailing) {
-                panelTint
                 HStack(spacing: 0) {
                     RecipeImageView(recipe: recipe)
                         .frame(width: geo.size.width * 0.63, height: geo.size.height)
@@ -73,7 +72,7 @@ struct RecipeCard: View {
 
     @ViewBuilder private var statRow: some View {
         HStack(spacing: 8) {
-            StatPill.time("\(recipe.estimatedMinutes) min")
+            StatPill.time(recipe.timeLabel)
             StatPill.difficulty(recipe.difficulty.label)
             if let rating = recipe.rating {
                 StatPill.rating("\(rating)")

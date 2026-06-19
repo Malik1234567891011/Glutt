@@ -38,7 +38,7 @@ struct RecipesView: View {
 
     private var filterChips: [String] {
         var chips: [String] = []
-        if libraryRecipes.contains(where: { !$0.cookSessions(in: context).isEmpty }) {
+        if !cookHistory.isEmpty {
             chips.append(Self.cookedBeforeFilter)
         }
         if libraryRecipes.contains(where: { ($0.importConfidence ?? 1) < 0.8 }) {
@@ -98,7 +98,6 @@ struct RecipesView: View {
                     if !categoryTags.isEmpty {
                         categoryRow
                     }
-                    countHeader
                     ChipRow(labels: filterChips, selection: $selectedFilter)
 
                     if searchText.isEmpty {
@@ -110,22 +109,25 @@ struct RecipesView: View {
                                 actionLabel: "Add a recipe",
                                 action: { isShowingEditor = true }
                             )
-                        } else if isGrid {
-                            LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.md),
-                                                GridItem(.flexible(), spacing: Theme.Spacing.md)],
-                                      spacing: Theme.Spacing.md) {
-                                ForEach(visibleRecipes) { recipe in
-                                    recipeLink(recipe, reasons: [])
-                                }
-                            }
-                            .padding(.horizontal, Theme.Spacing.md)
                         } else {
-                            LazyVStack(spacing: Theme.Spacing.md) {
-                                ForEach(visibleRecipes) { recipe in
-                                    recipeLink(recipe, reasons: [])
+                            countHeader
+                            if isGrid {
+                                LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.md),
+                                                    GridItem(.flexible(), spacing: Theme.Spacing.md)],
+                                          spacing: Theme.Spacing.md) {
+                                    ForEach(visibleRecipes) { recipe in
+                                        recipeLink(recipe, reasons: [])
+                                    }
                                 }
+                                .padding(.horizontal, Theme.Spacing.md)
+                            } else {
+                                LazyVStack(spacing: Theme.Spacing.md) {
+                                    ForEach(visibleRecipes) { recipe in
+                                        recipeLink(recipe, reasons: [])
+                                    }
+                                }
+                                .padding(.horizontal, Theme.Spacing.md)
                             }
-                            .padding(.horizontal, Theme.Spacing.md)
                         }
                     } else {
                         let results = searchResults

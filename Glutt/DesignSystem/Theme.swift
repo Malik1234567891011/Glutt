@@ -40,6 +40,10 @@ enum Theme {
         static let dotInactive = Color(red: 0.847, green: 0.804, blue: 0.745)
         /// Muted label for inactive category names. (#9A8A7C)
         static let mutedLabel = Color(red: 0.604, green: 0.541, blue: 0.486)
+        /// Inactive bottom-tab glyph + label on the dark bar. (#928377)
+        static let tabInactive = Color(red: 0.573, green: 0.514, blue: 0.467)
+        /// Active bottom-tab glyph (light green) on the dark bar. (#CFE6CC)
+        static let activeTabGlyph = Color(red: 0.812, green: 0.902, blue: 0.800)
     }
 
     // MARK: - Spacing
@@ -67,6 +71,10 @@ enum Theme {
         static let segment: CGFloat = 14
         static let sheet: CGFloat = 24
         static let button: CGFloat = 12
+        /// Dark tab bar top corners.
+        static let tabBarTop: CGFloat = 30
+        /// Card tag pill (top-right of media).
+        static let tag: CGFloat = 13
     }
 
     // MARK: - Shadows

@@ -39,6 +39,7 @@
 		29D86E6EDB47D24AA57689BE /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63AAAB7971E6854FA16F0BA3 /* FlowLayout.swift */; };
 		2A40DDC0A750E0ED5A5A930C /* InventionPaywallHook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4820516244572894C4395483 /* InventionPaywallHook.swift */; };
 		2C69CC2242F748A1C4A03834 /* Kitchen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 412DD0B2F37BE98BAAEB523D /* Kitchen.swift */; };
+		2D2F56CC73070569BEE27982 /* GluttTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 150DC72E05DA2559EE8D1666 /* GluttTabBar.swift */; };
 		2DEF284227B22932F4575048 /* ImportPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60BCB66B0A792A4EAFB58AB /* ImportPipeline.swift */; };
 		2E22D7543240ED83B3350F7C /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5D72BFDA83AFBD303E2775 /* ShareViewController.swift */; };
 		2F8CE75A36C1974FF06DA481 /* LLMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D79524BA975910B84DB07A03 /* LLMClient.swift */; };
@@ -193,6 +194,7 @@
 		0B5DBE7B529C396B6D443B8D /* IconChip.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IconChip.swift; sourceTree = "<group>"; };
 		0D21EDB37D0BDBA3422DA1A1 /* RecipeImportService+OCR.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecipeImportService+OCR.swift"; sourceTree = "<group>"; };
 		143FFCADAD89229E2D98D272 /* AdjustRecipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdjustRecipeView.swift; sourceTree = "<group>"; };
+		150DC72E05DA2559EE8D1666 /* GluttTabBar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GluttTabBar.swift; sourceTree = "<group>"; };
 		151A0FD46C1B36361CD24372 /* SeedData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedData.swift; sourceTree = "<group>"; };
 		15C277290BDB320A5FFBB935 /* Planning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Planning.swift; sourceTree = "<group>"; };
 		16E1DE3B31751026516F5B8A /* PantryChef.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PantryChef.swift; sourceTree = "<group>"; };
@@ -591,6 +593,7 @@
 				63AAAB7971E6854FA16F0BA3 /* FlowLayout.swift */,
 				756370C541F675B1A5B81980 /* HighlightHeadline.swift */,
 				1EDF7AC69612A71C15E4C329 /* CategoryCircle.swift */,
+				150DC72E05DA2559EE8D1666 /* GluttTabBar.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -949,6 +952,7 @@
 				29D86E6EDB47D24AA57689BE /* FlowLayout.swift in Sources */,
 				783DD366C0F325D1AA55BFE2 /* HighlightHeadline.swift in Sources */,
 				0DF425DFA415CC4D0C58D843 /* CategoryCircle.swift in Sources */,
+				2D2F56CC73070569BEE27982 /* GluttTabBar.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

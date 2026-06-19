@@ -19,13 +19,12 @@ struct RootView: View {
             TabView(selection: $router.selectedTab) {
                 ForEach(AppTab.allCases) { tab in
                     tabContent(for: tab)
-                        .tabItem {
-                            Label(tab.label, systemImage: tab.icon)
-                        }
+                        .toolbar(.hidden, for: .tabBar)
                         .tag(tab)
                 }
             }
-            .tint(Theme.Colors.accent)
+
+            GluttTabBar(selection: $router.selectedTab)
 
             if router.floatingButtonSuppressors == 0 {
                 captureButton
@@ -94,7 +93,7 @@ struct RootView: View {
                 .overlay(Circle().strokeBorder(Theme.Colors.background, lineWidth: 3))
                 .shadow(color: Theme.Colors.textPrimary.opacity(0.18), radius: 5, x: 0, y: 2)
         }
-        .offset(y: -34)
+        .offset(y: -78)
         .accessibilityLabel("Add or import")
     }
 }

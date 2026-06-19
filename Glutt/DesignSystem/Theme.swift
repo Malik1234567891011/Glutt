@@ -26,6 +26,20 @@ enum Theme {
         /// Soft amber tint for warnings/"use soon" states.
         static let warningTint = Color(red: 0.99, green: 0.94, blue: 0.84)
         static let warning = Color(red: 0.76, green: 0.55, blue: 0.13)
+        /// Soft tomato tint — difficulty pills, protein icon chips. (#F7DDD2)
+        static let tomatoTint = Color(red: 0.969, green: 0.867, blue: 0.824)
+        /// Decorative peach panel tint behind food photos. (#F7E2D4)
+        static let peachPanel = Color(red: 0.969, green: 0.886, blue: 0.831)
+        /// Decorative sage panel tint — semantic alias of successTint.
+        static let sagePanel = successTint
+        /// Cream text/glyph on dark or green fills (tab labels, CTA text, active segment). (#F4ECDF)
+        static let creamText = Color(red: 0.957, green: 0.925, blue: 0.875)
+        /// Segmented-control track. (#EBE2D4)
+        static let segmentTrack = Color(red: 0.922, green: 0.886, blue: 0.831)
+        /// Inactive page-dot fill. (#D8CDBE)
+        static let dotInactive = Color(red: 0.847, green: 0.804, blue: 0.745)
+        /// Muted label for inactive category names. (#9A8A7C)
+        static let mutedLabel = Color(red: 0.604, green: 0.541, blue: 0.486)
     }
 
     // MARK: - Spacing
@@ -43,6 +57,10 @@ enum Theme {
     enum Radius {
         static let chip: CGFloat = 8
         static let card: CGFloat = 16
+        /// Redesigned recipe/detail/section cards — softer than `card`.
+        static let cardLarge: CGFloat = 26
+        /// Photo tiles nested inside cards.
+        static let photo: CGFloat = 18
         static let sheet: CGFloat = 24
         static let button: CGFloat = 12
     }

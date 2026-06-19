@@ -65,7 +65,7 @@ struct RecipesView: View {
         switch sortOrder {
         case .recentlySaved: return recipes
         case .alphabetical: return recipes.sorted { $0.title < $1.title }
-        case .quickest: return recipes.sorted { $0.totalMinutes < $1.totalMinutes }
+        case .quickest: return recipes.sorted { $0.estimatedMinutes < $1.estimatedMinutes }
         }
     }
 

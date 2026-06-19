@@ -299,7 +299,7 @@ struct TodayView: View {
                         Label("start by \(start.formatted(date: .omitted, time: .shortened))", systemImage: "timer")
                             .foregroundStyle(Theme.Colors.warning)
                     }
-                    Label("\(recipe.totalMinutes) min", systemImage: "clock")
+                    Label(recipe.timeLabel, systemImage: "clock")
                 }
                 .font(.gluttCaption)
                 .foregroundStyle(Theme.Colors.textSecondary)

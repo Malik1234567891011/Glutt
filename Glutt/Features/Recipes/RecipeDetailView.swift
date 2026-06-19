@@ -207,7 +207,7 @@ struct RecipeDetailView: View {
                     Text(recipe.sourcePlatform.label)
                 }
                 Text("·")
-                Label("\(recipe.totalMinutes) min", systemImage: "clock")
+                Label(recipe.timeLabel, systemImage: "clock")
                 Text("·")
                 Text(recipe.difficulty.label)
             }
@@ -263,19 +263,40 @@ struct RecipeDetailView: View {
     }
 
     private var servingsAndUnits: some View {
-        HStack {
-            Stepper(value: $displayServings, in: 1...24) {
-                Text("\(displayServings) servings")
-                    .font(.gluttHeadline)
-                    .foregroundStyle(Theme.Colors.textPrimary)
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack {
+                Stepper(value: $displayServings, in: 1...24) {
+                    Text("\(displayServings) servings")
+                        .font(.gluttHeadline)
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                }
+                Picker("Units", selection: $unitSystem) {
+                    ForEach(MeasurementSystem.allCases, id: \.self) { system in
+                        Text(system.rawValue).tag(system)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 150)
             }
-            Picker("Units", selection: $unitSystem) {
-                ForEach(MeasurementSystem.allCases, id: \.self) { system in
-                    Text(system.rawValue).tag(system)
+
+            // Scaling is non-destructive: the stepper re-figures the amounts
+            // for how many you're cooking, but the recipe's own serving count
+            // is untouched. Make that obvious and one-tap reversible. To fix a
+            // wrong base count (right amounts, wrong number), use Edit.
+            if displayServings != recipe.servings {
+                HStack(spacing: Theme.Spacing.sm) {
+                    Label(
+                        "Amounts scaled from \(recipe.servings) \(recipe.servings == 1 ? "serving" : "servings")",
+                        systemImage: "arrow.up.arrow.down"
+                    )
+                    .font(.gluttCaption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    Spacer()
+                    Button("Reset") { displayServings = recipe.servings }
+                        .font(.gluttCaption.weight(.semibold))
+                        .foregroundStyle(Theme.Colors.accent)
                 }
             }
-            .pickerStyle(.segmented)
-            .frame(width: 150)
         }
         .cardStyle()
     }

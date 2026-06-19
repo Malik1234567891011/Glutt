@@ -18,6 +18,13 @@ enum DraftCleanup {
         var notes: String?
     }
 
+    /// Shared instruction that pushes the model to actually reason about how
+    /// many people a recipe feeds, instead of lazily defaulting to "2". Reused
+    /// by every prompt that produces a `servings` value.
+    private static let servingsGuidance = """
+        - servings: estimate the REAL number of adult servings by reading the ingredient quantities — do NOT just default to 2. Reason it out using rough per-adult portions: ~150–225 g (⅓–½ lb) raw meat/fish, ~75–100 g dry rice/pasta (about ½–¾ cup dry rice) or 1 cup cooked grains, 1–2 eggs when eggs are the base, ~1 cup chopped vegetables, ~115 g (¼ lb) cheese as a main. Add up the mains and divide. Examples: 1 kg / 2 lb ground beef ≈ 5–6 servings; 4 chicken thighs ≈ 4 servings; a single salmon fillet ≈ 1. Only fall back to 2–4 when quantities are genuinely missing or unclear.
+        """
+
     /// Heuristic for "is this draft messy enough to be worth a cloud call".
     static func wouldImprove(_ draft: ImportedRecipeDraft) -> Bool {
         guard LLMClient.isConfigured else { return false }
@@ -44,6 +51,7 @@ enum DraftCleanup {
         - ingredients: one ingredient per line, format "quantity unit ingredient" when known (e.g. "2 tbsp soy sauce"). Fix OCR errors (e.g. "1OO g" -> "100 g").
         - steps: clear imperative sentences, one action per step, in order. Split run-on paragraphs.
         - Do NOT invent quantities, ingredients, or steps that are not implied by the source.
+        \(servingsGuidance)
         - tags: up to 5 lowercase tags like "high-protein", "one-pan", "quick".
         - summary: one appetizing sentence, no hype.
         - If the text contains no recipe at all, return {}.
@@ -182,6 +190,7 @@ enum DraftCleanup {
         - This is your best-guess standard version, so keep it simple and classic — no chef flourishes.
         - ingredients: "quantity unit ingredient" per line, realistic home quantities.
         - steps: clear imperative sentences, one action per step.
+        \(servingsGuidance)
         - tags: up to 5 lowercase tags.
         - If you cannot tell what dish this is, return {}.
         """

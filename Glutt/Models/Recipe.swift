@@ -55,6 +55,36 @@ final class Recipe {
 
     var totalMinutes: Int { prepMinutes + cookMinutes }
 
+    /// Best-effort total time for display and sorting. When the source gave us
+    /// explicit prep/cook minutes we trust those; otherwise (common with
+    /// imported/AI recipes that come back as 0) we estimate from the timers
+    /// detected in the steps plus a buffer for the hands-on prep and
+    /// transitions that those timers never capture.
+    var estimatedMinutes: Int {
+        let explicit = prepMinutes + cookMinutes
+        if explicit > 0 { return explicit }
+        guard !steps.isEmpty else { return 0 }
+        let timedMinutes = steps.compactMap(\.durationSeconds).reduce(0, +) / 60
+        let untimedSteps = steps.filter { $0.durationSeconds == nil }.count
+        // ~4 min of untimed hands-on work per step, plus a small base buffer
+        // whenever there were any explicit timers to anchor to.
+        let buffer = untimedSteps * 4 + (timedMinutes > 0 ? 5 : 0)
+        return timedMinutes + buffer
+    }
+
+    /// True when `estimatedMinutes` is a guess rather than authored times,
+    /// so the UI can show it as "~25 min" instead of implying precision.
+    var minutesAreEstimated: Bool {
+        prepMinutes + cookMinutes == 0 && estimatedMinutes > 0
+    }
+
+    /// Ready-to-show time label: "30 min", "~25 min", or "—" when unknown.
+    var timeLabel: String {
+        let minutes = estimatedMinutes
+        guard minutes > 0 else { return "—" }
+        return minutesAreEstimated ? "~\(minutes) min" : "\(minutes) min"
+    }
+
     var sortedSteps: [RecipeStep] {
         steps.sorted { $0.index < $1.index }
     }

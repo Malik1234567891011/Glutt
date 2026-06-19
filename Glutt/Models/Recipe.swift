@@ -29,6 +29,8 @@ final class Recipe {
     var notes: String
     /// Private 1–5 rating. Nil until the user rates it.
     var rating: Int?
+    /// User-marked favorite (the detail-screen heart).
+    var isFavorite: Bool = false
 
     // Nutrition (per serving, optional, only surfaced when nutrition mode is on)
     var calories: Int?

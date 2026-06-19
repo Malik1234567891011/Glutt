@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import PhosphorSwift
 
 struct RecipeDetailView: View {
     @Environment(\.modelContext) private var context
@@ -20,6 +21,7 @@ struct RecipeDetailView: View {
     @State private var isAddingToPlan = false
     @State private var isOptimizing = false
     @State private var isAdjusting = false
+    @State private var selectedTab = 0   // 0 = Ingredients, 1 = Steps
 
     init(recipe: Recipe) {
         self.recipe = recipe
@@ -41,79 +43,148 @@ struct RecipeDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                hero
-                VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                    header
-                    actionRow
-                    dietWarnings
-                    versionPicker
-                    servingsAndUnits
-                    nutritionLine
-                    ingredientsSection
-                    stepsSection
-                    notesSection
-                    ratingSection
-                    if !sessions.isEmpty {
-                        historySection
-                    }
-                }
-                .padding(.horizontal, Theme.Spacing.md)
+            VStack(alignment: .leading, spacing: 0) {
+                heroHeader
+                contentSheet
             }
-            .padding(.bottom, Theme.Spacing.xl)
         }
+        .ignoresSafeArea(edges: .top)
         .background(Theme.Colors.background)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { toolbarMenu }
-        .safeAreaInset(edge: .bottom) {
-            Button {
-                if pantryMatch.missing.isEmpty {
-                    isCooking = true
-                } else {
-                    isShowingPreCookChecklist = true
-                }
-            } label: {
-                Label("Cook", systemImage: "frying.pan")
-            }
-            .buttonStyle(.gluttPrimary)
-            .padding(.horizontal, Theme.Spacing.md)
-            .padding(.bottom, Theme.Spacing.sm)
-            .background(Theme.Colors.background.opacity(0.95))
-        }
+        .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .bottom) { cookBar }
+        // —— keep every existing modifier below this line unchanged ——
         .fullScreenCover(isPresented: $isCooking) {
             CookModeView(recipe: recipe, scale: scale)
         }
         .sheet(isPresented: $isShowingPreCookChecklist) {
-            PreCookChecklistView(recipe: recipe) {
-                isCooking = true
-            }
+            PreCookChecklistView(recipe: recipe) { isCooking = true }
         }
-        .sheet(isPresented: $isShowingEditor) {
-            RecipeEditorView(recipe: recipe)
-        }
+        .sheet(isPresented: $isShowingEditor) { RecipeEditorView(recipe: recipe) }
         .sheet(isPresented: $isAddingToPlan) {
             AddMealSheet(day: Calendar.current.startOfDay(for: .now), fixedRecipe: recipe)
         }
-        .sheet(isPresented: $isOptimizing) {
-            OptimizeRecipeView(recipe: recipe)
-        }
-        .sheet(isPresented: $isAdjusting) {
-            AdjustRecipeView(recipe: recipe)
-        }
+        .sheet(isPresented: $isOptimizing) { OptimizeRecipeView(recipe: recipe) }
+        .sheet(isPresented: $isAdjusting) { AdjustRecipeView(recipe: recipe) }
         .confirmationDialog("Delete this recipe?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) {
-                context.delete(recipe)
-                dismiss()
-            }
+            Button("Delete", role: .destructive) { context.delete(recipe); dismiss() }
         }
         .alert("Name this version", isPresented: $isNamingVersion) {
             TextField("e.g. High-protein version", text: $versionLabel)
             Button("Create") { createVersion() }
             Button("Cancel", role: .cancel) { versionLabel = "" }
         }
-        // The floating + would sit right on top of the Cook button.
         .onAppear { router.floatingButtonSuppressors += 1 }
         .onDisappear { router.floatingButtonSuppressors -= 1 }
+    }
+
+    // MARK: - Hero
+
+    private var heroHeader: some View {
+        ZStack(alignment: .top) {
+            RecipeImageView(recipe: recipe)
+                .frame(height: 340)
+                .clipped()
+            LinearGradient(colors: [Theme.Colors.textPrimary.opacity(0.35), .clear],
+                           startPoint: .top, endPoint: .center)
+                .frame(height: 340)
+                .allowsHitTesting(false)
+            HStack {
+                circleButton(Ph.caretLeft.bold) { dismiss() }
+                Spacer()
+                circleButton(recipe.isFavorite ? Ph.heart.fill : Ph.heart.regular,
+                             tint: recipe.isFavorite ? Theme.Colors.tomato : Theme.Colors.textPrimary) {
+                    recipe.isFavorite.toggle()
+                }
+                overflowMenu
+            }
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.top, 56)
+        }
+        .frame(height: 340)
+    }
+
+    private func circleButton(_ icon: Image, tint: Color = Theme.Colors.textPrimary,
+                              action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            icon.resizable().scaledToFit().frame(width: 18, height: 18)
+                .foregroundColor(tint)
+                .frame(width: 42, height: 42)
+                .background(.ultraThinMaterial, in: Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Overflow menu
+
+    private var overflowMenu: some View {
+        Menu {
+            if LLMClient.isConfigured {
+                Button("Make it…", systemImage: "sparkles") { isAdjusting = true }
+            }
+            Button("Add to plan", systemImage: "calendar.badge.plus") { isAddingToPlan = true }
+            if !pantryMatch.missing.isEmpty {
+                Button("Use what I have", systemImage: "wand.and.stars") { isOptimizing = true }
+            }
+            Divider()
+            Button("Edit", systemImage: "pencil") { isShowingEditor = true }
+            Button("Save as version", systemImage: "square.on.square") { isNamingVersion = true }
+            CollectionsMenu(recipe: recipe)
+            ShareLink(item: RecipeShareService.shareText(for: recipe, servings: displayServings)) {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+            Divider()
+            Button("Delete", systemImage: "trash", role: .destructive) { isConfirmingDelete = true }
+        } label: {
+            Ph.dotsThree.bold.resizable().scaledToFit().frame(width: 18, height: 18)
+                .foregroundColor(Theme.Colors.textPrimary)
+                .frame(width: 42, height: 42)
+                .background(.ultraThinMaterial, in: Circle())
+        }
+    }
+
+    // MARK: - Content sheet
+
+    private var contentSheet: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+            titleBlock
+            dietWarnings
+            SegmentedTabs(titles: ["Ingredients", "Steps"], selection: $selectedTab)
+            if selectedTab == 0 { ingredientsTab } else { stepsTab }
+            // —— below the fold: kept, reorganized ——
+            nutritionLine
+            notesSection
+            ratingSection
+            versionPicker
+            if !sessions.isEmpty { historySection }
+        }
+        .padding(Theme.Spacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Colors.background)
+        .clipShape(.rect(topLeadingRadius: 30, topTrailingRadius: 30))
+        .offset(y: -24)            // overlap the hero
+        .padding(.bottom, -24)
+    }
+
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            (Text(recipe.title).font(.system(size: 26, weight: .heavy, design: .rounded))
+                + Text(recipe.calories.map { ", \($0) Kcal" } ?? "")
+                    .font(.system(size: 26, weight: .heavy, design: .rounded))
+                    .foregroundColor(Theme.Colors.textSecondary))
+                .foregroundColor(Theme.Colors.textPrimary)
+            if let summary = recipe.summary {
+                Text(summary).font(.gluttBody).foregroundStyle(Theme.Colors.textSecondary)
+            }
+            HStack(spacing: 8) {
+                StatPill.time(recipe.timeLabel)
+                StatPill.difficulty(recipe.difficulty.label)
+                if let rating = recipe.rating { StatPill.rating("\(rating)") }
+                Spacer(minLength: 0)
+            }
+            if let confidence = recipe.importConfidence, confidence < 0.85 {
+                ConfidenceBadge(confidence: confidence)
+            }
+        }
     }
 
     // MARK: - Sections
@@ -159,147 +230,133 @@ struct RecipeDetailView: View {
         }
     }
 
-    /// The things you'd do with a recipe besides cooking it, visible —
-    /// not buried in the ⋯ menu where nobody looks.
-    private var actionRow: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            if LLMClient.isConfigured {
-                Button {
-                    isAdjusting = true
-                } label: {
-                    Label("Make it…", systemImage: "sparkles")
+    // MARK: - Steps tab
+
+    private var stepsTab: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            ForEach(recipe.sortedSteps) { step in
+                HStack(alignment: .top, spacing: Theme.Spacing.md) {
+                    Text("\(step.index + 1)")
+                        .font(.gluttHeadline).foregroundStyle(.white)
+                        .frame(width: 28, height: 28)
+                        .background(Theme.Colors.accent).clipShape(Circle())
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                        Text(step.text).font(.gluttBody).foregroundStyle(Theme.Colors.textPrimary)
+                        if let duration = step.durationSeconds {
+                            Label(formatDuration(duration), systemImage: "timer")
+                                .font(.gluttCaption.weight(.medium)).foregroundStyle(Theme.Colors.warning)
+                        }
+                    }
+                    Spacer(minLength: 0)
                 }
-                .buttonStyle(.gluttPillFilled)
             }
-            Button {
-                isAddingToPlan = true
-            } label: {
-                Label("Add to plan", systemImage: "calendar.badge.plus")
-            }
-            .buttonStyle(.gluttPill)
-            Spacer()
         }
     }
 
-    private var hero: some View {
-        RecipeImageView(recipe: recipe)
-            .frame(height: 260)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-            .padding(.horizontal, Theme.Spacing.md)
-    }
+    // MARK: - Ingredients tab
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text(recipe.title)
-                .font(.gluttLargeTitle)
-                .foregroundStyle(Theme.Colors.textPrimary)
-
-            if let summary = recipe.summary {
-                Text(summary)
-                    .font(.gluttBody)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-            }
-
-            HStack(spacing: Theme.Spacing.sm) {
-                if let creator = recipe.sourceCreator {
-                    Text(creator)
-                } else {
-                    Text(recipe.sourcePlatform.label)
-                }
-                Text("·")
-                Label(recipe.timeLabel, systemImage: "clock")
-                Text("·")
-                Text(recipe.difficulty.label)
-            }
-            .font(.gluttCaption)
-            .foregroundStyle(Theme.Colors.textSecondary)
-
-            if !recipe.tags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Spacing.xs) {
-                        ForEach(recipe.tags, id: \.self) { tag in
-                            Chip(label: tag)
-                                .fixedSize()
+    private var ingredientsTab: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            servingsStepper
+            ForEach(IngredientSection.allCases, id: \.self) { section in
+                let rows = sortedIngredients.filter { IngredientCategoryStyle.section(for: $0.name) == section }
+                if !rows.isEmpty {
+                    SectionLabel(text: section.title)
+                    VStack(spacing: 0) {
+                        ForEach(rows) { ingredient in
+                            ingredientRow(ingredient)
+                            if ingredient !== rows.last { Divider().overlay(Theme.Colors.border) }
                         }
                     }
                 }
             }
-
-            if let confidence = recipe.importConfidence, confidence < 0.85 {
-                ConfidenceBadge(confidence: confidence)
+            if !pantryMatch.missing.isEmpty {
+                Button {
+                    GroceryListBuilder.add(ingredients: pantryMatch.missing, from: recipe,
+                                           existing: groceryItems, context: context)
+                } label: {
+                    Label("Add \(pantryMatch.missing.count) missing to groceries", systemImage: "basket.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.gluttPrimary)
+                .padding(.top, Theme.Spacing.sm)
             }
         }
     }
 
-    @ViewBuilder
-    private var versionPicker: some View {
-        let original = recipe.parentRecipe ?? recipe
-        let allVersions = [original] + original.versions
-        if allVersions.count > 1 {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Text("MY VERSIONS OF THIS RECIPE")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                versionChips(allVersions, original: original)
+    private var sortedIngredients: [RecipeIngredient] {
+        recipe.ingredients.sorted { $0.sortIndex < $1.sortIndex }
+    }
+
+    private var servingsStepper: some View {
+        HStack(spacing: Theme.Spacing.md) {
+            HStack(spacing: 14) {
+                Button { if displayServings > 1 { displayServings -= 1 } } label: {
+                    Ph.minus.bold.resizable().scaledToFit().frame(width: 14, height: 14)
+                }
+                Text("\(displayServings) serv").font(.gluttHeadline).monospacedDigit()
+                Button { if displayServings < 24 { displayServings += 1 } } label: {
+                    Ph.plus.bold.resizable().scaledToFit().frame(width: 14, height: 14)
+                }
             }
+            .foregroundStyle(Theme.Colors.textPrimary)
+            .padding(.horizontal, Theme.Spacing.md).padding(.vertical, Theme.Spacing.sm)
+            .background(Theme.Colors.card)
+            .clipShape(Capsule())
+            .overlay(Capsule().strokeBorder(Theme.Colors.border, lineWidth: 1))
+            Picker("Units", selection: $unitSystem) {
+                ForEach(MeasurementSystem.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.menu).tint(Theme.Colors.accent)
+            Spacer()
         }
     }
 
-    private func versionChips(_ allVersions: [Recipe], original: Recipe) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Theme.Spacing.sm) {
-                ForEach(allVersions) { version in
-                    NavigationLink(value: version) {
-                        Chip(
-                            label: version === original ? "Original" : (version.versionLabel ?? "My version"),
-                            isSelected: version === recipe
-                        )
+    private func ingredientRow(_ ingredient: RecipeIngredient) -> some View {
+        let owned = pantryMatch.owned.contains { $0 === ingredient }
+        return HStack(spacing: Theme.Spacing.md) {
+            IngredientCategoryStyle.chip(for: ingredient.name)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(ingredient.name)
+                    .font(.system(size: 15.5, weight: .bold, design: .rounded))
+                    .strikethrough(owned, color: Theme.Colors.textSecondary)
+                    .foregroundStyle(owned ? Theme.Colors.textSecondary : Theme.Colors.textPrimary)
+                HStack(spacing: 4) {
+                    if let display = UnitConverter.display(quantity: ingredient.quantity, unit: ingredient.unit,
+                                                           scale: scale, system: unitSystem) {
+                        Text(display)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(version === recipe)
+                    if owned { Text("· in your kitchen") }
+                    else if ingredient.isOptional { Text("· optional") }
                 }
+                .font(.gluttCaption).foregroundStyle(Theme.Colors.textSecondary)
             }
+            Spacer()
+            Button { toggleOwnership(of: ingredient) } label: {
+                (owned ? Ph.checkSquare.fill : Ph.square.regular)
+                    .resizable().scaledToFit().frame(width: 26, height: 26)
+                    .foregroundColor(owned ? Theme.Colors.accent : Theme.Colors.border)
+            }
+            .buttonStyle(.plain)
         }
+        .padding(.vertical, Theme.Spacing.sm)
     }
 
-    private var servingsAndUnits: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            HStack {
-                Stepper(value: $displayServings, in: 1...24) {
-                    Text("\(displayServings) servings")
-                        .font(.gluttHeadline)
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                }
-                Picker("Units", selection: $unitSystem) {
-                    ForEach(MeasurementSystem.allCases, id: \.self) { system in
-                        Text(system.rawValue).tag(system)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 150)
-            }
+    // MARK: - Cook bar
 
-            // Scaling is non-destructive: the stepper re-figures the amounts
-            // for how many you're cooking, but the recipe's own serving count
-            // is untouched. Make that obvious and one-tap reversible. To fix a
-            // wrong base count (right amounts, wrong number), use Edit.
-            if displayServings != recipe.servings {
-                HStack(spacing: Theme.Spacing.sm) {
-                    Label(
-                        "Amounts scaled from \(recipe.servings) \(recipe.servings == 1 ? "serving" : "servings")",
-                        systemImage: "arrow.up.arrow.down"
-                    )
-                    .font(.gluttCaption)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                    Spacer()
-                    Button("Reset") { displayServings = recipe.servings }
-                        .font(.gluttCaption.weight(.semibold))
-                        .foregroundStyle(Theme.Colors.accent)
-                }
-            }
+    private var cookBar: some View {
+        Button {
+            if pantryMatch.missing.isEmpty { isCooking = true } else { isShowingPreCookChecklist = true }
+        } label: {
+            Label("Cook", systemImage: "frying.pan").frame(maxWidth: .infinity)
         }
-        .cardStyle()
+        .buttonStyle(.gluttPrimary)
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.bottom, Theme.Spacing.sm)
+        .background(Theme.Colors.background.opacity(0.95))
     }
+
+    // MARK: - Below-fold sections (kept unchanged)
 
     /// Nutrition only appears when the user opted into tracking — and it's
     /// transparent about being an estimate, never fake-precise.
@@ -327,166 +384,6 @@ struct RecipeDetailView: View {
                     recipe.calories = estimate.calories
                     recipe.proteinGrams = estimate.proteinGrams
                 }
-            }
-        }
-    }
-
-    private var ingredientsSection: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            SectionHeader(title: "Ingredients")
-
-            // The decision layer: can I cook this, and if not, what's the fix?
-            if pantryMatch.totalCount > 0 {
-                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                    Label(
-                        pantryMatch.hasEverything
-                            ? "You have everything"
-                            : "You have \(pantryMatch.ownedCount) of \(pantryMatch.totalCount) — missing \(pantryMatch.missing.count)",
-                        systemImage: pantryMatch.hasEverything ? "checkmark.circle.fill" : "basket"
-                    )
-                    .font(.gluttCaption.weight(.semibold))
-                    .foregroundStyle(pantryMatch.hasEverything ? Theme.Colors.accent : Theme.Colors.warning)
-
-                    if !pantryMatch.missing.isEmpty {
-                        HStack(spacing: Theme.Spacing.sm) {
-                            Button("Add missing to groceries") {
-                                GroceryListBuilder.add(
-                                    ingredients: pantryMatch.missing,
-                                    from: recipe,
-                                    existing: groceryItems,
-                                    context: context
-                                )
-                            }
-                            .buttonStyle(.gluttPillFilled)
-                            Button("Use what I have") {
-                                isOptimizing = true
-                            }
-                            .buttonStyle(.gluttPill)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(Theme.Spacing.sm)
-                .background(pantryMatch.hasEverything ? Theme.Colors.successTint : Theme.Colors.warningTint)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
-            }
-
-            VStack(spacing: 0) {
-                let sorted = recipe.ingredients.sorted { $0.sortIndex < $1.sortIndex }
-                ForEach(sorted) { ingredient in
-                    HStack {
-                        Button {
-                            toggleOwnership(of: ingredient)
-                        } label: {
-                            HStack {
-                                ownershipIcon(for: ingredient)
-                                Text(ingredient.name)
-                                    .font(.gluttBody)
-                                    .foregroundStyle(nameColor(for: ingredient))
-                                if ingredient.isOptional {
-                                    Text("optional")
-                                        .font(.caption2)
-                                        .foregroundStyle(Theme.Colors.textSecondary)
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        Spacer()
-                        if let display = UnitConverter.display(
-                            quantity: ingredient.quantity,
-                            unit: ingredient.unit,
-                            scale: scale,
-                            system: unitSystem
-                        ) {
-                            Text(display)
-                                .font(.gluttBody.weight(.medium))
-                                .foregroundStyle(Theme.Colors.accent)
-                        }
-                    }
-                    .padding(.vertical, Theme.Spacing.sm)
-                    if ingredient !== sorted.last {
-                        Divider().overlay(Theme.Colors.border)
-                    }
-                }
-            }
-            .padding(.horizontal, Theme.Spacing.md)
-            .cardStyle(padding: Theme.Spacing.xs)
-        }
-    }
-
-    /// Missing required ingredients read in warning gold — scannable at a glance.
-    private func nameColor(for ingredient: RecipeIngredient) -> Color {
-        let owned = pantryMatch.owned.contains { $0 === ingredient }
-        let optionalMissing = pantryMatch.missingOptional.contains { $0 === ingredient }
-        if owned { return Theme.Colors.textPrimary }
-        return optionalMissing ? Theme.Colors.textSecondary : Theme.Colors.warning
-    }
-
-    private func ownershipIcon(for ingredient: RecipeIngredient) -> some View {
-        let owned = pantryMatch.owned.contains { $0 === ingredient }
-        let optionalMissing = pantryMatch.missingOptional.contains { $0 === ingredient }
-        return Image(systemName: owned ? "checkmark.circle.fill" : "circle")
-            .font(.body)
-            .foregroundStyle(
-                owned ? Theme.Colors.accent : (optionalMissing ? Theme.Colors.border : Theme.Colors.warning)
-            )
-    }
-
-    /// Tap an ingredient to flip "I have this" — updates the pantry directly
-    /// so the user doesn't have to detour through Kitchen → Inventory.
-    private func toggleOwnership(of ingredient: RecipeIngredient) {
-        let canonical = ingredient.canonicalName
-        let isOwned = pantryMatch.owned.contains { $0 === ingredient }
-
-        if isOwned {
-            if let item = PantryMatcher.item(covering: canonical, in: pantryItems) {
-                item.roughQuantity = .out
-            } else if PantryMatcher.staples.contains(canonical) {
-                // Staples have no pantry row; create one marked as out.
-                let item = PantryItem(
-                    name: ingredient.name,
-                    category: GroceryCategorizer.categorize(ingredient.name),
-                    roughQuantity: .out
-                )
-                context.insert(item)
-            }
-        } else {
-            if let item = PantryMatcher.item(covering: canonical, in: pantryItems) {
-                item.roughQuantity = .full
-            } else {
-                let item = PantryItem(
-                    name: ingredient.name,
-                    category: GroceryCategorizer.categorize(ingredient.name)
-                )
-                context.insert(item)
-            }
-        }
-    }
-
-    private var stepsSection: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            SectionHeader(title: "Steps")
-            ForEach(recipe.sortedSteps) { step in
-                HStack(alignment: .top, spacing: Theme.Spacing.md) {
-                    Text("\(step.index + 1)")
-                        .font(.gluttHeadline)
-                        .foregroundStyle(.white)
-                        .frame(width: 28, height: 28)
-                        .background(Theme.Colors.accent)
-                        .clipShape(Circle())
-                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                        Text(step.text)
-                            .font(.gluttBody)
-                            .foregroundStyle(Theme.Colors.textPrimary)
-                        if let duration = step.durationSeconds {
-                            Label(formatDuration(duration), systemImage: "timer")
-                                .font(.gluttCaption.weight(.medium))
-                                .foregroundStyle(Theme.Colors.warning)
-                        }
-                    }
-                    Spacer(minLength: 0)
-                }
-                .cardStyle()
             }
         }
     }
@@ -521,6 +418,37 @@ struct RecipeDetailView: View {
         }
     }
 
+    @ViewBuilder
+    private var versionPicker: some View {
+        let original = recipe.parentRecipe ?? recipe
+        let allVersions = [original] + original.versions
+        if allVersions.count > 1 {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                Text("MY VERSIONS OF THIS RECIPE")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                versionChips(allVersions, original: original)
+            }
+        }
+    }
+
+    private func versionChips(_ allVersions: [Recipe], original: Recipe) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Spacing.sm) {
+                ForEach(allVersions) { version in
+                    NavigationLink(value: version) {
+                        Chip(
+                            label: version === original ? "Original" : (version.versionLabel ?? "My version"),
+                            isSelected: version === recipe
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(version === recipe)
+                }
+            }
+        }
+    }
+
     private var historySection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             SectionHeader(title: "Cooked before")
@@ -536,7 +464,7 @@ struct RecipeDetailView: View {
                             .font(.gluttCaption)
                             .foregroundStyle(Theme.Colors.textSecondary)
                         if let notes = session.notes {
-                            Text("“\(notes)”")
+                            Text("\u{201C}\(notes)\u{201D}")
                                 .font(.gluttCaption.italic())
                                 .foregroundStyle(Theme.Colors.textSecondary)
                         }
@@ -553,32 +481,45 @@ struct RecipeDetailView: View {
         }
     }
 
-    // MARK: - Toolbar & actions
+    // MARK: - Helpers (kept unchanged)
 
-    @ToolbarContentBuilder
-    private var toolbarMenu: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            ShareLink(item: RecipeShareService.shareText(for: recipe, servings: displayServings)) {
-                Image(systemName: "square.and.arrow.up")
-            }
-        }
-        ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                Button("Edit", systemImage: "pencil") { isShowingEditor = true }
-                Button("Save as version", systemImage: "square.on.square") { isNamingVersion = true }
-                collectionsMenu
-                Divider()
-                Button("Delete", systemImage: "trash", role: .destructive) {
-                    isConfirmingDelete = true
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
-        }
+    /// Missing required ingredients read in warning gold — scannable at a glance.
+    private func nameColor(for ingredient: RecipeIngredient) -> Color {
+        let owned = pantryMatch.owned.contains { $0 === ingredient }
+        let optionalMissing = pantryMatch.missingOptional.contains { $0 === ingredient }
+        if owned { return Theme.Colors.textPrimary }
+        return optionalMissing ? Theme.Colors.textSecondary : Theme.Colors.warning
     }
 
-    private var collectionsMenu: some View {
-        CollectionsMenu(recipe: recipe)
+    /// Tap an ingredient to flip "I have this" — updates the pantry directly
+    /// so the user doesn't have to detour through Kitchen → Inventory.
+    private func toggleOwnership(of ingredient: RecipeIngredient) {
+        let canonical = ingredient.canonicalName
+        let isOwned = pantryMatch.owned.contains { $0 === ingredient }
+
+        if isOwned {
+            if let item = PantryMatcher.item(covering: canonical, in: pantryItems) {
+                item.roughQuantity = .out
+            } else if PantryMatcher.staples.contains(canonical) {
+                // Staples have no pantry row; create one marked as out.
+                let item = PantryItem(
+                    name: ingredient.name,
+                    category: GroceryCategorizer.categorize(ingredient.name),
+                    roughQuantity: .out
+                )
+                context.insert(item)
+            }
+        } else {
+            if let item = PantryMatcher.item(covering: canonical, in: pantryItems) {
+                item.roughQuantity = .full
+            } else {
+                let item = PantryItem(
+                    name: ingredient.name,
+                    category: GroceryCategorizer.categorize(ingredient.name)
+                )
+                context.insert(item)
+            }
+        }
     }
 
     private func createVersion() {

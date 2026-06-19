@@ -99,6 +99,7 @@
 		98D52307F99E058349AA1999 /* PlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289532428C48086D19FF6C54 /* PlanView.swift */; };
 		9F207D5AA64EE4DB6437BE3B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 03E4B5038BD3A803FFA377AD /* Assets.xcassets */; };
 		9FB227CC6FB03397DDC0B67F /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C06B098902A220170DB5726 /* Secrets.swift */; };
+		A4DFAFE3370F0241603466A8 /* IngredientCategoryStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9442B7D1A080EA3063280577 /* IngredientCategoryStyle.swift */; };
 		A5C9C8F35D24F4339AB59A4A /* SocialMediaImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD93233274D874B07BC71E66 /* SocialMediaImport.swift */; };
 		A5D13C7DD0ADCAC196619502 /* RecipeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A982408D84D1386F5B24B7C /* RecipeCard.swift */; };
 		A71A0874129B8FA9A557B7A2 /* TextRecipeParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF4058EECD1BCDBB2359125 /* TextRecipeParser.swift */; };
@@ -267,6 +268,7 @@
 		8D7C6652E2AA87A3E2E92ED3 /* CookFinishView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookFinishView.swift; sourceTree = "<group>"; };
 		91F167E4E8C32628B9047B00 /* PantryScan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PantryScan.swift; sourceTree = "<group>"; };
 		9411345D042807ED2D743474 /* RecipesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipesView.swift; sourceTree = "<group>"; };
+		9442B7D1A080EA3063280577 /* IngredientCategoryStyle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IngredientCategoryStyle.swift; sourceTree = "<group>"; };
 		95B528E2683D5365F8DF91FA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		98053B3FFC4BD7D0C20C75CB /* TimerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerManager.swift; sourceTree = "<group>"; };
 		9849E4D814CBE9FB1D1E619C /* GluttTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttTests.swift; sourceTree = "<group>"; };
@@ -616,6 +618,7 @@
 				2E4363923FEEBD03D4E229DC /* RecipeDetailView.swift */,
 				2179632ACE3988876F4F4170 /* RecipeEditorView.swift */,
 				9411345D042807ED2D743474 /* RecipesView.swift */,
+				9442B7D1A080EA3063280577 /* IngredientCategoryStyle.swift */,
 			);
 			path = Recipes;
 			sourceTree = "<group>";
@@ -953,6 +956,7 @@
 				783DD366C0F325D1AA55BFE2 /* HighlightHeadline.swift in Sources */,
 				0DF425DFA415CC4D0C58D843 /* CategoryCircle.swift in Sources */,
 				2D2F56CC73070569BEE27982 /* GluttTabBar.swift in Sources */,
+				A4DFAFE3370F0241603466A8 /* IngredientCategoryStyle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

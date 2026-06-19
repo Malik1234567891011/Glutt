@@ -23,6 +23,10 @@ struct RootView: View {
                         .tag(tab)
                 }
             }
+            // Restore the app-wide accent tint (the native tab bar's `.tint` was
+            // removed with the custom bar; without this, toolbar/system controls
+            // fall back to system blue). The hidden native bar ignores it.
+            .tint(Theme.Colors.accent)
 
             GluttTabBar(selection: $router.selectedTab)
 

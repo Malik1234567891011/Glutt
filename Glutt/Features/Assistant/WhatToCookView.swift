@@ -349,7 +349,7 @@ struct WhatToCookView: View {
                         .font(.gluttHeadline)
                         .foregroundStyle(Theme.Colors.textPrimary)
                         .lineLimit(2)
-                    Label("\(recommendation.recipe.totalMinutes) min", systemImage: "clock")
+                    Label(recommendation.recipe.timeLabel, systemImage: "clock")
                         .font(.gluttCaption)
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }

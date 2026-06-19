@@ -23,7 +23,7 @@ struct RecipeCard: View {
                         Text(recipe.sourcePlatform.label)
                     }
                     Text("·")
-                    Label("\(recipe.totalMinutes) min", systemImage: "clock")
+                    Label(recipe.timeLabel, systemImage: "clock")
                     Text("·")
                     Text(recipe.difficulty.label)
                 }

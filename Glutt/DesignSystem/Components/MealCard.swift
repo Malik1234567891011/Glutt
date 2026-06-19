@@ -21,7 +21,7 @@ struct MealCard: View {
                         Text(time, style: .time)
                     }
                     if let recipe = meal.recipe {
-                        Label("\(recipe.totalMinutes) min", systemImage: "clock")
+                        Label(recipe.timeLabel, systemImage: "clock")
                     }
                 }
                 .font(.gluttCaption)

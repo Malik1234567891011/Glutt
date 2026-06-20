@@ -73,7 +73,10 @@ struct WelcomeScreen: View {
             HStack {
                 PageDots(count: 6, index: 0)
                 Spacer()
-                Button(action: onStart) {
+                Button {
+                    Haptics.impact(.medium)
+                    onStart()
+                } label: {
                     HStack(spacing: 8) {
                         Text("next").font(.system(size: 16, weight: .bold, design: .rounded))
                         Ph.arrowRight.bold.resizable().scaledToFit().frame(width: 16, height: 16)

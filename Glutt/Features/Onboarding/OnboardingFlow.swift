@@ -61,7 +61,7 @@ struct OnboardingFlow: View {
     private var topBar: some View {
         HStack(spacing: Theme.Spacing.md) {
             if backTarget != nil {
-                Button { goBack() } label: {
+                Button { Haptics.impact(.light); goBack() } label: {
                     Image(systemName: "chevron.left").font(.headline)
                 }
                 .foregroundStyle(Theme.Colors.textSecondary)
@@ -69,7 +69,7 @@ struct OnboardingFlow: View {
             Spacer()
             PageDots(count: Step.allCases.count, index: step.rawValue)
             Spacer()
-            Button("Skip") { finish(thenImport: false) }
+            Button("Skip") { Haptics.impact(.light); finish(thenImport: false) }
                 .font(.gluttCaption.weight(.semibold))
                 .foregroundStyle(Theme.Colors.textSecondary)
         }
@@ -77,7 +77,7 @@ struct OnboardingFlow: View {
     }
 
     private var standardFooter: some View {
-        Button { advance() } label: {
+        Button { Haptics.impact(.medium); advance() } label: {
             HStack(spacing: 8) {
                 Text("Continue").font(.system(size: 16, weight: .bold, design: .rounded))
                 Ph.arrowRight.bold.resizable().scaledToFit().frame(width: 16, height: 16)

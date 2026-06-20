@@ -14,7 +14,10 @@ struct CategoryCircle<Thumb: View>: View {
     private var diameter: CGFloat { isActive ? 66 : 50 }
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            Haptics.selection()
+            action()
+        } label: {
             VStack(spacing: 6) {
                 ZStack(alignment: .topTrailing) {
                     thumb()

@@ -335,7 +335,7 @@ struct RecipesView: View {
                 .font(.system(size: 25, weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.Colors.textPrimary)
             Spacer()
-            Button { isGrid.toggle() } label: {
+            Button { Haptics.impact(.light); isGrid.toggle() } label: {
                 Ph.squaresFour.fill.resizable().scaledToFit().frame(width: 18, height: 18)
                     .foregroundStyle(isGrid ? Theme.Colors.accent : Theme.Colors.textSecondary)
                     .frame(width: 40, height: 40)

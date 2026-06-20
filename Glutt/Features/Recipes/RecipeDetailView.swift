@@ -93,6 +93,7 @@ struct RecipeDetailView: View {
                 Spacer()
                 circleButton(recipe.isFavorite ? Ph.heart.fill : Ph.heart.regular,
                              tint: recipe.isFavorite ? Theme.Colors.tomato : Theme.Colors.textPrimary) {
+                    Haptics.impact(.medium)
                     recipe.isFavorite.toggle()
                 }
                 overflowMenu
@@ -315,6 +316,7 @@ struct RecipeDetailView: View {
             }
             if !pantryMatch.missing.isEmpty {
                 Button {
+                    Haptics.notify(.success)
                     GroceryListBuilder.add(ingredients: pantryMatch.missing, from: recipe,
                                            existing: groceryItems, context: context)
                 } label: {
@@ -334,11 +336,11 @@ struct RecipeDetailView: View {
     private var servingsStepper: some View {
         HStack(spacing: Theme.Spacing.md) {
             HStack(spacing: 14) {
-                Button { if displayServings > 1 { displayServings -= 1 } } label: {
+                Button { Haptics.impact(.light); if displayServings > 1 { displayServings -= 1 } } label: {
                     Ph.minus.bold.resizable().scaledToFit().frame(width: 14, height: 14)
                 }
                 Text("\(displayServings) serv").font(.gluttHeadline).monospacedDigit()
-                Button { if displayServings < 24 { displayServings += 1 } } label: {
+                Button { Haptics.impact(.light); if displayServings < 24 { displayServings += 1 } } label: {
                     Ph.plus.bold.resizable().scaledToFit().frame(width: 14, height: 14)
                 }
             }
@@ -375,7 +377,7 @@ struct RecipeDetailView: View {
                 .font(.gluttCaption).foregroundStyle(Theme.Colors.textSecondary)
             }
             Spacer()
-            Button { toggleOwnership(of: ingredient) } label: {
+            Button { Haptics.impact(.light); toggleOwnership(of: ingredient) } label: {
                 (owned ? Ph.checkSquare.fill : Ph.square.regular)
                     .resizable().scaledToFit().frame(width: 26, height: 26)
                     .foregroundColor(owned ? Theme.Colors.accent : Theme.Colors.border)
@@ -389,6 +391,7 @@ struct RecipeDetailView: View {
 
     private var cookBar: some View {
         Button {
+            Haptics.impact(.medium)
             if pantryMatch.missing.isEmpty { isCooking = true } else { isShowingPreCookChecklist = true }
         } label: {
             Label("Cook", systemImage: "frying.pan").frame(maxWidth: .infinity)

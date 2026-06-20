@@ -11,6 +11,7 @@ struct SegmentedTabs: View {
             ForEach(titles.indices, id: \.self) { i in
                 let isActive = i == selection
                 Button {
+                    Haptics.selection()
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
                         selection = i
                     }

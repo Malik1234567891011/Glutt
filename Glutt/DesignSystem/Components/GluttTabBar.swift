@@ -12,6 +12,7 @@ struct GluttTabBar: View {
             ForEach(AppTab.allCases) { tab in
                 let isActive = tab == selection
                 Button {
+                    Haptics.selection()
                     selection = tab
                 } label: {
                     VStack(spacing: 4) {

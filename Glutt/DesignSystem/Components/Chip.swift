@@ -30,6 +30,7 @@ struct ChipRow: View {
             HStack(spacing: Theme.Spacing.sm) {
                 ForEach(labels, id: \.self) { label in
                     Button {
+                        Haptics.selection()
                         selection = selection == label ? nil : label
                     } label: {
                         Chip(label: label, isSelected: selection == label)

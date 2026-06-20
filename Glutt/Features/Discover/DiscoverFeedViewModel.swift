@@ -27,9 +27,10 @@ final class DiscoverFeedViewModel {
     private(set) var currentIndex = 0
     private(set) var savedVideoIDs: Set<String> = []
     private(set) var savingVideoID: String?
+    private(set) var saveError: String?
 
     private var nextPageToken: String?
-    private var query: String = ""
+    private(set) var query: String = ""
     private var isSuggested = false
     private let deps: Dependencies
 
@@ -45,7 +46,7 @@ final class DiscoverFeedViewModel {
         phase = .loading
         do {
             let page = try await deps.suggested(tags)
-            apply(firstPage: page)
+            apply(firstPage: page, isSuggested: true)
         } catch {
             phase = .failed(error.localizedDescription)
         }
@@ -59,7 +60,7 @@ final class DiscoverFeedViewModel {
         phase = .loading
         do {
             let page = try await deps.search(trimmed, nil)
-            apply(firstPage: page)
+            apply(firstPage: page, isSuggested: false)
         } catch {
             phase = .failed(error.localizedDescription)
         }
@@ -72,6 +73,7 @@ final class DiscoverFeedViewModel {
     }
 
     func save(_ video: DiscoverVideo, into context: ModelContext) async {
+        saveError = nil
         savingVideoID = video.videoId
         do {
             _ = try await deps.save(video, context)
@@ -80,23 +82,26 @@ final class DiscoverFeedViewModel {
             await showNext()
         } catch {
             savingVideoID = nil
-            phase = .failed(error.localizedDescription)
+            saveError = error.localizedDescription
         }
     }
 
-    private func apply(firstPage page: DiscoverResponse) {
+    func clearSaveError() {
+        saveError = nil
+    }
+
+    private func apply(firstPage page: DiscoverResponse, isSuggested: Bool) {
         videos = page.videos
         currentIndex = 0
-        nextPageToken = page.nextPageToken
+        // Suggested feed is short by design and must not paginate — force no token.
+        nextPageToken = isSuggested ? nil : page.nextPageToken
         phase = page.videos.isEmpty ? .empty : .loaded
     }
 
     private func prefetchIfNeeded() async {
         guard let token = nextPageToken, currentIndex >= videos.count - 2 else { return }
         do {
-            let page = isSuggested
-                ? try await deps.suggested([])   // suggested paging falls back to refresh; tokenized below
-                : try await deps.search(query, token)
+            let page = try await deps.search(query, token)
             videos.append(contentsOf: page.videos)
             nextPageToken = page.nextPageToken
         } catch {

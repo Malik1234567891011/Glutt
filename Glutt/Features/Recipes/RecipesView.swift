@@ -103,13 +103,15 @@ struct RecipesView: View {
         NavigationStack(path: $navPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                    if !collections.isEmpty {
-                        collectionsRow
+                    if segment == .myRecipes {
+                        if !collections.isEmpty {
+                            collectionsRow
+                        }
+                        if !categoryTags.isEmpty {
+                            categoryRow
+                        }
+                        ChipRow(labels: filterChips, selection: $selectedFilter)
                     }
-                    if !categoryTags.isEmpty {
-                        categoryRow
-                    }
-                    ChipRow(labels: filterChips, selection: $selectedFilter)
                     SegmentedTabs(
                         titles: ["My Recipes", "Discover"],
                         selection: Binding(

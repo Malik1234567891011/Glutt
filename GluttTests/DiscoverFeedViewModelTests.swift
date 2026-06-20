@@ -71,4 +71,32 @@ final class DiscoverFeedViewModelTests: XCTestCase {
         XCTAssertNil(vm.savingVideoID)
         XCTAssertEqual(vm.current?.videoId, "b")    // auto-advanced
     }
+
+    func testSaveFailureKeepsLoadedAndSetsError() async throws {
+        let schema = Schema([Recipe.self, RecipeIngredient.self, RecipeStep.self])
+        let container = try ModelContainer(for: schema,
+                                           configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
+        let context = container.mainContext
+
+        struct SaveError: Error, LocalizedError {
+            var errorDescription: String? { "Network unavailable" }
+        }
+
+        let deps = DiscoverFeedViewModel.Dependencies(
+            search: { _, _ in DiscoverResponse(videos: [self.video("a"), self.video("b")], nextPageToken: nil) },
+            suggested: { _ in DiscoverResponse(videos: [], nextPageToken: nil) },
+            save: { _, _ in throw SaveError() }
+        )
+        let vm = DiscoverFeedViewModel(deps: deps)
+        await vm.search("tofu")
+
+        let originalCurrent = vm.current
+        await vm.save(vm.current!, into: context)
+
+        XCTAssertEqual(vm.phase, .loaded, "phase must stay .loaded after save failure")
+        XCTAssertNotNil(vm.saveError, "saveError must be set after save failure")
+        XCTAssertNil(vm.savingVideoID, "savingVideoID must be cleared after save failure")
+        XCTAssertEqual(vm.current?.videoId, originalCurrent?.videoId, "current card must not change after save failure")
+        XCTAssertFalse(vm.savedVideoIDs.contains("a"), "savedVideoIDs must not contain the failed id")
+    }
 }

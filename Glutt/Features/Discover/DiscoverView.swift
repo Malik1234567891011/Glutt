@@ -7,6 +7,13 @@ struct DiscoverView: View {
     let tasteTags: [String]
     @Environment(\.modelContext) private var context
 
+    private var saveErrorBinding: Binding<Bool> {
+        Binding(
+            get: { model.saveError != nil },
+            set: { if !$0 { model.clearSaveError() } }
+        )
+    }
+
     var body: some View {
         Group {
             switch model.phase {
@@ -31,10 +38,6 @@ struct DiscoverView: View {
                         onSave: { Task { await model.save(video, into: context) } },
                         onNext: { Task { await model.showNext() } }
                     )
-                } else {
-                    EmptyStateView(icon: "checkmark.circle",
-                                   title: "That's everything",
-                                   message: "Search another dish to keep discovering.")
                 }
             }
         }
@@ -42,9 +45,18 @@ struct DiscoverView: View {
         .task {
             if model.phase == .idle { await model.loadSuggested(tags: tasteTags) }
         }
+        .alert("Couldn't save recipe", isPresented: saveErrorBinding) {
+            Button("OK", role: .cancel) { model.clearSaveError() }
+        } message: {
+            Text(model.saveError ?? "")
+        }
     }
 
     private func retry() async {
-        if model.videos.isEmpty { await model.loadSuggested(tags: tasteTags) }
+        if model.query.isEmpty {
+            await model.loadSuggested(tags: tasteTags)
+        } else {
+            await model.search(model.query)
+        }
     }
 }

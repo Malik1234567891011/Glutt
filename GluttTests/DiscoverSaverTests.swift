@@ -2,18 +2,24 @@ import XCTest
 import SwiftData
 @testable import Glutt
 
+@MainActor
 final class DiscoverSaverTests: XCTestCase {
-    @MainActor
-    private func makeContext() throws -> ModelContext {
+    private var container: ModelContainer!
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
         let schema = Schema([Recipe.self, RecipeIngredient.self, RecipeStep.self, RecipeCollection.self])
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [config])
-        return container.mainContext
+        container = try ModelContainer(for: schema, configurations: [config])
     }
 
-    @MainActor
+    override func tearDownWithError() throws {
+        container = nil
+        try super.tearDownWithError()
+    }
+
     func testSaveCreatesYouTubeRecipeFromDraft() async throws {
-        let context = try makeContext()
+        let context = container.mainContext
         let video = DiscoverVideo(videoId: "abc123", title: "Crispy Tofu",
                                   creator: "Wok Wed", thumbnailURL: nil, durationSeconds: nil)
 
@@ -32,9 +38,8 @@ final class DiscoverSaverTests: XCTestCase {
         XCTAssertEqual(all.count, 1)
     }
 
-    @MainActor
     func testSaveDedupsBySourceURLWithoutImporting() async throws {
-        let context = try makeContext()
+        let context = container.mainContext
         let video = DiscoverVideo(videoId: "abc123", title: "Crispy Tofu",
                                   creator: nil, thumbnailURL: nil, durationSeconds: nil)
         let preexisting = Recipe(title: "Already here",

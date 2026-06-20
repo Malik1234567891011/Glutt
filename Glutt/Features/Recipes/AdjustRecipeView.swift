@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -58,25 +59,30 @@ struct AdjustRecipeView: View {
 
     private var goalPicker: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            Text("What should change about “\(recipe.title)”?")
+            Text("What should change about \u{201C}\(recipe.title)\u{201D}?")
                 .font(.gluttHeadline)
                 .foregroundStyle(Theme.Colors.textPrimary)
 
             ForEach(RecipeAdjuster.Goal.allCases) { goal in
                 Button {
+                    Haptics.impact(.medium)
                     run(goal)
                 } label: {
                     HStack(spacing: Theme.Spacing.md) {
-                        Image(systemName: goal.icon)
-                            .font(.title3)
+                        goalIcon(for: goal)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 24, height: 24)
                             .foregroundStyle(Theme.Colors.accent)
                             .frame(width: 32)
                         Text(goal.label)
                             .font(.gluttHeadline)
                             .foregroundStyle(Theme.Colors.textPrimary)
                         Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
+                        Ph.caretRight.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 12, height: 12)
                             .foregroundStyle(Theme.Colors.textSecondary)
                     }
                     .padding(Theme.Spacing.md)
@@ -92,6 +98,16 @@ struct AdjustRecipeView: View {
         }
     }
 
+    /// Maps each Goal to a Phosphor icon (already resizable).
+    private func goalIcon(for goal: RecipeAdjuster.Goal) -> Image {
+        switch goal {
+        case .higherProtein: Ph.flame.regular
+        case .lighter:       Ph.leaf.regular
+        case .cheaper:       Ph.tag.regular
+        case .foodRules:     Ph.checkCircle.regular
+        }
+    }
+
     private func run(_ goal: RecipeAdjuster.Goal) {
         phase = .working(goal)
         let prefs = UserPrefs.current(in: context)
@@ -103,8 +119,10 @@ struct AdjustRecipeView: View {
                     rules: prefs.dietaryRules,
                     allergies: prefs.allergies
                 )
+                Haptics.notify(.success)
                 phase = .result(goal, adjustment)
             } catch {
+                Haptics.notify(.error)
                 phase = .failed(error.localizedDescription)
             }
         }
@@ -116,7 +134,7 @@ struct AdjustRecipeView: View {
         VStack(spacing: Theme.Spacing.md) {
             ProgressView()
                 .controlSize(.large)
-            Text("Rewriting for “\(goal.label.lowercased())”…")
+            Text("Rewriting for \u{201C}\(goal.label.lowercased())\u{201D}\u{2026}")
                 .font(.gluttBody)
                 .foregroundStyle(Theme.Colors.textSecondary)
         }
@@ -135,9 +153,16 @@ struct AdjustRecipeView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 SectionHeader(title: "What changed")
                 ForEach(adjustment.changes, id: \.self) { change in
-                    Label(change, systemImage: "arrow.triangle.swap")
-                        .font(.gluttBody)
-                        .foregroundStyle(Theme.Colors.textPrimary)
+                    HStack(spacing: Theme.Spacing.sm) {
+                        Ph.swap.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 16, height: 16)
+                            .foregroundStyle(Theme.Colors.accent)
+                        Text(change)
+                            .font(.gluttBody)
+                            .foregroundStyle(Theme.Colors.textPrimary)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -155,11 +180,19 @@ struct AdjustRecipeView: View {
             .cardStyle()
 
             if didSave {
-                Label("Saved as “\(goal.versionLabel)” — find it under versions on the recipe", systemImage: "checkmark.circle.fill")
-                    .font(.gluttCaption.weight(.medium))
-                    .foregroundStyle(Theme.Colors.accent)
+                HStack(spacing: Theme.Spacing.sm) {
+                    Ph.checkCircle.fill
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(Theme.Colors.accent)
+                    Text("Saved as \u{201C}\(goal.versionLabel)\u{201D} \u{2014} find it under versions on the recipe")
+                        .font(.gluttCaption.weight(.medium))
+                        .foregroundStyle(Theme.Colors.accent)
+                }
             } else {
                 Button("Save as \(goal.versionLabel.lowercased())") {
+                    Haptics.notify(.success)
                     RecipeAdjuster.apply(adjustment, goal: goal, to: recipe, context: context)
                     didSave = true
                 }
@@ -167,6 +200,7 @@ struct AdjustRecipeView: View {
             }
 
             Button("Try a different goal") {
+                Haptics.impact(.light)
                 didSave = false
                 phase = .pickGoal
             }

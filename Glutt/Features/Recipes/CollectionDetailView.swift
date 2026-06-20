@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -17,7 +18,7 @@ struct CollectionDetailView: View {
                     EmptyStateView(
                         icon: "folder",
                         title: "Empty collection",
-                        message: "Add recipes from any recipe's menu — look for “Collections”."
+                        message: "Add recipes from any recipe\u{2019}s menu \u{2014} look for \u{201C}Collections\u{201D}."
                     )
                 } else {
                     ForEach(collection.recipes) { recipe in
@@ -25,8 +26,12 @@ struct CollectionDetailView: View {
                             RecipeCard(recipe: recipe)
                         }
                         .buttonStyle(.plain)
+                        .simultaneousGesture(TapGesture().onEnded {
+                            Haptics.impact(.light)
+                        })
                         .contextMenu {
                             Button("Remove from collection", systemImage: "folder.badge.minus", role: .destructive) {
+                                Haptics.notify(.warning)
                                 collection.recipes.removeAll { $0 === recipe }
                             }
                         }
@@ -46,16 +51,22 @@ struct CollectionDetailView: View {
                         isRenaming = true
                     }
                     Button("Delete collection", systemImage: "trash", role: .destructive) {
+                        Haptics.notify(.error)
                         isConfirmingDelete = true
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Ph.dotsThreeCircle.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 22, height: 22)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                 }
             }
         }
         .alert("Rename collection", isPresented: $isRenaming) {
             TextField("Name", text: $newName)
             Button("Save") {
+                Haptics.notify(.success)
                 let trimmed = newName.trimmingCharacters(in: .whitespaces)
                 if !trimmed.isEmpty {
                     collection.name = trimmed
@@ -64,11 +75,12 @@ struct CollectionDetailView: View {
             Button("Cancel", role: .cancel) {}
         }
         .confirmationDialog(
-            "Delete “\(collection.name)”? Recipes stay in your library.",
+            "Delete \u{201C}\(collection.name)\u{201D}? Recipes stay in your library.",
             isPresented: $isConfirmingDelete,
             titleVisibility: .visible
         ) {
             Button("Delete collection", role: .destructive) {
+                Haptics.notify(.error)
                 context.delete(collection)
                 dismiss()
             }

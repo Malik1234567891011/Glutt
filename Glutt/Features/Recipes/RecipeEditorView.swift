@@ -1,4 +1,5 @@
 import PhotosUI
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -58,7 +59,10 @@ struct RecipeEditorView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        Haptics.notify(.warning)
+                        dismiss()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
@@ -70,6 +74,18 @@ struct RecipeEditorView: View {
                 Task {
                     photoData = try? await photoItem?.loadTransferable(type: Data.self)
                 }
+            }
+            .onChange(of: difficulty) {
+                Haptics.selection()
+            }
+            .onChange(of: servings) {
+                Haptics.impact(.light)
+            }
+            .onChange(of: prepMinutes) {
+                Haptics.impact(.light)
+            }
+            .onChange(of: cookMinutes) {
+                Haptics.impact(.light)
             }
         }
     }
@@ -102,7 +118,16 @@ struct RecipeEditorView: View {
                         .frame(maxWidth: .infinity)
                         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
                 } else {
-                    Label("Choose a photo", systemImage: "photo")
+                    HStack(spacing: Theme.Spacing.sm) {
+                        Ph.image.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 18, height: 18)
+                            .foregroundStyle(Theme.Colors.accent)
+                        Text("Choose a photo")
+                            .font(.gluttBody)
+                            .foregroundStyle(Theme.Colors.textPrimary)
+                    }
                 }
             }
         }
@@ -120,9 +145,23 @@ struct RecipeEditorView: View {
                         .frame(width: 60)
                 }
             }
-            .onDelete { ingredients.remove(atOffsets: $0) }
-            Button("Add ingredient", systemImage: "plus") {
+            .onDelete { offsets in
+                Haptics.notify(.warning)
+                ingredients.remove(atOffsets: offsets)
+            }
+            Button {
+                Haptics.impact(.light)
                 ingredients.append(IngredientDraft())
+            } label: {
+                HStack(spacing: Theme.Spacing.sm) {
+                    Ph.plus.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
+                        .foregroundStyle(Theme.Colors.accent)
+                    Text("Add ingredient")
+                        .foregroundStyle(Theme.Colors.accent)
+                }
             }
         }
     }
@@ -139,9 +178,23 @@ struct RecipeEditorView: View {
                         .frame(width: 44)
                 }
             }
-            .onDelete { steps.remove(atOffsets: $0) }
-            Button("Add step", systemImage: "plus") {
+            .onDelete { offsets in
+                Haptics.notify(.warning)
+                steps.remove(atOffsets: offsets)
+            }
+            Button {
+                Haptics.impact(.light)
                 steps.append(StepDraft())
+            } label: {
+                HStack(spacing: Theme.Spacing.sm) {
+                    Ph.plus.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
+                        .foregroundStyle(Theme.Colors.accent)
+                    Text("Add step")
+                        .foregroundStyle(Theme.Colors.accent)
+                }
             }
         }
     }
@@ -183,6 +236,7 @@ struct RecipeEditorView: View {
     }
 
     private func save() {
+        Haptics.notify(.success)
         let target: Recipe
         if let recipe {
             target = recipe

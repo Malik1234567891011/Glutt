@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -47,6 +48,7 @@ struct OptimizeRecipeView: View {
                         }
                         if plan.isWorthIt {
                             Button(didSave ? "Saved ✓" : "Save as pantry version") {
+                                Haptics.notify(.success)
                                 RecipeOptimizer.apply(plan, to: recipe, context: context)
                                 didSave = true
                             }
@@ -99,8 +101,10 @@ struct OptimizeRecipeView: View {
                             .font(.gluttBody)
                             .strikethrough(color: Theme.Colors.textSecondary)
                             .foregroundStyle(Theme.Colors.textSecondary)
-                        Image(systemName: "arrow.right")
-                            .font(.caption)
+                        Ph.arrowRight.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 14, height: 14)
                             .foregroundStyle(Theme.Colors.accent)
                         Text(swap.substituteName)
                             .font(.gluttBody.weight(.semibold))
@@ -119,13 +123,15 @@ struct OptimizeRecipeView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             SectionHeader(title: "Don't substitute these")
             ForEach(ingredients) { ingredient in
-                Label {
+                HStack(spacing: Theme.Spacing.sm) {
+                    Ph.warning.fill
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(Theme.Colors.warning)
                     Text("\(ingredient.name) — swapping this changes the dish. Better to grab it.")
                         .font(.gluttCaption)
                         .foregroundStyle(Theme.Colors.textPrimary)
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(Theme.Colors.warning)
                 }
                 .padding(Theme.Spacing.md)
                 .frame(maxWidth: .infinity, alignment: .leading)

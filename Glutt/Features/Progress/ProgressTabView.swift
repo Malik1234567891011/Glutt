@@ -1,4 +1,5 @@
 import Charts
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -55,26 +56,53 @@ struct ProgressTabView: View {
         let eatingOut = ProgressStats.eatingOutCount(logs: logs)
 
         return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.sm) {
-            statCard(value: "\(thisWeek.count)", label: "meals cooked this week", icon: "frying.pan")
+            statCard(value: "\(thisWeek.count)", label: "meals cooked this week") {
+                Ph.cookingPot.fill
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(Theme.Colors.accent)
+            }
             statCard(
                 value: streak > 0 ? "\(streak)" : "—",
-                label: streak == 1 ? "day cooking streak" : "days cooking streak",
-                icon: "flame"
-            )
-            statCard(value: "\(tried.total)", label: tried.newThisMonth > 0 ? "recipes tried (\(tried.newThisMonth) new this month)" : "recipes tried", icon: "book")
-            statCard(value: "\(leftoversUsed)", label: "leftovers eaten this week", icon: "takeoutbag.and.cup.and.straw")
+                label: streak == 1 ? "day cooking streak" : "days cooking streak"
+            ) {
+                Ph.flame.fill
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(Theme.Colors.tomato)
+            }
+            statCard(value: "\(tried.total)", label: tried.newThisMonth > 0 ? "recipes tried (\(tried.newThisMonth) new this month)" : "recipes tried") {
+                Ph.book.fill
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(Theme.Colors.accent)
+            }
+            statCard(value: "\(leftoversUsed)", label: "leftovers eaten this week") {
+                Ph.bag.fill
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(Theme.Colors.accent)
+            }
             if eatingOut > 0 {
-                statCard(value: "\(eatingOut)", label: "restaurant meals this week", icon: "storefront")
+                statCard(value: "\(eatingOut)", label: "restaurant meals this week") {
+                    Ph.storefront.fill
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
+                        .foregroundStyle(Theme.Colors.accent)
+                }
             }
         }
     }
 
-    private func statCard(value: String, label: String, icon: String) -> some View {
+    private func statCard<Icon: View>(value: String, label: String, @ViewBuilder icon: () -> Icon) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             HStack {
-                Image(systemName: icon)
-                    .font(.caption)
-                    .foregroundStyle(Theme.Colors.accent)
+                icon()
                 Spacer()
             }
             Text(value)
@@ -147,11 +175,14 @@ struct ProgressTabView: View {
 
     private var gymModeTeaser: some View {
         Button {
+            Haptics.impact(.light)
             isShowingSettings = true
         } label: {
             HStack(spacing: Theme.Spacing.md) {
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.title3)
+                Ph.barbell.regular
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 28, height: 28)
                     .foregroundStyle(Theme.Colors.accent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Tracking calories or protein?")
@@ -162,13 +193,22 @@ struct ProgressTabView: View {
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption)
+                Ph.caretRight.regular
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 14, height: 14)
                     .foregroundStyle(Theme.Colors.textSecondary)
             }
         }
         .buttonStyle(.plain)
-        .cardStyle()
+        .padding(Theme.Spacing.md)
+        .background(Theme.Colors.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous)
+                .strokeBorder(Theme.Colors.border.opacity(0.55), lineWidth: 1)
+        )
+        .shadow(color: Theme.Colors.textPrimary.opacity(0.07), radius: 10, x: 0, y: 3)
     }
 
     // MARK: - Favorites & recap
@@ -196,9 +236,7 @@ struct ProgressTabView: View {
                     }
                     Spacer()
                     if let rating = favorite.recipe.rating {
-                        Label("\(rating)", systemImage: "star.fill")
-                            .font(.gluttCaption.weight(.medium))
-                            .foregroundStyle(Theme.Colors.warning)
+                        StatPill.rating("\(rating)")
                     }
                 }
                 .cardStyle()
@@ -220,8 +258,10 @@ struct ProgressTabView: View {
         }
 
         return HStack(spacing: Theme.Spacing.md) {
-            Image(systemName: "sparkles")
-                .font(.title3)
+            Ph.sparkle.fill
+                .resizable()
+                .scaledToFit()
+                .frame(width: 26, height: 26)
                 .foregroundStyle(Theme.Colors.accent)
             Text(line)
                 .font(.gluttBody)
@@ -231,6 +271,6 @@ struct ProgressTabView: View {
         }
         .padding(Theme.Spacing.md)
         .background(Theme.Colors.successTint)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous))
     }
 }

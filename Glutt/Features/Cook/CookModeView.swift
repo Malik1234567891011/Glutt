@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -65,10 +66,12 @@ struct CookModeView: View {
     private var topBar: some View {
         HStack {
             Button {
+                Haptics.impact(.light)
                 isConfirmingExit = true
             } label: {
-                Image(systemName: "xmark")
-                    .font(.headline)
+                Ph.x.regular
+                    .resizable().scaledToFit()
+                    .frame(width: 18, height: 18)
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .padding(10)
                     .background(Theme.Colors.card)
@@ -88,8 +91,9 @@ struct CookModeView: View {
             Button {
                 isShowingIngredients = true
             } label: {
-                Image(systemName: "list.bullet")
-                    .font(.headline)
+                Ph.listBullets.regular
+                    .resizable().scaledToFit()
+                    .frame(width: 18, height: 18)
                     .foregroundStyle(Theme.Colors.accent)
                     .padding(10)
                     .background(Theme.Colors.card)
@@ -119,6 +123,14 @@ struct CookModeView: View {
     private func stepPage(_ step: RecipeStep) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+                    Text("\(step.index + 1)")
+                        .font(.gluttHeadline).foregroundStyle(.white)
+                        .frame(width: 32, height: 32)
+                        .background(Theme.Colors.accent).clipShape(Circle())
+                    Spacer()
+                }
+
                 Text(step.text)
                     .font(.gluttCookStep)
                     .foregroundStyle(Theme.Colors.textPrimary)
@@ -157,18 +169,25 @@ struct CookModeView: View {
 
     private func timerChip(for step: RecipeStep, duration: Int) -> some View {
         Button {
+            Haptics.selection()
             timerManager.start(
                 label: "Step \(step.index + 1): \(String(step.text.prefix(40)))",
                 seconds: duration
             )
         } label: {
-            Label("Start \(TimerManager.format(seconds: duration)) timer", systemImage: "timer")
-                .font(.gluttHeadline)
-                .foregroundStyle(.white)
-                .padding(.horizontal, Theme.Spacing.md)
-                .padding(.vertical, 12)
-                .background(Theme.Colors.warning)
-                .clipShape(Capsule())
+            HStack(spacing: Theme.Spacing.xs) {
+                Ph.timer.regular
+                    .resizable().scaledToFit()
+                    .frame(width: 18, height: 18)
+                    .foregroundStyle(.white)
+                Text("Start \(TimerManager.format(seconds: duration)) timer")
+                    .font(.gluttHeadline)
+                    .foregroundStyle(.white)
+            }
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.vertical, 12)
+            .background(Theme.Colors.warning)
+            .clipShape(Capsule())
         }
         .buttonStyle(.plain)
     }
@@ -181,13 +200,26 @@ struct CookModeView: View {
                 ForEach(timerManager.timers) { timer in
                     let remaining = timer.remainingSeconds(at: timerManager.now)
                     HStack(spacing: 6) {
-                        Image(systemName: remaining == 0 ? "bell.fill" : "timer")
+                        if remaining == 0 {
+                            Ph.bellRinging.fill
+                                .resizable().scaledToFit()
+                                .frame(width: 16, height: 16)
+                                .foregroundStyle(.white)
+                                .onAppear { Haptics.notify(.success) }
+                        } else {
+                            Ph.timer.regular
+                                .resizable().scaledToFit()
+                                .frame(width: 16, height: 16)
+                                .foregroundStyle(.white)
+                        }
                         Text(remaining == 0 ? "Done!" : TimerManager.format(seconds: remaining))
                             .monospacedDigit()
                         Button {
                             timerManager.cancel(timer)
                         } label: {
-                            Image(systemName: "xmark.circle.fill")
+                            Ph.xCircle.fill
+                                .resizable().scaledToFit()
+                                .frame(width: 16, height: 16)
                                 .foregroundStyle(.white.opacity(0.7))
                         }
                     }
@@ -210,9 +242,15 @@ struct CookModeView: View {
         HStack(spacing: Theme.Spacing.md) {
             if stepIndex > 0 {
                 Button {
+                    Haptics.impact(.light)
                     stepIndex -= 1
                 } label: {
-                    Label("Back", systemImage: "chevron.left")
+                    HStack(spacing: 4) {
+                        Ph.caretLeft.regular
+                            .resizable().scaledToFit()
+                            .frame(width: 14, height: 14)
+                        Text("Back")
+                    }
                 }
                 .buttonStyle(.gluttSecondary)
                 .frame(width: 110)
@@ -220,14 +258,21 @@ struct CookModeView: View {
 
             if isLastStep {
                 Button("Finish cooking") {
+                    Haptics.impact(.medium)
                     isShowingFinish = true
                 }
                 .buttonStyle(.gluttPrimary)
             } else {
                 Button {
+                    Haptics.impact(.medium)
                     stepIndex += 1
                 } label: {
-                    Label("Next step", systemImage: "chevron.right")
+                    HStack(spacing: 4) {
+                        Text("Next step")
+                        Ph.caretRight.regular
+                            .resizable().scaledToFit()
+                            .frame(width: 14, height: 14)
+                    }
                 }
                 .buttonStyle(.gluttPrimary)
             }

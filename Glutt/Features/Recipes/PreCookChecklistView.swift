@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -37,6 +38,7 @@ struct PreCookChecklistView: View {
 
                     VStack(spacing: Theme.Spacing.sm) {
                         Button("Add missing to groceries") {
+                            Haptics.notify(.success)
                             GroceryListBuilder.add(
                                 ingredients: match.missing,
                                 from: recipe,
@@ -48,11 +50,13 @@ struct PreCookChecklistView: View {
                         .buttonStyle(.gluttSecondary)
 
                         Button("Use what I have instead") {
+                            Haptics.impact(.light)
                             isOptimizing = true
                         }
                         .buttonStyle(.gluttSecondary)
 
                         Button("Cook anyway") {
+                            Haptics.impact(.medium)
                             dismiss()
                             onCookAnyway()
                         }
@@ -77,8 +81,9 @@ struct PreCookChecklistView: View {
 
     private var summaryCard: some View {
         HStack(spacing: Theme.Spacing.md) {
-            Image(systemName: "basket")
-                .font(.title2)
+            Ph.basket.regular
+                .resizable().scaledToFit()
+                .frame(width: 28, height: 28)
                 .foregroundStyle(Theme.Colors.warning)
             VStack(alignment: .leading, spacing: 2) {
                 Text("You have \(match.ownedCount) of \(match.totalCount) ingredients")
@@ -101,7 +106,9 @@ struct PreCookChecklistView: View {
 
         return VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             HStack {
-                Image(systemName: "xmark.circle")
+                Ph.xCircle.regular
+                    .resizable().scaledToFit()
+                    .frame(width: 18, height: 18)
                     .foregroundStyle(Theme.Colors.tomato)
                 Text(ingredient.name)
                     .font(.gluttHeadline)
@@ -115,13 +122,25 @@ struct PreCookChecklistView: View {
             }
 
             if essential {
-                Label("Core ingredient — substituting will change the dish", systemImage: "exclamationmark.triangle")
-                    .font(.caption2)
-                    .foregroundStyle(Theme.Colors.tomato)
+                HStack(spacing: 4) {
+                    Ph.warning.regular
+                        .resizable().scaledToFit()
+                        .frame(width: 14, height: 14)
+                        .foregroundStyle(Theme.Colors.tomato)
+                    Text("Core ingredient — substituting will change the dish")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.Colors.tomato)
+                }
             } else if let swap = available.first {
-                Label("You have a swap: \(swap.name)", systemImage: "arrow.triangle.2.circlepath")
-                    .font(.gluttCaption.weight(.medium))
-                    .foregroundStyle(Theme.Colors.accent)
+                HStack(spacing: 4) {
+                    Ph.arrowsClockwise.regular
+                        .resizable().scaledToFit()
+                        .frame(width: 14, height: 14)
+                        .foregroundStyle(Theme.Colors.accent)
+                    Text("You have a swap: \(swap.name)")
+                        .font(.gluttCaption.weight(.medium))
+                        .foregroundStyle(Theme.Colors.accent)
+                }
                 Text(swap.explanation)
                     .font(.caption2)
                     .foregroundStyle(Theme.Colors.textSecondary)

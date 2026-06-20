@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -58,8 +59,11 @@ struct CookFinishView: View {
                     feedbackCard
                     noteCard
 
-                    Button("Save & finish") { save() }
-                        .buttonStyle(.gluttPrimary)
+                    Button("Save & finish") {
+                        Haptics.notify(.success)
+                        save()
+                    }
+                    .buttonStyle(.gluttPrimary)
                     Button("Skip — just close") {
                         onComplete()
                     }
@@ -108,6 +112,7 @@ struct CookFinishView: View {
                         .frame(minWidth: 36)
                 }
                 .fixedSize()
+                .onChange(of: servingsMade) { _, _ in Haptics.impact(.light) }
             }
 
             Divider().overlay(Theme.Colors.border)
@@ -169,11 +174,20 @@ struct CookFinishView: View {
             HStack(spacing: Theme.Spacing.sm) {
                 ForEach(1...5, id: \.self) { star in
                     Button {
+                        Haptics.impact(.light)
                         rating = rating == star ? 0 : star
                     } label: {
-                        Image(systemName: star <= rating ? "star.fill" : "star")
-                            .font(.title2)
-                            .foregroundStyle(Theme.Colors.warning)
+                        if star <= rating {
+                            Ph.star.fill
+                                .resizable().scaledToFit()
+                                .frame(width: 28, height: 28)
+                                .foregroundStyle(Theme.Colors.warning)
+                        } else {
+                            Ph.star.regular
+                                .resizable().scaledToFit()
+                                .frame(width: 28, height: 28)
+                                .foregroundStyle(Theme.Colors.warning)
+                        }
                     }
                     .buttonStyle(.plain)
                 }
@@ -191,17 +205,37 @@ struct CookFinishView: View {
                 .foregroundStyle(Theme.Colors.textPrimary)
             Spacer()
             Button {
+                Haptics.impact(.light)
                 answer.wrappedValue = answer.wrappedValue == true ? nil : true
             } label: {
-                Image(systemName: answer.wrappedValue == true ? "hand.thumbsup.fill" : "hand.thumbsup")
-                    .foregroundStyle(Theme.Colors.accent)
+                if answer.wrappedValue == true {
+                    Ph.thumbsUp.fill
+                        .resizable().scaledToFit()
+                        .frame(width: 22, height: 22)
+                        .foregroundStyle(Theme.Colors.accent)
+                } else {
+                    Ph.thumbsUp.regular
+                        .resizable().scaledToFit()
+                        .frame(width: 22, height: 22)
+                        .foregroundStyle(Theme.Colors.accent)
+                }
             }
             .buttonStyle(.plain)
             Button {
+                Haptics.impact(.light)
                 answer.wrappedValue = answer.wrappedValue == false ? nil : false
             } label: {
-                Image(systemName: answer.wrappedValue == false ? "hand.thumbsdown.fill" : "hand.thumbsdown")
-                    .foregroundStyle(Theme.Colors.tomato)
+                if answer.wrappedValue == false {
+                    Ph.thumbsDown.fill
+                        .resizable().scaledToFit()
+                        .frame(width: 22, height: 22)
+                        .foregroundStyle(Theme.Colors.tomato)
+                } else {
+                    Ph.thumbsDown.regular
+                        .resizable().scaledToFit()
+                        .frame(width: 22, height: 22)
+                        .foregroundStyle(Theme.Colors.tomato)
+                }
             }
             .buttonStyle(.plain)
         }

@@ -9,6 +9,8 @@ struct InventoryView: View {
     @Binding var isAddingItem: Bool
     @State private var searchText = ""
     @State private var isScanning = false
+    @State private var editingQuantityItem: PantryItem?
+    @State private var exactQuantityText = ""
 
     private var visibleItems: [PantryItem] {
         guard !searchText.isEmpty else { return items }
@@ -18,6 +20,12 @@ struct InventoryView: View {
 
     private var useSoonItems: [PantryItem] {
         visibleItems.filter { $0.isUseSoon && $0.roughQuantity != .out }
+    }
+
+    /// Staples surfaced in their own section, so they don't clutter the
+    /// regular category lists (and their opt-out markers stay tidy).
+    private func isAssumedStaple(_ item: PantryItem) -> Bool {
+        PantryMatcher.assumedStapleCanonicals.contains(item.canonicalName)
     }
 
     var body: some View {
@@ -44,11 +52,17 @@ struct InventoryView: View {
                         useSoonSection
                     }
                     ForEach(GroceryCategory.allCases) { category in
-                        let categoryItems = visibleItems.filter { $0.category == category && !$0.isUseSoon }
+                        let categoryItems = visibleItems.filter {
+                            $0.category == category && !$0.isUseSoon && !isAssumedStaple($0)
+                        }
                         if !categoryItems.isEmpty {
                             categorySection(category, items: categoryItems)
                         }
                     }
+                }
+
+                if searchText.isEmpty {
+                    assumedStaplesSection
                 }
             }
             .padding(Theme.Spacing.md)
@@ -68,6 +82,76 @@ struct InventoryView: View {
         }
         .sheet(isPresented: $isScanning) {
             PantryScanView()
+        }
+        .alert("Exact amount", isPresented: Binding(
+            get: { editingQuantityItem != nil },
+            set: { if !$0 { editingQuantityItem = nil } }
+        )) {
+            TextField("e.g. 1 lb, 2 bell peppers, 24 eggs", text: $exactQuantityText)
+            Button("Save") {
+                editingQuantityItem?.exactQuantity = exactQuantityText
+                    .trimmingCharacters(in: .whitespaces).isEmpty
+                        ? nil
+                        : exactQuantityText.trimmingCharacters(in: .whitespaces)
+                editingQuantityItem?.updatedAt = .now
+                editingQuantityItem = nil
+            }
+            Button("Cancel", role: .cancel) { editingQuantityItem = nil }
+        } message: {
+            Text("Optional. Add a precise amount if the rough level isn't enough.")
+        }
+    }
+
+    // MARK: - Assumed staples
+
+    /// Salt, pepper, oil, water — assumed present when matching recipes. Listed
+    /// here so the assumption is visible and the user can switch off anything
+    /// they don't actually keep (which then counts as missing).
+    private var assumedStaplesSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Text("Assumed you have")
+                .font(.gluttHeadline)
+                .foregroundStyle(Theme.Colors.textSecondary)
+            Text("Glutt treats these basics as on-hand when checking recipes. Turn off anything you don't keep and it'll count as missing.")
+                .font(.caption2)
+                .foregroundStyle(Theme.Colors.textSecondary)
+            ForEach(PantryMatcher.assumedStapleCanonicals, id: \.self) { canonical in
+                stapleToggleRow(canonical)
+            }
+        }
+        .padding(Theme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Colors.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+    }
+
+    private func stapleToggleRow(_ canonical: String) -> some View {
+        let optOut = items.first { $0.canonicalName == canonical && $0.roughQuantity == .out }
+        return Toggle(canonical.capitalized, isOn: Binding(
+            get: { optOut == nil },
+            set: { assumed in setStaple(canonical, assumed: assumed) }
+        ))
+        .font(.gluttBody)
+        .tint(Theme.Colors.accent)
+    }
+
+    /// Toggling off creates/marks an "out" row so the matcher stops assuming it;
+    /// toggling back on restores it. Non-destructive either way.
+    private func setStaple(_ canonical: String, assumed: Bool) {
+        let existing = items.first { $0.canonicalName == canonical }
+        if assumed {
+            existing?.roughQuantity = .full
+            existing?.updatedAt = .now
+        } else if let existing {
+            existing.roughQuantity = .out
+            existing.updatedAt = .now
+        } else {
+            context.insert(PantryItem(
+                name: canonical.capitalized,
+                category: .spices,
+                roughQuantity: .out,
+                location: .pantry
+            ))
         }
     }
 
@@ -117,9 +201,9 @@ struct InventoryView: View {
                     .font(.gluttBody)
                     .foregroundStyle(item.roughQuantity == .out ? Theme.Colors.textSecondary : Theme.Colors.textPrimary)
                     .strikethrough(item.roughQuantity == .out)
-                Text(item.location.label)
+                Text([item.exactQuantity, item.location.label].compactMap { $0 }.joined(separator: " · "))
                     .font(.caption2)
-                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .foregroundStyle(item.exactQuantity == nil ? Theme.Colors.textSecondary : Theme.Colors.accent)
             }
             Spacer()
             // Tap to cycle: full -> half -> low -> out -> full
@@ -138,6 +222,10 @@ struct InventoryView: View {
             .buttonStyle(.plain)
         }
         .contextMenu {
+            Button("Set exact amount…", systemImage: "scalemass") {
+                exactQuantityText = item.exactQuantity ?? ""
+                editingQuantityItem = item
+            }
             Button(item.useSoonDate == nil ? "Flag as use soon" : "Remove use-soon flag", systemImage: "exclamationmark.circle") {
                 item.useSoonDate = item.useSoonDate == nil
                     ? Calendar.current.date(byAdding: .day, value: 2, to: .now)
@@ -160,6 +248,7 @@ struct PantryItemEditorView: View {
     @State private var quantity: RoughQuantity = .full
     @State private var location: StorageLocation = .fridge
     @State private var flagUseSoon = false
+    @State private var exactQuantity = ""
     @State private var bulkText = ""
 
     var body: some View {
@@ -185,6 +274,7 @@ struct PantryItemEditorView: View {
                             Text(quantity.label).tag(quantity)
                         }
                     }
+                    TextField("Exact amount (optional): 1 lb, 24 eggs…", text: $exactQuantity)
                     Toggle("Use soon", isOn: $flagUseSoon)
                     Button("Add") { addSingle() }
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -216,10 +306,14 @@ struct PantryItemEditorView: View {
             category: category,
             roughQuantity: quantity,
             location: location,
-            useSoonDate: flagUseSoon ? Calendar.current.date(byAdding: .day, value: 2, to: .now) : nil
+            useSoonDate: flagUseSoon ? Calendar.current.date(byAdding: .day, value: 2, to: .now) : nil,
+            exactQuantity: exactQuantity.trimmingCharacters(in: .whitespaces).isEmpty
+                ? nil
+                : exactQuantity.trimmingCharacters(in: .whitespaces)
         )
         context.insert(item)
         name = ""
+        exactQuantity = ""
         flagUseSoon = false
     }
 

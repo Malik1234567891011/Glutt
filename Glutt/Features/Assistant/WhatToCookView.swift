@@ -21,7 +21,14 @@ struct WhatToCookView: View {
     @State private var isAsking = false
     @State private var headline: String?
     @State private var isInventing = false
+    @State private var inventMealType: MealType?
+    @State private var inventHint = ""
+    /// The current inline idea shown for review before saving.
     @State private var inventedDraft: ImportedRecipeDraft?
+    /// Separate handle for the full review/save sheet.
+    @State private var reviewDraft: ImportedRecipeDraft?
+    /// Titles proposed this session, so "Something else" never repeats them.
+    @State private var inventedTitles: [String] = []
     @State private var inventError: String?
 
     private static let timeOptions: [(label: String, minutes: Int?)] = [
@@ -33,7 +40,7 @@ struct WhatToCookView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     askCard
-                    if canInvent {
+                    if LLMClient.isConfigured {
                         inventCard
                     }
                     questionCard
@@ -89,14 +96,17 @@ struct WhatToCookView: View {
             .sheet(item: $planningRecipe) { recipe in
                 AddMealSheet(day: Calendar.current.startOfDay(for: .now), fixedRecipe: recipe)
             }
-            .sheet(item: $inventedDraft) { draft in
+            .sheet(item: $reviewDraft) { draft in
                 NavigationStack {
-                    ImportReviewView(draft: draft) { inventedDraft = nil }
+                    ImportReviewView(draft: draft) {
+                        reviewDraft = nil
+                        inventedDraft = nil
+                    }
                         .navigationTitle("Your new recipe")
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {
-                                Button("Cancel") { inventedDraft = nil }
+                                Button("Cancel") { reviewDraft = nil }
                             }
                         }
                 }
@@ -158,23 +168,71 @@ struct WhatToCookView: View {
     }
 
     /// Create something new from scratch using what's in the kitchen —
-    /// distinct from matching saved recipes.
+    /// distinct from matching saved recipes. Always visible (when AI is on) so
+    /// the feature is discoverable; the controls grey out until there's enough
+    /// in the kitchen to cook with.
     private var inventCard: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             HStack(spacing: Theme.Spacing.sm) {
                 Image(systemName: "wand.and.stars")
                     .font(.title3)
-                    .foregroundStyle(Theme.Colors.accent)
+                    .foregroundStyle(canInvent ? Theme.Colors.accent : Theme.Colors.textSecondary)
                 Text("Invent a dish from what I have")
                     .font(.gluttHeadline)
-                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .foregroundStyle(canInvent ? Theme.Colors.textPrimary : Theme.Colors.textSecondary)
             }
-            Text("A brand-new recipe built around your \(pantryPreview) — not one of your saved ones.")
-                .font(.gluttCaption)
-                .foregroundStyle(Theme.Colors.textSecondary)
+
+            if canInvent {
+                Text("A brand-new recipe built around your \(pantryPreview) — not one of your saved ones.")
+                    .font(.gluttCaption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+
+                inventControls
+
+                if let draft = inventedDraft {
+                    inventedPreview(draft)
+                }
+            } else {
+                Text("Add a couple of things to your kitchen and Glutt will spin up an original recipe from what you have.")
+                    .font(.gluttCaption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                Button {
+                } label: {
+                    Text("Make something new")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.gluttPrimary)
+                .disabled(true)
+            }
+        }
+        .cardStyle()
+    }
+
+    /// Meal-type chips + an optional free-text steer, then the generate button.
+    private var inventControls: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Spacing.sm) {
+                    selectableChip("Any", isSelected: inventMealType == nil) {
+                        inventMealType = nil
+                    }
+                    ForEach(MealType.allCases) { type in
+                        selectableChip(type.label, isSelected: inventMealType == type) {
+                            inventMealType = type
+                        }
+                    }
+                }
+            }
+
+            TextField("Optional: \"feed 4\", \"something light\", \"quick & easy\"", text: $inventHint, axis: .vertical)
+                .font(.gluttBody)
+                .lineLimit(1...2)
+                .padding(Theme.Spacing.sm)
+                .background(Theme.Colors.background)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
 
             Button {
-                invent()
+                invent(excludingCurrent: false)
             } label: {
                 HStack(spacing: Theme.Spacing.sm) {
                     if isInventing { ProgressView().tint(.white) }
@@ -185,7 +243,56 @@ struct WhatToCookView: View {
             .buttonStyle(.gluttPrimary)
             .disabled(isInventing)
         }
-        .cardStyle()
+    }
+
+    /// Inline idea preview so the user can accept it or ask for another without
+    /// committing to the full review/save screen first.
+    private func inventedPreview(_ draft: ImportedRecipeDraft) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Text(draft.title ?? "New dish")
+                .font(.gluttHeadline)
+                .foregroundStyle(Theme.Colors.textPrimary)
+            if let summary = draft.summary, !summary.isEmpty {
+                Text(summary)
+                    .font(.gluttCaption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+            HStack(spacing: Theme.Spacing.md) {
+                if let servings = draft.servings {
+                    Label("\(servings) servings", systemImage: "person.2")
+                }
+                let mins = (draft.prepMinutes ?? 0) + (draft.cookMinutes ?? 0)
+                if mins > 0 {
+                    Label("\(mins) min", systemImage: "clock")
+                }
+            }
+            .font(.gluttCaption)
+            .foregroundStyle(Theme.Colors.textSecondary)
+
+            HStack(spacing: Theme.Spacing.sm) {
+                Button {
+                    reviewDraft = draft
+                } label: {
+                    Text("Save this recipe")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.gluttSecondary)
+                Button {
+                    invent(excludingCurrent: true)
+                } label: {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        if isInventing { ProgressView() }
+                        Text("Something else")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.gluttSecondary)
+                .disabled(isInventing)
+            }
+        }
+        .padding(Theme.Spacing.md)
+        .background(Theme.Colors.background)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
     }
 
     private var pantryPreview: String {
@@ -201,25 +308,38 @@ struct WhatToCookView: View {
         }
     }
 
-    private func invent() {
+    /// - Parameter excludingCurrent: when true (the "Something else" path), the
+    ///   dish currently on screen is added to the avoid-list so the model is
+    ///   forced to return a clearly different idea.
+    private func invent(excludingCurrent: Bool) {
         guard !isInventing else { return }
+        if excludingCurrent, let current = inventedDraft?.title {
+            if !inventedTitles.contains(current) { inventedTitles.append(current) }
+        }
         // Premium gate: AI recipe invention is a paid feature. The gated
         // `invent_recipe` placement only runs this block for subscribers
         // (or after they subscribe); non-subscribers see the paywall instead.
         InventionPaywallHook.presentBeforeInventing {
             isInventing = true
             let prefs = UserPrefs.current(in: context)
-            let hint = askText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let hint = inventHint.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Keep only the most recent few titles so the prompt stays focused.
+            let avoid = Array(inventedTitles.suffix(6))
             Task {
                 let draft = await PantryChef.invent(
                     pantry: pantryItems,
                     prefs: prefs,
                     hint: hint.isEmpty ? nil : hint,
-                    maxMinutes: maxMinutes
+                    maxMinutes: maxMinutes,
+                    mealType: inventMealType,
+                    avoidTitles: avoid
                 )
                 isInventing = false
                 if let draft {
                     inventedDraft = draft
+                    if let title = draft.title, !inventedTitles.contains(title) {
+                        inventedTitles.append(title)
+                    }
                 } else {
                     inventError = "Glutt couldn't spin up a dish from your pantry right now. Add a few more items, or try again."
                 }

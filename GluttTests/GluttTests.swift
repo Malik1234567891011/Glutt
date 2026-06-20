@@ -950,6 +950,29 @@ final class DietGuardTests: XCTestCase {
         XCTAssertFalse(DietGuard.isSuggestable(bowl, rules: [.vegan], allergies: []))
     }
 
+    func testPescatarianAllowsFishButBlocksMeat() {
+        let salmon = recipe("Salmon Rice Bowl", ingredients: ["Salmon", "Rice", "Soy sauce"])
+        XCTAssertTrue(DietGuard.conflicts(in: salmon, rules: [.pescatarian], allergies: []).isEmpty)
+        XCTAssertTrue(DietGuard.isSuggestable(salmon, rules: [.pescatarian], allergies: []))
+
+        let beef = recipe("Beef Tacos", ingredients: ["Beef", "Tortilla"])
+        let conflicts = DietGuard.conflicts(in: beef, rules: [.pescatarian], allergies: [])
+        XCTAssertEqual(conflicts.map(\.ingredientName), ["Beef"])
+        XCTAssertTrue(conflicts.allSatisfy(\.isBlocking))
+    }
+
+    func testKosherBlocksPorkAndShellfishButAllowsFinFish() {
+        let shrimp = recipe("Shrimp Scampi", ingredients: ["Shrimp", "Garlic", "Butter"])
+        XCTAssertTrue(DietGuard.conflicts(in: shrimp, rules: [.kosher], allergies: []).contains { $0.isBlocking })
+
+        let porkDish = recipe("Pork Ribs", ingredients: ["Pork", "Salt"])
+        XCTAssertFalse(DietGuard.isSuggestable(porkDish, rules: [.kosher], allergies: []))
+
+        // Fin fish (salmon) is kosher-acceptable for this keyword guard.
+        let salmon = recipe("Baked Salmon", ingredients: ["Salmon", "Lemon", "Dill"])
+        XCTAssertTrue(DietGuard.conflicts(in: salmon, rules: [.kosher], allergies: []).isEmpty)
+    }
+
     func testRecommenderNeverSuggestsBlockedRecipes() {
         let porkDish = recipe("Pork Stir Fry", ingredients: ["Pork", "Rice"])
         let safeDish = recipe("Veggie Stir Fry", ingredients: ["Broccoli", "Rice"])
@@ -995,6 +1018,48 @@ final class DietGuardTests: XCTestCase {
             allergies: []
         )
         XCTAssertFalse(subs.contains { $0.name.lowercased().contains("ghee") })
+    }
+}
+
+// MARK: - Recipe time estimation
+
+final class RecipeTimeEstimateTests: XCTestCase {
+
+    private func recipe(prep: Int, cook: Int, stepDurations: [Int?]) -> Recipe {
+        let recipe = Recipe(title: "Timed", prepMinutes: prep, cookMinutes: cook)
+        recipe.steps = stepDurations.enumerated().map { index, seconds in
+            RecipeStep(index: index, text: "Step \(index)", durationSeconds: seconds)
+        }
+        return recipe
+    }
+
+    func testExplicitTimesAreTrustedAndNotEstimated() {
+        let r = recipe(prep: 10, cook: 20, stepDurations: [600, nil])
+        XCTAssertEqual(r.estimatedMinutes, 30)
+        XCTAssertFalse(r.minutesAreEstimated)
+        XCTAssertEqual(r.timeLabel, "30 min")
+    }
+
+    func testFallsBackToStepTimersPlusBuffer() {
+        // No prep/cook: 10 min of timers + one untimed step (4) + 5 base = 19.
+        let r = recipe(prep: 0, cook: 0, stepDurations: [600, nil])
+        XCTAssertEqual(r.estimatedMinutes, 19)
+        XCTAssertTrue(r.minutesAreEstimated)
+        XCTAssertEqual(r.timeLabel, "~19 min")
+    }
+
+    func testAllUntimedStepsStillEstimateFromCount() {
+        // Three untimed steps, no timers: 3 * 4 = 12, no base buffer added.
+        let r = recipe(prep: 0, cook: 0, stepDurations: [nil, nil, nil])
+        XCTAssertEqual(r.estimatedMinutes, 12)
+        XCTAssertTrue(r.minutesAreEstimated)
+    }
+
+    func testNoTimesAndNoStepsShowsDash() {
+        let r = recipe(prep: 0, cook: 0, stepDurations: [])
+        XCTAssertEqual(r.estimatedMinutes, 0)
+        XCTAssertFalse(r.minutesAreEstimated)
+        XCTAssertEqual(r.timeLabel, "—")
     }
 }
 

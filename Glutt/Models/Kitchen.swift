@@ -9,6 +9,10 @@ final class PantryItem {
     var roughQuantity: RoughQuantity
     var location: StorageLocation
     var useSoonDate: Date?
+    /// Optional precise amount the user typed ("1 lb", "2 bell peppers", "24 eggs").
+    /// The rough quantity stays the fast default; this is for people who want
+    /// exactness. Inline default keeps SwiftData migration lightweight.
+    var exactQuantity: String? = nil
     var addedAt: Date
     var updatedAt: Date
 
@@ -22,7 +26,8 @@ final class PantryItem {
         category: GroceryCategory = .other,
         roughQuantity: RoughQuantity = .full,
         location: StorageLocation = .pantry,
-        useSoonDate: Date? = nil
+        useSoonDate: Date? = nil,
+        exactQuantity: String? = nil
     ) {
         self.name = name
         self.canonicalName = IngredientCanonicalizer.canonicalize(name)
@@ -30,6 +35,7 @@ final class PantryItem {
         self.roughQuantity = roughQuantity
         self.location = location
         self.useSoonDate = useSoonDate
+        self.exactQuantity = exactQuantity
         self.addedAt = .now
         self.updatedAt = .now
     }

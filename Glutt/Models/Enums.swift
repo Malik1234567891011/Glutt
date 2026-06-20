@@ -131,7 +131,9 @@ enum NutritionMode: String, Codable, CaseIterable {
 
 enum DietaryRule: String, Codable, CaseIterable, Identifiable {
     case halal
+    case kosher
     case noPork
+    case pescatarian
     case vegetarian
     case vegan
     case glutenFree
@@ -141,7 +143,9 @@ enum DietaryRule: String, Codable, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .halal: "Halal"
+        case .kosher: "Kosher"
         case .noPork: "No pork"
+        case .pescatarian: "Pescatarian"
         case .vegetarian: "Vegetarian"
         case .vegan: "Vegan"
         case .glutenFree: "Gluten-free"

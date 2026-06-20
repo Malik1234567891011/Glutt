@@ -9,6 +9,10 @@ enum PantryMatcher {
         "salt", "pepper", "black pepper", "salt and pepper", "water", "oil",
     ]
 
+    /// The canonical staples we surface in the kitchen so users can opt out of
+    /// any they don't actually keep. Ordered for display; capitalize for labels.
+    static let assumedStapleCanonicals: [String] = ["salt", "pepper", "oil", "water"]
+
     struct MatchResult {
         var owned: [RecipeIngredient] = []
         var missing: [RecipeIngredient] = []

@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftUI
 
 /// A planned meal in the Today timeline or Plan week view.
@@ -21,15 +22,27 @@ struct MealCard: View {
                         Text(time, style: .time)
                     }
                     if let recipe = meal.recipe {
-                        Label(recipe.timeLabel, systemImage: "clock")
+                        HStack(spacing: 4) {
+                            Ph.clock.regular
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 11, height: 11)
+                            Text(recipe.timeLabel)
+                        }
                     }
                 }
                 .font(.gluttCaption)
                 .foregroundStyle(Theme.Colors.textSecondary)
                 if meal.status == .planned, let start = meal.suggestedStartTime {
-                    Label("Start cooking by \(start.formatted(date: .omitted, time: .shortened))", systemImage: "timer")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.Colors.warning)
+                    HStack(spacing: 4) {
+                        Ph.timer.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 11, height: 11)
+                        Text("Start cooking by \(start.formatted(date: .omitted, time: .shortened))")
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(Theme.Colors.warning)
                 }
             }
             Spacer()
@@ -49,8 +62,20 @@ struct MealCard: View {
                 .fill(Theme.Colors.accent.opacity(0.1))
                 .frame(width: 56, height: 56)
                 .overlay {
-                    Image(systemName: meal.leftover != nil ? "takeoutbag.and.cup.and.straw" : "fork.knife")
-                        .foregroundStyle(Theme.Colors.accent.opacity(0.6))
+                    Group {
+                        if meal.leftover != nil {
+                            Ph.bowlFood.regular
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 24, height: 24)
+                        } else {
+                            Ph.forkKnife.regular
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 24, height: 24)
+                        }
+                    }
+                    .foregroundStyle(Theme.Colors.accent.opacity(0.6))
                 }
         }
     }
@@ -59,22 +84,32 @@ struct MealCard: View {
         Group {
             switch meal.status {
             case .planned:
-                Image(systemName: "circle.dashed")
+                Ph.circleDashed.regular
+                    .resizable()
+                    .scaledToFit()
                     .foregroundStyle(Theme.Colors.textSecondary)
             case .cooked:
-                Image(systemName: "frying.pan")
+                Ph.cookingPot.regular
+                    .resizable()
+                    .scaledToFit()
                     .foregroundStyle(Theme.Colors.accent)
             case .eaten:
-                Image(systemName: "checkmark.circle.fill")
+                Ph.checkCircle.fill
+                    .resizable()
+                    .scaledToFit()
                     .foregroundStyle(Theme.Colors.accent)
             case .skipped:
-                Image(systemName: "minus.circle")
+                Ph.minusCircle.regular
+                    .resizable()
+                    .scaledToFit()
                     .foregroundStyle(Theme.Colors.textSecondary)
             case .replaced:
-                Image(systemName: "arrow.triangle.2.circlepath")
+                Ph.arrowsClockwise.regular
+                    .resizable()
+                    .scaledToFit()
                     .foregroundStyle(Theme.Colors.warning)
             }
         }
-        .font(.title3)
+        .frame(width: 24, height: 24)
     }
 }

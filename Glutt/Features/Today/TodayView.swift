@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -89,9 +90,14 @@ struct TodayView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        Haptics.impact(.light)
                         isShowingSettings = true
                     } label: {
-                        Image(systemName: "gearshape")
+                        Ph.gearSix.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                            .foregroundStyle(Theme.Colors.textPrimary)
                     }
                 }
             }
@@ -207,17 +213,23 @@ struct TodayView: View {
                 }
                 Spacer()
                 Button {
+                    Haptics.impact(.light)
                     withAnimation { gettingStartedCollapsed.toggle() }
                 } label: {
-                    Image(systemName: gettingStartedCollapsed ? "chevron.down" : "chevron.up")
-                        .font(.gluttCaption.weight(.semibold))
+                    (gettingStartedCollapsed ? Ph.caretDown.regular : Ph.caretUp.regular)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 14, height: 14)
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
                 Button {
+                    Haptics.impact(.light)
                     withAnimation { prefs.didDismissGettingStarted = true }
                 } label: {
-                    Image(systemName: "xmark")
-                        .font(.gluttCaption.weight(.semibold))
+                    Ph.x.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 14, height: 14)
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
                 .accessibilityLabel("Dismiss checklist")
@@ -226,19 +238,35 @@ struct TodayView: View {
             if !gettingStartedCollapsed {
                 VStack(spacing: 0) {
                     ForEach(steps) { step in
-                        Button(action: step.action) {
+                        Button {
+                            Haptics.impact(.light)
+                            step.action()
+                        } label: {
                             HStack(spacing: Theme.Spacing.sm) {
-                                Image(systemName: step.done ? "checkmark.circle.fill" : "circle")
-                                    .font(.title3)
-                                    .foregroundStyle(step.done ? Theme.Colors.accent : Theme.Colors.border)
+                                Group {
+                                    if step.done {
+                                        Ph.checkCircle.fill
+                                            .resizable()
+                                            .scaledToFit()
+                                            .foregroundStyle(Theme.Colors.accent)
+                                    } else {
+                                        Ph.circle.regular
+                                            .resizable()
+                                            .scaledToFit()
+                                            .foregroundStyle(Theme.Colors.border)
+                                    }
+                                }
+                                .frame(width: 20, height: 20)
                                 Text(step.title)
                                     .font(.gluttBody)
                                     .foregroundStyle(step.done ? Theme.Colors.textSecondary : Theme.Colors.textPrimary)
                                     .strikethrough(step.done, color: Theme.Colors.textSecondary)
                                 Spacer()
                                 if !step.done {
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
+                                    Ph.caretRight.regular
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 12, height: 12)
                                         .foregroundStyle(Theme.Colors.textSecondary)
                                 }
                             }
@@ -293,13 +321,31 @@ struct TodayView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 HStack(spacing: Theme.Spacing.md) {
                     if let time = meal.exactTime {
-                        Label(time.formatted(date: .omitted, time: .shortened), systemImage: "fork.knife")
+                        HStack(spacing: 4) {
+                            Ph.forkKnife.regular
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 12, height: 12)
+                            Text(time.formatted(date: .omitted, time: .shortened))
+                        }
                     }
                     if let start = meal.suggestedStartTime {
-                        Label("start by \(start.formatted(date: .omitted, time: .shortened))", systemImage: "timer")
-                            .foregroundStyle(Theme.Colors.warning)
+                        HStack(spacing: 4) {
+                            Ph.timer.regular
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 12, height: 12)
+                            Text("start by \(start.formatted(date: .omitted, time: .shortened))")
+                        }
+                        .foregroundStyle(Theme.Colors.warning)
                     }
-                    Label(recipe.timeLabel, systemImage: "clock")
+                    HStack(spacing: 4) {
+                        Ph.clock.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 12, height: 12)
+                        Text(recipe.timeLabel)
+                    }
                 }
                 .font(.gluttCaption)
                 .foregroundStyle(Theme.Colors.textSecondary)
@@ -313,6 +359,7 @@ struct TodayView: View {
                             .foregroundStyle(Theme.Colors.warning)
                         HStack(spacing: Theme.Spacing.sm) {
                             Button("Add missing to list") {
+                                Haptics.notify(.success)
                                 let missing = GroceryListBuilder.missingIngredients(for: recipe, pantry: pantryItems)
                                 GroceryListBuilder.add(
                                     ingredients: missing,
@@ -323,6 +370,7 @@ struct TodayView: View {
                             }
                             .buttonStyle(.gluttPillFilled)
                             Button("Use what I have") {
+                                Haptics.impact(.light)
                                 optimizingRecipe = recipe
                             }
                             .buttonStyle(.gluttPill)
@@ -335,31 +383,41 @@ struct TodayView: View {
                 }
 
                 Button {
+                    Haptics.impact(.medium)
                     if hasMissing {
                         checklistRecipe = recipe
                     } else {
                         cookingRecipe = recipe
                     }
                 } label: {
-                    Label("Cook", systemImage: "frying.pan")
-                        .frame(maxWidth: .infinity)
+                    HStack(spacing: Theme.Spacing.xs) {
+                        Ph.cookingPot.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 18, height: 18)
+                        Text("Cook")
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.gluttPrimary)
             }
             .padding(Theme.Spacing.md)
         }
         .background(Theme.Colors.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous))
         .shadow(color: Theme.Colors.textPrimary.opacity(0.08), radius: 10, x: 0, y: 3)
     }
 
     private var emptyDayCard: some View {
         Button {
+            Haptics.impact(.light)
             isAskingWhatToCook = true
         } label: {
             VStack(spacing: Theme.Spacing.sm) {
-                Image(systemName: "sparkles")
-                    .font(.title)
+                Ph.sparkle.regular
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 32, height: 32)
                     .foregroundStyle(Theme.Colors.accent)
                 Text("Nothing planned — what should I cook?")
                     .font(.gluttHeadline)
@@ -379,19 +437,33 @@ struct TodayView: View {
 
     private var quickActionsRow: some View {
         HStack(spacing: Theme.Spacing.sm) {
-            quickAction("Import", icon: "link") { router.perform(.importRecipe) }
-            quickAction("Scan", icon: "camera.viewfinder") { router.perform(.scanPantry) }
-            quickAction("Log", icon: "fork.knife.circle") { isLoggingFood = true }
-            quickAction("Ask", icon: "sparkles") { isAskingWhatToCook = true }
+            quickAction("Import", icon: Ph.link.regular) {
+                Haptics.selection()
+                router.perform(.importRecipe)
+            }
+            quickAction("Scan", icon: Ph.camera.regular) {
+                Haptics.selection()
+                router.perform(.scanPantry)
+            }
+            quickAction("Log", icon: Ph.forkKnife.regular) {
+                Haptics.selection()
+                isLoggingFood = true
+            }
+            quickAction("Ask", icon: Ph.sparkle.regular) {
+                Haptics.selection()
+                isAskingWhatToCook = true
+            }
         }
     }
 
     /// Deliberately quiet: utilities, not destinations. The hero card is the star.
-    private func quickAction(_ label: String, icon: String, action: @escaping () -> Void) -> some View {
+    private func quickAction(_ label: String, icon: Image, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: Theme.Spacing.xs) {
-                Image(systemName: icon)
-                    .font(.subheadline.weight(.medium))
+                icon
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 20, height: 20)
                     .foregroundStyle(Theme.Colors.accent)
                     .frame(width: 40, height: 40)
                     .background(Theme.Colors.accent.opacity(0.09))
@@ -423,8 +495,10 @@ struct TodayView: View {
     private func useSoonCard(_ items: [PantryItem]) -> some View {
         let names = items.prefix(3).map(\.name).joined(separator: ", ")
         return HStack(spacing: Theme.Spacing.md) {
-            Image(systemName: "leaf")
-                .font(.title3)
+            Ph.leaf.regular
+                .resizable()
+                .scaledToFit()
+                .frame(width: 22, height: 22)
                 .foregroundStyle(Theme.Colors.warning)
             VStack(alignment: .leading, spacing: 2) {
                 Text(items.count == 1 ? "\(names) needs using" : "Use these soon")
@@ -438,6 +512,7 @@ struct TodayView: View {
             }
             Spacer()
             Button("Find a recipe") {
+                Haptics.impact(.light)
                 isAskingWhatToCook = true
             }
             .buttonStyle(.gluttPillFilled)
@@ -449,8 +524,10 @@ struct TodayView: View {
 
     private func leftoverReminder(_ leftover: Leftover) -> some View {
         HStack(spacing: Theme.Spacing.md) {
-            Image(systemName: "takeoutbag.and.cup.and.straw")
-                .font(.title3)
+            Ph.bowlFood.regular
+                .resizable()
+                .scaledToFit()
+                .frame(width: 22, height: 22)
                 .foregroundStyle(Theme.Colors.accent)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Leftovers waiting")
@@ -462,6 +539,7 @@ struct TodayView: View {
             }
             Spacer()
             Button("Eat one") {
+                Haptics.notify(.success)
                 logLeftoverEaten(leftover)
             }
             .buttonStyle(.gluttPillFilled)
@@ -524,6 +602,7 @@ struct TodayView: View {
     private func mealRow(_ meal: PlannedMeal) -> some View {
         HStack(spacing: Theme.Spacing.sm) {
             Button {
+                Haptics.impact(.light)
                 editingMeal = meal
             } label: {
                 MealCard(meal: meal)
@@ -532,10 +611,13 @@ struct TodayView: View {
 
             if meal.status == .planned || meal.status == .cooked {
                 Button {
+                    Haptics.notify(.success)
                     markEaten(meal)
                 } label: {
-                    Image(systemName: "checkmark.circle")
-                        .font(.title2)
+                    Ph.checkCircle.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 28, height: 28)
                         .foregroundStyle(Theme.Colors.accent)
                 }
                 .accessibilityLabel("Mark eaten")
@@ -565,11 +647,18 @@ struct TodayView: View {
                 SectionHeader(title: "Eaten today")
                 Spacer()
                 Button {
+                    Haptics.impact(.medium)
                     isLoggingFood = true
                 } label: {
-                    Label("Log", systemImage: "plus.circle.fill")
-                        .font(.gluttCaption.weight(.semibold))
-                        .foregroundStyle(Theme.Colors.accent)
+                    HStack(spacing: 4) {
+                        Ph.plusCircle.fill
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 14, height: 14)
+                        Text("Log")
+                            .font(.gluttCaption.weight(.semibold))
+                    }
+                    .foregroundStyle(Theme.Colors.accent)
                 }
             }
 
@@ -594,8 +683,10 @@ struct TodayView: View {
 
     private func logRow(_ entry: FoodLog) -> some View {
         HStack {
-            Image(systemName: icon(for: entry.source))
-                .font(.caption)
+            icon(for: entry.source)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 14, height: 14)
                 .foregroundStyle(Theme.Colors.accent)
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 1) {
@@ -615,21 +706,22 @@ struct TodayView: View {
         }
         .padding(.vertical, Theme.Spacing.sm)
         .contextMenu {
-            Button("Delete", systemImage: "trash", role: .destructive) {
+            Button("Delete", role: .destructive) {
+                Haptics.impact(.rigid)
                 context.delete(entry)
             }
         }
     }
 
-    private func icon(for source: FoodLogSource) -> String {
+    private func icon(for source: FoodLogSource) -> Image {
         switch source {
-        case .cookedMeal: "frying.pan"
-        case .leftover: "takeoutbag.and.cup.and.straw"
-        case .restaurant: "storefront"
-        case .quickAdd: "bolt"
-        case .photo: "camera"
-        case .barcode: "barcode"
-        case .manual: "pencil"
+        case .cookedMeal: Ph.cookingPot.regular
+        case .leftover:   Ph.bowlFood.regular
+        case .restaurant: Ph.storefront.regular
+        case .quickAdd:   Ph.lightning.regular
+        case .photo:      Ph.camera.regular
+        case .barcode:    Ph.barcode.regular
+        case .manual:     Ph.pencil.regular
         }
     }
 }

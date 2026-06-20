@@ -48,6 +48,7 @@
 		2FF58009D64582CBBA7F0821 /* RecipeFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65FE09E5997ABD5A67C11372 /* RecipeFactoryTests.swift */; };
 		305C649FC56FE0D770701C00 /* DiscoverFeedViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 468B704187AAF8E2493A9B83 /* DiscoverFeedViewModel.swift */; };
 		31DED7CE48FF3308E5FB97F2 /* TasteProfileBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 792E07A262DF875373B88FBE /* TasteProfileBuilder.swift */; };
+		3434A18A0A500D190D9A4D72 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755FC1AB4CED3867D513B4C6 /* Haptics.swift */; };
 		3438BD5B21FCFC87449B1BD6 /* ImportInboxDrainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98B24B648D7D946D8F253FC7 /* ImportInboxDrainer.swift */; };
 		363203849DCC8694EDFC3BA1 /* PantryScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 790D532EB881A841E117F130 /* PantryScanView.swift */; };
 		377C8315F31D19964FA5A26D /* AddMealSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A6DEE84F181C8336CA87482 /* AddMealSheet.swift */; };
@@ -270,6 +271,7 @@
 		67F595C6A4F0FFFD58B923D6 /* HeadlineWordStyleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HeadlineWordStyleTests.swift; sourceTree = "<group>"; };
 		6ACD049C5A249FF052D494D0 /* DiscoverCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DiscoverCardView.swift; path = Discover/DiscoverCardView.swift; sourceTree = "<group>"; };
 		6F29983D8888CD4C7C082CBB /* DietGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietGuard.swift; sourceTree = "<group>"; };
+		755FC1AB4CED3867D513B4C6 /* Haptics.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		756370C541F675B1A5B81980 /* HighlightHeadline.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HighlightHeadline.swift; sourceTree = "<group>"; };
 		760EF4DCF55EB8C52DE51A6D /* ImportPipelineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPipelineTests.swift; sourceTree = "<group>"; };
 		790D532EB881A841E117F130 /* PantryScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PantryScanView.swift; sourceTree = "<group>"; };
@@ -744,6 +746,7 @@
 				2D56EF729F22F6F3DED29543 /* Theme.swift */,
 				F61F5AFC37B586B18C2468CF /* Typography.swift */,
 				9F63F523725D48B37AA154AF /* Components */,
+				755FC1AB4CED3867D513B4C6 /* Haptics.swift */,
 			);
 			path = DesignSystem;
 			sourceTree = "<group>";
@@ -1021,6 +1024,7 @@
 				305C649FC56FE0D770701C00 /* DiscoverFeedViewModel.swift in Sources */,
 				413CB27603DC88AD1BD4C118 /* DiscoverCardView.swift in Sources */,
 				A306FFDA37A7AF0A30554D1F /* DiscoverView.swift in Sources */,
+				3434A18A0A500D190D9A4D72 /* Haptics.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

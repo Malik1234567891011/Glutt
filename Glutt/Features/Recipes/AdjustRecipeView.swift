@@ -101,7 +101,7 @@ struct AdjustRecipeView: View {
     /// Maps each Goal to a Phosphor icon (already resizable).
     private func goalIcon(for goal: RecipeAdjuster.Goal) -> Image {
         switch goal {
-        case .higherProtein: Ph.flame.regular
+        case .higherProtein: Ph.barbell.regular
         case .lighter:       Ph.leaf.regular
         case .cheaper:       Ph.tag.regular
         case .foodRules:     Ph.checkCircle.regular

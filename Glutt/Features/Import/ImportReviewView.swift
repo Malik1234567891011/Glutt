@@ -204,7 +204,6 @@ struct ImportReviewView: View {
                     parseBadge(for: line.text)
                     TextField("Ingredient", text: $line.text)
                         .font(.gluttBody)
-                        .onChange(of: line.text) { Haptics.impact(.light) }
                 }
             }
             Button {
@@ -271,7 +270,6 @@ struct ImportReviewView: View {
                         .foregroundStyle(Theme.Colors.textSecondary)
                     TextField("Step", text: $line.text, axis: .vertical)
                         .font(.gluttBody)
-                        .onChange(of: line.text) { Haptics.impact(.light) }
                 }
             }
             Button {

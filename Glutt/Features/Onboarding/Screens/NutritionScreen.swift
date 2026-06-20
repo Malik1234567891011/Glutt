@@ -46,7 +46,6 @@ struct NutritionScreen: View {
                         subtitle: row.detail,
                         isSelected: state.nutritionMode == row.mode
                     ) {
-                        Haptics.selection()
                         state.nutritionMode = row.mode
                     }
                 }

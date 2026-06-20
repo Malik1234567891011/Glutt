@@ -33,7 +33,6 @@ struct KitchenView: View {
                     selection: segmentIndex
                 )
                 .padding(.horizontal, Theme.Spacing.md)
-                .onChange(of: segment) { Haptics.selection() }
 
                 switch segment {
                 case .inventory: InventoryView(isAddingItem: $isAddingPantryItem)

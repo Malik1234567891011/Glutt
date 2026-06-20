@@ -51,7 +51,6 @@ struct CollectionDetailView: View {
                         isRenaming = true
                     }
                     Button("Delete collection", systemImage: "trash", role: .destructive) {
-                        Haptics.notify(.error)
                         isConfirmingDelete = true
                     }
                 } label: {

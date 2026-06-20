@@ -20,6 +20,10 @@ struct RecipesView: View {
     @State private var isShowingImport = false
     @State private var isNamingCollection = false
     @State private var newCollectionName = ""
+    @State private var segment: RecipeSegment = .myRecipes
+    @State private var discoverModel = DiscoverFeedViewModel()
+
+    enum RecipeSegment: Int, CaseIterable { case myRecipes, discover }
 
     enum SortOrder: String, CaseIterable {
         case recentlySaved = "Recently saved"
@@ -82,6 +86,13 @@ struct RecipesView: View {
         }
     }
 
+    /// Simple taste hint for the suggested feed: the most common tags across saved recipes.
+    private var tasteTags: [String] {
+        let counts = libraryRecipes.flatMap { $0.tags }
+            .reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
+        return counts.sorted { $0.value > $1.value }.prefix(5).map(\.key)
+    }
+
     /// Semantic search: "that creamy lemon chicken thing" works.
     /// Results carry "why it matched" reasons shown under each card.
     private var searchResults: [RecipeSearchEngine.SearchResult] {
@@ -99,8 +110,18 @@ struct RecipesView: View {
                         categoryRow
                     }
                     ChipRow(labels: filterChips, selection: $selectedFilter)
+                    SegmentedTabs(
+                        titles: ["My Recipes", "Discover"],
+                        selection: Binding(
+                            get: { segment.rawValue },
+                            set: { segment = RecipeSegment(rawValue: $0) ?? .myRecipes }
+                        )
+                    )
+                    .padding(.horizontal, Theme.Spacing.md)
 
-                    if searchText.isEmpty {
+                    if segment == .discover {
+                        DiscoverView(model: discoverModel, tasteTags: tasteTags)
+                    } else if searchText.isEmpty {
                         if visibleRecipes.isEmpty {
                             EmptyStateView(
                                 icon: "book",
@@ -135,7 +156,12 @@ struct RecipesView: View {
                             EmptyStateView(
                                 icon: "magnifyingglass",
                                 title: "Nothing matches",
-                                message: "Try describing it differently — flavor, ingredient, or mood all work."
+                                message: "Try describing it differently — or discover new recipes for \"\(searchText)\".",
+                                actionLabel: "Find some in Discover",
+                                action: {
+                                    segment = .discover
+                                    Task { await discoverModel.search(searchText) }
+                                }
                             )
                         } else {
                             LazyVStack(spacing: Theme.Spacing.md) {
@@ -159,6 +185,11 @@ struct RecipesView: View {
                 CollectionDetailView(collection: collection)
             }
             .searchable(text: $searchText, prompt: "creamy chicken thing with lemon…")
+            .onSubmit(of: .search) {
+                if segment == .discover {
+                    Task { await discoverModel.search(searchText) }
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {

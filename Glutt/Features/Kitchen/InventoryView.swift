@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -56,11 +57,27 @@ struct InventoryView: View {
         .toolbar {
             if LLMClient.isConfigured {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { isScanning = true } label: { Image(systemName: "camera.viewfinder") }
+                    Button {
+                        Haptics.impact(.light)
+                        isScanning = true
+                    } label: {
+                        Ph.camera.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                    }
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button { isAddingItem = true } label: { Image(systemName: "plus") }
+                Button {
+                    Haptics.impact(.light)
+                    isAddingItem = true
+                } label: {
+                    Ph.plus.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+                }
             }
         }
         .sheet(isPresented: $isAddingItem) {
@@ -73,7 +90,10 @@ struct InventoryView: View {
 
     private var searchField: some View {
         HStack {
-            Image(systemName: "magnifyingglass")
+            Ph.magnifyingGlass.regular
+                .resizable()
+                .scaledToFit()
+                .frame(width: 16, height: 16)
                 .foregroundStyle(Theme.Colors.textSecondary)
             TextField("Search your kitchen", text: $searchText)
                 .font(.gluttBody)
@@ -85,9 +105,16 @@ struct InventoryView: View {
 
     private var useSoonSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Label("Use soon", systemImage: "exclamationmark.circle.fill")
-                .font(.gluttHeadline)
-                .foregroundStyle(Theme.Colors.warning)
+            Label {
+                Text("Use soon")
+            } icon: {
+                Ph.warningCircle.fill
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+            }
+            .font(.gluttHeadline)
+            .foregroundStyle(Theme.Colors.warning)
             ForEach(useSoonItems) { item in
                 itemRow(item)
             }
@@ -124,6 +151,7 @@ struct InventoryView: View {
             Spacer()
             // Tap to cycle: full -> half -> low -> out -> full
             Button {
+                Haptics.impact(.light)
                 item.roughQuantity = item.roughQuantity.next
                 item.updatedAt = .now
             } label: {
@@ -139,11 +167,13 @@ struct InventoryView: View {
         }
         .contextMenu {
             Button(item.useSoonDate == nil ? "Flag as use soon" : "Remove use-soon flag", systemImage: "exclamationmark.circle") {
+                Haptics.impact(.light)
                 item.useSoonDate = item.useSoonDate == nil
                     ? Calendar.current.date(byAdding: .day, value: 2, to: .now)
                     : nil
             }
             Button("Delete", systemImage: "trash", role: .destructive) {
+                Haptics.notify(.warning)
                 context.delete(item)
             }
         }
@@ -186,15 +216,21 @@ struct PantryItemEditorView: View {
                         }
                     }
                     Toggle("Use soon", isOn: $flagUseSoon)
-                    Button("Add") { addSingle() }
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("Add") {
+                        Haptics.notify(.success)
+                        addSingle()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
 
                 Section("Or add many at once") {
                     TextField("rice, eggs, spinach, honey…", text: $bulkText, axis: .vertical)
                         .lineLimit(2...4)
-                    Button("Add all") { addBulk() }
-                        .disabled(bulkText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("Add all") {
+                        Haptics.notify(.success)
+                        addBulk()
+                    }
+                    .disabled(bulkText.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
             .scrollContentBackground(.hidden)

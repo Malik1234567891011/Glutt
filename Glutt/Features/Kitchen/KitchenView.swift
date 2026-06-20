@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -16,16 +17,23 @@ struct KitchenView: View {
     @State private var isAddingGroceryItem = false
     @State private var isScanningPantry = false
 
+    /// Int-based selection index bridged to/from `Segment` for `SegmentedTabs`.
+    private var segmentIndex: Binding<Int> {
+        Binding(
+            get: { Segment.allCases.firstIndex(of: segment) ?? 0 },
+            set: { segment = Segment.allCases[$0] }
+        )
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: Theme.Spacing.md) {
-                Picker("Section", selection: $segment) {
-                    ForEach(Segment.allCases) { segment in
-                        Text(segment.rawValue).tag(segment)
-                    }
-                }
-                .pickerStyle(.segmented)
+                SegmentedTabs(
+                    titles: Segment.allCases.map(\.rawValue),
+                    selection: segmentIndex
+                )
                 .padding(.horizontal, Theme.Spacing.md)
+                .onChange(of: segment) { Haptics.selection() }
 
                 switch segment {
                 case .inventory: InventoryView(isAddingItem: $isAddingPantryItem)

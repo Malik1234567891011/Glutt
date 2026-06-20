@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -20,7 +21,10 @@ struct StoreModeView: View {
                     title: "All done!",
                     message: "Everything's in the cart.",
                     actionLabel: "Finish",
-                    action: { dismiss() }
+                    action: {
+                        Haptics.impact(.light)
+                        dismiss()
+                    }
                 )
                 Spacer()
             } else {
@@ -51,9 +55,12 @@ struct StoreModeView: View {
 
     private var header: some View {
         HStack {
-            Button("Exit") { dismiss() }
-                .font(.gluttHeadline)
-                .foregroundStyle(Theme.Colors.accent)
+            Button("Exit") {
+                Haptics.impact(.light)
+                dismiss()
+            }
+            .font(.gluttHeadline)
+            .foregroundStyle(Theme.Colors.accent)
             Spacer()
             Text("\(items.count - remaining.count) of \(items.count)")
                 .font(.gluttHeadline)
@@ -65,11 +72,14 @@ struct StoreModeView: View {
 
     private func bigRow(_ item: GroceryItem) -> some View {
         Button {
+            Haptics.notify(.success)
             withAnimation(.snappy) { item.isChecked = true }
         } label: {
             HStack {
-                Image(systemName: "circle")
-                    .font(.title)
+                Ph.circle.regular
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 30, height: 30)
                     .foregroundStyle(Theme.Colors.accent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.name)

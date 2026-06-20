@@ -18,15 +18,20 @@
 - **Styling:** match the redesign system — use the existing `SegmentedTabs` component and `Theme.Colors` / `Theme.Spacing` / `Theme.Radius`. The app-wide accent tint is already applied at `RootView`.
 - **Concurrency:** SwiftData contexts and the view model are `@MainActor`. The view model uses `@Observable`.
 - **Test framework:** XCTest, `@testable import Glutt`. SwiftData tests use `ModelConfiguration(isStoredInMemoryOnly: true)` and `@MainActor`.
-- **Adding files to the build:** after creating any new `.swift` file, ensure it is a member of the correct target — `Glutt` for app code, `GluttTests` for tests. If the Xcode 16 project uses file-system-synchronized folder groups, files are picked up automatically; otherwise add target membership in Xcode before building.
-- **Test command (adjust simulator if needed):**
+- **Adding files to the build (REQUIRED):** this project uses explicit Xcode references, NOT synchronized folder groups — a new `.swift` file will not compile until registered. After creating each file, register it with the idempotent helper:
+  ```bash
+  cd /Users/omarlahmimi/Documents/Glutt
+  ruby Scripts/xcp_add.rb Glutt/Services/Discover/DiscoverVideo.swift Glutt        # app code → Glutt
+  ruby Scripts/xcp_add.rb GluttTests/DiscoverVideoTests.swift GluttTests           # tests → GluttTests
+  ```
+- **Test/build command (use the pinned booted simulator; disable the sandbox):** `xcodebuild` writes DerivedData, which the default command sandbox blocks — run these with the sandbox disabled.
   ```bash
   cd /Users/omarlahmimi/Documents/Glutt
   xcodebuild test -project Glutt.xcodeproj -scheme Glutt \
-    -destination 'platform=iOS Simulator,name=iPhone 16' \
+    -destination 'id=1EEC6A07-E689-4149-ABC7-FF36F702BBF6' \
     -only-testing:GluttTests/<Class>/<method>
   ```
-  If that simulator isn't installed, run `xcodebuild -showdestinations -project Glutt.xcodeproj -scheme Glutt` and substitute an available destination.
+  Destination = `iPhone 16` simulator (UDID `1EEC6A07-E689-4149-ABC7-FF36F702BBF6`, already booted). If that UDID is gone, `xcrun simctl list devices available | grep iPhone` and substitute. Use `xcodebuild build ...` (same `-destination`) for view-only tasks.
 
 ## Proxy contract (agreed request/response shape — both Task 1 and Task 9 depend on this)
 

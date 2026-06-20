@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -59,9 +60,12 @@ struct ImportReviewView: View {
                     collectionsCard
                 }
 
-                Button("Save recipe") { save() }
-                    .buttonStyle(.gluttPrimary)
-                    .disabled(!canSave)
+                Button("Save recipe") {
+                    Haptics.impact(.medium)
+                    save()
+                }
+                .buttonStyle(.gluttPrimary)
+                .disabled(!canSave)
             }
             .padding(Theme.Spacing.md)
         }
@@ -81,6 +85,7 @@ struct ImportReviewView: View {
                     ForEach(collections) { collection in
                         let isSelected = selectedCollections.contains(collection.persistentModelID)
                         Button {
+                            Haptics.selection()
                             if isSelected {
                                 selectedCollections.remove(collection.persistentModelID)
                             } else {
@@ -100,8 +105,10 @@ struct ImportReviewView: View {
 
     private var inventedBanner: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.sm) {
-            Image(systemName: "sparkles")
-                .font(.title3)
+            Ph.sparkle.fill
+                .resizable()
+                .scaledToFit()
+                .frame(width: 22, height: 22)
                 .foregroundStyle(Theme.Colors.accent)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Glutt invented this from what you have")
@@ -123,9 +130,15 @@ struct ImportReviewView: View {
             ConfidenceBadge(confidence: draft.confidence)
             Spacer()
             if let source = draft.sourceURL, let url = URL(string: source), let host = url.host {
-                Label(host, systemImage: "link")
-                    .font(.gluttCaption)
-                    .foregroundStyle(Theme.Colors.textSecondary)
+                HStack(spacing: 4) {
+                    Ph.link.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 12, height: 12)
+                    Text(host)
+                }
+                .font(.gluttCaption)
+                .foregroundStyle(Theme.Colors.textSecondary)
             }
         }
     }
@@ -134,8 +147,10 @@ struct ImportReviewView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             ForEach(draft.issues, id: \.self) { issue in
                 HStack(alignment: .top, spacing: Theme.Spacing.sm) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.caption)
+                    Ph.warning.fill
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 14, height: 14)
                         .foregroundStyle(Theme.Colors.warning)
                     Text(issue)
                         .font(.gluttCaption)
@@ -189,10 +204,20 @@ struct ImportReviewView: View {
                     parseBadge(for: line.text)
                     TextField("Ingredient", text: $line.text)
                         .font(.gluttBody)
+                        .onChange(of: line.text) { Haptics.impact(.light) }
                 }
             }
-            Button("Add ingredient", systemImage: "plus") {
+            Button {
+                Haptics.impact(.light)
                 ingredientLines.append(EditableLine(text: ""))
+            } label: {
+                HStack(spacing: 4) {
+                    Ph.plus.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 12, height: 12)
+                    Text("Add ingredient")
+                }
             }
             .font(.gluttCaption.weight(.medium))
             .foregroundStyle(Theme.Colors.accent)
@@ -201,12 +226,23 @@ struct ImportReviewView: View {
     }
 
     /// Green check when the line parsed into qty+name, amber dot when it's a guess.
+    @ViewBuilder
     private func parseBadge(for line: String) -> some View {
         let parsed = IngredientLineParser.parse(line)
         let isClean = parsed.quantity != nil && !parsed.name.isEmpty
-        return Image(systemName: isClean ? "checkmark.circle.fill" : "circle.dotted")
-            .font(.caption)
-            .foregroundStyle(isClean ? Theme.Colors.accent : Theme.Colors.warning)
+        if isClean {
+            Ph.checkCircle.fill
+                .resizable()
+                .scaledToFit()
+                .frame(width: 14, height: 14)
+                .foregroundStyle(Theme.Colors.accent)
+        } else {
+            Ph.circleDashed.regular
+                .resizable()
+                .scaledToFit()
+                .frame(width: 14, height: 14)
+                .foregroundStyle(Theme.Colors.warning)
+        }
     }
 
     private var stepsCard: some View {
@@ -214,8 +250,10 @@ struct ImportReviewView: View {
             SectionHeader(title: "Steps")
             if draft.stepsAreAISuggested {
                 HStack(alignment: .top, spacing: Theme.Spacing.sm) {
-                    Image(systemName: "sparkles")
-                        .font(.caption)
+                    Ph.sparkle.fill
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 14, height: 14)
                         .foregroundStyle(Theme.Colors.accent)
                     Text("The source had no method, so Glutt drafted these from the dish and ingredients. Give them a read and tweak anything off.")
                         .font(.gluttCaption)
@@ -233,10 +271,20 @@ struct ImportReviewView: View {
                         .foregroundStyle(Theme.Colors.textSecondary)
                     TextField("Step", text: $line.text, axis: .vertical)
                         .font(.gluttBody)
+                        .onChange(of: line.text) { Haptics.impact(.light) }
                 }
             }
-            Button("Add step", systemImage: "plus") {
+            Button {
+                Haptics.impact(.light)
                 stepLines.append(EditableLine(text: ""))
+            } label: {
+                HStack(spacing: 4) {
+                    Ph.plus.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 12, height: 12)
+                    Text("Add step")
+                }
             }
             .font(.gluttCaption.weight(.medium))
             .foregroundStyle(Theme.Colors.accent)

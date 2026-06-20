@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftUI
 
 /// "How do I get recipes in here?" — the answer, visually. The share-sheet
@@ -19,20 +20,24 @@ struct ImportGuideView: View {
 
                     methodCard(
                         number: 1,
-                        icon: "square.and.arrow.up",
+                        icon: Ph.export.regular.resizable().scaledToFit().frame(width: 22, height: 22),
                         title: "Share from any app",
                         body: "Watching a recipe on TikTok, Instagram, or YouTube? Tap the share button, pick Glutt, and it imports itself. The best way to save.",
                         actionLabel: "Show me how",
-                        action: { isShowingShareSetup = true }
+                        action: {
+                            Haptics.impact(.medium)
+                            isShowingShareSetup = true
+                        }
                     )
 
                     methodCard(
                         number: 2,
-                        icon: "link",
+                        icon: Ph.link.regular.resizable().scaledToFit().frame(width: 22, height: 22),
                         title: "Paste a link",
                         body: "Copy any recipe link — a website, a video, anything — and paste it in. Glutt reads the page and pulls out the recipe.",
                         actionLabel: onPasteLink == nil ? nil : "Paste a link now",
                         action: {
+                            Haptics.impact(.medium)
                             if let onPasteLink {
                                 dismiss()
                                 onPasteLink()
@@ -42,7 +47,7 @@ struct ImportGuideView: View {
 
                     methodCard(
                         number: 3,
-                        icon: "photo.on.rectangle",
+                        icon: Ph.image.regular.resizable().scaledToFit().frame(width: 22, height: 22),
                         title: "Snap a screenshot",
                         body: "A cookbook page, a friend's text, a recipe with no link — screenshot it and Glutt reads the text right on your phone.",
                         actionLabel: nil,
@@ -76,9 +81,9 @@ struct ImportGuideView: View {
         }
     }
 
-    private func methodCard(
+    private func methodCard<Icon: View>(
         number: Int,
-        icon: String,
+        icon: Icon,
         title: String,
         body: String,
         actionLabel: String?,
@@ -90,8 +95,7 @@ struct ImportGuideView: View {
                     Circle()
                         .fill(Theme.Colors.accent.opacity(0.12))
                         .frame(width: 36, height: 36)
-                    Image(systemName: icon)
-                        .font(.headline)
+                    icon
                         .foregroundStyle(Theme.Colors.accent)
                 }
                 Text(title)
@@ -171,8 +175,10 @@ struct ShareSheetSetupView: View {
 
                 Button(step < steps.count - 1 ? "Next" : "Got it") {
                     if step < steps.count - 1 {
+                        Haptics.impact(.medium)
                         withAnimation { step += 1 }
                     } else {
+                        Haptics.notify(.success)
                         dismiss()
                     }
                 }
@@ -229,8 +235,10 @@ struct ShareSheetSetupView: View {
         case .shareButton:
             ZStack {
                 phoneFrame
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 64, weight: .semibold))
+                Ph.export.regular
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 64, height: 64)
                     .foregroundStyle(Theme.Colors.accent)
             }
         case .shareSheet:
@@ -248,8 +256,10 @@ struct ShareSheetSetupView: View {
                 phoneFrame
                 VStack(spacing: Theme.Spacing.sm) {
                     gluttGlyph(size: 64)
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.title)
+                    Ph.checkCircle.fill
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 32, height: 32)
                         .foregroundStyle(Theme.Colors.accent)
                 }
             }
@@ -292,7 +302,11 @@ struct ShareSheetSetupView: View {
                 gluttGlyph(size: 22)
                 RoundedRectangle(cornerRadius: 3).fill(Theme.Colors.border).frame(width: 60, height: 8)
                 Spacer()
-                Image(systemName: "line.3.horizontal").font(.caption2).foregroundStyle(Theme.Colors.textSecondary)
+                Ph.list.regular
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 12, height: 12)
+                    .foregroundStyle(Theme.Colors.textSecondary)
             }
             .padding(6)
             .background(Theme.Colors.accent.opacity(0.12))
@@ -321,8 +335,10 @@ struct ShareSheetSetupView: View {
                 .fill(Theme.Colors.accent)
                 .frame(width: size, height: size)
                 .overlay(
-                    Image(systemName: "fork.knife")
-                        .font(.system(size: size * 0.5, weight: .bold))
+                    Ph.forkKnife.bold
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: size * 0.5, height: size * 0.5)
                         .foregroundStyle(.white)
                 )
             if let label {

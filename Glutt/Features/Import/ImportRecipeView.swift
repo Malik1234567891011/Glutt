@@ -1,3 +1,4 @@
+import PhosphorSwift
 import PhotosUI
 import SwiftUI
 
@@ -83,17 +84,22 @@ struct ImportRecipeView: View {
                             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
 
                         Button {
+                            Haptics.impact(.light)
                             if let pasted = UIPasteboard.general.string {
                                 urlText = pasted
                             }
                         } label: {
-                            Image(systemName: "doc.on.clipboard")
+                            Ph.clipboard.regular
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 18, height: 18)
                                 .padding(Theme.Spacing.sm)
                         }
                         .buttonStyle(.gluttPill)
                     }
 
                     Button("Import from link") {
+                        Haptics.impact(.medium)
                         startLinkImport()
                     }
                     .buttonStyle(.gluttPrimary)
@@ -110,15 +116,21 @@ struct ImportRecipeView: View {
                         .foregroundStyle(Theme.Colors.textSecondary)
 
                     PhotosPicker(selection: $photoItem, matching: .images) {
-                        Label("Choose a screenshot", systemImage: "photo.on.rectangle")
-                            .font(.gluttHeadline)
-                            .foregroundStyle(Theme.Colors.accent)
-                            .padding(.vertical, 14)
-                            .frame(maxWidth: .infinity)
-                            .background(
-                                RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
-                                    .strokeBorder(Theme.Colors.accent, lineWidth: 1.5)
-                            )
+                        HStack(spacing: Theme.Spacing.sm) {
+                            Ph.image.regular
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 18, height: 18)
+                            Text("Choose a screenshot")
+                                .font(.gluttHeadline)
+                        }
+                        .foregroundStyle(Theme.Colors.accent)
+                        .padding(.vertical, 14)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+                                .strokeBorder(Theme.Colors.accent, lineWidth: 1.5)
+                        )
                     }
                 }
                 .cardStyle()
@@ -133,11 +145,14 @@ struct ImportRecipeView: View {
     /// The best import path is also the least obvious, so it leads.
     private var shareCard: some View {
         Button {
+            Haptics.impact(.light)
             isShowingShareSetup = true
         } label: {
             HStack(spacing: Theme.Spacing.md) {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.title3)
+                Ph.export.regular
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
                     .foregroundStyle(Theme.Colors.accent)
                     .frame(width: 32)
                 VStack(alignment: .leading, spacing: 2) {
@@ -190,8 +205,10 @@ struct ImportRecipeView: View {
                 let draft = try await ImportPipeline.run(urlString: urlString) { message in
                     phase = .loading(message)
                 }
+                Haptics.notify(.success)
                 phase = .review(draft)
             } catch {
+                Haptics.notify(.error)
                 phase = .failed(error.localizedDescription)
             }
         }
@@ -213,8 +230,10 @@ struct ImportRecipeView: View {
                     phase = .loading("No method listed — drafting the steps…")
                     draft = await DraftCleanup.inferSteps(draft)
                 }
+                Haptics.notify(.success)
                 phase = .review(draft)
             } catch {
+                Haptics.notify(.error)
                 phase = .failed(error.localizedDescription)
             }
             photoItem = nil

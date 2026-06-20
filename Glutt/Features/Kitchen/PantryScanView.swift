@@ -1,4 +1,5 @@
 import PhotosUI
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -81,24 +82,39 @@ struct PantryScanView: View {
 
             if CameraPicker.isAvailable {
                 Button {
+                    Haptics.impact(.medium)
                     isShowingCamera = true
                 } label: {
-                    Label("Open camera", systemImage: "camera")
-                        .frame(maxWidth: .infinity)
+                    HStack(spacing: Theme.Spacing.sm) {
+                        Ph.camera.bold
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                        Text("Open camera")
+                            .font(.gluttHeadline)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.gluttPrimary)
             }
 
             PhotosPicker(selection: $photoItem, matching: .images) {
-                Label("Choose a photo", systemImage: "photo.on.rectangle")
-                    .font(.gluttHeadline)
-                    .foregroundStyle(Theme.Colors.accent)
-                    .padding(.vertical, 14)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
-                            .strokeBorder(Theme.Colors.accent, lineWidth: 1.5)
-                    )
+                HStack(spacing: Theme.Spacing.sm) {
+                    Ph.images.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+                        .foregroundStyle(Theme.Colors.accent)
+                    Text("Choose a photo")
+                        .font(.gluttHeadline)
+                        .foregroundStyle(Theme.Colors.accent)
+                }
+                .padding(.vertical, 14)
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+                        .strokeBorder(Theme.Colors.accent, lineWidth: 1.5)
+                )
             }
 
             Text("Tip: open the fridge door wide and step back a little — more visible labels, better guesses.")
@@ -122,13 +138,20 @@ struct PantryScanView: View {
     private var reviewView: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             if let didAddCount {
-                Label("Added \(didAddCount) items to your kitchen", systemImage: "checkmark.circle.fill")
-                    .font(.gluttCaption.weight(.medium))
-                    .foregroundStyle(Theme.Colors.accent)
-                    .padding(Theme.Spacing.md)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.Colors.successTint)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                HStack(spacing: Theme.Spacing.sm) {
+                    Ph.checkCircle.fill
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(Theme.Colors.accent)
+                    Text("Added \(didAddCount) items to your kitchen")
+                        .font(.gluttCaption.weight(.medium))
+                        .foregroundStyle(Theme.Colors.accent)
+                }
+                .padding(Theme.Spacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.Colors.successTint)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
             } else if items.isEmpty {
                 EmptyStateView(
                     icon: "camera.metering.unknown",
@@ -154,12 +177,14 @@ struct PantryScanView: View {
                 .cardStyle(padding: Theme.Spacing.xs)
 
                 Button("Add \(includedCount) to my kitchen") {
+                    Haptics.notify(.success)
                     commit()
                 }
                 .buttonStyle(.gluttPrimary)
                 .disabled(includedCount == 0)
 
                 Button("Scan another photo") {
+                    Haptics.impact(.light)
                     items = []
                     phase = .pick
                 }
@@ -171,11 +196,22 @@ struct PantryScanView: View {
     private func itemRow(_ item: Binding<PantryScan.ScannedItem>) -> some View {
         HStack(spacing: Theme.Spacing.sm) {
             Button {
+                Haptics.impact(.light)
                 item.wrappedValue.include.toggle()
             } label: {
-                Image(systemName: item.wrappedValue.include ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(item.wrappedValue.include ? Theme.Colors.accent : Theme.Colors.border)
+                if item.wrappedValue.include {
+                    Ph.checkCircle.fill
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                        .foregroundStyle(Theme.Colors.accent)
+                } else {
+                    Ph.circle.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                        .foregroundStyle(Theme.Colors.border)
+                }
             }
             .buttonStyle(.plain)
 
@@ -192,6 +228,7 @@ struct PantryScanView: View {
             Spacer()
 
             Button {
+                Haptics.impact(.light)
                 item.wrappedValue.quantity = item.wrappedValue.quantity.next == .out
                     ? .full
                     : item.wrappedValue.quantity.next

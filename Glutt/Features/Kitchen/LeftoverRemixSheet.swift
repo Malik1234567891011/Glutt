@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -36,7 +37,7 @@ struct LeftoverRemixSheet: View {
                 .padding(Theme.Spacing.md)
             }
             .background(Theme.Colors.background)
-            .navigationTitle("Remix “\(leftover.title)”")
+            .navigationTitle("Remix \u{201C}\(leftover.title)\u{201D}")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -51,6 +52,9 @@ struct LeftoverRemixSheet: View {
                     rules: prefs.dietaryRules,
                     allergies: prefs.allergies
                 )
+                if ideas != nil {
+                    Haptics.notify(.success)
+                }
             }
         }
     }
@@ -78,17 +82,26 @@ struct LeftoverRemixSheet: View {
 
             HStack(spacing: Theme.Spacing.sm) {
                 if plannedIdea == idea {
-                    Label("On tomorrow's plan", systemImage: "checkmark.circle.fill")
-                        .font(.gluttCaption.weight(.medium))
-                        .foregroundStyle(Theme.Colors.accent)
+                    HStack(spacing: Theme.Spacing.xs) {
+                        Ph.checkCircle.fill
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 16, height: 16)
+                            .foregroundStyle(Theme.Colors.accent)
+                        Text("On tomorrow's plan")
+                            .font(.gluttCaption.weight(.medium))
+                            .foregroundStyle(Theme.Colors.accent)
+                    }
                 } else {
                     Button("Plan for tomorrow") {
+                        Haptics.notify(.success)
                         plan(idea)
                     }
                     .buttonStyle(.gluttPillFilled)
                 }
                 if !missingNeeds(for: idea).isEmpty {
                     Button("Add needs to list") {
+                        Haptics.impact(.light)
                         addNeeds(for: idea)
                     }
                     .buttonStyle(.gluttPill)

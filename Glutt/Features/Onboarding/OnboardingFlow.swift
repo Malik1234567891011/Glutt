@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -65,7 +66,9 @@ struct OnboardingFlow: View {
                 }
                 .foregroundStyle(Theme.Colors.textSecondary)
             }
-            progressBar
+            Spacer()
+            PageDots(count: Step.allCases.count, index: step.rawValue)
+            Spacer()
             Button("Skip") { finish(thenImport: false) }
                 .font(.gluttCaption.weight(.semibold))
                 .foregroundStyle(Theme.Colors.textSecondary)
@@ -73,31 +76,20 @@ struct OnboardingFlow: View {
         .padding(Theme.Spacing.md)
     }
 
-    private var progressBar: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Theme.Colors.border)
-                Capsule().fill(Theme.Colors.accent)
-                    .frame(width: geo.size.width * progressFraction)
-            }
-        }
-        .frame(height: 6)
-    }
-
-    /// Progress across only the chrome'd steps (goals → notifications). Welcome and
-    /// tutorial are full-bleed and show no bar, so the bar fills to 100% on the last
-    /// visible step rather than stalling partway.
-    private var progressFraction: CGFloat {
-        let chromeSteps = Step.allCases.filter(\.usesChrome)
-        guard let index = chromeSteps.firstIndex(of: step) else { return 1 }
-        return CGFloat(index + 1) / CGFloat(chromeSteps.count)
-    }
-
     private var standardFooter: some View {
-        Button("Continue") { advance() }
-            .buttonStyle(.gluttPrimary)
-            .padding(.horizontal, Theme.Spacing.md)
-            .padding(.bottom, Theme.Spacing.md)
+        Button { advance() } label: {
+            HStack(spacing: 8) {
+                Text("Continue").font(.system(size: 16, weight: .bold, design: .rounded))
+                Ph.arrowRight.bold.resizable().scaledToFit().frame(width: 16, height: 16)
+            }
+            .foregroundStyle(Theme.Colors.creamText)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 15)
+            .background(Theme.Colors.accent, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.bottom, Theme.Spacing.md)
     }
 
     // MARK: - Navigation

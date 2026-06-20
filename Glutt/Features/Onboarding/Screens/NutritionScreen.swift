@@ -1,4 +1,5 @@
 import SwiftUI
+import PhosphorSwift
 
 /// Single-select nutrition mode.
 struct NutritionScreen: View {
@@ -6,14 +7,26 @@ struct NutritionScreen: View {
 
     private struct ModeRow {
         let mode: NutritionMode
-        let icon: String
+        let icon: Image
         let detail: String
     }
 
     private let rows: [ModeRow] = [
-        .init(mode: .cookingOnly, icon: "frying.pan", detail: "No calories, no macros, anywhere. Just good food."),
-        .init(mode: .lightTracking, icon: "chart.bar", detail: "Gentle estimates on recipes and a daily summary."),
-        .init(mode: .gymMode, icon: "dumbbell", detail: "Calorie & protein goals, charts, and per-serving macros."),
+        .init(
+            mode: .cookingOnly,
+            icon: Ph.cookingPot.regular,
+            detail: "No calories, no macros, anywhere. Just good food."
+        ),
+        .init(
+            mode: .lightTracking,
+            icon: Ph.chartBar.regular,
+            detail: "Gentle estimates on recipes and a daily summary."
+        ),
+        .init(
+            mode: .gymMode,
+            icon: Ph.barbell.regular,
+            detail: "Calorie & protein goals, charts, and per-serving macros."
+        ),
     ]
 
     var body: some View {
@@ -24,11 +37,16 @@ struct NutritionScreen: View {
             VStack(spacing: Theme.Spacing.sm) {
                 ForEach(rows, id: \.mode) { row in
                     OptionRow(
-                        systemImage: row.icon,
+                        leadingIcon: row.icon
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 22, height: 22)
+                            .foregroundStyle(Theme.Colors.accent),
                         title: row.mode.label,
                         subtitle: row.detail,
                         isSelected: state.nutritionMode == row.mode
                     ) {
+                        Haptics.selection()
                         state.nutritionMode = row.mode
                     }
                 }

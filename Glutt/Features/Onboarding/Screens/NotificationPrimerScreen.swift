@@ -1,5 +1,6 @@
 import SwiftUI
 import UserNotifications
+import PhosphorSwift
 
 /// Soft pre-prompt before the iOS notification permission dialog.
 struct NotificationPrimerScreen: View {
@@ -11,8 +12,10 @@ struct NotificationPrimerScreen: View {
 
             VStack(spacing: Theme.Spacing.lg) {
                 Spacer()
-                Image(systemName: "bell.badge")
-                    .font(.system(size: 64))
+                Ph.bellRinging.fill
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 64, height: 64)
                     .foregroundStyle(Theme.Colors.accent)
                 VStack(spacing: Theme.Spacing.sm) {
                     Text("Want a nudge at dinnertime?")
@@ -39,6 +42,7 @@ struct NotificationPrimerScreen: View {
     }
 
     private func requestThenDone() {
+        Haptics.impact(.medium)
         Task {
             _ = try? await UNUserNotificationCenter.current()
                 .requestAuthorization(options: [.alert, .sound, .badge])

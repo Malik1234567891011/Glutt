@@ -1,4 +1,5 @@
 import SwiftUI
+import PhosphorSwift
 
 /// Interactive, ReciMe-style walkthrough of "save from anywhere → it's in Glutt".
 /// The user taps the highlighted spot on each real screenshot to advance:
@@ -57,7 +58,10 @@ struct ImportTutorialScreen: View {
                 WalkthroughFrame(
                     step: step,
                     nudgeToken: model.nudgeToken,
-                    onHotspotTap: { model.tapHotspot() },
+                    onHotspotTap: {
+                        Haptics.impact(.light)
+                        model.tapHotspot()
+                    },
                     onMiss: { model.tapMiss() }
                 )
                 .padding(.horizontal, Theme.Spacing.md)
@@ -66,8 +70,10 @@ struct ImportTutorialScreen: View {
         case .importing:
             VStack(spacing: Theme.Spacing.md) {
                 ProgressView().controlSize(.large)
-                Image(systemName: "fork.knife")
-                    .font(.system(size: 40))
+                Ph.forkKnife.regular
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 40, height: 40)
                     .foregroundStyle(Theme.Colors.accent)
             }
             .task {
@@ -93,8 +99,11 @@ struct ImportTutorialScreen: View {
                 }
         case .cta:
             VStack(spacing: Theme.Spacing.sm) {
-                Button("Import my first recipe", action: onImportNow)
-                    .buttonStyle(.gluttPrimary)
+                Button("Import my first recipe") {
+                    Haptics.impact(.medium)
+                    onImportNow()
+                }
+                .buttonStyle(.gluttPrimary)
                 Button("I'll explore on my own", action: onFinish)
                     .buttonStyle(.gluttSecondary)
             }
@@ -149,9 +158,11 @@ struct ImportTutorialScreen: View {
                         .foregroundStyle(Theme.Colors.accent)
                 }
                 Spacer()
-                Image(systemName: "checkmark.circle.fill")
+                Ph.checkCircle.fill
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 26, height: 26)
                     .foregroundStyle(Theme.Colors.accent)
-                    .font(.title2)
             }
 
             Divider().padding(.vertical, 2)
@@ -163,8 +174,10 @@ struct ImportTutorialScreen: View {
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(savedIngredients, id: \.self) { item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.caption2)
+                        Ph.checkCircle.fill
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 11, height: 11)
                             .foregroundStyle(Theme.Colors.accent.opacity(0.7))
                         Text(item)
                             .font(.gluttCaption)

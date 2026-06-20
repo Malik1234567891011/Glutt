@@ -1,17 +1,21 @@
 import SwiftUI
+import PhosphorSwift
 
 /// Full-width selectable row used by onboarding goal/nutrition pickers:
-/// leading emoji or SF Symbol, a title (+ optional subtitle), trailing check.
-struct OptionRow: View {
+/// leading emoji, Phosphor icon, or a custom view; a title (+ optional subtitle); trailing check.
+struct OptionRow<LeadingIcon: View>: View {
     var emoji: String? = nil
-    var systemImage: String? = nil
+    var leadingIcon: LeadingIcon? = nil
     let title: String
     var subtitle: String? = nil
     let isSelected: Bool
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            Haptics.impact(.light)
+            action()
+        }) {
             HStack(spacing: Theme.Spacing.md) {
                 leading
                     .frame(width: 32)
@@ -27,13 +31,23 @@ struct OptionRow: View {
                     }
                 }
                 Spacer(minLength: 0)
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? Theme.Colors.accent : Theme.Colors.border)
-                    .font(.title3)
+                if isSelected {
+                    Ph.checkCircle.fill
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 22, height: 22)
+                        .foregroundStyle(Theme.Colors.accent)
+                } else {
+                    Ph.circle.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 22, height: 22)
+                        .foregroundStyle(Theme.Colors.border)
+                }
             }
             .padding(Theme.Spacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.Colors.card)
+            .background(isSelected ? Theme.Colors.successTint.opacity(0.35) : Theme.Colors.card)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
@@ -47,18 +61,60 @@ struct OptionRow: View {
     @ViewBuilder private var leading: some View {
         if let emoji {
             Text(emoji).font(.title2)
-        } else if let systemImage {
-            Image(systemName: systemImage)
-                .font(.title3)
-                .foregroundStyle(Theme.Colors.accent)
+        } else if let leadingIcon {
+            leadingIcon
         }
+    }
+}
+
+// MARK: - Convenience initialisers
+
+extension OptionRow where LeadingIcon == EmptyView {
+    /// Emoji-only row (GoalsScreen).
+    init(
+        emoji: String,
+        title: String,
+        subtitle: String? = nil,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) {
+        self.emoji = emoji
+        self.leadingIcon = nil
+        self.title = title
+        self.subtitle = subtitle
+        self.isSelected = isSelected
+        self.action = action
+    }
+
+    /// No leading icon.
+    init(
+        title: String,
+        subtitle: String? = nil,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) {
+        self.emoji = nil
+        self.leadingIcon = nil
+        self.title = title
+        self.subtitle = subtitle
+        self.isSelected = isSelected
+        self.action = action
     }
 }
 
 #Preview {
     VStack(spacing: 8) {
         OptionRow(emoji: "🥗", title: "Eat healthier", isSelected: true) {}
-        OptionRow(systemImage: "dumbbell", title: "Gym mode", subtitle: "Calories & protein", isSelected: false) {}
+        OptionRow(
+            leadingIcon: Ph.barbell.regular
+                .resizable()
+                .scaledToFit()
+                .frame(width: 22, height: 22)
+                .foregroundStyle(Theme.Colors.accent),
+            title: "Gym mode",
+            subtitle: "Calories & protein",
+            isSelected: false
+        ) {}
     }
     .padding()
     .background(Theme.Colors.background)

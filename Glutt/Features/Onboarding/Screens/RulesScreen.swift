@@ -1,4 +1,5 @@
 import SwiftUI
+import PhosphorSwift
 
 /// Dietary rules (multi-select) + allergies + dislikes free text.
 struct RulesScreen: View {
@@ -13,7 +14,11 @@ struct RulesScreen: View {
                 VStack(spacing: Theme.Spacing.sm) {
                     ForEach(DietaryRule.allCases, id: \.self) { rule in
                         OptionRow(
-                            systemImage: "leaf",
+                            leadingIcon: Ph.leaf.regular
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 22, height: 22)
+                                .foregroundStyle(Theme.Colors.accent),
                             title: rule.label,
                             isSelected: state.selectedRules.contains(rule)
                         ) {

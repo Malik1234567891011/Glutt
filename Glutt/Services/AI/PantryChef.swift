@@ -18,11 +18,17 @@ enum PantryChef {
     }
 
     /// `nil` when AI is off, there's nothing to cook with, or the call fails.
+    /// - Parameters:
+    ///   - mealType: bias the dish toward breakfast/lunch/dinner/snack (nil = any).
+    ///   - avoidTitles: dishes already shown this session — the model is told to
+    ///     make something clearly different, so "Something else" never repeats.
     static func invent(
         pantry: [PantryItem],
         prefs: UserPrefs,
         hint: String? = nil,
-        maxMinutes: Int? = nil
+        maxMinutes: Int? = nil,
+        mealType: MealType? = nil,
+        avoidTitles: [String] = []
     ) async -> ImportedRecipeDraft? {
         guard LLMClient.isConfigured else { return nil }
 
@@ -55,11 +61,15 @@ enum PantryChef {
         - steps: clear imperative sentences, one action per step, in order.
         - tags: up to 5 lowercase tags.
         - Give it an appetizing but honest name (no hype).
+        - servings: estimate the realistic number of adult servings from the amounts you use; don't default to 2.
         """
 
         var user = "ON-HAND INGREDIENTS: \(haveList)"
         if !useSoon.isEmpty {
             user += "\nNEEDS USING SOON: \(useSoon.joined(separator: ", "))"
+        }
+        if let mealType {
+            user += "\nThis must work as a \(mealType.label.uppercased()) dish."
         }
         if let maxMinutes {
             user += "\nMUST be ready in about \(maxMinutes) minutes or less."
@@ -76,13 +86,21 @@ enum PantryChef {
         if let hint, !hint.trimmingCharacters(in: .whitespaces).isEmpty {
             user += "\nThe user also said: \"\(hint)\""
         }
+        if !avoidTitles.isEmpty {
+            user += "\nDo NOT suggest any of these — you already proposed them: "
+                + avoidTitles.joined(separator: ", ")
+                + ". Make something CLEARLY different: change the cuisine, the cooking method, or the main ingredient."
+        }
+        // A per-call seed nudges the model off its default answer so repeated
+        // taps on "Something else" actually vary, even with the same pantry.
+        user += "\nVariation seed: \(Int.random(in: 1000...9999))."
 
         do {
             let result = try await LLMClient.chatJSON(
                 Invented.self,
                 system: system,
                 user: user,
-                temperature: 0.7,
+                temperature: avoidTitles.isEmpty ? 0.8 : 0.95,
                 timeout: 25
             )
             guard let ingredients = result.ingredients, !ingredients.isEmpty,

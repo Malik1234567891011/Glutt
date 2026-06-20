@@ -54,6 +54,11 @@ enum DietGuard {
         "anchovy", "cod", "tilapia", "sardine", "oyster", "mussel", "clam",
         "scallop", "squid", "octopus",
     ]
+    /// Shellfish is the seafood subset that kosher rules forbid (fin fish is fine).
+    private static let shellfishWords: Set<String> = [
+        "shrimp", "prawn", "crab", "lobster", "oyster", "mussel", "clam",
+        "scallop", "squid", "octopus",
+    ]
     private static let dairyWords: Set<String> = [
         "milk", "butter", "cheese", "cream", "yogurt", "ghee",
         "mozzarella", "parmesan", "cheddar", "feta", "ricotta", "mascarpone",
@@ -70,7 +75,13 @@ enum DietGuard {
     static func forbiddenWords(for rule: DietaryRule) -> Set<String> {
         switch rule {
         case .halal: porkWords.union(alcoholWords).union(gelatinWords)
+        // Simplified, honest kosher guard: blocks pork and shellfish (the two
+        // we can detect by ingredient). It can't verify certification or the
+        // meat/dairy separation rule, so it's an aid, not a kosher guarantee.
+        case .kosher: porkWords.union(shellfishWords)
         case .noPork: porkWords
+        // Pescatarian: no land meat (pork included), but fish/shellfish are fine.
+        case .pescatarian: meatWords.union(gelatinWords)
         case .vegetarian: meatWords.union(seafoodWords).union(gelatinWords)
         case .vegan: meatWords.union(seafoodWords).union(gelatinWords)
             .union(dairyWords).union(eggWords).union(["honey"])

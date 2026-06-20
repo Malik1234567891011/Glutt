@@ -14,32 +14,17 @@ enum YouTubeEmbed {
         return nil
     }
 
-    static func html(videoId: String) -> String {
-        // Use the official IFrame Player API (not a bare <iframe>). A bare iframe
-        // loaded via WKWebView.loadHTMLString sends no valid Referer/origin, so
-        // YouTube rejects even embeddable videos with "This video is unavailable"
-        // (error 150/152/153). The IFrame API supplies `origin` explicitly via
-        // postMessage, which YouTube accepts. Load with baseURL https://www.youtube.com.
-        """
-        <!DOCTYPE html><html><head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-        <style>html,body{margin:0;background:#000;height:100%;overflow:hidden}
-        #player{position:absolute;top:0;left:0;width:100%;height:100%}</style>
-        </head><body>
-        <div id="player"></div>
-        <script src="https://www.youtube.com/iframe_api"></script>
-        <script>
-        var player;
-        function onYouTubeIframeAPIReady() {
-          player = new YT.Player('player', {
-            videoId: '\(videoId)',
-            playerVars: { playsinline: 1, autoplay: 1, mute: 1, controls: 1, rel: 0, modestbranding: 1, origin: 'https://www.youtube.com' },
-            events: { onReady: function(e) { e.target.mute(); e.target.playVideo(); } }
-          });
-        }
-        </script>
-        </body></html>
-        """
+    /// URL of the backend-hosted IFrame player page. The WKWebView loads this URL
+    /// directly (not via loadHTMLString) so the page has a REAL https origin.
+    /// YouTube's embed requires a valid, matching origin; loadHTMLString produces
+    /// an opaque origin that YouTube rejects ("This video is unavailable",
+    /// errors 150/152/153). Reuses the configured proxy base so it tracks the
+    /// same host as the rest of Discover.
+    static func playerURL(videoId: String, baseURL: String = Secrets.aiProxyBaseURL) -> URL? {
+        let base = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !base.isEmpty, var comps = URLComponents(string: "\(base)/discover/player") else { return nil }
+        comps.queryItems = [URLQueryItem(name: "v", value: videoId)]
+        return comps.url
     }
 }
 
@@ -61,9 +46,9 @@ struct YouTubePlayerView: UIViewRepresentable {
     func updateUIView(_ webView: WKWebView, context: Context) {
         // Reload only when the video changes to avoid restarting playback on every redraw.
         guard context.coordinator.loadedVideoId != videoId else { return }
+        guard let url = YouTubeEmbed.playerURL(videoId: videoId) else { return }
         context.coordinator.loadedVideoId = videoId
-        webView.loadHTMLString(YouTubeEmbed.html(videoId: videoId),
-                               baseURL: URL(string: "https://www.youtube.com"))
+        webView.load(URLRequest(url: url))
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }

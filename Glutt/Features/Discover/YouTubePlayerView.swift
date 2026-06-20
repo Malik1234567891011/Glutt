@@ -15,14 +15,29 @@ enum YouTubeEmbed {
     }
 
     static func html(videoId: String) -> String {
+        // Use the official IFrame Player API (not a bare <iframe>). A bare iframe
+        // loaded via WKWebView.loadHTMLString sends no valid Referer/origin, so
+        // YouTube rejects even embeddable videos with "This video is unavailable"
+        // (error 150/152/153). The IFrame API supplies `origin` explicitly via
+        // postMessage, which YouTube accepts. Load with baseURL https://www.youtube.com.
         """
         <!DOCTYPE html><html><head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
         <style>html,body{margin:0;background:#000;height:100%;overflow:hidden}
-        iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0}</style>
+        #player{position:absolute;top:0;left:0;width:100%;height:100%}</style>
         </head><body>
-        <iframe src="https://www.youtube.com/embed/\(videoId)?playsinline=1&autoplay=1&mute=1&controls=1&rel=0&modestbranding=1"
-          allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <div id="player"></div>
+        <script src="https://www.youtube.com/iframe_api"></script>
+        <script>
+        var player;
+        function onYouTubeIframeAPIReady() {
+          player = new YT.Player('player', {
+            videoId: '\(videoId)',
+            playerVars: { playsinline: 1, autoplay: 1, mute: 1, controls: 1, rel: 0, modestbranding: 1, origin: 'https://www.youtube.com' },
+            events: { onReady: function(e) { e.target.mute(); e.target.playVideo(); } }
+          });
+        }
+        </script>
         </body></html>
         """
     }

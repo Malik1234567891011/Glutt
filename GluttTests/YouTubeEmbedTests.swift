@@ -10,4 +10,10 @@ final class YouTubeEmbedTests: XCTestCase {
         XCTAssertTrue(html.contains("mute=1"))
         XCTAssertTrue(html.contains("youtube.com/embed/abc123"))
     }
+
+    func testExtractsVideoIdFromWatchURL() {
+        XCTAssertEqual(YouTubeEmbed.videoId(from: "https://www.youtube.com/watch?v=abc123"), "abc123")
+        XCTAssertEqual(YouTubeEmbed.videoId(from: "https://youtu.be/xyz789"), "xyz789")
+        XCTAssertNil(YouTubeEmbed.videoId(from: "https://example.com/foo"))
+    }
 }

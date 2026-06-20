@@ -3,6 +3,17 @@ import WebKit
 
 /// Pure builder for the YouTube IFrame player page. Separated so it is unit-testable.
 enum YouTubeEmbed {
+    static func videoId(from urlString: String) -> String? {
+        guard let comps = URLComponents(string: urlString) else { return nil }
+        if comps.host?.contains("youtu.be") == true {
+            return comps.path.split(separator: "/").last.map(String.init)
+        }
+        if comps.host?.contains("youtube.com") == true {
+            return comps.queryItems?.first { $0.name == "v" }?.value
+        }
+        return nil
+    }
+
     static func html(videoId: String) -> String {
         """
         <!DOCTYPE html><html><head>

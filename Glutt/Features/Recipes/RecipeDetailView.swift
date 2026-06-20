@@ -148,6 +148,13 @@ struct RecipeDetailView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
             titleBlock
             dietWarnings
+            if recipe.sourcePlatform == .youtube,
+               let urlString = recipe.sourceURL,
+               let id = YouTubeEmbed.videoId(from: urlString) {
+                YouTubePlayerView(videoId: id)
+                    .aspectRatio(16.0 / 9.0, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.segment, style: .continuous))
+            }
             SegmentedTabs(titles: ["Ingredients", "Steps"], selection: $selectedTab)
             if selectedTab == 0 { ingredientsTab } else { stepsTab }
             // —— below the fold: kept, reorganized ——

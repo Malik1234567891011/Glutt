@@ -1105,10 +1105,10 @@ git commit -m "feat(discover): wire My Recipes | Discover segment into Recipes s
 
 ### Task 9: Backend — Vercel proxy `/discover/search` + `/discover/suggested`
 
-**Files:** *(separate `glutt-sable` Vercel repo — not in this iOS project)*
-- Create: `api/discover/search.js` (or `.ts`)
-- Create: `api/discover/suggested.js`
-- Config: set `YOUTUBE_API_KEY` env var in the Vercel project; reuse the existing `x-glutt-proxy-key` check used by the chat endpoint.
+**Files:** *(in-repo: `vercel-ai-proxy/` — this folder deploys to `glutt-sable.vercel.app`. NOT a separate repo.)*
+- Create: `vercel-ai-proxy/api/discover/search.js`  ✅ DONE (2026-06-20)
+- Create: `vercel-ai-proxy/api/discover/suggested.js`  ✅ DONE (2026-06-20)
+- Config: set `YOUTUBE_API_KEY` env var in the Vercel project; reuse the existing `x-glutt-proxy-key` check used by the chat endpoint. (health.js now reports `has_YOUTUBE_API_KEY`.)
 
 This task lives in the backend repo, so it has no XCTest cycle. It is verified with `curl`. The iOS side is already fully unit-tested against the agreed JSON contract, so iOS work is not blocked by this — but the feature is not usable end-to-end until this ships.
 

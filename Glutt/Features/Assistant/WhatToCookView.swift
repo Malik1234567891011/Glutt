@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -67,6 +68,7 @@ struct WhatToCookView: View {
                                 recommendationCard(recommendation)
                             }
                             Button("Shuffle") {
+                                Haptics.impact(.medium)
                                 generate()
                             }
                             .buttonStyle(.gluttSecondary)
@@ -134,8 +136,10 @@ struct WhatToCookView: View {
                     .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
                     .onSubmit(ask)
                 Button(action: ask) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.title)
+                    Ph.paperPlaneTilt.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 28, height: 28)
                         .foregroundStyle(
                             askText.trimmingCharacters(in: .whitespaces).isEmpty
                                 ? Theme.Colors.border : Theme.Colors.accent
@@ -162,8 +166,10 @@ struct WhatToCookView: View {
     private var inventCard: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             HStack(spacing: Theme.Spacing.sm) {
-                Image(systemName: "wand.and.stars")
-                    .font(.title3)
+                Ph.magicWand.regular
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 20, height: 20)
                     .foregroundStyle(Theme.Colors.accent)
                 Text("Invent a dish from what I have")
                     .font(.gluttHeadline)
@@ -174,6 +180,7 @@ struct WhatToCookView: View {
                 .foregroundStyle(Theme.Colors.textSecondary)
 
             Button {
+                Haptics.impact(.medium)
                 invent()
             } label: {
                 HStack(spacing: Theme.Spacing.sm) {
@@ -219,6 +226,7 @@ struct WhatToCookView: View {
                 )
                 isInventing = false
                 if let draft {
+                    Haptics.notify(.success)
                     inventedDraft = draft
                 } else {
                     inventError = "Glutt couldn't spin up a dish from your pantry right now. Add a few more items, or try again."
@@ -230,6 +238,7 @@ struct WhatToCookView: View {
     private func ask() {
         let query = askText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty, !isAsking else { return }
+        Haptics.impact(.medium)
         isAsking = true
         headline = nil
         recommendations = nil
@@ -246,6 +255,7 @@ struct WhatToCookView: View {
             recommendations = answer.recommendations
             headline = answer.headline
             isAsking = false
+            Haptics.notify(.success)
         }
     }
 
@@ -261,6 +271,7 @@ struct WhatToCookView: View {
                     HStack(spacing: Theme.Spacing.sm) {
                         ForEach(MealRecommender.MealSlot.allCases) { slot in
                             selectableChip(slot.rawValue, isSelected: mealSlot == slot) {
+                                Haptics.selection()
                                 mealSlot = slot
                                 generate()
                             }
@@ -276,6 +287,7 @@ struct WhatToCookView: View {
                 HStack(spacing: Theme.Spacing.sm) {
                     ForEach(Self.timeOptions, id: \.label) { option in
                         selectableChip(option.label, isSelected: maxMinutes == option.minutes) {
+                            Haptics.selection()
                             maxMinutes = option.minutes
                         }
                     }
@@ -290,6 +302,7 @@ struct WhatToCookView: View {
                     HStack(spacing: Theme.Spacing.sm) {
                         ForEach(MealRecommender.Mood.allCases) { option in
                             selectableChip(option.rawValue, isSelected: mood == option) {
+                                Haptics.selection()
                                 mood = option
                             }
                         }
@@ -298,6 +311,7 @@ struct WhatToCookView: View {
             }
 
             Button("Update options") {
+                Haptics.impact(.medium)
                 generate()
             }
             .buttonStyle(.gluttSecondary)
@@ -330,9 +344,16 @@ struct WhatToCookView: View {
                     .foregroundStyle(Theme.Colors.accent)
                 Spacer()
                 if recommendation.missingCount == 0 {
-                    Label("Ready now", systemImage: "checkmark.circle.fill")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(Theme.Colors.accent)
+                    HStack(spacing: 4) {
+                        Ph.checkCircle.fill
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 13, height: 13)
+                            .foregroundStyle(Theme.Colors.accent)
+                        Text("Ready now")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(Theme.Colors.accent)
+                    }
                 } else {
                     Text("^[\(recommendation.missingCount) item](inflect: true) missing")
                         .font(.caption2)
@@ -349,9 +370,16 @@ struct WhatToCookView: View {
                         .font(.gluttHeadline)
                         .foregroundStyle(Theme.Colors.textPrimary)
                         .lineLimit(2)
-                    Label(recommendation.recipe.timeLabel, systemImage: "clock")
-                        .font(.gluttCaption)
-                        .foregroundStyle(Theme.Colors.textSecondary)
+                    HStack(spacing: 4) {
+                        Ph.clock.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 13, height: 13)
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                        Text(recommendation.recipe.timeLabel)
+                            .font(.gluttCaption)
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                    }
                 }
                 Spacer()
             }
@@ -374,6 +402,7 @@ struct WhatToCookView: View {
                 }
                 .buttonStyle(.gluttSecondary)
                 Button("Add to plan") {
+                    Haptics.impact(.medium)
                     planningRecipe = recommendation.recipe
                 }
                 .buttonStyle(.gluttSecondary)

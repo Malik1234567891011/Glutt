@@ -1,4 +1,5 @@
 import PhotosUI
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -114,15 +115,28 @@ struct LogFoodView: View {
                     HStack(spacing: Theme.Spacing.sm) {
                         if CameraPicker.isAvailable {
                             Button {
+                                Haptics.impact(.light)
                                 isShowingCamera = true
                             } label: {
-                                Label("Camera", systemImage: "camera")
+                                HStack(spacing: 6) {
+                                    Ph.camera.regular
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 16, height: 16)
+                                    Text("Camera")
+                                }
                             }
                             .buttonStyle(.gluttPillFilled)
                         }
                         PhotosPicker(selection: $estimatePhotoItem, matching: .images) {
-                            Label("Photo library", systemImage: "photo.on.rectangle")
-                                .font(.gluttCaption.weight(.semibold))
+                            HStack(spacing: 6) {
+                                Ph.image.regular
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 16, height: 16)
+                                Text("Photo library")
+                            }
+                            .font(.gluttCaption.weight(.semibold))
                         }
                         .buttonStyle(.gluttPill)
                     }
@@ -177,10 +191,12 @@ struct LogFoodView: View {
 
             HStack(spacing: Theme.Spacing.sm) {
                 Button("Log it") {
+                    Haptics.notify(.success)
                     logEstimate()
                 }
                 .buttonStyle(.gluttPrimary)
                 Button("Retake") {
+                    Haptics.impact(.light)
                     resetEstimate()
                 }
                 .buttonStyle(.gluttSecondary)
@@ -197,6 +213,7 @@ struct LogFoodView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Theme.Spacing.xs) {
                     Button {
+                        Haptics.selection()
                         replacingMeal = nil
                     } label: {
                         Chip(label: "Just extra", isSelected: replacingMeal == nil)
@@ -204,6 +221,7 @@ struct LogFoodView: View {
                     .buttonStyle(.plain)
                     ForEach(replaceableMeals) { meal in
                         Button {
+                            Haptics.selection()
                             replacingMeal = meal
                         } label: {
                             Chip(
@@ -270,19 +288,28 @@ struct LogFoodView: View {
     // MARK: - Sections
 
     private func confirmationBanner(_ title: String) -> some View {
-        Label("Logged \(title)", systemImage: "checkmark.circle.fill")
-            .font(.gluttCaption.weight(.medium))
-            .foregroundStyle(Theme.Colors.accent)
-            .padding(Theme.Spacing.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.Colors.successTint)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        HStack(spacing: Theme.Spacing.sm) {
+            Ph.checkCircle.fill
+                .resizable()
+                .scaledToFit()
+                .frame(width: 18, height: 18)
+                .foregroundStyle(Theme.Colors.accent)
+            Text("Logged \(title)")
+                .font(.gluttCaption.weight(.medium))
+                .foregroundStyle(Theme.Colors.accent)
+            Spacer()
+        }
+        .padding(Theme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Colors.successTint)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
     }
 
     private var quickAddCard: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             SectionHeader(title: "Quick add")
             FlowChips(items: Self.quickFoods.map(\.title)) { title in
+                Haptics.notify(.success)
                 guard let food = Self.quickFoods.first(where: { $0.title == title }) else { return }
                 log(FoodLog(
                     title: food.title,
@@ -298,6 +325,7 @@ struct LogFoodView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             SectionHeader(title: "You often eat")
             FlowChips(items: frequentMeals) { title in
+                Haptics.notify(.success)
                 // Repeat the most recent log of the same meal, nutrition included.
                 let previous = allLogs.first { $0.title == title }
                 log(FoodLog(
@@ -315,6 +343,7 @@ struct LogFoodView: View {
             SectionHeader(title: "Leftovers in the fridge")
             ForEach(availableLeftovers) { leftover in
                 Button {
+                    Haptics.notify(.success)
                     logLeftover(leftover)
                 } label: {
                     HStack {
@@ -327,9 +356,16 @@ struct LogFoodView: View {
                                 .foregroundStyle(Theme.Colors.textSecondary)
                         }
                         Spacer()
-                        Label("Eat one", systemImage: "fork.knife")
-                            .font(.gluttCaption.weight(.medium))
-                            .foregroundStyle(Theme.Colors.accent)
+                        HStack(spacing: 4) {
+                            Ph.forkKnife.regular
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 13, height: 13)
+                                .foregroundStyle(Theme.Colors.accent)
+                            Text("Eat one")
+                                .font(.gluttCaption.weight(.medium))
+                                .foregroundStyle(Theme.Colors.accent)
+                        }
                     }
                 }
                 .buttonStyle(.plain)
@@ -354,15 +390,25 @@ struct LogFoodView: View {
                 Toggle("Restaurant / takeout", isOn: $isRestaurant)
                     .font(.gluttBody)
                     .tint(Theme.Colors.accent)
+                    .onChange(of: isRestaurant) {
+                        Haptics.impact(.light)
+                    }
                 PhotosPicker(selection: $photoItem, matching: .images) {
-                    Label(photoData == nil ? "Attach a photo" : "Photo attached ✓", systemImage: "camera")
-                        .font(.gluttCaption.weight(.medium))
-                        .foregroundStyle(Theme.Colors.accent)
+                    HStack(spacing: 6) {
+                        Ph.camera.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 16, height: 16)
+                        Text(photoData == nil ? "Attach a photo" : "Photo attached ✓")
+                    }
+                    .font(.gluttCaption.weight(.medium))
+                    .foregroundStyle(Theme.Colors.accent)
                 }
                 if !replaceableMeals.isEmpty {
                     replacementPicker
                 }
                 Button("Log it") {
+                    Haptics.notify(.success)
                     logManual()
                 }
                 .buttonStyle(.gluttPrimary)

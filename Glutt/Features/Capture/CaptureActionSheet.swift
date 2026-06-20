@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftUI
 
 /// The universal action sheet behind the floating + button.
@@ -15,6 +16,7 @@ struct CaptureActionSheet: View {
             VStack(spacing: Theme.Spacing.sm) {
                 ForEach(CaptureAction.allCases) { action in
                     Button {
+                        Haptics.impact(.medium)
                         router.perform(action)
                     } label: {
                         actionRow(action)
@@ -29,14 +31,24 @@ struct CaptureActionSheet: View {
         .background(Theme.Colors.background)
     }
 
+    /// Map each capture action to a verified Phosphor icon (keeps Router's SF strings intact).
+    private func phosphorIcon(for action: CaptureAction) -> Image {
+        switch action {
+        case .importRecipe:    return Ph.link.regular
+        case .scanPantry:      return Ph.scan.regular
+        case .logFood:         return Ph.forkKnife.regular
+        case .addGroceryItem:  return Ph.shoppingCart.regular
+        case .askWhatToCook:   return Ph.sparkle.regular
+        }
+    }
+
     private func actionRow(_ action: CaptureAction) -> some View {
         HStack(spacing: Theme.Spacing.md) {
-            Image(systemName: action.icon)
-                .font(.title3)
-                .foregroundStyle(Theme.Colors.accent)
-                .frame(width: 40, height: 40)
-                .background(Theme.Colors.accent.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
+            IconChip(
+                icon: phosphorIcon(for: action),
+                foreground: Theme.Colors.accent,
+                background: Theme.Colors.accent.opacity(0.1)
+            )
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(action.label)
@@ -48,8 +60,10 @@ struct CaptureActionSheet: View {
                     .lineLimit(1)
             }
             Spacer()
-            Image(systemName: "chevron.right")
-                .font(.caption)
+            Ph.caretRight.regular
+                .resizable()
+                .scaledToFit()
+                .frame(width: 12, height: 12)
                 .foregroundStyle(Theme.Colors.textSecondary)
         }
         .padding(Theme.Spacing.sm)

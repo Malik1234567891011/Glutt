@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -24,7 +25,7 @@ struct GroceriesView: View {
                     EmptyStateView(
                         icon: "cart",
                         title: "Grocery list is empty",
-                        message: "Add items here, or tap “Add missing to groceries” on any recipe."
+                        message: "Add items here, or tap \u{201C}Add missing to groceries\u{201D} on any recipe."
                     )
                 } else {
                     ForEach(GroceryCategory.allCases) { category in
@@ -45,9 +46,14 @@ struct GroceriesView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 if !items.isEmpty {
                     Button {
+                        Haptics.impact(.light)
                         isStoreMode = true
                     } label: {
-                        Label("Store mode", systemImage: "basket")
+                        Ph.basket.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 22, height: 22)
+                            .foregroundStyle(Theme.Colors.accent)
                     }
                 }
             }
@@ -60,8 +66,12 @@ struct GroceriesView: View {
             isPresented: $isConfirmingShopDone,
             titleVisibility: .visible
         ) {
-            Button("Add to inventory") { moveCheckedToInventory() }
+            Button("Add to inventory") {
+                Haptics.notify(.success)
+                moveCheckedToInventory()
+            }
             Button("Just clear them", role: .destructive) {
+                Haptics.notify(.warning)
                 checkedItems.forEach { context.delete($0) }
             }
             Button("Cancel", role: .cancel) {}
@@ -80,8 +90,10 @@ struct GroceriesView: View {
             Button {
                 addItem()
             } label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title3)
+                Ph.plusCircle.fill
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
                     .foregroundStyle(Theme.Colors.accent)
             }
             .disabled(newItemName.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -94,6 +106,7 @@ struct GroceriesView: View {
     private func addItem() {
         let trimmed = newItemName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
+        Haptics.notify(.success)
         let item = GroceryItem(
             name: trimmed,
             category: GroceryCategorizer.categorize(trimmed),
@@ -151,10 +164,13 @@ struct GroceryItemRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.sm) {
             Button {
+                Haptics.impact(.light)
                 withAnimation(.snappy) { item.isChecked.toggle() }
             } label: {
-                Image(systemName: item.isChecked ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
+                (item.isChecked ? Ph.checkCircle.fill : Ph.circle.regular)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 22, height: 22)
                     .foregroundStyle(Theme.Colors.accent)
             }
             .buttonStyle(.plain)
@@ -193,6 +209,7 @@ struct GroceryItemRow: View {
         .cardStyle(padding: Theme.Spacing.sm)
         .contextMenu {
             Button("Delete", systemImage: "trash", role: .destructive) {
+                Haptics.notify(.warning)
                 context.delete(item)
             }
         }

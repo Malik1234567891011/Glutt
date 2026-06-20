@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -29,9 +30,16 @@ struct LeftoversView: View {
                         leftoverCard(leftover)
                     }
                     if !frozen.isEmpty {
-                        Label("Freezer", systemImage: "snowflake")
-                            .font(.gluttHeadline)
-                            .foregroundStyle(Theme.Colors.textSecondary)
+                        HStack(spacing: Theme.Spacing.xs) {
+                            Ph.snowflake.regular
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 16, height: 16)
+                                .foregroundStyle(Theme.Colors.textSecondary)
+                            Text("Freezer")
+                                .font(.gluttHeadline)
+                                .foregroundStyle(Theme.Colors.textSecondary)
+                        }
                         ForEach(frozen) { leftover in
                             leftoverCard(leftover)
                         }
@@ -42,7 +50,16 @@ struct LeftoversView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { isAddingManually = true } label: { Image(systemName: "plus") }
+                Button {
+                    Haptics.impact(.light)
+                    isAddingManually = true
+                } label: {
+                    Ph.plus.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+                        .foregroundStyle(Theme.Colors.accent)
+                }
             }
         }
         .sheet(isPresented: $isAddingManually) {
@@ -71,27 +88,44 @@ struct LeftoversView: View {
                 }
                 Spacer()
                 if leftover.isFrozen {
-                    Image(systemName: "snowflake")
+                    Ph.snowflake.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
                         .foregroundStyle(Theme.Colors.accent)
                 }
             }
 
             HStack(spacing: Theme.Spacing.sm) {
-                Button("Log as eaten") { eat(leftover) }
-                    .buttonStyle(.gluttPill)
-                Button("Remix") { remixingLeftover = leftover }
-                    .buttonStyle(.gluttPillFilled)
-                Button("Add to plan") { planningLeftover = leftover }
-                    .buttonStyle(.gluttPill)
+                Button("Log as eaten") {
+                    Haptics.notify(.success)
+                    eat(leftover)
+                }
+                .buttonStyle(.gluttPill)
+                Button("Remix") {
+                    Haptics.impact(.medium)
+                    remixingLeftover = leftover
+                }
+                .buttonStyle(.gluttPillFilled)
+                Button("Add to plan") {
+                    Haptics.notify(.success)
+                    planningLeftover = leftover
+                }
+                .buttonStyle(.gluttPill)
                 Button(leftover.isFrozen ? "Thaw" : "Freeze") {
+                    Haptics.impact(.light)
                     leftover.isFrozen.toggle()
                 }
                 .buttonStyle(.gluttPill)
                 Spacer()
                 Button {
+                    Haptics.notify(.warning)
                     context.delete(leftover)
                 } label: {
-                    Image(systemName: "trash")
+                    Ph.trash.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
                         .foregroundStyle(Theme.Colors.tomato)
                 }
                 .buttonStyle(.plain)
@@ -146,6 +180,9 @@ struct LeftoverEditorView: View {
             Form {
                 TextField("What is it?", text: $title)
                 Stepper("Servings: \(servings.formatted())", value: $servings, in: 0.5...24, step: 0.5)
+                    .onChange(of: servings) {
+                        Haptics.selection()
+                    }
                 Toggle("It's in the freezer", isOn: $isFrozen)
             }
             .scrollContentBackground(.hidden)
@@ -158,6 +195,7 @@ struct LeftoverEditorView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        Haptics.notify(.success)
                         let leftover = Leftover(title: title, servingsRemaining: servings, isFrozen: isFrozen)
                         context.insert(leftover)
                         dismiss()
@@ -188,15 +226,21 @@ struct PlanLeftoverSheet: View {
                         Text(dayLabel(offset)).tag(offset)
                     }
                 }
+                .onChange(of: dayOffset) {
+                    Haptics.selection()
+                }
                 Picker("Meal", selection: $mealType) {
                     ForEach(MealType.allCases) { type in
                         Text(type.label).tag(type)
                     }
                 }
+                .onChange(of: mealType) {
+                    Haptics.selection()
+                }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.Colors.background)
-            .navigationTitle("Plan “\(leftover.title)”")
+            .navigationTitle("Plan \u{201C}\(leftover.title)\u{201D}")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -204,6 +248,7 @@ struct PlanLeftoverSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add to plan") {
+                        Haptics.notify(.success)
                         let date = Calendar.current.date(byAdding: .day, value: dayOffset, to: .now)!
                         context.insert(PlannedMeal(date: date, mealType: mealType, leftover: leftover))
                         dismiss()

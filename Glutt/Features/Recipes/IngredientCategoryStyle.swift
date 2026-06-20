@@ -1,5 +1,4 @@
 import SwiftUI
-import PhosphorSwift
 
 /// FRESH vs PANTRY split for the ingredient checklist, derived from the same
 /// canonical→GroceryCategory mapping the grocery list uses.

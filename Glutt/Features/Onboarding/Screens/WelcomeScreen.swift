@@ -1,5 +1,4 @@
 import SwiftUI
-import PhosphorSwift
 
 /// First onboarding screen: a food-photo hero on a sage panel + the highlighted
 /// headline and a single "next" CTA.

@@ -1,5 +1,4 @@
 import SwiftUI
-import PhosphorSwift
 
 /// Interactive, ReciMe-style walkthrough of "save from anywhere → it's in Glutt".
 /// The user taps the highlighted spot on each real screenshot to advance:

@@ -1,5 +1,4 @@
 import SwiftUI
-import PhosphorSwift
 
 /// The redesigned bottom tab bar: a full-width dark bar with rounded top corners
 /// and Phosphor glyphs. Drives `Router.selectedTab` via the binding — it does NOT

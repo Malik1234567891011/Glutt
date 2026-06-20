@@ -1,6 +1,5 @@
 import SwiftData
 import SwiftUI
-import PhosphorSwift
 
 struct RecipeDetailView: View {
     @Environment(\.modelContext) private var context

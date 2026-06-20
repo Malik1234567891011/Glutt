@@ -1,5 +1,4 @@
 import SwiftUI
-import PhosphorSwift
 
 /// A 36pt section-tinted rounded-square holding a Phosphor food glyph.
 /// Used in the ingredient checklist (protein/produce/pantry tints).

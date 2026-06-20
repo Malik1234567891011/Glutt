@@ -1,5 +1,4 @@
 import SwiftUI
-import PhosphorSwift
 
 /// A circular category thumbnail + label for the Browse category row.
 /// Active: 66pt with a herb-green ring and a sparkle accent. Inactive: 50pt, dimmed.

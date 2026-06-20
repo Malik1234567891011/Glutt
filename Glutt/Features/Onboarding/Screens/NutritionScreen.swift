@@ -1,5 +1,4 @@
 import SwiftUI
-import PhosphorSwift
 
 /// Single-select nutrition mode.
 struct NutritionScreen: View {

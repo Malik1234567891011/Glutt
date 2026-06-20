@@ -1,5 +1,4 @@
 import SwiftUI
-import PhosphorSwift
 
 /// Full-width selectable row used by onboarding goal/nutrition pickers:
 /// leading emoji, Phosphor icon, or a custom view; a title (+ optional subtitle); trailing check.

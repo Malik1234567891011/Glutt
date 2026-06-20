@@ -1,5 +1,4 @@
 import SwiftUI
-import PhosphorSwift
 
 /// Dietary rules (multi-select) + allergies + dislikes free text.
 struct RulesScreen: View {

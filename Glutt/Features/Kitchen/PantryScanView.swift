@@ -1,5 +1,4 @@
 import PhotosUI
-import PhosphorSwift
 import SwiftData
 import SwiftUI
 

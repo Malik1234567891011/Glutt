@@ -1,5 +1,4 @@
 import SwiftUI
-import PhosphorSwift
 
 /// The core recipe card: panel-tint media block with food photo, a tag pill,
 /// a title/summary block, and a foundation StatPill row.

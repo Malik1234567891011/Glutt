@@ -1,6 +1,5 @@
 import SwiftUI
 import UserNotifications
-import PhosphorSwift
 
 /// Soft pre-prompt before the iOS notification permission dialog.
 struct NotificationPrimerScreen: View {

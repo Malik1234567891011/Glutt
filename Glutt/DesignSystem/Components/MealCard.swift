@@ -1,4 +1,3 @@
-import PhosphorSwift
 import SwiftUI
 
 /// A planned meal in the Today timeline or Plan week view.

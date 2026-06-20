@@ -1,5 +1,4 @@
 import SwiftUI
-import PhosphorSwift
 
 /// A small tinted stat capsule (icon + text). Powers the recipe-card stat row:
 /// rating · time · difficulty. Radius 11, padding 7×12, 13pt heavy text.

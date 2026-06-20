@@ -1,5 +1,4 @@
 import Charts
-import PhosphorSwift
 import SwiftData
 import SwiftUI
 

@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -44,12 +45,22 @@ struct WeekPlannerWizard: View {
         return types
     }
 
+    // Phase index: 0 = questions, 1 = draft
+    private var phaseIndex: Int { phase == .questions ? 0 : 1 }
+
     var body: some View {
         NavigationStack {
-            Group {
-                switch phase {
-                case .questions: questionsForm
-                case .draft: draftList
+            VStack(spacing: 0) {
+                // PageDots progress indicator
+                PageDots(count: 2, index: phaseIndex)
+                    .padding(.top, Theme.Spacing.md)
+                    .padding(.bottom, Theme.Spacing.sm)
+
+                Group {
+                    switch phase {
+                    case .questions: questionsForm
+                    case .draft: draftList
+                    }
                 }
             }
             .background(Theme.Colors.background)
@@ -66,27 +77,47 @@ struct WeekPlannerWizard: View {
     // MARK: - Step 1: questions
 
     private var questionsForm: some View {
-        Form {
-            Section("How many days?") {
-                Stepper("\(days) days", value: $days, in: 2...7)
-            }
-            Section("Which meals?") {
-                Toggle("Lunch", isOn: $includeLunch)
-                Toggle("Dinner", isOn: $includeDinner)
-            }
-            Section {
-                Toggle("Use my leftovers first", isOn: $useLeftovers)
-                Toggle("Generate grocery list after", isOn: $alsoGenerateGroceries)
-            }
-            Section {
-                Button("Build my week") {
-                    draftSlots = WeekPlanner.draft(plannerInput)
-                    phase = .draft
+        VStack(spacing: 0) {
+            Form {
+                Section("How many days?") {
+                    Stepper("\(days) days", value: $days, in: 2...7)
+                        .onChange(of: days) { Haptics.impact(.light) }
                 }
-                .disabled(selectedMealTypes.isEmpty)
+                Section("Which meals?") {
+                    Toggle("Lunch", isOn: $includeLunch)
+                        .onChange(of: includeLunch) { Haptics.impact(.light) }
+                    Toggle("Dinner", isOn: $includeDinner)
+                        .onChange(of: includeDinner) { Haptics.impact(.light) }
+                }
+                Section {
+                    Toggle("Use my leftovers first", isOn: $useLeftovers)
+                        .onChange(of: useLeftovers) { Haptics.impact(.light) }
+                    Toggle("Generate grocery list after", isOn: $alsoGenerateGroceries)
+                        .onChange(of: alsoGenerateGroceries) { Haptics.impact(.light) }
+                }
             }
+            .scrollContentBackground(.hidden)
+
+            // Green capsule CTA — consistent with onboarding style
+            Button {
+                Haptics.impact(.medium)
+                draftSlots = WeekPlanner.draft(plannerInput)
+                withAnimation { phase = .draft }
+            } label: {
+                HStack(spacing: 8) {
+                    Ph.sparkle.bold
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
+                    Text("Build my week")
+                        .font(.gluttBody.weight(.semibold))
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.gluttPrimary)
+            .disabled(selectedMealTypes.isEmpty)
+            .padding(Theme.Spacing.md)
         }
-        .scrollContentBackground(.hidden)
     }
 
     // MARK: - Step 2: review the draft
@@ -105,15 +136,32 @@ struct WeekPlannerWizard: View {
             .scrollContentBackground(.hidden)
 
             VStack(spacing: Theme.Spacing.sm) {
-                Button("Looks good — add to plan") {
+                // Green capsule primary CTA
+                Button {
+                    Haptics.notify(.success)
                     commit()
+                } label: {
+                    HStack(spacing: 8) {
+                        Ph.checkCircle.fill
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 16, height: 16)
+                        Text("Looks good — add to plan")
+                            .font(.gluttBody.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.gluttPrimary)
-                Button("Start over") {
-                    phase = .questions
+
+                Button {
+                    Haptics.impact(.light)
+                    withAnimation { phase = .questions }
+                } label: {
+                    Text("Start over")
+                        .font(.gluttCaption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
                 }
-                .font(.gluttCaption)
-                .foregroundStyle(Theme.Colors.textSecondary)
+                .buttonStyle(.plain)
             }
             .padding(Theme.Spacing.md)
         }
@@ -146,9 +194,13 @@ struct WeekPlannerWizard: View {
             Spacer()
             if slot.recipe != nil {
                 Button {
+                    Haptics.impact(.light)
                     swapSlot(slot)
                 } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath")
+                    Ph.arrowsClockwise.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
                         .foregroundStyle(Theme.Colors.accent)
                 }
                 .buttonStyle(.borderless)

@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -50,11 +51,17 @@ struct PlanView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        Haptics.impact(.medium)
                         isShowingWizard = true
                     } label: {
-                        Label("Plan my week", systemImage: "wand.and.stars")
-                            .labelStyle(.titleAndIcon)
-                            .font(.gluttCaption.weight(.semibold))
+                        HStack(spacing: 5) {
+                            Ph.magicWand.bold
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 14, height: 14)
+                            Text("Plan my week")
+                                .font(.gluttCaption.weight(.semibold))
+                        }
                     }
                     .buttonStyle(.gluttPillFilled)
                 }
@@ -99,26 +106,45 @@ struct PlanView: View {
             // One or two live status lines — the plan should feel like it
             // knows your kitchen, not just count rows.
             if let coverage = pantryCoverage {
-                Label(
-                    coverage >= 100
-                        ? "You already have everything for this week"
-                        : "You already have \(coverage)% of this week's ingredients",
-                    systemImage: coverage >= 100 ? "checkmark.circle.fill" : "basket"
-                )
-                .font(.gluttCaption.weight(.medium))
-                .foregroundStyle(coverage >= 70 ? Theme.Colors.accent : Theme.Colors.warning)
+                HStack(spacing: 6) {
+                    if coverage >= 100 {
+                        Ph.checkCircle.fill
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 13, height: 13)
+                            .foregroundStyle(Theme.Colors.accent)
+                    } else {
+                        Ph.basket.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 13, height: 13)
+                            .foregroundStyle(coverage >= 70 ? Theme.Colors.accent : Theme.Colors.warning)
+                    }
+                    Text(
+                        coverage >= 100
+                            ? "You already have everything for this week"
+                            : "You already have \(coverage)% of this week's ingredients"
+                    )
+                    .font(.gluttCaption.weight(.medium))
+                    .foregroundStyle(coverage >= 70 ? Theme.Colors.accent : Theme.Colors.warning)
+                }
             }
             let reusable = leftovers.filter { $0.servingsRemaining > 0 && !$0.isFrozen }.count
             if reusable > 0 {
-                Label(
-                    "^[\(reusable) leftover](inflect: true) ready to reuse",
-                    systemImage: "takeoutbag.and.cup.and.straw"
-                )
-                .font(.gluttCaption.weight(.medium))
-                .foregroundStyle(Theme.Colors.accent)
+                HStack(spacing: 6) {
+                    Ph.bowlFood.regular
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 13, height: 13)
+                        .foregroundStyle(Theme.Colors.accent)
+                    Text("^[\(reusable) leftover](inflect: true) ready to reuse")
+                        .font(.gluttCaption.weight(.medium))
+                        .foregroundStyle(Theme.Colors.accent)
+                }
             }
 
             Button("Generate grocery list from plan") {
+                Haptics.notify(.success)
                 generateGroceries()
             }
             .buttonStyle(.gluttSecondary)
@@ -198,20 +224,28 @@ struct PlanView: View {
                     .foregroundStyle(day == today ? Theme.Colors.accent : Theme.Colors.textPrimary)
                 Spacer()
                 Button {
+                    Haptics.impact(.medium)
                     addingMealForDay = day
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title3)
+                    Ph.plusCircle.fill
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 26, height: 26)
                         .foregroundStyle(Theme.Colors.accent)
                 }
+                .buttonStyle(.plain)
             }
 
             if meals.isEmpty {
                 Button {
+                    Haptics.impact(.medium)
                     addingMealForDay = day
                 } label: {
-                    HStack {
-                        Image(systemName: "plus")
+                    HStack(spacing: 6) {
+                        Ph.plus.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 13, height: 13)
                         Text("Add a meal")
                     }
                     .font(.gluttCaption.weight(.medium))
@@ -229,9 +263,16 @@ struct PlanView: View {
                     mealRow(meal)
                 }
                 ForEach(prepTasks, id: \.text) { task in
-                    Label(task.text, systemImage: "alarm")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.Colors.warning)
+                    HStack(spacing: 6) {
+                        Ph.alarm.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 11, height: 11)
+                            .foregroundStyle(Theme.Colors.warning)
+                        Text(task.text)
+                            .font(.caption2)
+                            .foregroundStyle(Theme.Colors.warning)
+                    }
                 }
             }
         }
@@ -239,6 +280,7 @@ struct PlanView: View {
 
     private func mealRow(_ meal: PlannedMeal) -> some View {
         Button {
+            Haptics.impact(.light)
             editingMeal = meal
         } label: {
             MealCard(meal: meal)

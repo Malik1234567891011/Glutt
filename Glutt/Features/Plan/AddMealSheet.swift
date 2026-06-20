@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftData
 import SwiftUI
 
@@ -76,6 +77,7 @@ struct AddMealSheet: View {
                                 Text(dayLabel(candidate)).tag(candidate)
                             }
                         }
+                        .onChange(of: selectedDay) { Haptics.selection() }
                     }
                 }
                 Section {
@@ -85,8 +87,10 @@ struct AddMealSheet: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .onChange(of: mealType) { Haptics.selection() }
 
                     Toggle("Exact time", isOn: $hasExactTime)
+                        .onChange(of: hasExactTime) { Haptics.impact(.light) }
                     if hasExactTime {
                         DatePicker("At", selection: $exactTime, displayedComponents: .hourAndMinute)
                     }
@@ -100,6 +104,7 @@ struct AddMealSheet: View {
                             }
                         }
                         .pickerStyle(.segmented)
+                        .onChange(of: source) { Haptics.selection() }
                     }
 
                     switch source {
@@ -126,8 +131,11 @@ struct AddMealSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") { save() }
-                        .disabled(!canSave)
+                    Button("Add") {
+                        Haptics.notify(.success)
+                        save()
+                    }
+                    .disabled(!canSave)
                 }
             }
         }
@@ -138,6 +146,7 @@ struct AddMealSheet: View {
             TextField("Search…", text: $searchText)
             ForEach(filteredRecipes.prefix(20)) { recipe in
                 Button {
+                    Haptics.selection()
                     selectedRecipe = recipe
                 } label: {
                     HStack {
@@ -152,7 +161,10 @@ struct AddMealSheet: View {
                         }
                         Spacer()
                         if selectedRecipe === recipe {
-                            Image(systemName: "checkmark")
+                            Ph.check.bold
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 16, height: 16)
                                 .foregroundStyle(Theme.Colors.accent)
                         }
                     }
@@ -169,6 +181,7 @@ struct AddMealSheet: View {
             }
             ForEach(availableLeftovers) { leftover in
                 Button {
+                    Haptics.selection()
                     selectedLeftover = leftover
                 } label: {
                     HStack {
@@ -176,7 +189,10 @@ struct AddMealSheet: View {
                             .foregroundStyle(Theme.Colors.textPrimary)
                         Spacer()
                         if selectedLeftover === leftover {
-                            Image(systemName: "checkmark")
+                            Ph.check.bold
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 16, height: 16)
                                 .foregroundStyle(Theme.Colors.accent)
                         }
                     }
@@ -255,6 +271,7 @@ struct EditMealSheet: View {
                         Text("Skipped").tag(MealStatus.skipped)
                     }
                     .pickerStyle(.segmented)
+                    .onChange(of: meal.status) { Haptics.selection() }
                 }
 
                 Section {
@@ -263,7 +280,9 @@ struct EditMealSheet: View {
                             Text(type.label).tag(type)
                         }
                     }
+                    .onChange(of: meal.mealType) { Haptics.selection() }
                     Toggle("Exact time", isOn: $hasExactTime)
+                        .onChange(of: hasExactTime) { Haptics.impact(.light) }
                     if hasExactTime {
                         DatePicker("At", selection: $exactTime, displayedComponents: .hourAndMinute)
                     }
@@ -271,11 +290,13 @@ struct EditMealSheet: View {
 
                 Section {
                     Button("Move to tomorrow", systemImage: "arrow.right") {
+                        Haptics.impact(.medium)
                         meal.date = Calendar.current.date(byAdding: .day, value: 1, to: meal.date)!
                         ReminderScheduler.schedule(for: meal)
                         dismiss()
                     }
                     Button("Remove from plan", systemImage: "trash", role: .destructive) {
+                        Haptics.notify(.warning)
                         ReminderScheduler.cancel(for: meal)
                         context.delete(meal)
                         dismiss()
@@ -289,6 +310,7 @@ struct EditMealSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
+                        Haptics.impact(.medium)
                         meal.exactTime = hasExactTime
                             ? Calendar.current.date(
                                 bySettingHour: Calendar.current.component(.hour, from: exactTime),

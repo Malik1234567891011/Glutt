@@ -73,18 +73,18 @@ final class RecipeImageBackfillTests: XCTestCase {
 
     // MARK: - downloadAndPrepare
 
-    func testDownloadAndPrepareReturnsDownscaledBytes() async {
+    func testDownloadAndPrepareReturnsDownscaledBytes() async throws {
         let big = bigJPEG()
         let out = await RecipeImageBackfill.downloadAndPrepare(
             from: "https://example.com/a.jpg",
             fetch: { _ in big }
         )
-        let data = try? XCTUnwrap(out)
-        let image = data.flatMap { UIImage(data: $0) }
+        let data = try XCTUnwrap(out)
+        let image = UIImage(data: data)
         XCTAssertNotNil(image)
         let longest = max(image!.size.width, image!.size.height)
         XCTAssertLessThanOrEqual(longest, 1280, "ImagePrep should cap the longest side at 1280")
-        XCTAssertLessThan(out!.count, big.count, "Prepared bytes should be smaller than the 2000px original")
+        XCTAssertLessThan(data.count, big.count, "Prepared bytes should be smaller than the 2000px original")
     }
 
     func testDownloadAndPrepareReturnsNilOnFetchFailure() async {
@@ -144,5 +144,24 @@ final class RecipeImageBackfillTests: XCTestCase {
         XCTAssertNotNil(urlOnly.imageData)
         XCTAssertEqual(hasData.imageData, Data([0x7]))   // untouched
         XCTAssertNil(noURL.imageData)
+    }
+
+    func testSweepRespectsPerSweepLimit() async {
+        // Insert more URL-only recipes than the per-sweep ceiling.
+        var recipes: [Recipe] = []
+        for i in 0..<(RecipeImageBackfill.perSweepLimit + 5) {
+            recipes.append(makeRecipe(imageURL: "https://example.com/\(i).jpg"))
+        }
+        let big = bigJPEG()
+        await RecipeImageBackfill.sweep(in: context, fetch: { _ in big })
+        let cachedCount = recipes.filter { $0.imageData != nil }.count
+        XCTAssertEqual(cachedCount, RecipeImageBackfill.perSweepLimit,
+                       "One sweep should cache at most perSweepLimit recipes")
+    }
+
+    func testNeedsCachingFalseWhenBundledAssetPresent() {
+        let recipe = makeRecipe(imageURL: "https://example.com/a.jpg")
+        recipe.imageAssetName = "some_bundled_asset"
+        XCTAssertFalse(RecipeImageBackfill.needsCaching(recipe))
     }
 }

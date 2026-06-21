@@ -6,6 +6,8 @@ struct RecipeCard: View {
     let recipe: Recipe
     /// Pantry match (owned, total non-optional). Nil hides the indicator.
     var pantryMatch: (owned: Int, total: Int)?
+    /// Tight layouts (2-up grid) show only Time + Difficulty to avoid crushing.
+    var compact: Bool = false
 
     private var panelTint: Color {
         // stable per-recipe pick from the rotating decorative set
@@ -72,14 +74,16 @@ struct RecipeCard: View {
     @ViewBuilder private var statRow: some View {
         HStack(spacing: 8) {
             StatPill.time(recipe.timeLabel)
-            StatPill.difficulty(recipe.difficulty.label)
-            if let rating = recipe.rating {
-                StatPill.rating("\(rating)")
-            }
-            if let pantryMatch, pantryMatch.total > 0 {
-                StatPill(icon: Ph.basket.fill,
-                         text: "\(pantryMatch.owned)/\(pantryMatch.total)",
-                         foreground: Theme.Colors.accent, background: Theme.Colors.successTint)
+            StatPill.difficulty(compact ? recipe.difficulty.shortLabel : recipe.difficulty.label)
+            if !compact {
+                if let rating = recipe.rating {
+                    StatPill.rating("\(rating)")
+                }
+                if let pantryMatch, pantryMatch.total > 0 {
+                    StatPill(icon: Ph.basket.fill,
+                             text: "\(pantryMatch.owned)/\(pantryMatch.total)",
+                             foreground: Theme.Colors.accent, background: Theme.Colors.successTint)
+                }
             }
             Spacer(minLength: 0)
         }

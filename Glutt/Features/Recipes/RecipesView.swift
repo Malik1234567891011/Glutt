@@ -143,7 +143,7 @@ struct RecipesView: View {
                                                     GridItem(.flexible(), spacing: Theme.Spacing.md)],
                                           spacing: Theme.Spacing.md) {
                                     ForEach(visibleRecipes) { recipe in
-                                        recipeLink(recipe, reasons: [])
+                                        recipeLink(recipe, reasons: [], compact: true)
                                     }
                                 }
                                 .padding(.horizontal, Theme.Spacing.md)
@@ -334,13 +334,14 @@ struct RecipesView: View {
         .padding(.horizontal, Theme.Spacing.md)
     }
 
-    private func recipeLink(_ recipe: Recipe, reasons: [String]) -> some View {
+    private func recipeLink(_ recipe: Recipe, reasons: [String], compact: Bool = false) -> some View {
         NavigationLink(value: recipe) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 let match = PantryMatcher.match(recipe: recipe, pantry: pantryItems)
                 RecipeCard(
                     recipe: recipe,
-                    pantryMatch: (match.ownedCount, match.totalCount)
+                    pantryMatch: (match.ownedCount, match.totalCount),
+                    compact: compact
                 )
                 if !reasons.isEmpty {
                     HStack(spacing: Theme.Spacing.xs) {

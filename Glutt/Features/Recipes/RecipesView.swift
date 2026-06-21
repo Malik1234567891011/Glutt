@@ -187,7 +187,7 @@ struct RecipesView: View {
                 }
                 .padding(.vertical, Theme.Spacing.md)
             }
-            .contentMargins(.bottom, 76, for: .scrollContent)
+            .contentMargins(.bottom, GluttTabBar.reservedHeight, for: .scrollContent)
             .background(Theme.Colors.background)
             .navigationTitle("Recipes")
             .navigationDestination(for: Recipe.self) { recipe in

@@ -397,7 +397,8 @@ struct RecipeDetailView: View {
         }
         .buttonStyle(.gluttPrimary)
         .padding(.horizontal, Theme.Spacing.md)
-        .padding(.bottom, Theme.Spacing.sm)
+        .padding(.top, Theme.Spacing.sm)
+        .padding(.bottom, GluttTabBar.reservedHeight)
         .background(Theme.Colors.background.opacity(0.95))
     }
 

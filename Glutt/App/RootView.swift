@@ -45,9 +45,11 @@ struct RootView: View {
             if scenePhase == .active {
                 router.checkForSharedImport()
                 drainImportInbox()
+                Task { await RecipeImageBackfill.sweep(in: context) }
             }
         }
         .task { drainImportInbox() }
+        .task { await RecipeImageBackfill.sweep(in: context) }
         .fullScreenCover(isPresented: $router.demoCookOnLaunch) {
             if let recipe = recipes.first {
                 CookModeView(recipe: recipe)

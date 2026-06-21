@@ -37,7 +37,7 @@ struct CaptureActionSheet: View {
         case .scanPantry:      return Ph.scan.regular
         case .logFood:         return Ph.forkKnife.regular
         case .addGroceryItem:  return Ph.shoppingCart.regular
-        case .askWhatToCook:   return Ph.sparkle.regular
+        case .askWhatToCook:   return Ph.magicWand.regular
         }
     }
 

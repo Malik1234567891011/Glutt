@@ -43,7 +43,7 @@ enum CaptureAction: String, CaseIterable, Identifiable {
         case .scanPantry: "Scan pantry or fridge"
         case .logFood: "Log food"
         case .addGroceryItem: "Add grocery item"
-        case .askWhatToCook: "What should I cook?"
+        case .askWhatToCook: "Invent a dish"
         }
     }
 
@@ -53,7 +53,7 @@ enum CaptureAction: String, CaseIterable, Identifiable {
         case .scanPantry: "Point the camera, confirm"
         case .logFood: "Photo, search, or quick add"
         case .addGroceryItem: "Straight to your list"
-        case .askWhatToCook: "Ideas from your kitchen"
+        case .askWhatToCook: "A new recipe from what you have"
         }
     }
 
@@ -63,7 +63,7 @@ enum CaptureAction: String, CaseIterable, Identifiable {
         case .scanPantry: "camera.viewfinder"
         case .logFood: "fork.knife.circle"
         case .addGroceryItem: "cart.badge.plus"
-        case .askWhatToCook: "sparkles"
+        case .askWhatToCook: "wand.and.stars"
         }
     }
 }

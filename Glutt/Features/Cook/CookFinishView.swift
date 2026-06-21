@@ -164,6 +164,7 @@ struct CookFinishView: View {
             Toggle("", isOn: $saveLeftovers)
                 .labelsHidden()
                 .tint(Theme.Colors.accent)
+                .hapticOnChange(of: saveLeftovers)
         }
         .cardStyle()
     }

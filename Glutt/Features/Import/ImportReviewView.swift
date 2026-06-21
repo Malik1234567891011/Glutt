@@ -188,8 +188,11 @@ struct ImportReviewView: View {
             }
             Divider()
             Stepper("Servings: \(servings)", value: $servings, in: 1...24)
+                .hapticOnChange(of: servings)
             Stepper("Prep: \(prepMinutes) min", value: $prepMinutes, in: 0...240, step: 5)
+                .hapticOnChange(of: prepMinutes)
             Stepper("Cook: \(cookMinutes) min", value: $cookMinutes, in: 0...480, step: 5)
+                .hapticOnChange(of: cookMinutes)
         }
         .font(.gluttBody)
         .cardStyle()

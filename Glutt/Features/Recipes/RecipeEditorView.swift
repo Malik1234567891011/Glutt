@@ -96,8 +96,11 @@ struct RecipeEditorView: View {
             TextField("Title", text: $title)
             TextField("Short description (optional)", text: $summary, axis: .vertical)
             Stepper("Servings: \(servings)", value: $servings, in: 1...24)
+                .hapticOnChange(of: servings)
             Stepper("Prep: \(prepMinutes) min", value: $prepMinutes, in: 0...240, step: 5)
+                .hapticOnChange(of: prepMinutes)
             Stepper("Cook: \(cookMinutes) min", value: $cookMinutes, in: 0...480, step: 5)
+                .hapticOnChange(of: cookMinutes)
             Picker("Difficulty", selection: $difficulty) {
                 ForEach(Difficulty.allCases) { level in
                     Text(level.label).tag(level)

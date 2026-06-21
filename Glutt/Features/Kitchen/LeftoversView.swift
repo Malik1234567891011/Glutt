@@ -183,6 +183,7 @@ struct LeftoverEditorView: View {
                         Haptics.selection()
                     }
                 Toggle("It's in the freezer", isOn: $isFrozen)
+                    .hapticOnChange(of: isFrozen)
             }
             .scrollContentBackground(.hidden)
             .background(Theme.Colors.background)

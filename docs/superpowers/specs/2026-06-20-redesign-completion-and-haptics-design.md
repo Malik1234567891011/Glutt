@@ -31,43 +31,35 @@ A visual redesign of Glutt's nine core screens is **~75% complete**. This spec c
 
 ---
 
-## Part A — Haptics architecture
+## Part A — Haptics (targeted — revised after full audit)
 
-Goal: coverage becomes complete and consistent by **centralizing**, not by sprinkling more call-site calls. Keep the `Haptics` enum and its taxonomy.
+A full audit of every `Haptics.impact` call site (~50) and every system `Stepper`/`Toggle` showed coverage is **already dense** via call sites, and **most tappable controls are plain/icon/toolbar buttons or `NavigationLink`s, not the four `.glutt*` styles**. So centralizing impact in the button styles is **rejected** — it would miss most buttons *and* double-buzz the existing dense call sites (a risky ~50-site dedupe). Instead, fill the **narrow, specific** gaps with reusable wrappers. Keep the `Haptics` enum.
 
-### A1. Centralize impact in the button styles
-Fire the haptic inside the four `ButtonStyle`s in `Glutt/DesignSystem/Components/Buttons.swift` via `.onChange(of: configuration.isPressed)` (fire when it transitions to `true`):
-- `PrimaryButtonStyle`, `FilledPillButtonStyle` → `Haptics.impact(.medium)`
-- `SecondaryButtonStyle`, `PillButtonStyle` → `Haptics.impact(.light)`
+### A1. `GluttStepper` (new component)
+`Glutt/DesignSystem/Components/GluttStepper.swift`: minus / value / plus pill row, `Haptics.selection()` per tick, styled as the handoff's pill stepper. Use it for:
+- The Ingredients-tab servings control in `RecipeDetailView` (also a visual win — the mock wants a pill stepper).
+- The bare system `Stepper`s that currently fire no haptic: `RecipeEditorView` (servings/prep/cook), `ImportReviewView` (servings/prep/cook), `LeftoversView` (servings).
+- (`WeekPlannerWizard`/`CookFinishView` steppers already fire via `.onChange` — leave, or migrate for consistency; optional.)
 
-Implementation note: a `ButtonStyle` body can't hold `@State`; use a tiny private wrapper view (`@State private var wasPressed`) inside `makeBody` to detect the false→true edge and call the haptic once per press.
+### A2. `.gluttHapticToggle()` (view modifier)
+Fire `Haptics.selection()` on toggle value change. Apply to the bare system `Toggle`s with no haptic: `InventoryView` (assumed-staples, use-soon flag), `LogFoodView` (restaurant), `LeftoversView` (freezer), `CookFinishView` (save leftovers), `SettingsView` (diet rule — verify). (`AddMealSheet`/`WeekPlannerWizard` toggles already fire via `.onChange`.)
 
-**Then audit and remove redundant call-site `Haptics.impact(...)`** on any button already using these styles, so nothing double-buzzes. **Keep** call-site `Haptics.notify(...)` (outcomes are semantically separate) and keep call-site impacts only on controls that are *not* one of these four styles.
-
-Rejected alternatives: (B) add missing call-site calls only — stays inconsistent, every future button must remember; (C) migrate to iOS 17 `.sensoryFeedback` and retire the enum — needless churn vs. the established pattern.
-
-### A2. Wrapper components for system controls (can't fire haptics natively)
-- **`GluttStepper`** (new, in `Glutt/DesignSystem/Components/`): minus / value / plus row; `Haptics.selection()` per tick; styled as the handoff's pill stepper (does double duty as a visual fix). Replace the system `Stepper` in: Ingredients servings control (Recipe detail), `ImportReviewView`, `CookFinishView`.
-- **`.gluttHapticToggle()`** view modifier (or `GluttToggle` wrapper): fire `Haptics.selection()` on value change. Apply to: Inventory "assumed staples" toggle, Settings toggles, Plan toggles.
-
-### A3. Fill scattered gaps (one-liners)
-- `RecipesView` — recipe-card tap → `selection()`; grid/list toggle → `selection()`; filter/sort menu → `selection()` / `impact(.light)`.
-- `CookModeView` — active-timer dismiss (✕) → `impact(.light)`.
-- `RecipeDetailView` — overflow (…) menu → `impact(.light)`.
-- Kitchen/Inventory — search-field clear → `impact(.light)`.
+### A3. `NavigationLink` tap haptics
+Add `.simultaneousGesture(TapGesture().onEnded { Haptics.selection() })` (or a small `.hapticTap()` helper) to the recipe-card and collection-card `NavigationLink`s in `RecipesView` (~lines 248, 290). They navigate but currently don't buzz.
 
 ### A4. Signature cooking moments
-- **Ingredient check-off** (Ingredients tab): `impact(.light)` on check; `selection()` on uncheck.
-- **"Add N missing to groceries"**: `notify(.success)`.
-- **Cook Mode "Finish cooking"**: short celebratory sequence — `impact(.medium)` then `notify(.success)`.
-- **Timer hits zero** — already notifies; keep.
+- **"Add N missing to groceries"** (Ingredients tab) → `Haptics.notify(.success)`.
+- **Cook Mode "Finish cooking"** → short celebratory sequence: `impact(.medium)` then `notify(.success)`.
+- Ingredient check-off already fires `.impact(.light)` (`RecipeDetailView:379`) — keep. Timer-zero already notifies — keep.
 
 ### A5. Taxonomy comment
-Add a short guideline block to `Haptics.swift`:
+Add a guideline block to `Haptics.swift`:
 - `selection` → navigation / value change (tabs, segments, pickers, steppers, card taps)
 - `impact(.light)` → secondary taps, toggles, dismissals
 - `impact(.medium)` → primary commit (CTAs)
 - `notify(.success/.warning/.error)` → outcomes
+
+**Explicitly NOT doing:** centralizing impact in the four `ButtonStyle`s, or the mass call-site dedupe (rejected above after the audit).
 
 ---
 
@@ -123,7 +115,7 @@ Each touches only its own feature file. Match the handoff section for the screen
 ## Part C — Execution & verification
 
 ### Sequencing
-1. **Foundation (serial — shared files):** Part A (A1 button centralization + call-site dedupe, A2 `GluttStepper` + toggle modifier, A5 taxonomy). Build to confirm green.
+1. **Foundation (serial — shared files):** Part A (`GluttStepper`, `.gluttHapticToggle()`, NavigationLink tap haptics, signature buzzes, taxonomy comment). Build to confirm green.
 2. **Screens (parallel — independent feature files):** B1–B7, each embedding its own signature haptics from A3/A4. Fan out one agent per screen.
 3. **Verify pass:** XcodeBuildMCP build + simulator screenshot per screen, compared to the handoff frame. User feels haptics on a device.
 
@@ -131,7 +123,7 @@ Each touches only its own feature file. Match the handoff section for the screen
 - Use XcodeBuildMCP (`session_show_defaults` first, then `build_run_sim`, `screenshot`) per CLAUDE.md. Scheme `Glutt`. Tests via `test_sim` if touched.
 
 ### Risks & care-points
-- **Double-buzz** after A1 — the dedupe of call-site impacts is the critical step; grep `Haptics.impact` after centralizing and confirm each remaining one is on a non-style control.
+- **Double-buzz** — deliberately avoided by *not* centralizing in button styles; the new wrappers go only on controls confirmed to lack a haptic. After wiring, grep `Haptics`/the wrapped controls to confirm no control fires twice.
 - **Kitchen use-soon restructure** — must not break pantry-matching / `useSoonDate` logic; visual change only.
 - **`RecipeDetailView` size** — Ingredients-tab refactor is layout-only; keep `PantryMatcher`/servings bindings intact.
 - **Git hygiene** — `main` is the default branch; create a feature branch before committing implementation.

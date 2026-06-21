@@ -267,6 +267,7 @@ struct RecipesView: View {
             }
         }
         .buttonStyle(.plain)
+        .hapticTap()
     }
 
     private func handlePendingImport() {
@@ -305,6 +306,7 @@ struct RecipesView: View {
                         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .hapticTap()
                 }
             }
             .padding(.horizontal, Theme.Spacing.md)

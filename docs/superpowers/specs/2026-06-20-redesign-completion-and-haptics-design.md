@@ -1,7 +1,7 @@
 # Design: Finish the Glutt redesign + complete haptics
 
 **Date:** 2026-06-20
-**Status:** Approved (design); pending spec review
+**Status:** ✅ Implemented — all 9 screens at handoff fidelity, haptics complete, 142/142 tests pass (branch `redesign-finish-screens-haptics`)
 **Source of visual truth:** `design_handoff_glutt_redesign/README.md` (+ `Glutt Redesign.dc.html`)
 
 ## Context

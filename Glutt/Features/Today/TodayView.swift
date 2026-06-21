@@ -410,7 +410,7 @@ struct TodayView: View {
     private var emptyDayCard: some View {
         Button {
             Haptics.impact(.light)
-            isAskingWhatToCook = true
+            router.selectedTab = .recipes
         } label: {
             VStack(spacing: Theme.Spacing.sm) {
                 Ph.sparkle.regular
@@ -418,10 +418,10 @@ struct TodayView: View {
                     .scaledToFit()
                     .frame(width: 32, height: 32)
                     .foregroundStyle(Theme.Colors.accent)
-                Text("Nothing planned — what should I cook?")
+                Text("Nothing planned — find something to cook")
                     .font(.gluttHeadline)
                     .foregroundStyle(Theme.Colors.textPrimary)
-                Text("Tap for ideas from your own kitchen")
+                Text("Search your recipes or discover something new")
                     .font(.gluttCaption)
                     .foregroundStyle(Theme.Colors.textSecondary)
             }
@@ -448,7 +448,7 @@ struct TodayView: View {
                 Haptics.selection()
                 isLoggingFood = true
             }
-            quickAction("Ask", icon: Ph.sparkle.regular) {
+            quickAction("Invent", icon: Ph.magicWand.regular) {
                 Haptics.selection()
                 isAskingWhatToCook = true
             }
@@ -512,7 +512,7 @@ struct TodayView: View {
             Spacer()
             Button("Find a recipe") {
                 Haptics.impact(.light)
-                isAskingWhatToCook = true
+                router.selectedTab = .recipes
             }
             .buttonStyle(.gluttPillFilled)
         }

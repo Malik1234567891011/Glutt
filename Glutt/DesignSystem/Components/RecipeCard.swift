@@ -74,15 +74,19 @@ struct RecipeCard: View {
     @ViewBuilder private var statRow: some View {
         HStack(spacing: 8) {
             StatPill.time(recipe.timeLabel)
+                .fixedSize(horizontal: true, vertical: false)
             StatPill.difficulty(compact ? recipe.difficulty.shortLabel : recipe.difficulty.label)
+                .fixedSize(horizontal: true, vertical: false)
             if !compact {
                 if let rating = recipe.rating {
                     StatPill.rating("\(rating)")
+                        .fixedSize(horizontal: true, vertical: false)
                 }
                 if let pantryMatch, pantryMatch.total > 0 {
                     StatPill(icon: Ph.basket.fill,
                              text: "\(pantryMatch.owned)/\(pantryMatch.total)",
                              foreground: Theme.Colors.accent, background: Theme.Colors.successTint)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
             }
             Spacer(minLength: 0)

@@ -154,16 +154,7 @@ struct RecipesView: View {
                     } else {
                         let results = searchResults
                         if results.isEmpty {
-                            EmptyStateView(
-                                icon: "magnifyingglass",
-                                title: "Nothing matches",
-                                message: "Try describing it differently — or discover new recipes for \"\(searchText)\".",
-                                actionLabel: "Find some in Discover",
-                                action: {
-                                    segment = .discover
-                                    Task { await discoverModel.search(searchText) }
-                                }
-                            )
+                            discoverHandoff
                         } else {
                             LazyVStack(spacing: Theme.Spacing.md) {
                                 ForEach(results, id: \.recipe.persistentModelID) { result in
@@ -242,6 +233,22 @@ struct RecipesView: View {
                 Button("Cancel", role: .cancel) { newCollectionName = "" }
             }
         }
+    }
+
+    /// Shown when the library has nothing matching the query — points the user to Discover,
+    /// carrying the same query into the Discover feed.
+    private var discoverHandoff: some View {
+        EmptyStateView(
+            icon: "sparkle.magnifyingglass",
+            title: "Nothing like that in your kitchen yet",
+            message: "You don't have a recipe for \"\(searchText)\" — but Discover probably does. Want me to go look?",
+            actionLabel: "Find it in Discover",
+            action: {
+                Haptics.impact(.light)
+                segment = .discover
+                Task { await discoverModel.search(searchText) }
+            }
+        )
     }
 
     private func recipeLink(_ recipe: Recipe, reasons: [String]) -> some View {

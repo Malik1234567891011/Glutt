@@ -7,6 +7,15 @@ enum Difficulty: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     var label: String { rawValue.capitalized }
+
+    /// Compact label for tight layouts (grid cards).
+    var shortLabel: String {
+        switch self {
+        case .beginner: return "Easy"
+        case .intermediate: return "Med"
+        case .advanced: return "Hard"
+        }
+    }
 }
 
 enum SourcePlatform: String, Codable, CaseIterable {

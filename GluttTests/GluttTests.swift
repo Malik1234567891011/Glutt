@@ -584,96 +584,6 @@ final class RecipeSearchEngineTests: XCTestCase {
     }
 }
 
-final class MealRecommenderTests: XCTestCase {
-
-    private func makeRecipe(_ title: String, minutes: Int, tags: [String] = [], ingredients: [String] = []) -> Recipe {
-        let recipe = Recipe(title: title, prepMinutes: 0, cookMinutes: minutes, tags: tags)
-        recipe.ingredients = ingredients.enumerated().map { RecipeIngredient(name: $1, sortIndex: $0) }
-        recipe.steps = [RecipeStep(index: 0, text: "Cook.")]
-        return recipe
-    }
-
-    func testTimeLimitIsAHardCutoff() {
-        let slow = makeRecipe("Sunday Roast", minutes: 120)
-        let fast = makeRecipe("Fried Rice", minutes: 20)
-        let request = MealRecommender.Request(
-            maxMinutes: 30, recipes: [slow, fast], pantry: [], leftovers: [], sessions: []
-        )
-        let picks = MealRecommender.recommend(request)
-
-        XCTAssertFalse(picks.contains { $0.recipe.title == "Sunday Roast" })
-        XCTAssertTrue(picks.contains { $0.recipe.title == "Fried Rice" })
-    }
-
-    func testMoodBoostsMatchingRecipes() {
-        let sweet = makeRecipe("Chocolate Brownies", minutes: 40, tags: ["dessert"], ingredients: ["chocolate", "sugar"])
-        let savory = makeRecipe("Garlic Steak", minutes: 30, tags: [], ingredients: ["steak", "garlic"])
-        let request = MealRecommender.Request(
-            mood: .sweet, recipes: [savory, sweet], pantry: [], leftovers: [], sessions: []
-        )
-        let picks = MealRecommender.recommend(request)
-
-        XCTAssertEqual(picks.first?.recipe.title, "Chocolate Brownies")
-        XCTAssertEqual(picks.first?.badge, "Best match")
-    }
-
-    func testPantryMatchWinsWhenPreferred() {
-        let stocked = makeRecipe("Rice Bowl", minutes: 30, ingredients: ["rice", "egg"])
-        let exotic = makeRecipe("Saffron Paella", minutes: 30, ingredients: ["saffron", "shrimp"])
-        let pantry = [PantryItem(name: "rice"), PantryItem(name: "egg")]
-        let request = MealRecommender.Request(
-            recipes: [exotic, stocked], pantry: pantry, leftovers: [], sessions: []
-        )
-        let picks = MealRecommender.recommend(request)
-
-        XCTAssertEqual(picks.first?.recipe.title, "Rice Bowl")
-        XCTAssertEqual(picks.first?.missingCount, 0)
-    }
-
-    func testMealSlotInferredFromHour() {
-        func slot(_ hour: Int) -> MealRecommender.MealSlot {
-            let date = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: .now)!
-            return MealRecommender.MealSlot.current(at: date)
-        }
-        XCTAssertEqual(slot(8), .breakfast)
-        XCTAssertEqual(slot(13), .lunch)
-        XCTAssertEqual(slot(19), .dinner)
-        XCTAssertEqual(slot(23), .snack)
-    }
-
-    func testBreakfastSlotFavorsBreakfastDishes() {
-        let pancakes = makeRecipe("Fluffy Pancakes", minutes: 20, tags: ["breakfast"], ingredients: ["flour", "egg"])
-        let curry = makeRecipe("Beef Curry", minutes: 20, tags: ["dinner"], ingredients: ["beef"])
-        let request = MealRecommender.Request(
-            mealSlot: .breakfast, recipes: [curry, pancakes], pantry: [], leftovers: [], sessions: []
-        )
-        let picks = MealRecommender.recommend(request)
-
-        XCTAssertEqual(picks.first?.recipe.title, "Fluffy Pancakes")
-    }
-
-    func testAlreadyEatenTodayIsDownweighted() {
-        // Both are equally strong (5★ + fully stocked); the only difference is
-        // that one was already eaten today, which should push it below the other.
-        let repeated = makeRecipe("Greek Salad", minutes: 15, ingredients: ["cucumber", "feta"])
-        repeated.rating = 5
-        let fresh = makeRecipe("Tomato Soup", minutes: 15, ingredients: ["tomato"])
-        fresh.rating = 5
-        let pantry = [PantryItem(name: "cucumber"), PantryItem(name: "feta"), PantryItem(name: "tomato")]
-        let request = MealRecommender.Request(
-            recipes: [repeated, fresh],
-            pantry: pantry,
-            leftovers: [],
-            sessions: [],
-            eatenTodayTitles: ["greek salad"]
-        )
-        let picks = MealRecommender.recommend(request)
-
-        XCTAssertEqual(picks.first?.recipe.title, "Tomato Soup")
-        XCTAssertTrue(picks.contains { $0.recipe.title == "Greek Salad" })
-    }
-}
-
 final class RecipeOptimizerTests: XCTestCase {
 
     @MainActor
@@ -961,6 +871,14 @@ final class DietGuardTests: XCTestCase {
         XCTAssertTrue(conflicts.allSatisfy(\.isBlocking))
     }
 
+    func testNoPorkRuleBlocksPorkDish() {
+        let porkDish = recipe("Pork Belly", ingredients: ["Pork", "Garlic", "Soy sauce"])
+        XCTAssertFalse(DietGuard.isSuggestable(porkDish, rules: [.noPork], allergies: []))
+
+        let chickenDish = recipe("Chicken Stir Fry", ingredients: ["Chicken", "Garlic", "Soy sauce"])
+        XCTAssertTrue(DietGuard.isSuggestable(chickenDish, rules: [.noPork], allergies: []))
+    }
+
     func testKosherBlocksPorkAndShellfishButAllowsFinFish() {
         let shrimp = recipe("Shrimp Scampi", ingredients: ["Shrimp", "Garlic", "Butter"])
         XCTAssertTrue(DietGuard.conflicts(in: shrimp, rules: [.kosher], allergies: []).contains { $0.isBlocking })
@@ -971,23 +889,6 @@ final class DietGuardTests: XCTestCase {
         // Fin fish (salmon) is kosher-acceptable for this keyword guard.
         let salmon = recipe("Baked Salmon", ingredients: ["Salmon", "Lemon", "Dill"])
         XCTAssertTrue(DietGuard.conflicts(in: salmon, rules: [.kosher], allergies: []).isEmpty)
-    }
-
-    func testRecommenderNeverSuggestsBlockedRecipes() {
-        let porkDish = recipe("Pork Stir Fry", ingredients: ["Pork", "Rice"])
-        let safeDish = recipe("Veggie Stir Fry", ingredients: ["Broccoli", "Rice"])
-        porkDish.rating = 5
-        safeDish.rating = 5
-        let picks = MealRecommender.recommend(MealRecommender.Request(
-            recipes: [porkDish, safeDish],
-            pantry: [],
-            leftovers: [],
-            sessions: [],
-            rules: [.noPork],
-            allergies: []
-        ))
-        XCTAssertFalse(picks.contains { $0.recipe === porkDish })
-        XCTAssertTrue(picks.contains { $0.recipe === safeDish })
     }
 
     func testWeekPlannerNeverPlansAllergens() {

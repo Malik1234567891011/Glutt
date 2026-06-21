@@ -4,6 +4,11 @@ import SwiftUI
 /// and Phosphor glyphs. Drives `Router.selectedTab` via the binding — it does NOT
 /// own navigation; the host `TabView` still switches content.
 struct GluttTabBar: View {
+    /// Vertical footprint the bar occupies over content. Screens that pin
+    /// content/CTAs to the bottom use this to clear the bar. Keep in sync with
+    /// the bar's layout (top padding + glyph/label height).
+    static let reservedHeight: CGFloat = 76
+
     @Binding var selection: AppTab
 
     var body: some View {

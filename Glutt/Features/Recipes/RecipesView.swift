@@ -21,6 +21,11 @@ struct RecipesView: View {
     @State private var newCollectionName = ""
     @State private var segment: RecipeSegment = .myRecipes
     @State private var discoverModel = DiscoverFeedViewModel()
+    @State private var aiHeadline: String?
+    @State private var aiResults: [AskGlutt.RankedResult]?
+    /// The trimmed query the AI answer corresponds to (for staleness checks).
+    @State private var aiQuery = ""
+    @State private var isRanking = false
 
     enum RecipeSegment: Int, CaseIterable { case myRecipes, discover }
 
@@ -138,7 +143,7 @@ struct RecipesView: View {
                                                     GridItem(.flexible(), spacing: Theme.Spacing.md)],
                                           spacing: Theme.Spacing.md) {
                                     ForEach(visibleRecipes) { recipe in
-                                        recipeLink(recipe, reasons: [])
+                                        recipeLink(recipe, reasons: [], compact: true)
                                     }
                                 }
                                 .padding(.horizontal, Theme.Spacing.md)
@@ -154,29 +159,35 @@ struct RecipesView: View {
                     } else {
                         let results = searchResults
                         if results.isEmpty {
-                            EmptyStateView(
-                                icon: "magnifyingglass",
-                                title: "Nothing matches",
-                                message: "Try describing it differently — or discover new recipes for \"\(searchText)\".",
-                                actionLabel: "Find some in Discover",
-                                action: {
-                                    segment = .discover
-                                    Task { await discoverModel.search(searchText) }
-                                }
-                            )
+                            discoverHandoff
                         } else {
-                            LazyVStack(spacing: Theme.Spacing.md) {
-                                ForEach(results, id: \.recipe.persistentModelID) { result in
-                                    recipeLink(result.recipe, reasons: result.reasons)
-                                }
+                            if isRanking {
+                                rankingIndicator
                             }
-                            .padding(.horizontal, Theme.Spacing.md)
+                            if let aiResults, aiQuery == searchText.trimmingCharacters(in: .whitespaces) {
+                                if let aiHeadline, !aiHeadline.isEmpty {
+                                    searchHeadlineBanner(aiHeadline)
+                                }
+                                LazyVStack(spacing: Theme.Spacing.md) {
+                                    ForEach(aiResults, id: \.recipe.persistentModelID) { result in
+                                        recipeLink(result.recipe, reasons: aiReasons(for: result))
+                                    }
+                                }
+                                .padding(.horizontal, Theme.Spacing.md)
+                            } else {
+                                LazyVStack(spacing: Theme.Spacing.md) {
+                                    ForEach(results, id: \.recipe.persistentModelID) { result in
+                                        recipeLink(result.recipe, reasons: result.reasons)
+                                    }
+                                }
+                                .padding(.horizontal, Theme.Spacing.md)
+                            }
                         }
                     }
                 }
                 .padding(.vertical, Theme.Spacing.md)
             }
-            .contentMargins(.bottom, 76, for: .scrollContent)
+            .contentMargins(.bottom, GluttTabBar.reservedHeight, for: .scrollContent)
             .background(Theme.Colors.background)
             .navigationTitle("Recipes")
             .navigationDestination(for: Recipe.self) { recipe in
@@ -189,6 +200,15 @@ struct RecipesView: View {
             .onSubmit(of: .search) {
                 if segment == .discover {
                     Task { await discoverModel.search(searchText) }
+                } else {
+                    runAIRanking()
+                }
+            }
+            .onChange(of: searchText) {
+                // Editing the query invalidates a stale AI answer.
+                if searchText.trimmingCharacters(in: .whitespaces) != aiQuery {
+                    aiResults = nil
+                    aiHeadline = nil
                 }
             }
             .toolbar {
@@ -244,13 +264,84 @@ struct RecipesView: View {
         }
     }
 
-    private func recipeLink(_ recipe: Recipe, reasons: [String]) -> some View {
+    /// Shown when the library has nothing matching the query — points the user to Discover,
+    /// carrying the same query into the Discover feed.
+    private var discoverHandoff: some View {
+        EmptyStateView(
+            icon: "sparkle.magnifyingglass",
+            title: "Nothing like that in your kitchen yet",
+            message: "You don't have a recipe for \"\(searchText)\" — but Discover probably does. Want me to go look?",
+            actionLabel: "Find it in Discover",
+            action: {
+                Haptics.impact(.light)
+                segment = .discover
+                Task { await discoverModel.search(searchText) }
+            }
+        )
+    }
+
+    private func runAIRanking() {
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        let results = searchResults
+        guard !query.isEmpty, !results.isEmpty else { return }
+        Haptics.impact(.light)
+        isRanking = true
+        aiResults = nil
+        aiHeadline = nil
+        Task {
+            let outcome = await AskGlutt.rankSearch(query: query, results: results, pantry: pantryItems)
+            // Only apply if the query hasn't changed since we fired.
+            if searchText.trimmingCharacters(in: .whitespaces) == query {
+                aiResults = outcome.results
+                aiHeadline = outcome.headline
+                aiQuery = query
+            }
+            isRanking = false
+        }
+    }
+
+    private func aiReasons(for result: AskGlutt.RankedResult) -> [String] {
+        var chips: [String] = []
+        if let badge = result.badge, !badge.isEmpty { chips.append(badge) }
+        chips.append(contentsOf: result.reasons)
+        return Array(chips.prefix(3))
+    }
+
+    private var rankingIndicator: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            ProgressView()
+            Text("Glutt\u{2019}s thinking\u{2026}")
+                .font(.gluttCaption)
+                .foregroundStyle(Theme.Colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Theme.Spacing.sm)
+    }
+
+    private func searchHeadlineBanner(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+            Ph.sparkle.regular
+                .resizable().scaledToFit().frame(width: 18, height: 18)
+                .foregroundStyle(Theme.Colors.accent)
+            Text(text)
+                .font(.gluttHeadline)
+                .foregroundStyle(Theme.Colors.textPrimary)
+            Spacer(minLength: 0)
+        }
+        .padding(Theme.Spacing.md)
+        .background(Theme.Colors.accent.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .padding(.horizontal, Theme.Spacing.md)
+    }
+
+    private func recipeLink(_ recipe: Recipe, reasons: [String], compact: Bool = false) -> some View {
         NavigationLink(value: recipe) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 let match = PantryMatcher.match(recipe: recipe, pantry: pantryItems)
                 RecipeCard(
                     recipe: recipe,
-                    pantryMatch: (match.ownedCount, match.totalCount)
+                    pantryMatch: (match.ownedCount, match.totalCount),
+                    compact: compact
                 )
                 if !reasons.isEmpty {
                     HStack(spacing: Theme.Spacing.xs) {

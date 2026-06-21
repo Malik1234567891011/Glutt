@@ -139,16 +139,14 @@ struct WhatToCookView: View {
                 .foregroundStyle(Theme.Colors.textPrimary)
             HStack(spacing: Theme.Spacing.sm) {
                 TextField("\"something quick and savory with chicken\"", text: $askText, axis: .vertical)
+                    .font(.gluttBody)
                     .lineLimit(1...3)
-                    .padding(Theme.Spacing.sm)
-                    .background(Theme.Colors.background)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
                     .onSubmit(ask)
                 Button(action: ask) {
                     Ph.paperPlaneTilt.regular
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 28, height: 28)
+                        .frame(width: 22, height: 22)
                         .foregroundStyle(
                             askText.trimmingCharacters(in: .whitespaces).isEmpty
                                 ? Theme.Colors.border : Theme.Colors.accent
@@ -156,6 +154,14 @@ struct WhatToCookView: View {
                 }
                 .disabled(askText.trimmingCharacters(in: .whitespaces).isEmpty || isAsking)
             }
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.vertical, Theme.Spacing.sm + 2)
+            .background(Theme.Colors.background)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous)
+                    .strokeBorder(Theme.Colors.border.opacity(0.6), lineWidth: 1)
+            )
         }
         .cardStyle()
     }
@@ -507,7 +513,7 @@ struct WhatToCookView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Theme.Spacing.xs) {
                         ForEach(recommendation.reasons, id: \.self) { reason in
-                            Chip(label: reason)
+                            reasonPill(reason)
                                 .fixedSize()
                         }
                     }
@@ -528,6 +534,32 @@ struct WhatToCookView: View {
             }
         }
         .cardStyle()
+    }
+
+    /// A single reason rendered as a tinted pill. Reasons that describe a
+    /// constraint or cost (time budget, missing items) read amber-on-warm;
+    /// genuinely positive ones (you have it, rated it, uses it up) read
+    /// herb-green-on-sage.
+    private func reasonPill(_ reason: String) -> some View {
+        let isCost = reasonIsCost(reason)
+        return Text(reason)
+            .font(.gluttCaption.weight(.semibold))
+            .foregroundStyle(isCost ? Theme.Colors.warning : Theme.Colors.accent)
+            .lineLimit(1)
+            .padding(.horizontal, Theme.Spacing.sm + 2)
+            .padding(.vertical, 5)
+            .background(isCost ? Theme.Colors.warningTint : Theme.Colors.successTint)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous))
+    }
+
+    /// Classify a recommendation reason as a constraint/cost (amber) vs. a
+    /// positive signal (herb-green). Cost reasons are about time budget or a
+    /// partial pantry match; everything else is something good about the dish.
+    private func reasonIsCost(_ reason: String) -> Bool {
+        let lower = reason.lowercased()
+        return lower.contains("missing")
+            || lower.contains("fits your")
+            || lower.contains("min —")
     }
 
     private var eatenTodayTitles: [String] {

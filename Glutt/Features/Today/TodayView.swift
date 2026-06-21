@@ -318,36 +318,23 @@ struct TodayView: View {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                HStack(spacing: Theme.Spacing.md) {
+                HStack(spacing: Theme.Spacing.sm) {
                     if let time = meal.exactTime {
-                        HStack(spacing: 4) {
-                            Ph.forkKnife.regular
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 12, height: 12)
-                            Text(time.formatted(date: .omitted, time: .shortened))
-                        }
+                        StatPill(
+                            icon: Ph.forkKnife.regular,
+                            text: time.formatted(date: .omitted, time: .shortened)
+                        )
                     }
                     if let start = meal.suggestedStartTime {
-                        HStack(spacing: 4) {
-                            Ph.timer.regular
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 12, height: 12)
-                            Text("start by \(start.formatted(date: .omitted, time: .shortened))")
-                        }
-                        .foregroundStyle(Theme.Colors.warning)
+                        StatPill(
+                            icon: Ph.timer.regular,
+                            text: "start by \(start.formatted(date: .omitted, time: .shortened))",
+                            foreground: Theme.Colors.warning,
+                            background: Theme.Colors.warningTint
+                        )
                     }
-                    HStack(spacing: 4) {
-                        Ph.clock.regular
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 12, height: 12)
-                        Text(recipe.timeLabel)
-                    }
+                    StatPill.time(recipe.timeLabel)
                 }
-                .font(.gluttCaption)
-                .foregroundStyle(Theme.Colors.textSecondary)
 
                 // Missing ingredients live in one connected strip with their
                 // own labeled fixes — not floating icon buttons.
@@ -464,8 +451,8 @@ struct TodayView: View {
                     .scaledToFit()
                     .frame(width: 20, height: 20)
                     .foregroundStyle(Theme.Colors.accent)
-                    .frame(width: 40, height: 40)
-                    .background(Theme.Colors.accent.opacity(0.09))
+                    .frame(width: 46, height: 46)
+                    .background(Theme.Colors.successTint)
                     .clipShape(Circle())
                 Text(label)
                     .font(.caption2.weight(.medium))
@@ -498,7 +485,7 @@ struct TodayView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 22, height: 22)
-                .foregroundStyle(Theme.Colors.warning)
+                .foregroundStyle(Theme.Colors.tomato)
             VStack(alignment: .leading, spacing: 2) {
                 Text(items.count == 1 ? "\(names) needs using" : "Use these soon")
                     .font(.gluttHeadline)
@@ -517,7 +504,7 @@ struct TodayView: View {
             .buttonStyle(.gluttPillFilled)
         }
         .padding(Theme.Spacing.md)
-        .background(Theme.Colors.warningTint)
+        .background(Theme.Colors.peachPanel)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
     }
 
@@ -570,7 +557,14 @@ struct TodayView: View {
             goalGauge(value: calories, goal: prefs.dailyCalorieGoal, label: "calories", unit: "")
             goalGauge(value: protein, goal: prefs.dailyProteinGoal, label: "protein", unit: "g")
         }
-        .cardStyle()
+        .padding(Theme.Spacing.md)
+        .background(Theme.Colors.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous)
+                .strokeBorder(Theme.Colors.border.opacity(0.55), lineWidth: 1)
+        )
+        .shadow(color: Theme.Colors.textPrimary.opacity(0.07), radius: 10, x: 0, y: 3)
     }
 
     private func goalGauge(value: Int, goal: Int?, label: String, unit: String) -> some View {

@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 
 /// What's actually in the kitchen. Fast over precise: tap an item to cycle
-/// its rough quantity, swipe to remove, use-soon items pinned on top.
+/// its rough quantity, swipe to remove, use-soon items flagged with an inline badge.
 struct InventoryView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \PantryItem.name) private var items: [PantryItem]
@@ -18,8 +18,9 @@ struct InventoryView: View {
         return items.filter { $0.name.lowercased().contains(query) }
     }
 
-    private var useSoonItems: [PantryItem] {
-        visibleItems.filter { $0.isUseSoon && $0.roughQuantity != .out }
+    /// A use-soon item still worth flagging: not fully out of stock.
+    private func showsUseSoonBadge(_ item: PantryItem) -> Bool {
+        item.isUseSoon && item.roughQuantity != .out
     }
 
     /// Staples surfaced in their own section, so they don't clutter the
@@ -48,12 +49,11 @@ struct InventoryView: View {
                         }
                     )
                 } else {
-                    if !useSoonItems.isEmpty {
-                        useSoonSection
-                    }
+                    // Use-soon items surface inline (via per-row badge) inside their
+                    // category sections rather than in a separate pinned section.
                     ForEach(GroceryCategory.allCases) { category in
                         let categoryItems = visibleItems.filter {
-                            $0.category == category && !$0.isUseSoon && !isAssumedStaple($0)
+                            $0.category == category && !isAssumedStaple($0)
                         }
                         if !categoryItems.isEmpty {
                             categorySection(category, items: categoryItems)
@@ -74,11 +74,18 @@ struct InventoryView: View {
                         Haptics.impact(.light)
                         isScanning = true
                     } label: {
+                        // Outlined herb-green circle — pantry scan.
                         Ph.camera.regular
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 20, height: 20)
+                            .frame(width: 18, height: 18)
+                            .foregroundStyle(Theme.Colors.accent)
+                            .frame(width: 38, height: 38)
+                            .overlay(
+                                Circle().strokeBorder(Theme.Colors.accent, lineWidth: 1.5)
+                            )
                     }
+                    .buttonStyle(.plain)
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
@@ -86,11 +93,17 @@ struct InventoryView: View {
                     Haptics.impact(.light)
                     isAddingItem = true
                 } label: {
-                    Ph.plus.regular
+                    // Filled herb-green circle — add item.
+                    Ph.plus.bold
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 20, height: 20)
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(Theme.Colors.creamText)
+                        .frame(width: 38, height: 38)
+                        .background(Theme.Colors.accent)
+                        .clipShape(Circle())
                 }
+                .buttonStyle(.plain)
             }
         }
         .sheet(isPresented: $isAddingItem) {
@@ -149,6 +162,7 @@ struct InventoryView: View {
         ))
         .font(.gluttBody)
         .tint(Theme.Colors.accent)
+        .hapticOnChange(of: optOut == nil)
     }
 
     /// Toggling off creates/marks an "out" row so the matcher stops assuming it;
@@ -186,52 +200,79 @@ struct InventoryView: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
     }
 
-    private var useSoonSection: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Label {
-                Text("Use soon")
-            } icon: {
-                Ph.warningCircle.fill
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 16, height: 16)
-            }
-            .font(.gluttHeadline)
-            .foregroundStyle(Theme.Colors.warning)
-            ForEach(useSoonItems) { item in
-                itemRow(item)
-            }
-        }
-        .padding(Theme.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.Colors.warningTint)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-    }
-
     private func categorySection(_ category: GroceryCategory, items: [PantryItem]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text(category.label)
-                .font(.gluttHeadline)
-                .foregroundStyle(Theme.Colors.textSecondary)
-            ForEach(items) { item in
-                itemRow(item)
-                    .cardStyle(padding: Theme.Spacing.sm)
+            SectionLabel(text: category.label)
+                .padding(.leading, Theme.Spacing.xs)
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    itemRow(item)
+                        .padding(.vertical, Theme.Spacing.sm)
+                        .padding(.horizontal, Theme.Spacing.md)
+                    if index < items.count - 1 {
+                        Divider()
+                            .overlay(Theme.Colors.border)
+                            .padding(.leading, Theme.Spacing.md)
+                    }
+                }
             }
+            .background(Theme.Colors.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                    .strokeBorder(Theme.Colors.border.opacity(0.55), lineWidth: 1)
+            )
         }
+    }
+
+    /// Section-tinted 36pt icon chip keyed off the item's grocery category.
+    /// Tints mirror the handoff: produce → green, protein → tomato, dairy → amber.
+    @ViewBuilder
+    private func categoryChip(for category: GroceryCategory) -> some View {
+        switch category {
+        case .produce:
+            IconChip(icon: Ph.plant.fill, foreground: Theme.Colors.accent, background: Theme.Colors.successTint)
+        case .meat:
+            IconChip(icon: Ph.hamburger.fill, foreground: Theme.Colors.tomato, background: Theme.Colors.tomatoTint)
+        case .dairy:
+            IconChip(icon: Ph.drop.fill, foreground: Theme.Colors.warning, background: Theme.Colors.warningTint)
+        case .pantry, .frozen, .spices, .other:
+            IconChip(icon: Ph.bowlFood.fill, foreground: Theme.Colors.warning, background: Theme.Colors.warningTint)
+        }
+    }
+
+    /// Peach pill with tomato text for items flagged use-soon.
+    private var useSoonBadge: some View {
+        Text("Use soon")
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(Theme.Colors.tomato)
+            .padding(.horizontal, Theme.Spacing.sm)
+            .padding(.vertical, 4)
+            .background(Theme.Colors.peachPanel)
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     private func itemRow(_ item: PantryItem) -> some View {
-        HStack {
+        HStack(spacing: Theme.Spacing.sm) {
+            categoryChip(for: item.category)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
-                    .font(.gluttBody)
+                    .font(.gluttBody.weight(.bold))
                     .foregroundStyle(item.roughQuantity == .out ? Theme.Colors.textSecondary : Theme.Colors.textPrimary)
                     .strikethrough(item.roughQuantity == .out)
                 Text([item.exactQuantity, item.location.label].compactMap { $0 }.joined(separator: " · "))
                     .font(.caption2)
                     .foregroundStyle(item.exactQuantity == nil ? Theme.Colors.textSecondary : Theme.Colors.accent)
             }
-            Spacer()
+            Spacer(minLength: Theme.Spacing.sm)
+            // Right-side status: inline use-soon badge, else an "In stock" caption.
+            if showsUseSoonBadge(item) {
+                useSoonBadge
+            } else {
+                Text("In stock")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
             // Tap to cycle: full -> half -> low -> out -> full
             Button {
                 Haptics.impact(.light)
@@ -305,6 +346,7 @@ struct PantryItemEditorView: View {
                     }
                     TextField("Exact amount (optional): 1 lb, 24 eggs…", text: $exactQuantity)
                     Toggle("Use soon", isOn: $flagUseSoon)
+                        .hapticOnChange(of: flagUseSoon)
                     Button("Add") {
                         Haptics.notify(.success)
                         addSingle()

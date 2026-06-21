@@ -142,14 +142,31 @@ struct PlanView: View {
                 }
             }
 
-            Button("Generate grocery list from plan") {
+            Button {
                 Haptics.notify(.success)
                 generateGroceries()
+            } label: {
+                Text("Generate grocery list from plan")
+                    .font(.gluttHeadline)
+                    .foregroundStyle(Theme.Colors.accent)
+                    .padding(.vertical, 14)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous)
+                            .strokeBorder(Theme.Colors.accent, lineWidth: 1.5)
+                    )
             }
-            .buttonStyle(.gluttSecondary)
+            .buttonStyle(.plain)
             .disabled(weekMeals.compactMap(\.recipe).isEmpty)
         }
-        .cardStyle()
+        .padding(Theme.Spacing.md)
+        .background(Theme.Colors.card)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(Theme.Colors.border.opacity(0.55), lineWidth: 1)
+        )
+        .shadow(color: Theme.Colors.textPrimary.opacity(0.07), radius: 10, x: 0, y: 3)
     }
 
     private func summaryStat(value: String, label: String) -> some View {
@@ -214,9 +231,9 @@ struct PlanView: View {
             HStack(spacing: Theme.Spacing.sm) {
                 Text(day.formatted(.dateTime.day()))
                     .font(.gluttHeadline)
-                    .foregroundStyle(day == today ? .white : Theme.Colors.textSecondary)
+                    .foregroundStyle(day == today ? Theme.Colors.creamText : Theme.Colors.accent)
                     .frame(width: 32, height: 32)
-                    .background(day == today ? Theme.Colors.accent : Theme.Colors.accent.opacity(0.08))
+                    .background(day == today ? Theme.Colors.accent : Theme.Colors.successTint)
                     .clipShape(Circle())
                 Text(dayLabel(day))
                     .font(.gluttHeadline)
@@ -252,7 +269,7 @@ struct PlanView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Theme.Spacing.md)
                     .background(
-                        RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        RoundedRectangle(cornerRadius: 17, style: .continuous)
                             .strokeBorder(Theme.Colors.border, style: StrokeStyle(lineWidth: 1, dash: [6]))
                     )
                 }

@@ -4,7 +4,6 @@ import SwiftUI
 /// headline and a single "next" CTA.
 struct WelcomeScreen: View {
     let onStart: () -> Void
-    @State private var float = false
 
     var body: some View {
         VStack(spacing: Theme.Spacing.lg) {
@@ -28,9 +27,6 @@ struct WelcomeScreen: View {
         }
         .padding(.top, Theme.Spacing.lg)
         .background(Theme.Colors.background)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 3).repeatForever(autoreverses: true)) { float = true }
-        }
     }
 
     private var heroPanel: some View {
@@ -51,7 +47,7 @@ struct WelcomeScreen: View {
                 .frame(width: 200, height: 250)
                 .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
                 .shadow(color: Theme.Colors.textPrimary.opacity(0.18), radius: 18, y: 10)
-                .rotationEffect(.degrees(float ? -3 : -1))
+                .rotationEffect(.degrees(-3))
             // floating "ready" pill
             HStack(spacing: 6) {
                 Ph.clock.regular.resizable().scaledToFit().frame(width: 13, height: 13)

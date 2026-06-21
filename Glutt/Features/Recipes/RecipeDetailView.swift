@@ -276,7 +276,7 @@ struct RecipeDetailView: View {
 
     private var ingredientsTab: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            servingsStepper
+            recipeContextCard
             if displayServings != recipe.servings {
                 HStack(spacing: Theme.Spacing.sm) {
                     Label(
@@ -313,18 +313,35 @@ struct RecipeDetailView: View {
                     }
                 }
             }
-            if !pantryMatch.missing.isEmpty {
-                Button {
-                    Haptics.notify(.success)
-                    GroceryListBuilder.add(ingredients: pantryMatch.missing, from: recipe,
-                                           existing: groceryItems, context: context)
-                } label: {
-                    Label("Add \(pantryMatch.missing.count) missing to groceries", systemImage: "basket.fill")
-                        .frame(maxWidth: .infinity)
+            if !pantryMatch.missing.isEmpty { groceriesFooter }
+        }
+    }
+
+    /// Cream gradient fade rising above a full-width herb-green "add to groceries"
+    /// button — the missing count mirrors the unchecked / not-owned rows.
+    private var groceriesFooter: some View {
+        VStack(spacing: 0) {
+            LinearGradient(colors: [Theme.Colors.background.opacity(0), Theme.Colors.background],
+                           startPoint: .top, endPoint: .bottom)
+                .frame(height: 24)
+                .allowsHitTesting(false)
+            Button {
+                Haptics.notify(.success)
+                GroceryListBuilder.add(ingredients: pantryMatch.missing, from: recipe,
+                                       existing: groceryItems, context: context)
+            } label: {
+                HStack(spacing: Theme.Spacing.sm) {
+                    Ph.basket.fill.resizable().scaledToFit().frame(width: 18, height: 18)
+                    Text("Add \(pantryMatch.missing.count) missing to groceries")
+                        .font(.system(size: 16, weight: .heavy, design: .rounded))
                 }
-                .buttonStyle(.gluttPrimary)
-                .padding(.top, Theme.Spacing.sm)
+                .frame(maxWidth: .infinity)
+                .foregroundColor(Theme.Colors.creamText)
+                .padding(.vertical, 16)
+                .background(Theme.Colors.accent)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
+            .buttonStyle(.plain)
         }
     }
 
@@ -332,28 +349,37 @@ struct RecipeDetailView: View {
         recipe.ingredients.sorted { $0.sortIndex < $1.sortIndex }
     }
 
-    private var servingsStepper: some View {
+    /// Warm-white context card: recipe thumbnail + title + ingredient count, with the
+    /// servings stepper on the right. Replaces the old custom minus/plus pill. The
+    /// unit picker is preserved as a compact menu beneath the meta line.
+    private var recipeContextCard: some View {
         HStack(spacing: Theme.Spacing.md) {
-            HStack(spacing: 14) {
-                Button { Haptics.impact(.light); if displayServings > 1 { displayServings -= 1 } } label: {
-                    Ph.minus.bold.resizable().scaledToFit().frame(width: 14, height: 14)
-                }
-                Text("\(displayServings) serv").font(.gluttHeadline).monospacedDigit()
-                Button { Haptics.impact(.light); if displayServings < 24 { displayServings += 1 } } label: {
-                    Ph.plus.bold.resizable().scaledToFit().frame(width: 14, height: 14)
+            RecipeImageView(recipe: recipe)
+                .frame(width: 50, height: 50)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(recipe.title)
+                    .font(.system(size: 16, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .lineLimit(2)
+                HStack(spacing: Theme.Spacing.sm) {
+                    Text("\(recipe.ingredients.count) \(recipe.ingredients.count == 1 ? "ingredient" : "ingredients")")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                    Picker("Units", selection: $unitSystem) {
+                        ForEach(MeasurementSystem.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(Theme.Colors.accent)
+                    .labelsHidden()
                 }
             }
-            .foregroundStyle(Theme.Colors.textPrimary)
-            .padding(.horizontal, Theme.Spacing.md).padding(.vertical, Theme.Spacing.sm)
-            .background(Theme.Colors.card)
-            .clipShape(Capsule())
-            .overlay(Capsule().strokeBorder(Theme.Colors.border, lineWidth: 1))
-            Picker("Units", selection: $unitSystem) {
-                ForEach(MeasurementSystem.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.menu).tint(Theme.Colors.accent)
-            Spacer()
+            Spacer(minLength: Theme.Spacing.sm)
+            GluttStepper(value: $displayServings, in: 1...24, step: 1) { "\($0) serv" }
         }
+        .padding(Theme.Spacing.md)
+        .background(Theme.Colors.card)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private func ingredientRow(_ ingredient: RecipeIngredient) -> some View {

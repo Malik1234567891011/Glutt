@@ -70,20 +70,20 @@ struct CookModeView: View {
             } label: {
                 Ph.x.regular
                     .resizable().scaledToFit()
-                    .frame(width: 18, height: 18)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                    .padding(10)
-                    .background(Theme.Colors.card)
+                    .frame(width: 17, height: 17)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .frame(width: 40, height: 40)
+                    .overlay(Circle().stroke(Theme.Colors.border, lineWidth: 1))
                     .clipShape(Circle())
             }
             Spacer()
-            VStack(spacing: 0) {
+            VStack(spacing: 1) {
                 Text(recipe.title)
-                    .font(.gluttCaption.weight(.semibold))
+                    .font(.system(size: 13, weight: .heavy))
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .lineLimit(1)
                 Text("Step \(stepIndex + 1) of \(steps.count)")
-                    .font(.caption2)
+                    .font(.system(size: 11.5, weight: .bold))
                     .foregroundStyle(Theme.Colors.textSecondary)
             }
             Spacer()
@@ -94,8 +94,8 @@ struct CookModeView: View {
                     .resizable().scaledToFit()
                     .frame(width: 18, height: 18)
                     .foregroundStyle(Theme.Colors.accent)
-                    .padding(10)
-                    .background(Theme.Colors.card)
+                    .frame(width: 40, height: 40)
+                    .overlay(Circle().stroke(Theme.Colors.border, lineWidth: 1))
                     .clipShape(Circle())
             }
         }
@@ -143,15 +143,16 @@ struct CookModeView: View {
                 if !used.isEmpty {
                     VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                         Text("FOR THIS STEP")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(Theme.Colors.textSecondary)
+                            .font(.system(size: 12, weight: .heavy))
+                            .textCase(.uppercase)
+                            .foregroundStyle(Theme.Colors.accent)
                         ForEach(used) { ingredient in
                             HStack {
                                 Circle()
                                     .fill(Theme.Colors.accent.opacity(0.5))
                                     .frame(width: 6, height: 6)
                                 Text(ingredientLabel(ingredient))
-                                    .font(.gluttBody)
+                                    .font(.system(size: 15, weight: .bold))
                                     .foregroundStyle(Theme.Colors.textPrimary)
                             }
                         }
@@ -159,7 +160,7 @@ struct CookModeView: View {
                     .padding(Theme.Spacing.md)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.Colors.card)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.photo, style: .continuous))
                 }
             }
             .padding(Theme.Spacing.lg)
@@ -214,6 +215,7 @@ struct CookModeView: View {
                         Text(remaining == 0 ? "Done!" : TimerManager.format(seconds: remaining))
                             .monospacedDigit()
                         Button {
+                            Haptics.impact(.light)
                             timerManager.cancel(timer)
                         } label: {
                             Ph.xCircle.fill
@@ -257,7 +259,7 @@ struct CookModeView: View {
 
             if isLastStep {
                 Button("Finish cooking") {
-                    Haptics.impact(.medium)
+                    Haptics.celebrate()
                     isShowingFinish = true
                 }
                 .buttonStyle(.gluttPrimary)

@@ -871,6 +871,14 @@ final class DietGuardTests: XCTestCase {
         XCTAssertTrue(conflicts.allSatisfy(\.isBlocking))
     }
 
+    func testNoPorkRuleBlocksPorkDish() {
+        let porkDish = recipe("Pork Belly", ingredients: ["Pork", "Garlic", "Soy sauce"])
+        XCTAssertFalse(DietGuard.isSuggestable(porkDish, rules: [.noPork], allergies: []))
+
+        let chickenDish = recipe("Chicken Stir Fry", ingredients: ["Chicken", "Garlic", "Soy sauce"])
+        XCTAssertTrue(DietGuard.isSuggestable(chickenDish, rules: [.noPork], allergies: []))
+    }
+
     func testKosherBlocksPorkAndShellfishButAllowsFinFish() {
         let shrimp = recipe("Shrimp Scampi", ingredients: ["Shrimp", "Garlic", "Butter"])
         XCTAssertTrue(DietGuard.conflicts(in: shrimp, rules: [.kosher], allergies: []).contains { $0.isBlocking })

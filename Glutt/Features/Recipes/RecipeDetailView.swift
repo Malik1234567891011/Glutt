@@ -125,6 +125,9 @@ struct RecipeDetailView: View {
             if !pantryMatch.missing.isEmpty {
                 Button("Use what I have", systemImage: "wand.and.stars") { isOptimizing = true }
             }
+            Picker("Units", selection: $unitSystem) {
+                ForEach(MeasurementSystem.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
             Divider()
             Button("Edit", systemImage: "pencil") { isShowingEditor = true }
             Button("Save as version", systemImage: "square.on.square") { isNamingVersion = true }
@@ -351,7 +354,7 @@ struct RecipeDetailView: View {
 
     /// Warm-white context card: recipe thumbnail + title + ingredient count, with the
     /// servings stepper on the right. Replaces the old custom minus/plus pill. The
-    /// unit picker is preserved as a compact menu beneath the meta line.
+    /// metric/original unit toggle lives in the overflow menu so this row stays clean.
     private var recipeContextCard: some View {
         HStack(spacing: Theme.Spacing.md) {
             RecipeImageView(recipe: recipe)
@@ -362,17 +365,9 @@ struct RecipeDetailView: View {
                     .font(.system(size: 16, weight: .heavy, design: .rounded))
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .lineLimit(2)
-                HStack(spacing: Theme.Spacing.sm) {
-                    Text("\(recipe.ingredients.count) \(recipe.ingredients.count == 1 ? "ingredient" : "ingredients")")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(Theme.Colors.textSecondary)
-                    Picker("Units", selection: $unitSystem) {
-                        ForEach(MeasurementSystem.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.menu)
-                    .tint(Theme.Colors.accent)
-                    .labelsHidden()
-                }
+                Text("\(recipe.ingredients.count) \(recipe.ingredients.count == 1 ? "ingredient" : "ingredients")")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(Theme.Colors.textSecondary)
             }
             Spacer(minLength: Theme.Spacing.sm)
             GluttStepper(value: $displayServings, in: 1...24, step: 1) { "\($0) serv" }

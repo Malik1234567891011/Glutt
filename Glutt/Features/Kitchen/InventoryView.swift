@@ -229,16 +229,7 @@ struct InventoryView: View {
     /// Tints mirror the handoff: produce → green, protein → tomato, dairy → amber.
     @ViewBuilder
     private func categoryChip(for category: GroceryCategory) -> some View {
-        switch category {
-        case .produce:
-            IconChip(icon: Ph.plant.fill, foreground: Theme.Colors.accent, background: Theme.Colors.successTint)
-        case .meat:
-            IconChip(icon: Ph.hamburger.fill, foreground: Theme.Colors.tomato, background: Theme.Colors.tomatoTint)
-        case .dairy:
-            IconChip(icon: Ph.drop.fill, foreground: Theme.Colors.warning, background: Theme.Colors.warningTint)
-        case .pantry, .frozen, .spices, .other:
-            IconChip(icon: Ph.bowlFood.fill, foreground: Theme.Colors.warning, background: Theme.Colors.warningTint)
-        }
+        IngredientCategoryStyle.chip(for: category)
     }
 
     /// Peach pill with tomato text for items flagged use-soon.

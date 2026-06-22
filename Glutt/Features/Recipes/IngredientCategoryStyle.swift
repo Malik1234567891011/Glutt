@@ -16,18 +16,31 @@ enum IngredientCategoryStyle {
         }
     }
 
-    @ViewBuilder
-    static func chip(for name: String) -> some View {
-        switch GroceryCategorizer.categorize(name) {
-        case .meat:
-            IconChip(icon: Ph.hamburger.fill, foreground: Theme.Colors.tomato, background: Theme.Colors.tomatoTint)
+    /// Single source of truth for the category → tinted IconChip mapping.
+    /// Both the ingredient checklist and the Kitchen inventory use this so the
+    /// glyphs and tints never drift apart. One clear glyph per category.
+    static func chip(for category: GroceryCategory) -> IconChip {
+        switch category {
         case .produce:
-            IconChip(icon: Ph.plant.fill, foreground: Theme.Colors.accent, background: Theme.Colors.successTint)
+            IconChip(icon: Ph.carrot.fill, foreground: Theme.Colors.accent, background: Theme.Colors.successTint)
+        case .meat:
+            IconChip(icon: Ph.forkKnife.bold, foreground: Theme.Colors.tomato, background: Theme.Colors.tomatoTint)
         case .dairy:
-            IconChip(icon: Ph.drop.fill, foreground: Theme.Colors.accent, background: Theme.Colors.successTint)
-        case .pantry, .frozen, .spices, .other:
-            IconChip(icon: Ph.bowlFood.fill, foreground: Theme.Colors.warning, background: Theme.Colors.warningTint)
+            IconChip(icon: Ph.cheese.fill, foreground: Theme.Colors.warning, background: Theme.Colors.warningTint)
+        case .pantry:
+            IconChip(icon: Ph.jar.fill, foreground: Theme.Colors.warning, background: Theme.Colors.warningTint)
+        case .frozen:
+            IconChip(icon: Ph.snowflake.regular, foreground: Theme.Colors.textSecondary, background: Theme.Colors.border)
+        case .spices:
+            IconChip(icon: Ph.pepper.fill, foreground: Theme.Colors.tomato, background: Theme.Colors.tomatoTint)
+        case .other:
+            IconChip(icon: Ph.bowlFood.fill, foreground: Theme.Colors.textSecondary, background: Theme.Colors.border)
         }
+    }
+
+    /// Convenience: derive the chip straight from an ingredient name.
+    static func chip(for name: String) -> IconChip {
+        chip(for: GroceryCategorizer.categorize(name))
     }
 }
 

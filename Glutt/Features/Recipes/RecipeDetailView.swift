@@ -279,7 +279,7 @@ struct RecipeDetailView: View {
 
     private var ingredientsTab: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            recipeContextCard
+            servingsControl
             if displayServings != recipe.servings {
                 HStack(spacing: Theme.Spacing.sm) {
                     Label(
@@ -352,29 +352,17 @@ struct RecipeDetailView: View {
         recipe.ingredients.sorted { $0.sortIndex < $1.sortIndex }
     }
 
-    /// Warm-white context card: recipe thumbnail + title + ingredient count, with the
-    /// servings stepper on the right. Replaces the old custom minus/plus pill. The
-    /// metric/original unit toggle lives in the overflow menu so this row stays clean.
-    private var recipeContextCard: some View {
-        HStack(spacing: Theme.Spacing.md) {
-            RecipeImageView(recipe: recipe)
-                .frame(width: 50, height: 50)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(recipe.title)
-                    .font(.system(size: 16, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                    .lineLimit(2)
-                Text("\(recipe.ingredients.count) \(recipe.ingredients.count == 1 ? "ingredient" : "ingredients")")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(Theme.Colors.textSecondary)
-            }
-            Spacer(minLength: Theme.Spacing.sm)
-            GluttStepper(value: $displayServings, in: 1...24, step: 1) { "\($0) serv" }
+    /// A slim servings control. The recipe's name and photo already sit at the top of
+    /// the detail, so the ingredients tab doesn't repeat them — it just needs to adjust
+    /// servings. The metric/original unit toggle lives in the overflow menu.
+    private var servingsControl: some View {
+        HStack {
+            Text("Servings")
+                .font(.system(size: 17, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.Colors.textPrimary)
+            Spacer()
+            GluttStepper(value: $displayServings, in: 1...24, step: 1) { "\($0)" }
         }
-        .padding(Theme.Spacing.md)
-        .background(Theme.Colors.card)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private func ingredientRow(_ ingredient: RecipeIngredient) -> some View {

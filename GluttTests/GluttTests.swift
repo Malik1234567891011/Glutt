@@ -99,6 +99,63 @@ final class IngredientLineParserTests: XCTestCase {
         XCTAssertNil(result.quantity)
         XCTAssertEqual(result.name, "Salt and pepper to taste")
     }
+
+    func testApproximateMarkers() {
+        let tilde = IngredientLineParser.parse("~2 tbsp soy sauce")
+        XCTAssertTrue(tilde.isEstimated)
+        XCTAssertEqual(tilde.quantity, 2)
+        XCTAssertEqual(tilde.unit, "tbsp")
+        XCTAssertEqual(tilde.name, "soy sauce")
+
+        let tildeSpace = IngredientLineParser.parse("~ 1 lb chicken thighs")
+        XCTAssertTrue(tildeSpace.isEstimated)
+        XCTAssertEqual(tildeSpace.quantity, 1)
+
+        let about = IngredientLineParser.parse("about 1 cup rice")
+        XCTAssertTrue(about.isEstimated)
+        XCTAssertEqual(about.quantity, 1)
+        XCTAssertEqual(about.name, "rice")
+    }
+
+    func testExactQuantityIsNotEstimated() {
+        XCTAssertFalse(IngredientLineParser.parse("2 cups basmati rice").isEstimated)
+    }
+}
+
+final class ServingEstimatorTests: XCTestCase {
+
+    func testSingleChickenBreastIsOneServing() {
+        // The reported bug: one chicken breast was saying "serves 2".
+        XCTAssertEqual(ServingEstimator.estimate(fromLines: ["1 chicken breast", "1 cup rice"]), 1)
+    }
+
+    func testProteinByWeight() {
+        XCTAssertEqual(ServingEstimator.estimate(fromLines: ["600 g chicken thighs", "2 cups rice"]), 3)
+        XCTAssertEqual(ServingEstimator.estimate(fromLines: ["1 kg ground beef"]), 5)
+        XCTAssertEqual(ServingEstimator.estimate(fromLines: ["2 lb ground beef", "soy sauce"]), 5)
+    }
+
+    func testCountedProtein() {
+        XCTAssertEqual(ServingEstimator.estimate(fromLines: ["4 chicken thighs", "rice"]), 2)
+        XCTAssertEqual(ServingEstimator.estimate(fromLines: ["2 salmon fillets"]), 2)
+    }
+
+    func testCondimentsDoNotInflate() {
+        // "fish sauce" must be ignored, so only the chicken drives the estimate.
+        XCTAssertEqual(ServingEstimator.estimate(fromLines: ["1 tbsp fish sauce", "600 g chicken thighs"]), 3)
+    }
+
+    func testEggsAsBase() {
+        XCTAssertEqual(ServingEstimator.estimate(fromLines: ["6 eggs", "splash of milk"]), 3)
+    }
+
+    func testNoMainsReturnsNil() {
+        XCTAssertNil(ServingEstimator.estimate(fromLines: ["salt", "pepper", "olive oil"]))
+    }
+
+    func testClampedToReasonableRange() {
+        XCTAssertEqual(ServingEstimator.estimate(fromLines: ["10 kg beef"]), 12)
+    }
 }
 
 final class RecipeHTMLParserTests: XCTestCase {

@@ -118,13 +118,6 @@ struct RecipeDetailView: View {
 
     private var overflowMenu: some View {
         Menu {
-            if LLMClient.isConfigured {
-                Button("Make it…", systemImage: "sparkles") { isAdjusting = true }
-            }
-            Button("Add to plan", systemImage: "calendar.badge.plus") { isAddingToPlan = true }
-            if !pantryMatch.missing.isEmpty {
-                Button("Use what I have", systemImage: "wand.and.stars") { isOptimizing = true }
-            }
             Picker("Units", selection: $unitSystem) {
                 ForEach(MeasurementSystem.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
@@ -150,6 +143,7 @@ struct RecipeDetailView: View {
     private var contentSheet: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
             titleBlock
+            adaptRow
             dietWarnings
             if recipe.sourcePlatform == .youtube,
                let urlString = recipe.sourceURL,
@@ -207,6 +201,47 @@ struct RecipeDetailView: View {
                 ConfidenceBadge(confidence: confidence)
             }
         }
+    }
+
+    // MARK: - Adapt this recipe
+
+    /// The adaptive "verbs" that make a recipe interactive — pulled out of the
+    /// overflow menu so they're seen the moment you open a recipe. Read as an
+    /// action toolbar (icons + a filled lead pill), not passive tags, and the
+    /// overflow keeps the admin-only items (edit, share, delete, units).
+    private var adaptRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Spacing.sm) {
+                if LLMClient.isConfigured {
+                    adaptPill(Ph.sparkle.regular, "Make it…") { isAdjusting = true }
+                }
+                if !pantryMatch.missing.isEmpty {
+                    adaptPill(Ph.magicWand.regular, "Use what I have") { isOptimizing = true }
+                }
+                adaptPill(Ph.calendarBlank.regular, "Add to plan") { isAddingToPlan = true }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    private func adaptPill(_ icon: Image, _ label: String,
+                           action: @escaping () -> Void) -> some View {
+        Button {
+            Haptics.impact(.light)
+            action()
+        } label: {
+            HStack(spacing: 6) {
+                icon.resizable().scaledToFit().frame(width: 15, height: 15)
+                Text(label).font(.system(size: 14.5, weight: .semibold, design: .rounded))
+            }
+            .foregroundColor(Theme.Colors.accent)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Theme.Colors.accent.opacity(0.10))
+            .overlay(Capsule().strokeBorder(Theme.Colors.accent.opacity(0.22), lineWidth: 1))
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Sections
@@ -377,10 +412,11 @@ struct RecipeDetailView: View {
                 HStack(spacing: 4) {
                     if let display = UnitConverter.display(quantity: ingredient.quantity, unit: ingredient.unit,
                                                            scale: scale, system: unitSystem) {
-                        Text(display)
+                        Text(ingredient.isEstimated ? "~\(display)" : display)
                     }
                     if owned { Text("· in your kitchen") }
                     else if ingredient.isOptional { Text("· optional") }
+                    if ingredient.isEstimated { Text("· approx") }
                 }
                 .font(.gluttCaption).foregroundStyle(Theme.Colors.textSecondary)
             }
@@ -597,7 +633,7 @@ struct RecipeDetailView: View {
         copy.ingredients = recipe.ingredients.sorted { $0.sortIndex < $1.sortIndex }.map {
             RecipeIngredient(
                 name: $0.name, quantity: $0.quantity, unit: $0.unit, note: $0.note,
-                isOptional: $0.isOptional, role: $0.role, sortIndex: $0.sortIndex
+                isOptional: $0.isOptional, isEstimated: $0.isEstimated, role: $0.role, sortIndex: $0.sortIndex
             )
         }
         copy.steps = recipe.sortedSteps.map {

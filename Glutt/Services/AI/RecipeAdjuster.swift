@@ -44,7 +44,7 @@ enum RecipeAdjuster {
         fileprivate var instruction: String {
             switch self {
             case .higherProtein:
-                "Increase protein meaningfully (target 30g+ per serving). Swap or add ingredients; adjust quantities. Keep it tasting like the same dish."
+                "Increase protein meaningfully (aim ~40g+ per serving) using the SIMPLEST change that works — usually adding more of the protein the dish already has (e.g. another chicken breast, an extra ½ lb of beef) or one clean high-protein addition (Greek yogurt, eggs, cottage cheese, beans). Prefer a single obvious move over many small swaps. Keep it tasting like the same dish. In 'changes', name the concrete addition plainly (e.g. 'Add 1 more chicken breast')."
             case .lighter:
                 "Reduce calories noticeably (lighter cooking methods, less oil/sugar/cream, more vegetables). Keep it satisfying — no sad food."
             case .cheaper:
@@ -77,6 +77,7 @@ enum RecipeAdjuster {
 
         Rules:
         - Keep the dish recognizable; this is an adjustment, not a new recipe.
+        - Keep the SAME number of servings as the original, so amounts stay comparable.
         - ingredients: complete final list, one per line, quantities included.
         - steps: the complete final method, updated where changes matter.
         - changes: 2-6 short bullets a home cook understands.

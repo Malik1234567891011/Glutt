@@ -219,10 +219,6 @@ struct RecipesView: View {
                                 Text(order.rawValue).tag(order)
                             }
                         }
-                        Divider()
-                        Button("New collection", systemImage: "folder.badge.plus") {
-                            isNamingCollection = true
-                        }
                     } label: {
                         Image(systemName: "arrow.up.arrow.down")
                     }
@@ -234,6 +230,10 @@ struct RecipesView: View {
                         }
                         Button("Create manually", systemImage: "square.and.pencil") {
                             isShowingEditor = true
+                        }
+                        Divider()
+                        Button("New collection", systemImage: "folder.badge.plus") {
+                            isNamingCollection = true
                         }
                     } label: {
                         Image(systemName: "plus")

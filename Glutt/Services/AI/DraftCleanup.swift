@@ -25,6 +25,16 @@ enum DraftCleanup {
         - servings: estimate the REAL number of adult servings by reading the ingredient quantities — do NOT just default to 2. Reason it out using rough per-adult portions: ~150–225 g (⅓–½ lb) raw meat/fish, ~75–100 g dry rice/pasta (about ½–¾ cup dry rice) or 1 cup cooked grains, 1–2 eggs when eggs are the base, ~1 cup chopped vegetables, ~115 g (¼ lb) cheese as a main. Add up the mains and divide. Examples: 1 kg / 2 lb ground beef ≈ 5–6 servings; 4 chicken thighs ≈ 4 servings; a single salmon fillet ≈ 1. Only fall back to 2–4 when quantities are genuinely missing or unclear.
         """
 
+    /// Rules for filling gaps like a careful chef: supply standard amounts,
+    /// times, and temperatures when the source omits them — but mark estimates
+    /// clearly and lean on doneness cues so a wrong guess can't ruin a dish.
+    /// Accuracy matters more than completeness; when unsure, hedge.
+    private static let chefGuidance = """
+        - When an ingredient has NO quantity, REASON OUT a sensible amount for THIS specific dish — do not use a one-size-fits-all default (never output the same amount for an ingredient regardless of context). Scale every amount to the main ingredient and the serving count, and keep the whole dish in BALANCE: cooking is chemistry. Before adding salty things (soy sauce, fish sauce, stock, miso, cheese, cured meats) account for the salt already present; keep acid (vinegar, citrus), fat, sweetness, and heat (chili, pepper) in proportion so nothing overwhelms the dish. A marinade for 1 lb of chicken needs far less soy than one for 3 lb. Prefix every amount you infer with "~" so it reads as approximate, and never present an estimate as exact.
+        - When a step is missing a time or temperature, give an approximate one hedged with "about"/"approximately" AND always pair it with a sensory doneness cue (e.g. "sear about 4–5 min per side, until golden and the internal temp reaches 165°F/74°C"; "simmer about 10 minutes, until thickened"). Prefer doneness cues over exact numbers. Use SAFE internal temperatures for meats: chicken/poultry 165°F/74°C, ground meat 160°F/71°C, fish 145°F/63°C.
+        - For ratio-sensitive mixes (marinades, dressings, batters, brines, sauces), use classic ratios proven for that dish, scale them to the quantity being made, keep them approximate, and tell the user to taste and adjust. Never guess a precise ratio you aren't confident about — when unsure, give a conservative amount and say "add more to taste".
+        """
+
     /// Heuristic for "is this draft messy enough to be worth a cloud call".
     static func wouldImprove(_ draft: ImportedRecipeDraft) -> Bool {
         guard LLMClient.isConfigured else { return false }
@@ -50,7 +60,8 @@ enum DraftCleanup {
         - Extract the ACTUAL recipe. Strip hashtags, emoji spam, "follow me", engagement bait.
         - ingredients: one ingredient per line, format "quantity unit ingredient" when known (e.g. "2 tbsp soy sauce"). Fix OCR errors (e.g. "1OO g" -> "100 g").
         - steps: clear imperative sentences, one action per step, in order. Split run-on paragraphs.
-        - Do NOT invent quantities, ingredients, or steps that are not implied by the source.
+        - Do NOT invent ingredients or steps that aren't implied by the source.
+        \(chefGuidance)
         \(servingsGuidance)
         - tags: up to 5 lowercase tags like "high-protein", "one-pan", "quick".
         - summary: one appetizing sentence, no hype.
@@ -109,6 +120,9 @@ enum DraftCleanup {
             }
             result.issues.removeAll { $0.contains("double-check") }
             result.issues.append("Cleaned up with AI — give it a once-over")
+            if result.ingredientLines.contains(where: { $0.contains("~") }) {
+                result.issues.append("Amounts marked ~ are Glutt's estimates — taste and adjust as you go.")
+            }
             return result
         } catch {
             // AI is never load-bearing: any failure returns the original.
@@ -137,8 +151,8 @@ enum DraftCleanup {
         Rules:
         - Write a sensible STANDARD home method for the dish using ONLY the given ingredients.
         - Clear imperative sentences, one action per step, in a logical order (prep → cook → finish/plate).
-        - Realistic, not fancy. Include obvious times/temps where standard (e.g. "simmer 10 minutes").
-        - Do NOT introduce ingredients that aren't in the list.
+        - Realistic, not fancy. Do NOT introduce ingredients that aren't in the list.
+        \(chefGuidance)
         - 3 to 8 steps. If you genuinely cannot infer a method, return {"steps": []}.
         """
         let user = """
@@ -190,6 +204,7 @@ enum DraftCleanup {
         - This is your best-guess standard version, so keep it simple and classic — no chef flourishes.
         - ingredients: "quantity unit ingredient" per line, realistic home quantities.
         - steps: clear imperative sentences, one action per step.
+        \(chefGuidance)
         \(servingsGuidance)
         - tags: up to 5 lowercase tags.
         - If you cannot tell what dish this is, return {}.

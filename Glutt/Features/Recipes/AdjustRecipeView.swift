@@ -149,6 +149,10 @@ struct AdjustRecipeView: View {
                     .foregroundStyle(Theme.Colors.accent)
             }
 
+            if let macros = macros(for: adjustment) {
+                macroDeltaCard(before: macros.before, after: macros.after)
+            }
+
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 SectionHeader(title: "What changed")
                 ForEach(adjustment.changes, id: \.self) { change in
@@ -204,6 +208,89 @@ struct AdjustRecipeView: View {
                 phase = .pickGoal
             }
             .buttonStyle(.gluttSecondary)
+        }
+    }
+
+    // MARK: - Macro delta (before → after)
+
+    /// Scores the original and the proposed version with the SAME nutrition
+    /// engine, so the before/after numbers are honest and comparable rather
+    /// than the LLM guessing math.
+    private func macros(for adjustment: RecipeAdjuster.Adjustment)
+        -> (before: NutritionEstimator.Estimate, after: NutritionEstimator.Estimate)? {
+        guard let before = NutritionEstimator.estimate(for: recipe) else { return nil }
+        let ingredients = adjustment.ingredients.map { line -> RecipeIngredient in
+            let parsed = IngredientLineParser.parse(line)
+            return RecipeIngredient(name: parsed.name, quantity: parsed.quantity,
+                                    unit: parsed.unit, isEstimated: parsed.isEstimated)
+        }
+        guard let after = NutritionEstimator.estimate(ingredients: ingredients, servings: recipe.servings) else {
+            return nil
+        }
+        return (before, after)
+    }
+
+    private func macroDeltaCard(before: NutritionEstimator.Estimate,
+                                after: NutritionEstimator.Estimate) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            Text("THE DIFFERENCE · PER SERVING")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Theme.Colors.textSecondary)
+
+            macroRow(icon: Ph.barbell.regular, label: "Protein",
+                     before: before.proteinGrams, after: after.proteinGrams,
+                     suffix: "g", goodWhenHigher: true)
+            Divider().overlay(Theme.Colors.border)
+            macroRow(icon: Ph.flame.regular, label: "Calories",
+                     before: before.calories, after: after.calories,
+                     suffix: "", goodWhenHigher: false)
+
+            Text("Estimated from ingredients — real numbers vary with brands and portions.")
+                .font(.caption2)
+                .foregroundStyle(Theme.Colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.md)
+        .background(Theme.Colors.accent.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+    }
+
+    private func macroRow(icon: Image, label: String, before: Int, after: Int,
+                          suffix: String, goodWhenHigher: Bool) -> some View {
+        let delta = after - before
+        let isWin = goodWhenHigher ? delta > 0 : delta < 0
+        let deltaColor = delta == 0 ? Theme.Colors.textSecondary
+            : (isWin ? Theme.Colors.accent : Theme.Colors.warning)
+        let sign = delta > 0 ? "+" : (delta < 0 ? "−" : "")
+
+        return HStack(spacing: Theme.Spacing.md) {
+            icon.resizable().scaledToFit().frame(width: 20, height: 20)
+                .foregroundStyle(Theme.Colors.accent)
+                .frame(width: 28)
+            Text(label)
+                .font(.gluttHeadline)
+                .foregroundStyle(Theme.Colors.textPrimary)
+            Spacer()
+            HStack(spacing: 6) {
+                Text("\(before)\(suffix)")
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .strikethrough(delta != 0, color: Theme.Colors.textSecondary)
+                Ph.arrowRight.bold.resizable().scaledToFit().frame(width: 12, height: 12)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                Text("\(after)\(suffix)")
+                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.Colors.textPrimary)
+            }
+            if delta != 0 {
+                Text("\(sign)\(abs(delta))\(suffix)")
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .foregroundStyle(deltaColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(deltaColor.opacity(0.14))
+                    .clipShape(Capsule())
+            }
         }
     }
 }

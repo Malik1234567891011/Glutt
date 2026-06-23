@@ -69,8 +69,14 @@ enum NutritionEstimator {
     ]
 
     static func estimate(for recipe: Recipe) -> Estimate? {
-        let ingredients = recipe.ingredients.filter { !$0.isOptional }
-        guard !ingredients.isEmpty, recipe.servings > 0 else { return nil }
+        estimate(ingredients: recipe.ingredients, servings: recipe.servings)
+    }
+
+    /// Same engine, but over a loose ingredient list — lets us score a proposed
+    /// adjustment (the "after") with the exact same numbers as the original.
+    static func estimate(ingredients allIngredients: [RecipeIngredient], servings: Int) -> Estimate? {
+        let ingredients = allIngredients.filter { !$0.isOptional }
+        guard !ingredients.isEmpty, servings > 0 else { return nil }
 
         var totalCalories = 0.0
         var totalProtein = 0.0
@@ -87,8 +93,8 @@ enum NutritionEstimator {
         guard matched > 0 else { return nil }
 
         let confidence = Double(matched) / Double(ingredients.count)
-        let perServingCalories = totalCalories / Double(recipe.servings)
-        let perServingProtein = totalProtein / Double(recipe.servings)
+        let perServingCalories = totalCalories / Double(servings)
+        let perServingProtein = totalProtein / Double(servings)
 
         return Estimate(
             // Round to 10s — false precision erodes trust.

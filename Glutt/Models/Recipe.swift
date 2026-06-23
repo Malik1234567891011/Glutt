@@ -142,6 +142,9 @@ final class RecipeIngredient {
     var unit: String?
     var note: String?
     var isOptional: Bool
+    /// True when the amount is Glutt's approximate estimate (the source gave
+    /// none). Shown as "~/approx" so the user knows to verify and adjust.
+    var isEstimated: Bool = false
     var role: IngredientRole?
     var sortIndex: Int
 
@@ -153,6 +156,7 @@ final class RecipeIngredient {
         unit: String? = nil,
         note: String? = nil,
         isOptional: Bool = false,
+        isEstimated: Bool = false,
         role: IngredientRole? = nil,
         sortIndex: Int = 0
     ) {
@@ -162,6 +166,7 @@ final class RecipeIngredient {
         self.unit = unit
         self.note = note
         self.isOptional = isOptional
+        self.isEstimated = isEstimated
         self.role = role
         self.sortIndex = sortIndex
     }

@@ -9,7 +9,13 @@ enum IngredientLineParser {
         var unit: String?
         var name: String
         var note: String?
+        /// True when the amount was flagged approximate — either a leading "~"
+        /// or a hedge word ("approx", "about", "around") that the AI cleanup
+        /// adds when it estimates a missing quantity.
+        var isEstimated: Bool = false
     }
+
+    private static let hedgeWords: Set<String> = ["approx", "approx.", "about", "around", "roughly", "~"]
 
     private static let units: Set<String> = [
         "cup", "cups", "tbsp", "tablespoon", "tablespoons", "tsp", "teaspoon", "teaspoons",
@@ -31,6 +37,18 @@ enum IngredientLineParser {
         // Strip list bullets ("- ", "• ", "* ")
         while let first = text.first, ["-", "•", "*", "·"].contains(String(first)) {
             text = String(text.dropFirst()).trimmingCharacters(in: .whitespaces)
+        }
+
+        // Approximate marker: a leading "~" (attached or not) or a hedge word.
+        var isEstimated = false
+        if text.hasPrefix("~") {
+            isEstimated = true
+            text = String(text.dropFirst()).trimmingCharacters(in: .whitespaces)
+        }
+        if let firstWord = text.split(separator: " ").first,
+           hedgeWords.contains(firstWord.lowercased()) {
+            isEstimated = true
+            text = text.split(separator: " ").dropFirst().joined(separator: " ")
         }
 
         // Pull a trailing note: parenthetical or after the first comma.
@@ -72,7 +90,8 @@ enum IngredientLineParser {
         }
 
         let name = tokens.joined(separator: " ").trimmingCharacters(in: .whitespaces)
-        return Result(quantity: quantity, unit: unit, name: name.isEmpty ? line : name, note: note)
+        return Result(quantity: quantity, unit: unit, name: name.isEmpty ? line : name,
+                      note: note, isEstimated: isEstimated)
     }
 
     private static func parseNumber(_ token: String) -> Double? {

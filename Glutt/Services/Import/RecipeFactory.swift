@@ -15,7 +15,9 @@ enum RecipeFactory {
             importedAt: .now,
             importConfidence: draft.confidence,
             imageURL: draft.imageURL,
-            servings: draft.servings ?? 2,
+            servings: draft.servings
+                ?? ServingEstimator.estimate(fromLines: draft.ingredientLines)
+                ?? 2,
             prepMinutes: draft.prepMinutes ?? 0,
             cookMinutes: draft.cookMinutes ?? 0,
             tags: draft.tags
@@ -35,6 +37,7 @@ enum RecipeFactory {
                     quantity: parsed.quantity,
                     unit: parsed.unit,
                     note: parsed.note,
+                    isEstimated: parsed.isEstimated,
                     sortIndex: index
                 )
             }

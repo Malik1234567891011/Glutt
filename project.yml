@@ -66,6 +66,7 @@ targets:
       - path: Glutt/Services/Import/SocialMediaImport.swift
       - path: Glutt/Services/Import/TextRecipeParser.swift
       - path: Glutt/Services/Import/IngredientLineParser.swift
+      - path: Glutt/Services/Import/ServingEstimator.swift
       - path: Glutt/Services/Import/ImportPipeline.swift
       - path: Glutt/Services/Import/ImportInbox.swift
       - path: Glutt/Services/Import/ShareImportViewModel.swift

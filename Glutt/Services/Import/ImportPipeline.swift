@@ -42,6 +42,11 @@ enum ImportPipeline {
             await progress("No method listed — drafting the steps…")
             draft = await deps.inferSteps(draft)
         }
+        // No serving count anywhere in the source? Estimate it from the
+        // ingredient amounts rather than letting it fall back to a flat "2".
+        if draft.servings == nil {
+            draft.servings = ServingEstimator.estimate(fromLines: draft.ingredientLines)
+        }
         return draft
     }
 }

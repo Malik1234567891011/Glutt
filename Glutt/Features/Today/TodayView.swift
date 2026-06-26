@@ -62,6 +62,8 @@ struct TodayView: View {
 
                     quickActionsRow
 
+                    PlatesLauncherCard { router.pendingPresentPlates = true }
+
                     if prefs.nutritionMode.showsNutrition {
                         nutritionSummary
                     }

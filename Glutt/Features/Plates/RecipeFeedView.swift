@@ -54,6 +54,8 @@ struct RecipeFeedView: View {
             allergies: prefs.allergies,
             savedSourceURLs: Set(recipes.compactMap(\.sourceURL))
         )
+        PlatesStreak.recordOpen()
+        PlatesStreak.addDiscovered(model.recipes.count)
     }
 
     // MARK: Pager
@@ -86,7 +88,7 @@ struct RecipeFeedView: View {
             card: card,
             isSaved: model.savedIDs.contains(card.id),
             isCookableNow: cookableNow(card),
-            onSave: { Task { await model.save(card, into: context) } },
+            onSave: { Task { await model.save(card, into: context); PlatesStreak.addSaved(1) } },
             onSkip: { model.skip(card) },
             isFlipped: isFlipped,
             reduceMotion: reduceMotion

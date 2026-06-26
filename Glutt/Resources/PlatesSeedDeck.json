@@ -1,0 +1,93 @@
+{
+  "deckTitle": "Today's Plate",
+  "recipes": [
+    {
+      "id": "curated:1",
+      "title": "Sheet-Pan Harissa Chicken & Chickpeas",
+      "imageURL": "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d",
+      "source": "curated",
+      "sourceURL": "https://glutt.app/seed/harissa-chicken",
+      "creator": "Glutt Kitchen",
+      "license": "curated",
+      "summary": "One pan, big flavor: harissa-roasted chicken thighs with crisp chickpeas.",
+      "servings": 4,
+      "prepMinutes": 10,
+      "cookMinutes": 30,
+      "difficulty": "beginner",
+      "tags": ["high-protein", "dinner", "sheet-pan"],
+      "dietFlags": ["gluten free", "dairy free"],
+      "macros": { "calories": 540, "protein": 42, "carbs": 38, "fat": 22, "estimated": false },
+      "ingredients": [
+        { "raw": "8 chicken thighs", "name": "chicken thighs", "quantity": 8, "unit": "" },
+        { "raw": "2 tbsp harissa paste", "name": "harissa", "quantity": 2, "unit": "tbsp" },
+        { "raw": "1 can chickpeas, drained", "name": "chickpeas", "quantity": 1, "unit": "can" },
+        { "raw": "2 tbsp olive oil", "name": "olive oil", "quantity": 2, "unit": "tbsp" }
+      ],
+      "steps": [
+        "Heat oven to 220°C.",
+        "Toss chicken and chickpeas with harissa and oil on a sheet pan.",
+        "Roast 30 minutes until chicken is cooked and chickpeas crisp."
+      ],
+      "nutritionNote": null
+    },
+    {
+      "id": "curated:2",
+      "title": "Creamy Tomato White Bean Soup",
+      "imageURL": "https://images.unsplash.com/photo-1547592180-85f173990554",
+      "source": "curated",
+      "sourceURL": "https://glutt.app/seed/tomato-white-bean-soup",
+      "creator": "Glutt Kitchen",
+      "license": "curated",
+      "summary": "Velvety, weeknight-fast, and quietly high in fiber.",
+      "servings": 4,
+      "prepMinutes": 5,
+      "cookMinutes": 20,
+      "difficulty": "beginner",
+      "tags": ["vegetarian", "dinner", "soup"],
+      "dietFlags": ["vegetarian", "gluten free"],
+      "macros": { "calories": 320, "protein": 14, "carbs": 44, "fat": 11, "estimated": false },
+      "ingredients": [
+        { "raw": "2 cans white beans, drained", "name": "white beans", "quantity": 2, "unit": "can" },
+        { "raw": "1 can crushed tomatoes", "name": "crushed tomatoes", "quantity": 1, "unit": "can" },
+        { "raw": "1 onion, diced", "name": "onion", "quantity": 1, "unit": "" },
+        { "raw": "100 ml cream", "name": "cream", "quantity": 100, "unit": "ml" }
+      ],
+      "steps": [
+        "Soften onion in a pot.",
+        "Add tomatoes and beans; simmer 15 minutes.",
+        "Blend smooth, stir in cream, season."
+      ],
+      "nutritionNote": null
+    },
+    {
+      "id": "curated:3",
+      "title": "Garlic Butter Shrimp Rice Bowl",
+      "imageURL": "https://images.unsplash.com/photo-1512058564366-18510be2db19",
+      "source": "curated",
+      "sourceURL": "https://glutt.app/seed/garlic-shrimp-bowl",
+      "creator": "Glutt Kitchen",
+      "license": "curated",
+      "summary": "15-minute garlicky shrimp over fluffy rice.",
+      "servings": 2,
+      "prepMinutes": 5,
+      "cookMinutes": 10,
+      "difficulty": "beginner",
+      "tags": ["high-protein", "dinner", "quick"],
+      "dietFlags": ["pescatarian"],
+      "macros": { "calories": 480, "protein": 34, "carbs": 52, "fat": 14, "estimated": false },
+      "ingredients": [
+        { "raw": "300 g shrimp, peeled", "name": "shrimp", "quantity": 300, "unit": "g" },
+        { "raw": "2 tbsp butter", "name": "butter", "quantity": 2, "unit": "tbsp" },
+        { "raw": "3 cloves garlic, minced", "name": "garlic", "quantity": 3, "unit": "clove" },
+        { "raw": "1.5 cups cooked rice", "name": "rice", "quantity": 1.5, "unit": "cup" }
+      ],
+      "steps": [
+        "Melt butter, cook garlic 30 seconds.",
+        "Add shrimp; cook 3–4 minutes until pink.",
+        "Serve over rice with pan butter."
+      ],
+      "nutritionNote": null
+    }
+  ],
+  "nextPageToken": null
+}

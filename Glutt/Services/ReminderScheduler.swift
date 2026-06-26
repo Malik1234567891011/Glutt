@@ -43,6 +43,26 @@ enum ReminderScheduler {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
+    /// A single repeating 07:00-local nudge that the daily deck is ready.
+    /// Idempotent: re-scheduling replaces the one pending request.
+    static func schedulePlatesDailyReminder() {
+        let id = "plates-daily"
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [id])
+
+        let content = UNMutableNotificationContent()
+        content.title = "Today's Plate is ready 🍳"
+        content.body = "12 fresh recipes to swipe through. Tap to explore."
+        content.sound = .default
+        content.userInfo = ["destination": "plates"]
+
+        var components = DateComponents()
+        components.hour = 7
+        components.minute = 0
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+    }
+
     /// (Re)schedules reminders for a meal. Call after insert or edit.
     static func schedule(for meal: PlannedMeal) {
         cancel(for: meal)

@@ -89,6 +89,10 @@ final class Router {
     /// Screens with their own bottom action bar (e.g. recipe detail's Cook button)
     /// bump this to hide the floating + button while they're visible.
     var floatingButtonSuppressors = 0
+    /// Set by the Today launcher card, the glutt://plates deep link, or the
+    /// daily "Today's Plate" notification. RootView presents the Plates feed
+    /// (a fullScreenCover, not a tab) whenever this is true.
+    var pendingPresentPlates = false
     /// Dev/testing hook (`-demoCook`): opens Cook Mode for the first recipe on launch.
     var demoCookOnLaunch = false
     /// Dev/testing hook (`-demoWizard`): opens the week planner wizard on launch.
@@ -146,6 +150,7 @@ final class Router {
             } else {
                 selectedTab = .recipes
             }
+        case "plates": pendingPresentPlates = true
         default: break
         }
     }

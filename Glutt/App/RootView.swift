@@ -50,10 +50,17 @@ struct RootView: View {
         }
         .task { drainImportInbox() }
         .task { await RecipeImageBackfill.sweep(in: context) }
+        .task {
+            ReminderScheduler.requestPermissionIfNeeded()
+            ReminderScheduler.schedulePlatesDailyReminder()
+        }
         .fullScreenCover(isPresented: $router.demoCookOnLaunch) {
             if let recipe = recipes.first {
                 CookModeView(recipe: recipe)
             }
+        }
+        .fullScreenCover(isPresented: $router.pendingPresentPlates) {
+            RecipeFeedView()
         }
         .fullScreenCover(isPresented: Binding(
             get: { needsOnboarding },

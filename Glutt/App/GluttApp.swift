@@ -12,8 +12,12 @@ final class NotificationRoutingDelegate: NSObject, UNUserNotificationCenterDeleg
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        if response.notification.request.content.userInfo["destination"] as? String == "plan" {
+        let destination = response.notification.request.content.userInfo["destination"] as? String
+        if destination == "plan" {
             router?.selectedTab = .plan
+        } else if destination == "plates" {
+            router?.selectedTab = .today
+            router?.pendingPresentPlates = true
         }
     }
 

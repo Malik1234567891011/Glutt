@@ -118,6 +118,7 @@
 		9767E9BEFE39E296BEF059B1 /* RecipesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9411345D042807ED2D743474 /* RecipesView.swift */; };
 		97937012B8CA51D69C342C90 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA609EF5F72CEDE2E9F697F /* EmptyStateView.swift */; };
 		98021F5F7768574981318E58 /* IngredientCategoryStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D834D7374E050EB801F354 /* IngredientCategoryStyle.swift */; };
+		986A927CD8553ECE0374677E /* FeedCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F245440CFA61FD598B067918 /* FeedCardView.swift */; };
 		98D52307F99E058349AA1999 /* PlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289532428C48086D19FF6C54 /* PlanView.swift */; };
 		9B458EBCF55B3520D3BF5A5E /* IconChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF7716B63BB5B638327D805 /* IconChip.swift */; };
 		9D12ABEDAA61B1FFCB990FB1 /* MacroBreakdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A60ED890D4E70EC6FFBA855 /* MacroBreakdown.swift */; };
@@ -132,6 +133,7 @@
 		ABFCA4853F7794491D82C568 /* ProgressTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221C1254C1FB19CCB0DCC84B /* ProgressTabView.swift */; };
 		AC406619DAD8BADC992A6542 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6471755924AE9ED5DAC77E /* CameraPicker.swift */; };
 		AC5A5F0C66D4A0EE6E0F9261 /* RecipeFactoryMacroTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7FA4D065F389895DCF067D6 /* RecipeFactoryMacroTests.swift */; };
+		ACCE4F0342E4C1E1503447F5 /* DeckEndCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 922A85DCB1E049DCF3897430 /* DeckEndCardView.swift */; };
 		AE8AF2E65EFED70286B8935B /* RecipeEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2179632ACE3988876F4F4170 /* RecipeEditorView.swift */; };
 		B0113D10FAE441E211B6533C /* ImportRecipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A748BA2D60B7B0EC30568652 /* ImportRecipeView.swift */; };
 		B3BCA09BD6614A48A535C3EE /* RecipeSearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A581E002B169649AB5C28EB6 /* RecipeSearchEngine.swift */; };
@@ -145,6 +147,7 @@
 		B957862B50FFE59C07090821 /* MacroBreakdownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A75717406F093E1595C8E676 /* MacroBreakdownTests.swift */; };
 		B997F7F5C96448B424A74DAD /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECDB51EACA72CE8D071EAD9 /* Enums.swift */; };
 		BA0FE6D4B901D5BF7DF2B8B9 /* Planning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C277290BDB320A5FFBB935 /* Planning.swift */; };
+		BCAF6E69D024CE1177D2F204 /* PlatesLauncherCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DDECE4B39D1229473B5DFA9 /* PlatesLauncherCard.swift */; };
 		BCC50C98CE0527AC1C937CBE /* ImportPipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 760EF4DCF55EB8C52DE51A6D /* ImportPipelineTests.swift */; };
 		BECD46B577284EFDC9CABCCF /* LeftoversView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A255073F3542D7946FDF4A5 /* LeftoversView.swift */; };
 		BFD7BE982DFDBF85A5C6ECB8 /* StatPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = B33EDD3B8B89ED417D5A6494 /* StatPill.swift */; };
@@ -174,6 +177,7 @@
 		DB8B8594AD637BE18F833C40 /* PlateCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C0EB5E87DDAED1F4E559F0 /* PlateCard.swift */; };
 		DC45CAD57614CC9D6259F9D8 /* UserPrefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA37957DBDDC577B2780A3E /* UserPrefs.swift */; };
 		DC7C749A037C376B47BF6471 /* OnboardingScaffold.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AFBB1EB5B71BF4B7688765E /* OnboardingScaffold.swift */; };
+		DD3321ED1CAACFED05C68CD5 /* RecipeFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688BA7BD35F0BDF1B6E89202 /* RecipeFeedView.swift */; };
 		DE12549124D3D523CCFB456A /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D56EF729F22F6F3DED29543 /* Theme.swift */; };
 		DF4B8699153B8E7A40B14DDF /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C06B098902A220170DB5726 /* Secrets.swift */; };
 		E00E0565BC59F9EFB40F594E /* OptimizeRecipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F340B99C7D917E983864BCDE /* OptimizeRecipeView.swift */; };
@@ -302,6 +306,7 @@
 		65FE09E5997ABD5A67C11372 /* RecipeFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeFactoryTests.swift; sourceTree = "<group>"; };
 		6722EB641E817296A4688BDB /* WalkthroughFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkthroughFrame.swift; sourceTree = "<group>"; };
 		6815E861AC272B08314E8EE3 /* PlatesServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesServiceTests.swift; sourceTree = "<group>"; };
+		688BA7BD35F0BDF1B6E89202 /* RecipeFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeFeedView.swift; sourceTree = "<group>"; };
 		6A6A303457644EB7ED607170 /* CategoryCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryCircle.swift; sourceTree = "<group>"; };
 		6F29983D8888CD4C7C082CBB /* DietGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietGuard.swift; sourceTree = "<group>"; };
 		73D783DA6055930864D36F17 /* RecipeImageBackfill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImageBackfill.swift; sourceTree = "<group>"; };
@@ -323,6 +328,7 @@
 		8CB6518A327FD79D55E715D5 /* IngredientLineParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientLineParser.swift; sourceTree = "<group>"; };
 		8D7C6652E2AA87A3E2E92ED3 /* CookFinishView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookFinishView.swift; sourceTree = "<group>"; };
 		91F167E4E8C32628B9047B00 /* PantryScan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PantryScan.swift; sourceTree = "<group>"; };
+		922A85DCB1E049DCF3897430 /* DeckEndCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckEndCardView.swift; sourceTree = "<group>"; };
 		9411345D042807ED2D743474 /* RecipesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipesView.swift; sourceTree = "<group>"; };
 		95B528E2683D5365F8DF91FA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		98053B3FFC4BD7D0C20C75CB /* TimerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerManager.swift; sourceTree = "<group>"; };
@@ -330,6 +336,7 @@
 		98B24B648D7D946D8F253FC7 /* ImportInboxDrainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportInboxDrainer.swift; sourceTree = "<group>"; };
 		99E981A8041DCF1213946DEF /* PlatesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesService.swift; sourceTree = "<group>"; };
 		9B316F8DA65A1DD6ACA687D0 /* PlatesSeedDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesSeedDeck.swift; sourceTree = "<group>"; };
+		9DDECE4B39D1229473B5DFA9 /* PlatesLauncherCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesLauncherCard.swift; sourceTree = "<group>"; };
 		A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeHTMLParser.swift; sourceTree = "<group>"; };
 		A34662C1AB1C5078CE9DA61C /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
 		A581E002B169649AB5C28EB6 /* RecipeSearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeSearchEngine.swift; sourceTree = "<group>"; };
@@ -388,6 +395,7 @@
 		EF3E70A3CCB84A7042B5FE65 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		F04DC9E02007A6E7D3264D4D /* ReminderScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderScheduler.swift; sourceTree = "<group>"; };
 		F1A2F97AA4C16C61F7F73AC7 /* ImportReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportReviewView.swift; sourceTree = "<group>"; };
+		F245440CFA61FD598B067918 /* FeedCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedCardView.swift; sourceTree = "<group>"; };
 		F340B99C7D917E983864BCDE /* OptimizeRecipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptimizeRecipeView.swift; sourceTree = "<group>"; };
 		F37334F4D4FCC0C8A3291B1C /* ShareImportViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareImportViewModelTests.swift; sourceTree = "<group>"; };
 		F5BE7E113C0145B67F0556D3 /* Recipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recipe.swift; sourceTree = "<group>"; };
@@ -775,10 +783,14 @@
 		C5F30ED294B8080C6A145467 /* Plates */ = {
 			isa = PBXGroup;
 			children = (
+				922A85DCB1E049DCF3897430 /* DeckEndCardView.swift */,
+				F245440CFA61FD598B067918 /* FeedCardView.swift */,
 				1A60ED890D4E70EC6FFBA855 /* MacroBreakdown.swift */,
 				47FE72C63CAE4B31C2A1290F /* MacroStrip.swift */,
 				51D92C8E360A657E37F798B8 /* PlatesFeedViewModel.swift */,
+				9DDECE4B39D1229473B5DFA9 /* PlatesLauncherCard.swift */,
 				3A2071C069E8ECA7573AFA2D /* PlatesStreak.swift */,
+				688BA7BD35F0BDF1B6E89202 /* RecipeFeedView.swift */,
 			);
 			path = Plates;
 			sourceTree = "<group>";
@@ -1024,6 +1036,7 @@
 				D36B7671B485CD49168BCA7C /* ConfidenceBadge.swift in Sources */,
 				F28F7DAFE3AD2E7FD1BF40CB /* CookFinishView.swift in Sources */,
 				19D5DE8E0D64A73F1756C3FD /* CookModeView.swift in Sources */,
+				ACCE4F0342E4C1E1503447F5 /* DeckEndCardView.swift in Sources */,
 				FDA468B0515CCE15FA0C5D16 /* DietGuard.swift in Sources */,
 				F48EEA8C4B150C6C5279702C /* DiscoverCardView.swift in Sources */,
 				96ED212BB7B42C7A7571B5A7 /* DiscoverFeedViewModel.swift in Sources */,
@@ -1034,6 +1047,7 @@
 				64097597701E495E3BC9BB4B /* DraftCleanup.swift in Sources */,
 				97937012B8CA51D69C342C90 /* EmptyStateView.swift in Sources */,
 				B997F7F5C96448B424A74DAD /* Enums.swift in Sources */,
+				986A927CD8553ECE0374677E /* FeedCardView.swift in Sources */,
 				3EB77E409B5D5BDC12880FCA /* FlowLayout.swift in Sources */,
 				D27826F4CEB4B76CBD9EA8F8 /* GlowBackground.swift in Sources */,
 				812D77EB9384E9BB9C3FBD71 /* GluttApp.swift in Sources */,
@@ -1093,6 +1107,7 @@
 				13781083582A794B65032A0D /* PlateCardMapper.swift in Sources */,
 				0776C916DC7465C4471D9300 /* PlatesDeckFilter.swift in Sources */,
 				FDBF637DA6E5FA768F984746 /* PlatesFeedViewModel.swift in Sources */,
+				BCAF6E69D024CE1177D2F204 /* PlatesLauncherCard.swift in Sources */,
 				674CDDCC4697492D9D421A25 /* PlatesSaver.swift in Sources */,
 				7D9A365DE85044094FF1064C /* PlatesSeedDeck.swift in Sources */,
 				B3F1FADC5C341C289BC70E51 /* PlatesService.swift in Sources */,
@@ -1106,6 +1121,7 @@
 				05BB66E74C0B7C6DA7810156 /* RecipeDetailView.swift in Sources */,
 				AE8AF2E65EFED70286B8935B /* RecipeEditorView.swift in Sources */,
 				786C3D5915D8773BA6791D7F /* RecipeFactory.swift in Sources */,
+				DD3321ED1CAACFED05C68CD5 /* RecipeFeedView.swift in Sources */,
 				D9F6403C8798CDBD06320027 /* RecipeHTMLParser.swift in Sources */,
 				C27230AC38FE472F3A1074DA /* RecipeImageBackfill.swift in Sources */,
 				C0EA5EC76EE823FB5CF68A5F /* RecipeImageView.swift in Sources */,

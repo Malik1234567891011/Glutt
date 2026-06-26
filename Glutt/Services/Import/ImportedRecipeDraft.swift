@@ -23,6 +23,11 @@ struct ImportedRecipeDraft: Identifiable, Codable {
     var tags: [String] = []
     var calories: Int?
     var proteinGrams: Int?
+    var carbGrams: Int?
+    var fatGrams: Int?
+    /// False only when macros come from a trusted source (e.g. Spoonacular).
+    /// Defaults to true so heuristic/AI imports are honestly flagged.
+    var nutritionIsEstimated: Bool = true
 
     /// Human-readable problems found during extraction, shown on the review screen.
     var issues: [String] = []

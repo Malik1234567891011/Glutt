@@ -24,6 +24,9 @@ enum RecipeFactory {
         )
         recipe.calories = draft.calories
         recipe.proteinGrams = draft.proteinGrams
+        recipe.carbGrams = draft.carbGrams
+        recipe.fatGrams = draft.fatGrams
+        recipe.nutritionIsEstimated = draft.nutritionIsEstimated
         recipe.imageData = draft.imageData
 
         recipe.ingredients = draft.ingredientLines

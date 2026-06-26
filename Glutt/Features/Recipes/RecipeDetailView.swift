@@ -454,26 +454,32 @@ struct RecipeDetailView: View {
     @ViewBuilder
     private var nutritionLine: some View {
         let prefs = UserPrefs.current(in: context)
-        if prefs.nutritionMode.showsNutrition, let estimate = NutritionEstimator.estimate(for: recipe) {
-            HStack(spacing: Theme.Spacing.md) {
-                Image(systemName: "chart.bar")
-                    .foregroundStyle(Theme.Colors.accent)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("~\(estimate.calories) cal · \(estimate.proteinGrams)g protein per serving")
-                        .font(.gluttHeadline)
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                    Text("Estimated from \(estimate.matchedCount)/\(estimate.totalCount) ingredients — likely \(estimate.caloriesRange.lowerBound)–\(estimate.caloriesRange.upperBound) cal")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.Colors.textSecondary)
+        if prefs.nutritionMode.showsNutrition {
+            if recipe.carbGrams != nil, recipe.fatGrams != nil {
+                // Full, trusted macros (e.g. saved from Plates) → tri-segment bar.
+                MacroStrip(recipe: recipe)
+                    .cardStyle()
+            } else if let estimate = NutritionEstimator.estimate(for: recipe) {
+                HStack(spacing: Theme.Spacing.md) {
+                    Image(systemName: "chart.bar")
+                        .foregroundStyle(Theme.Colors.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("~\(estimate.calories) cal · \(estimate.proteinGrams)g protein per serving")
+                            .font(.gluttHeadline)
+                            .foregroundStyle(Theme.Colors.textPrimary)
+                        Text("Estimated from \(estimate.matchedCount)/\(estimate.totalCount) ingredients — likely \(estimate.caloriesRange.lowerBound)–\(estimate.caloriesRange.upperBound) cal")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                    }
+                    Spacer()
                 }
-                Spacer()
-            }
-            .cardStyle()
-            .onAppear {
-                // Cache so cook-finish logging and meal cards can reuse it.
-                if recipe.calories == nil {
-                    recipe.calories = estimate.calories
-                    recipe.proteinGrams = estimate.proteinGrams
+                .cardStyle()
+                .onAppear {
+                    // Cache so cook-finish logging and meal cards can reuse it.
+                    if recipe.calories == nil {
+                        recipe.calories = estimate.calories
+                        recipe.proteinGrams = estimate.proteinGrams
+                    }
                 }
             }
         }

@@ -19,6 +19,7 @@
 		09D2B5129A39C8B7CB4A40A4 /* PollyConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13252E8FCE4B1C0102B43E57 /* PollyConfig.swift */; };
 		0BC8E77BB485332BDEE5D720 /* CategoryCircle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6A303457644EB7ED607170 /* CategoryCircle.swift */; };
 		0C71009BAE903CEE17F21003 /* HighlightHeadline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59640607009894E2AF38612C /* HighlightHeadline.swift */; };
+		0CFE242C313C5C9E31E9B960 /* PollyCameraController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C905319C8996B5C5CEF7804 /* PollyCameraController.swift */; };
 		0D6C17E69A8DCBE97A90ADC7 /* ImportedRecipeDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA97A87700CD96961371CCC /* ImportedRecipeDraft.swift */; };
 		0E91673079F01566867E6A54 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8165290CCC188E3B7D66BDC1 /* SettingsView.swift */; };
 		107D058A214EF25C3F563FAF /* GoalsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B818CF52EDB53A89E054A608 /* GoalsScreen.swift */; };
@@ -38,6 +39,7 @@
 		18A06021F18EFAB77EC116F2 /* GroceryListBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 476DE0FF02A984E39531A7EF /* GroceryListBuilder.swift */; };
 		1902F2B1529C08A6A3BD001B /* LogFoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82602CD57473794501B5CA97 /* LogFoodView.swift */; };
 		19D5DE8E0D64A73F1756C3FD /* CookModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8234C61CD0352DE70ED0462 /* CookModeView.swift */; };
+		1A47DB985C40CBD3C87DBABC /* WatchModeSchedulerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43FF1ADE4FC6948F3133E078 /* WatchModeSchedulerTests.swift */; };
 		1B82B84680A299EABA5B7B76 /* ImportReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2F97AA4C16C61F7F73AC7 /* ImportReviewView.swift */; };
 		1C9876F125A32CF28413B292 /* WalkthroughFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6722EB641E817296A4688BDB /* WalkthroughFrame.swift */; };
 		1D226EA6959ADF8E7BF1289D /* Phosphor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07ABF4C86860BFE521940467 /* Phosphor.swift */; };
@@ -279,6 +281,7 @@
 		2AFBB1EB5B71BF4B7688765E /* OnboardingScaffold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScaffold.swift; sourceTree = "<group>"; };
 		2BA97A87700CD96961371CCC /* ImportedRecipeDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedRecipeDraft.swift; sourceTree = "<group>"; };
 		2C06B098902A220170DB5726 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
+		2C905319C8996B5C5CEF7804 /* PollyCameraController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyCameraController.swift; sourceTree = "<group>"; };
 		2CF0F20EF027AE118381BF8D /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		2D56EF729F22F6F3DED29543 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		2E4363923FEEBD03D4E229DC /* RecipeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeDetailView.swift; sourceTree = "<group>"; };
@@ -302,6 +305,7 @@
 		421A2BD5A79AB7F890E43900 /* ImportInbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportInbox.swift; sourceTree = "<group>"; };
 		42276F384744F17772916181 /* PlatesSeedDeck.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = PlatesSeedDeck.json; sourceTree = "<group>"; };
 		4365A28A0C4D406680BB297B /* OnboardingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingState.swift; sourceTree = "<group>"; };
+		43FF1ADE4FC6948F3133E078 /* WatchModeSchedulerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchModeSchedulerTests.swift; sourceTree = "<group>"; };
 		4496C14D0D76BAF416BA56F6 /* PlatesDeckFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesDeckFilter.swift; sourceTree = "<group>"; };
 		476DE0FF02A984E39531A7EF /* GroceryListBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroceryListBuilder.swift; sourceTree = "<group>"; };
 		47FE72C63CAE4B31C2A1290F /* MacroStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacroStrip.swift; sourceTree = "<group>"; };
@@ -567,6 +571,7 @@
 				E16B9E3FC176CCD52B8C1E82 /* RouterImportNavigationTests.swift */,
 				F37334F4D4FCC0C8A3291B1C /* ShareImportViewModelTests.swift */,
 				F5EFBF02DCC36CCFF5BD0971 /* TutorialFlowModelTests.swift */,
+				43FF1ADE4FC6948F3133E078 /* WatchModeSchedulerTests.swift */,
 				C2408F1FB351D6FCFD32464C /* YouTubeEmbedTests.swift */,
 			);
 			path = GluttTests;
@@ -605,6 +610,7 @@
 			children = (
 				9C3C9F5A6E00813FB3A1A565 /* CookPlan.swift */,
 				9C2B0A5A7001C881CB503BF0 /* PollyAudioEngine.swift */,
+				2C905319C8996B5C5CEF7804 /* PollyCameraController.swift */,
 				13252E8FCE4B1C0102B43E57 /* PollyConfig.swift */,
 				B94ABCDAED53B1B546E05EF4 /* PollyMemoryStore.swift */,
 				FE3C1DC9472FACE2DF637235 /* PollyTokenService.swift */,
@@ -1075,6 +1081,7 @@
 				8119CE17BB8C7A31895954A3 /* RouterImportNavigationTests.swift in Sources */,
 				22AA6B7E63246878771B566E /* ShareImportViewModelTests.swift in Sources */,
 				83C5802717F3D0FE2F1A2EDF /* TutorialFlowModelTests.swift in Sources */,
+				1A47DB985C40CBD3C87DBABC /* WatchModeSchedulerTests.swift in Sources */,
 				AB9F73C6FAF05883823B7458 /* YouTubeEmbedTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1175,6 +1182,7 @@
 				9E7400B56D09BE5B4C9F4B7C /* PlatesStreak.swift in Sources */,
 				4AE39AFD4624E614CF4518BA /* Polly.swift in Sources */,
 				AAF69A06E5BE0CEC26AC86C8 /* PollyAudioEngine.swift in Sources */,
+				0CFE242C313C5C9E31E9B960 /* PollyCameraController.swift in Sources */,
 				09D2B5129A39C8B7CB4A40A4 /* PollyConfig.swift in Sources */,
 				4555CCCF97EF706EE428D9FC /* PollyMemoryStore.swift in Sources */,
 				A5CD6756DCCE850B026D4438 /* PollyTokenService.swift in Sources */,

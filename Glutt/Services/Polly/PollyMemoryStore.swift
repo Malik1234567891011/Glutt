@@ -33,6 +33,9 @@ enum PollyMemoryStore {
             if text.count > existing.text.count {
                 existing.text = text
             }
+            if existing.sourceRecipeTitle == nil {
+                existing.sourceRecipeTitle = sourceRecipeTitle
+            }
             return existing
         }
 
@@ -43,12 +46,12 @@ enum PollyMemoryStore {
 
     /// Strongest facts first: most-reinforced, then most recently updated.
     static func topFacts(limit: Int, in context: ModelContext) -> [PollyMemory] {
-        let descriptor = FetchDescriptor<PollyMemory>(sortBy: [
+        var descriptor = FetchDescriptor<PollyMemory>(sortBy: [
             SortDescriptor(\.timesReinforced, order: .reverse),
             SortDescriptor(\.updatedAt, order: .reverse),
         ])
-        let all = (try? context.fetch(descriptor)) ?? []
-        return Array(all.prefix(limit))
+        descriptor.fetchLimit = limit
+        return (try? context.fetch(descriptor)) ?? []
     }
 
     // MARK: - Fuzzy match

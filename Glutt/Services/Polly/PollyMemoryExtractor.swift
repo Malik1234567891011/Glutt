@@ -1,66 +1,80 @@
 import Foundation
 import SwiftData
 
-// MARK: - Task 14 placeholder
-//
-// This is the MINIMAL surface Task 13 (`PollySessionController`) compiles
-// against. Task 14 completes this file: it fills in `extract()` with the real
-// one-shot LLM call and may move the custom `Decodable` conformances into an
-// extension. Until then:
-//   • `Fact` / `Extraction` carry the synthesized memberwise inits the tests use.
-//   • `apply(_:recipeTitle:in:)` is FULLY implemented — the controller's `end()`
-//     persistence test depends on it writing PollyMemory rows.
-//   • `extract(transcript:recipeTitle:)` is a stub that throws; it exists only so
-//     `PollySessionController.Dependencies.live` (a default-argument closure that
-//     tests never invoke) type-checks. Do not rely on it before Task 14.
-
-/// Turns a finished cook's transcript into durable kitchen facts + a summary.
+/// Post-cook memory: one `chatJSON` pass over the session transcript pulls
+/// out durable kitchen facts (stove runs hot, owns cast iron, chops slowly)
+/// plus a short summary for the cook log. `apply` lands the facts in
+/// `PollyMemory` through the store's dedup/reinforce upsert — the LLM
+/// proposes, the store disposes.
 enum PollyMemoryExtractor {
-    /// One learned fact. `kind` is a `MemoryKind.rawValue`; unknown values are
-    /// dropped by `apply`.
+
     struct Fact: Decodable, Equatable {
-        var kind: String
-        var text: String
-        var confidence: Double
+        let kind: String
+        let text: String
+        let confidence: Double
     }
 
-    /// The extractor's full result: the facts to reinforce plus a one-line
-    /// human summary of how the cook went.
     struct Extraction: Decodable, Equatable {
-        var facts: [Fact]
-        var summary: String
+        let facts: [Fact]
+        let summary: String
     }
 
-    enum ExtractorError: LocalizedError {
-        /// Task 14 replaces this with the real extraction call.
-        case notImplemented
+    typealias LLM = (_ system: String, _ user: String) async throws -> Extraction
 
-        var errorDescription: String? {
-            switch self {
-            case .notImplemented: "Memory extraction isn't wired up yet."
-            }
+    /// One-shot extraction over the full session transcript.
+    /// `llm` is injectable for tests; the default routes through the proxy.
+    static func extract(
+        transcript: String,
+        recipeTitle: String,
+        llm: LLM = { system, user in
+            try await LLMClient.chatJSON(Extraction.self, system: system, user: user, temperature: 0.2, timeout: 30)
         }
+    ) async throws -> Extraction {
+        guard LLMClient.isConfigured else { throw LLMClient.LLMError.notConfigured }
+
+        let system = """
+        You read the transcript of a live cooking session and extract DURABLE kitchen facts
+        a chef should remember about this specific cook and this cook's kitchen.
+
+        Return JSON: {"facts": [{"kind": str, "text": str, "confidence": num}], "summary": str}
+
+        Rules:
+        - kind: one of "equipment", "technique", "pantryHabit", "preference", "outcome".
+        - text: one sentence, third person ("Their stove runs hot", "They own a cast-iron skillet").
+        - confidence: 0 to 1 — how sure you are the fact holds beyond this one session.
+        - Only durable facts: equipment they own, how their appliances behave, techniques they
+          struggle with or excel at, what they keep stocked, what they like, how their dishes
+          tend to turn out.
+        - Ignore one-off chatter, jokes, and anything specific to just this dish today.
+        - Return an empty facts array when nothing durable came up.
+        - summary: 2-3 sentences describing how this cook went, for the session log.
+        """
+
+        let user = """
+        Recipe: \(recipeTitle)
+
+        Transcript:
+        \(transcript)
+        """
+
+        return try await llm(system, user)
     }
 
-    /// Reinforce each extracted fact into `PollyMemory` (dedup handled by the
-    /// store's fuzzy upsert). Unknown `kind` strings are skipped. Caller owns
-    /// saving the context — the controller's `end()` saves once for the whole
-    /// teardown.
+    /// Write extracted facts into on-device memory. Unknown kinds fall back
+    /// to `.outcome`, confidence is clamped to 0...1, and fragments under
+    /// 8 characters are dropped as noise. Dedup/reinforce lives in the store.
     static func apply(_ extraction: Extraction, recipeTitle: String, in context: ModelContext) {
         for fact in extraction.facts {
-            guard let kind = MemoryKind(rawValue: fact.kind) else { continue }
+            guard fact.text.count >= 8 else { continue }
+            let kind = MemoryKind(rawValue: fact.kind) ?? .outcome
+            let confidence = min(max(fact.confidence, 0), 1)
             PollyMemoryStore.upsert(
                 kind: kind,
                 text: fact.text,
-                confidence: fact.confidence,
+                confidence: confidence,
                 sourceRecipeTitle: recipeTitle,
-                in: context)
+                in: context
+            )
         }
-    }
-
-    /// Placeholder — Task 14 implements the real LLM extraction. Present only so
-    /// `Dependencies.live` compiles; the injected test deps never call it.
-    static func extract(transcript: String, recipeTitle: String) async throws -> Extraction {
-        throw ExtractorError.notImplemented
     }
 }

@@ -72,22 +72,32 @@ final class PollyCameraController: NSObject {
 
     /// Swaps to the opposite camera. Reconfiguration happens inside
     /// beginConfiguration/commitConfiguration so the session never tears down.
+    /// `position` only advances when the hardware swap actually succeeded, so
+    /// stored state can't diverge from the live device (e.g. no front camera).
     func flip() {
         guard isRunning else { return }
-        position = (position == .back) ? .front : .back
-        configureSession(position: position)
+        let flipped: AVCaptureDevice.Position = (position == .back) ? .front : .back
+        if configureSession(position: flipped) {
+            position = flipped
+        } else {
+            configureSession(position: position)
+        }
     }
 
     /// Latest frame as a JPEG, downscaled to `PollyConfig.frameMaxDimension`
     /// at `PollyConfig.frameJPEGQuality` — same UIGraphicsImageRenderer
     /// approach as `ImagePrep.prepareForVision`. Nil when not running or no
-    /// frame has arrived yet.
+    /// frame has arrived yet. Only the pixel-buffer handoff happens on the
+    /// main actor; CIContext rendering + resize + JPEG all run detached so a
+    /// capture never janks the session UI.
     func captureFrame() async -> Data? {
-        guard isRunning, let image = frameSink.latestImage() else { return nil }
+        guard isRunning, let buffer = frameSink.latestPixelBuffer() else { return nil }
+        let sink = frameSink
         let maxDimension = PollyConfig.frameMaxDimension
         let quality = PollyConfig.frameJPEGQuality
 
         return await Task.detached { () -> Data? in
+            guard let image = sink.image(from: buffer) else { return nil }
             let largestSide = max(image.size.width, image.size.height)
             guard largestSide > 0 else { return nil }
 
@@ -154,6 +164,9 @@ final class PollyCameraController: NSObject {
     private final class LatestFrameSink: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
         private let lock = NSLock()
         private nonisolated(unsafe) var latestBuffer: CVPixelBuffer?
+        /// One shared context — allocating a CIContext per frame is the
+        /// expensive part of rendering.
+        private let context = CIContext()
 
         nonisolated func captureOutput(_ output: AVCaptureOutput,
                                        didOutput sampleBuffer: CMSampleBuffer,
@@ -164,14 +177,17 @@ final class PollyCameraController: NSObject {
             lock.unlock()
         }
 
-        nonisolated func latestImage() -> UIImage? {
+        /// Cheap main-actor-safe handoff: just the locked pointer read.
+        nonisolated func latestPixelBuffer() -> CVPixelBuffer? {
             lock.lock()
-            let buffer = latestBuffer
-            lock.unlock()
-            guard let buffer else { return nil }
+            defer { lock.unlock() }
+            return latestBuffer
+        }
 
+        /// Full render (CIContext -> CGImage -> UIImage). Call off-main.
+        nonisolated func image(from buffer: CVPixelBuffer) -> UIImage? {
             let ciImage = CIImage(cvPixelBuffer: buffer)
-            guard let cgImage = CIContext().createCGImage(ciImage, from: ciImage.extent) else { return nil }
+            guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
             return UIImage(cgImage: cgImage)
         }
     }

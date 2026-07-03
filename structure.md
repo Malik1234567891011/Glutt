@@ -1,3 +1,5 @@
+> Amendment (2026-07): the bottom navigation now has six tabs — Today, Recipes, Polly (the live AI chef tab, third/center), Plan, Kitchen, Progress. The five-tab lists below predate Polly; see product.md for the current navigation contract.
+
 The app’s actual structure
 
 I would make the bottom navigation:

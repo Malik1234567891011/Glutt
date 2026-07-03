@@ -1,6 +1,6 @@
 # Glutt
 
-A mobile-first cooking assistant. Import recipes from anywhere, know what's in your kitchen, plan your week, cook with guidance, and track what you actually ate — without the app forcing gym culture on you.
+A mobile-first cooking assistant. Import recipes from anywhere, know what's in your kitchen, plan your week, cook with guidance or live with Polly (a realtime voice + camera AI chef), and track what you actually ate — without the app forcing gym culture on you.
 
 iOS-native: SwiftUI + SwiftData, iOS 17+.
 
@@ -32,7 +32,7 @@ Build and run the `Glutt` scheme on an iOS 17+ simulator. Debug builds seed samp
   - `Glutt/App` — entry point, root tab shell, deep-link router (`glutt://` scheme)
   - `Glutt/DesignSystem` — theme tokens + reusable components (warm, cream, deep-green)
   - `Glutt/Models` — SwiftData models: `Recipe`, `PantryItem`, `GroceryItem`, `PlannedMeal`, `Leftover`, `FoodLog`, `CookSession`, `UserPrefs`
-  - `Glutt/Features` — one folder per tab: Today, Recipes, Plan, Kitchen, Progress, plus Capture (universal + button)
+  - `Glutt/Features` — one folder per tab: Today, Recipes, Polly (live cooking sessions), Plan, Kitchen, Progress, plus Capture (universal + button)
   - `Glutt/Services` — domain logic (ingredient canonicalization for pantry matching)
 - **Tests**: `GluttTests` covers canonicalization and the data layer. CI runs build + tests on every push.
 

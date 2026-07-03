@@ -48,13 +48,16 @@ Help the user decide what to cook, cook it properly, adapt recipes to real life,
 
 ## Core Navigation
 
-Use a simple bottom navigation with a maximum of five main tabs:
+Use a simple bottom navigation with a maximum of six main tabs:
 
 1. **Today**
 2. **Recipes**
-3. **Plan**
-4. **Kitchen**
-5. **Progress**
+3. **Polly**
+4. **Plan**
+5. **Kitchen**
+6. **Progress**
+
+Polly is the app's live-chef persona — an approved exception to the no-mascot rule (2026-07). It is the sixth tab added, but it sits third (center) in the bar — this list is the implemented order (`AppTab.allCases`: today, recipes, polly, plan, kitchen, progress).
 
 There should also be one main universal action button for adding/importing/scanning/logging.
 

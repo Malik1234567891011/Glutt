@@ -22,7 +22,7 @@ The wedge is not "talk to your recipe" — **Polly runs the cook with you.**
 | Transport | **Direct WebSocket** (`URLSessionWebSocketTask`) with ephemeral client secrets; isolated behind a protocol so WebRTC/LiveKit can replace it later |
 | Camera | **Watch mode + on-demand**: frames on visual questions, "Show Polly" shutter, Polly-requested looks, and ~1 frame/10 s while the watch toggle is on |
 | Long-term memory | **On-device SwiftData** (`PollyMemory`, `PollyCookLog`); schema shaped to sync to Postgres+pgvector later |
-| Entry points | New **6th bottom tab "Polly"** + **Cook with Polly** button on recipe detail |
+| Entry points | A new **Polly** bottom tab (third position, six tabs total) + **Cook with Polly** button on recipe detail |
 | Existing Cook Mode | Untouched; remains the no-AI fallback (restyle golden rule: never remove a feature) |
 
 Known doc conflict, accepted by Omar: `product.md` caps the app at 5 intent-named tabs and bans
@@ -74,7 +74,7 @@ chef personas. Polly overrides both; `product.md` gets a short amendment noting 
   steps-content hash.
 - `PollySessionToken.swift` + `PollyTokenService.swift` — `struct PollyTokenService` (Plates-style
   `Transport` closure DI) POSTs `{proxyBaseURL}/polly/session` with `x-glutt-proxy-key`, decodes
-  `{clientSecret, expiresAt, model, voice}`.
+  `{value, expiresAt, model, voice}`.
 - `RealtimeTransport.swift` — `protocol RealtimeTransporting` + `actor RealtimeWebSocketTransport`.
   Connects `wss://api.openai.com/v1/realtime?model=…` with `Authorization: Bearer <ephemeral>`.
   Encodes/decodes the Realtime event protocol (typed `RealtimeEvent` enums for the ~12 events we
@@ -125,7 +125,7 @@ every in-memory test container that needs them):
 **Proxy — `vercel-ai-proxy/api/polly/session.js`**
 POST, gated by `x-glutt-proxy-key`. Calls OpenAI `POST /v1/realtime/client_secrets` with session
 defaults (model `gpt-realtime`, voice `marin`, modalities audio+text, expiry ≤10 min) and returns
-`{clientSecret, expiresAt, model, voice}`. The committed shared proxy key never touches the socket;
+`{value, expiresAt, model, voice}`. The committed shared proxy key never touches the socket;
 the long-lived `OPENAI_API_KEY` lives only in Vercel env. Version header
 `x-glutt-proxy-version: polly-2026-07-02-1`; `has_*` flag added to `api/health.js`.
 
@@ -165,8 +165,9 @@ CookPlan compile fails → linear fallback plan.
 ## Costs
 
 Rough v1 numbers at current gpt-realtime pricing: 30–40 min cook with intermittent conversation +
-watch mode ≈ **$0.50–$2.00/session**. Knobs (constants in `PollyConfig`): watch-mode frame interval
-(10 s), frame size (1024 px), idle-mic policy, max session length (90 min hard stop).
+watch mode ≈ **$0.50–$2.00/session**. The watch-frame interval (10 s) and image size (1024 px) are
+the knobs (constants in `PollyConfig`; server VAD already discards silent mic audio), plus max
+session length (52 min — OpenAI caps realtime sessions at 60).
 
 ## Testing
 

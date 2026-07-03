@@ -83,6 +83,7 @@
 		5B1FA996B31768F987F6537B /* NutritionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E58CC56FAC0BF5F276D3E1E3 /* NutritionScreen.swift */; };
 		5BA89C22F52D91DB800A99F8 /* ImportInboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7786E74A2821C2BB89B69EE /* ImportInboxTests.swift */; };
 		5C440A167E3C257BF73984C5 /* PlatesDeckFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6771313CA6041A5D72F28AD /* PlatesDeckFilterTests.swift */; };
+		5D8679AA456EAD7B6590B239 /* PollyToolRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27E1FC5F02528DF1B978776 /* PollyToolRegistryTests.swift */; };
 		5EB80A0613D1F492F62C686F /* PlatesSeedDeck.json in Resources */ = {isa = PBXBuildFile; fileRef = 42276F384744F17772916181 /* PlatesSeedDeck.json */; };
 		5EE0AAEF34DFDF40C3A70620 /* NotificationPrimerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DD23D484539CDDA15AF9D1 /* NotificationPrimerScreen.swift */; };
 		60F40CA16978E4326ADCE853 /* WeekPlannerWizard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38DA703EAADAF63891512242 /* WeekPlannerWizard.swift */; };
@@ -129,6 +130,7 @@
 		98021F5F7768574981318E58 /* IngredientCategoryStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D834D7374E050EB801F354 /* IngredientCategoryStyle.swift */; };
 		986A927CD8553ECE0374677E /* FeedCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F245440CFA61FD598B067918 /* FeedCardView.swift */; };
 		98D52307F99E058349AA1999 /* PlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289532428C48086D19FF6C54 /* PlanView.swift */; };
+		9AE084C305FEEFCD57DA1AF4 /* PollyToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE6FB8332EA24BD4AC03D0C /* PollyToolRegistry.swift */; };
 		9B458EBCF55B3520D3BF5A5E /* IconChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF7716B63BB5B638327D805 /* IconChip.swift */; };
 		9D12ABEDAA61B1FFCB990FB1 /* MacroBreakdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A60ED890D4E70EC6FFBA855 /* MacroBreakdown.swift */; };
 		9E7400B56D09BE5B4C9F4B7C /* PlatesStreak.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A2071C069E8ECA7573AFA2D /* PlatesStreak.swift */; };
@@ -375,6 +377,7 @@
 		AE6471755924AE9ED5DAC77E /* CameraPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPicker.swift; sourceTree = "<group>"; };
 		AECDB51EACA72CE8D071EAD9 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
 		AEF7716B63BB5B638327D805 /* IconChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IconChip.swift; sourceTree = "<group>"; };
+		B27E1FC5F02528DF1B978776 /* PollyToolRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyToolRegistryTests.swift; sourceTree = "<group>"; };
 		B2C63684C7E494372CA1A8B5 /* RecipeImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImageView.swift; sourceTree = "<group>"; };
 		B33EDD3B8B89ED417D5A6494 /* StatPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatPill.swift; sourceTree = "<group>"; };
 		B3EADF6FD77F51E85B3A156E /* DiscoverSaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverSaver.swift; sourceTree = "<group>"; };
@@ -444,6 +447,7 @@
 		FD66D2C60B184F432C6759F7 /* LeftoverRemixSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeftoverRemixSheet.swift; sourceTree = "<group>"; };
 		FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = GluttShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE3C1DC9472FACE2DF637235 /* PollyTokenService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyTokenService.swift; sourceTree = "<group>"; };
+		FEE6FB8332EA24BD4AC03D0C /* PollyToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyToolRegistry.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -563,6 +567,7 @@
 				2F335DD607D3B518B3BC5B64 /* PollyIconAssetTests.swift */,
 				D8FBB7D507E046F69DAA1BC0 /* PollyMemoryStoreTests.swift */,
 				CBC6E1BC83BAD99543EF0A36 /* PollyTokenServiceTests.swift */,
+				B27E1FC5F02528DF1B978776 /* PollyToolRegistryTests.swift */,
 				E0928ADDCDC60C9C38655861 /* RealtimeEventCodecTests.swift */,
 				A54C0CB6A5BB8B74924F7A87 /* RealtimeTransportTests.swift */,
 				B7FA4D065F389895DCF067D6 /* RecipeFactoryMacroTests.swift */,
@@ -614,6 +619,7 @@
 				13252E8FCE4B1C0102B43E57 /* PollyConfig.swift */,
 				B94ABCDAED53B1B546E05EF4 /* PollyMemoryStore.swift */,
 				FE3C1DC9472FACE2DF637235 /* PollyTokenService.swift */,
+				FEE6FB8332EA24BD4AC03D0C /* PollyToolRegistry.swift */,
 				77D341D37CC3E15070605929 /* RealtimeEvent.swift */,
 				B43E6B8457F5ABE9B016C3F5 /* RealtimeTransport.swift */,
 			);
@@ -1073,6 +1079,7 @@
 				FF83764AFC3CCB1875AC6CC3 /* PollyIconAssetTests.swift in Sources */,
 				EFB3B5FBA427E9CBFBC3EBDD /* PollyMemoryStoreTests.swift in Sources */,
 				DA1190A56E0B55047C8B20EA /* PollyTokenServiceTests.swift in Sources */,
+				5D8679AA456EAD7B6590B239 /* PollyToolRegistryTests.swift in Sources */,
 				7D2869291F568419AD02BEF7 /* RealtimeEventCodecTests.swift in Sources */,
 				E1DEE0DB90D3266B35DA69B7 /* RealtimeTransportTests.swift in Sources */,
 				AC5A5F0C66D4A0EE6E0F9261 /* RecipeFactoryMacroTests.swift in Sources */,
@@ -1186,6 +1193,7 @@
 				09D2B5129A39C8B7CB4A40A4 /* PollyConfig.swift in Sources */,
 				4555CCCF97EF706EE428D9FC /* PollyMemoryStore.swift in Sources */,
 				A5CD6756DCCE850B026D4438 /* PollyTokenService.swift in Sources */,
+				9AE084C305FEEFCD57DA1AF4 /* PollyToolRegistry.swift in Sources */,
 				B3C119F6B06D8A6ADF2A2350 /* PreCookChecklistView.swift in Sources */,
 				F186B49536E5B8A5016A0F1A /* ProgressStats.swift in Sources */,
 				ABFCA4853F7794491D82C568 /* ProgressTabView.swift in Sources */,

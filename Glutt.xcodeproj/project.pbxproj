@@ -84,6 +84,7 @@
 		5EB80A0613D1F492F62C686F /* PlatesSeedDeck.json in Resources */ = {isa = PBXBuildFile; fileRef = 42276F384744F17772916181 /* PlatesSeedDeck.json */; };
 		5EE0AAEF34DFDF40C3A70620 /* NotificationPrimerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DD23D484539CDDA15AF9D1 /* NotificationPrimerScreen.swift */; };
 		60F40CA16978E4326ADCE853 /* WeekPlannerWizard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38DA703EAADAF63891512242 /* WeekPlannerWizard.swift */; };
+		615AD56320ECA88141DA56F2 /* RealtimeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B43E6B8457F5ABE9B016C3F5 /* RealtimeTransport.swift */; };
 		622AE48D9C10C09E3E26DACC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4BDDF12AA6FF33207013C566 /* PrivacyInfo.xcprivacy */; };
 		64097597701E495E3BC9BB4B /* DraftCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F7860B4A0705740CD7C55F /* DraftCleanup.swift */; };
 		658FF063B7D0C83A48CE0A3B /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61F5AFC37B586B18C2468CF /* Typography.swift */; };
@@ -190,6 +191,7 @@
 		DE12549124D3D523CCFB456A /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D56EF729F22F6F3DED29543 /* Theme.swift */; };
 		DF4B8699153B8E7A40B14DDF /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C06B098902A220170DB5726 /* Secrets.swift */; };
 		E00E0565BC59F9EFB40F594E /* OptimizeRecipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F340B99C7D917E983864BCDE /* OptimizeRecipeView.swift */; };
+		E1DEE0DB90D3266B35DA69B7 /* RealtimeTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A54C0CB6A5BB8B74924F7A87 /* RealtimeTransportTests.swift */; };
 		E64633C36A04C6F3ED776864 /* ReminderScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F04DC9E02007A6E7D3264D4D /* ReminderScheduler.swift */; };
 		E9E62465FDE3533A7CE521B1 /* NutritionEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF96F3FA7AE1145E7946CB47 /* NutritionEstimator.swift */; };
 		EAB06B1CEB7F2CF3DF02C083 /* KitchenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAC0FFFECF313768192EAFA2 /* KitchenView.swift */; };
@@ -354,6 +356,7 @@
 		9DDECE4B39D1229473B5DFA9 /* PlatesLauncherCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesLauncherCard.swift; sourceTree = "<group>"; };
 		A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeHTMLParser.swift; sourceTree = "<group>"; };
 		A34662C1AB1C5078CE9DA61C /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
+		A54C0CB6A5BB8B74924F7A87 /* RealtimeTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeTransportTests.swift; sourceTree = "<group>"; };
 		A581E002B169649AB5C28EB6 /* RecipeSearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeSearchEngine.swift; sourceTree = "<group>"; };
 		A6AA607718196B77CD8D95CC /* RecipeFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeFactory.swift; sourceTree = "<group>"; };
 		A748BA2D60B7B0EC30568652 /* ImportRecipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportRecipeView.swift; sourceTree = "<group>"; };
@@ -368,6 +371,7 @@
 		B2C63684C7E494372CA1A8B5 /* RecipeImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImageView.swift; sourceTree = "<group>"; };
 		B33EDD3B8B89ED417D5A6494 /* StatPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatPill.swift; sourceTree = "<group>"; };
 		B3EADF6FD77F51E85B3A156E /* DiscoverSaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverSaver.swift; sourceTree = "<group>"; };
+		B43E6B8457F5ABE9B016C3F5 /* RealtimeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeTransport.swift; sourceTree = "<group>"; };
 		B467C6326A00806781CC0B1D /* ImportGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportGuideView.swift; sourceTree = "<group>"; };
 		B4A1A1F5EF2FE2B0B6641E98 /* WhatToCookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatToCookView.swift; sourceTree = "<group>"; };
 		B5F3EF4D5C770B981E142355 /* PageDots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageDots.swift; sourceTree = "<group>"; };
@@ -551,6 +555,7 @@
 				D8FBB7D507E046F69DAA1BC0 /* PollyMemoryStoreTests.swift */,
 				CBC6E1BC83BAD99543EF0A36 /* PollyTokenServiceTests.swift */,
 				E0928ADDCDC60C9C38655861 /* RealtimeEventCodecTests.swift */,
+				A54C0CB6A5BB8B74924F7A87 /* RealtimeTransportTests.swift */,
 				B7FA4D065F389895DCF067D6 /* RecipeFactoryMacroTests.swift */,
 				65FE09E5997ABD5A67C11372 /* RecipeFactoryTests.swift */,
 				5E04BD50411091A43725DB53 /* RecipeImageBackfillTests.swift */,
@@ -598,6 +603,7 @@
 				B94ABCDAED53B1B546E05EF4 /* PollyMemoryStore.swift */,
 				FE3C1DC9472FACE2DF637235 /* PollyTokenService.swift */,
 				77D341D37CC3E15070605929 /* RealtimeEvent.swift */,
+				B43E6B8457F5ABE9B016C3F5 /* RealtimeTransport.swift */,
 			);
 			path = Polly;
 			sourceTree = "<group>";
@@ -1055,6 +1061,7 @@
 				EFB3B5FBA427E9CBFBC3EBDD /* PollyMemoryStoreTests.swift in Sources */,
 				DA1190A56E0B55047C8B20EA /* PollyTokenServiceTests.swift in Sources */,
 				7D2869291F568419AD02BEF7 /* RealtimeEventCodecTests.swift in Sources */,
+				E1DEE0DB90D3266B35DA69B7 /* RealtimeTransportTests.swift in Sources */,
 				AC5A5F0C66D4A0EE6E0F9261 /* RecipeFactoryMacroTests.swift in Sources */,
 				2FF58009D64582CBBA7F0821 /* RecipeFactoryTests.swift in Sources */,
 				F0AEC64E7A4805AB2E650552 /* RecipeImageBackfillTests.swift in Sources */,
@@ -1167,6 +1174,7 @@
 				F186B49536E5B8A5016A0F1A /* ProgressStats.swift in Sources */,
 				ABFCA4853F7794491D82C568 /* ProgressTabView.swift in Sources */,
 				41F57819321FB979C342F6DF /* RealtimeEvent.swift in Sources */,
+				615AD56320ECA88141DA56F2 /* RealtimeTransport.swift in Sources */,
 				117E9C022592C581920CEFBE /* Recipe.swift in Sources */,
 				117E3A32C7436BA162B16443 /* RecipeAdjuster.swift in Sources */,
 				A5D13C7DD0ADCAC196619502 /* RecipeCard.swift in Sources */,

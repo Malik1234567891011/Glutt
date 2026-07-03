@@ -73,12 +73,26 @@ protocol RealtimeTransporting: AnyObject, Sendable {
 /// On a receive failure it yields `.error(code: "transport", ...)` and
 /// finishes the stream — reconnecting is the controller's decision.
 actor RealtimeWebSocketTransport: RealtimeTransporting {
+    /// Lock-guarded flag shared between the actor and its receive loop.
+    /// `Task.isCancelled` is not atomic with a socket throw: a wire error can
+    /// win the race against `close()`'s cancel and surface as a spurious
+    /// "transport" failure mid-shutdown — which the controller would answer
+    /// with a pointless reconnect. The flag is set BEFORE the socket is
+    /// touched, so a close()-induced receive error is always suppressed.
+    private final class ClosingFlag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = false
+        func set() { lock.withLock { value = true } }
+        var isSet: Bool { lock.withLock { value } }
+    }
+
     nonisolated let events: AsyncStream<RealtimeServerEvent>
 
     private let continuation: AsyncStream<RealtimeServerEvent>.Continuation
     private let socketFactory: @Sendable (URLRequest) -> RealtimeSocket
     private var socket: RealtimeSocket?
     private var receiveTask: Task<Void, Never>?
+    private let isClosing = ClosingFlag()
 
     init(
         socketFactory: @escaping @Sendable (URLRequest) -> RealtimeSocket = { URLSessionWebSocket(request: $0) }
@@ -103,13 +117,14 @@ actor RealtimeWebSocketTransport: RealtimeTransporting {
         let socket = socketFactory(request)
         self.socket = socket
         let continuation = self.continuation
+        let isClosing = self.isClosing
         receiveTask = Task {
-            while !Task.isCancelled {
+            while !Task.isCancelled, !isClosing.isSet {
                 do {
                     let text = try await socket.receiveText()
                     continuation.yield(RealtimeServerEvent.decode(Data(text.utf8)))
                 } catch {
-                    if !Task.isCancelled {
+                    if !Task.isCancelled, !isClosing.isSet {
                         continuation.yield(.error(code: "transport", message: error.localizedDescription))
                     }
                     continuation.finish()
@@ -126,6 +141,7 @@ actor RealtimeWebSocketTransport: RealtimeTransporting {
     }
 
     func close() {
+        isClosing.set()
         receiveTask?.cancel()
         receiveTask = nil
         socket?.close()

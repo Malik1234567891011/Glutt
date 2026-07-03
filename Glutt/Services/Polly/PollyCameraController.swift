@@ -152,7 +152,7 @@ final class PollyCameraController: NSObject {
     /// from the main actor. Explicitly nonisolated — it must never hop to the
     /// main actor the enclosing controller lives on.
     private final class LatestFrameSink: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
-        private nonisolated(unsafe) let lock = NSLock()
+        private let lock = NSLock()
         private nonisolated(unsafe) var latestBuffer: CVPixelBuffer?
 
         nonisolated func captureOutput(_ output: AVCaptureOutput,

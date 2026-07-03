@@ -127,6 +127,7 @@
 		8EB396B32CC0D7CE28208140 /* GluttTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 358FD41FD7F25B2575B5BFB5 /* GluttTabBar.swift */; };
 		8FDAE5FFBBFF30C41186E447 /* ImportTutorialScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCC4B7F485CFCE9647BE61E8 /* ImportTutorialScreen.swift */; };
 		8FDC70AABCFEFF1B61118F05 /* OnboardingPaywallHook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25F3CFECAB49DD92009FC400 /* OnboardingPaywallHook.swift */; };
+		906182F5CD250106DD6EE9D0 /* PollyRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 999E0EFAB970BFA5F17622C8 /* PollyRouterTests.swift */; };
 		90B13129DB93AF54ECC8895B /* RecipeImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 598FB7658D86B414965B6432 /* RecipeImportService.swift */; };
 		91E09FBEA927C5B65D548293 /* SocialMediaImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD93233274D874B07BC71E66 /* SocialMediaImport.swift */; };
 		93268C4A6AEE45B7D2FDD33A /* ImportInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421A2BD5A79AB7F890E43900 /* ImportInbox.swift */; };
@@ -158,6 +159,7 @@
 		ACCE4F0342E4C1E1503447F5 /* DeckEndCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 922A85DCB1E049DCF3897430 /* DeckEndCardView.swift */; };
 		AE8AF2E65EFED70286B8935B /* RecipeEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2179632ACE3988876F4F4170 /* RecipeEditorView.swift */; };
 		B0113D10FAE441E211B6533C /* ImportRecipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A748BA2D60B7B0EC30568652 /* ImportRecipeView.swift */; };
+		B0A326032BC6ACF265541E99 /* PollyTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42176C77AB175F9F0B3DE89D /* PollyTabView.swift */; };
 		B3BCA09BD6614A48A535C3EE /* RecipeSearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A581E002B169649AB5C28EB6 /* RecipeSearchEngine.swift */; };
 		B3C119F6B06D8A6ADF2A2350 /* PreCookChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02024086020F095CDDF5F628 /* PreCookChecklistView.swift */; };
 		B3F1FADC5C341C289BC70E51 /* PlatesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99E981A8041DCF1213946DEF /* PlatesService.swift */; };
@@ -319,6 +321,7 @@
 		4013BCB69BEE4E7DCC7FFE7D /* StoreModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreModeView.swift; sourceTree = "<group>"; };
 		412DD0B2F37BE98BAAEB523D /* Kitchen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kitchen.swift; sourceTree = "<group>"; };
 		420CD47E5C2004D61B7D0B32 /* Buttons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Buttons.swift; sourceTree = "<group>"; };
+		42176C77AB175F9F0B3DE89D /* PollyTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyTabView.swift; sourceTree = "<group>"; };
 		421A2BD5A79AB7F890E43900 /* ImportInbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportInbox.swift; sourceTree = "<group>"; };
 		42276F384744F17772916181 /* PlatesSeedDeck.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = PlatesSeedDeck.json; sourceTree = "<group>"; };
 		429066C03FFDC3E644D0741D /* PollySessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollySessionController.swift; sourceTree = "<group>"; };
@@ -378,6 +381,7 @@
 		98053B3FFC4BD7D0C20C75CB /* TimerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerManager.swift; sourceTree = "<group>"; };
 		9849E4D814CBE9FB1D1E619C /* GluttTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttTests.swift; sourceTree = "<group>"; };
 		98B24B648D7D946D8F253FC7 /* ImportInboxDrainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportInboxDrainer.swift; sourceTree = "<group>"; };
+		999E0EFAB970BFA5F17622C8 /* PollyRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyRouterTests.swift; sourceTree = "<group>"; };
 		99E981A8041DCF1213946DEF /* PlatesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesService.swift; sourceTree = "<group>"; };
 		9B316F8DA65A1DD6ACA687D0 /* PlatesSeedDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesSeedDeck.swift; sourceTree = "<group>"; };
 		9C2B0A5A7001C881CB503BF0 /* PollyAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyAudioEngine.swift; sourceTree = "<group>"; };
@@ -592,6 +596,7 @@
 				08F4B7E10CB0E41F45391550 /* PollyMemoryExtractorTests.swift */,
 				D8FBB7D507E046F69DAA1BC0 /* PollyMemoryStoreTests.swift */,
 				6E66EA327CD8F3F672E407BC /* PollyPromptBuilderTests.swift */,
+				999E0EFAB970BFA5F17622C8 /* PollyRouterTests.swift */,
 				A45301997FCD1BF1A6D7095C /* PollySessionControllerTests.swift */,
 				CBC6E1BC83BAD99543EF0A36 /* PollyTokenServiceTests.swift */,
 				B27E1FC5F02528DF1B978776 /* PollyToolRegistryTests.swift */,
@@ -910,6 +915,7 @@
 				429066C03FFDC3E644D0741D /* PollySessionController.swift */,
 				785875B7F3CFBCEC7B298A4C /* PollySessionSubviews.swift */,
 				2C2D69ED879913F664978F89 /* PollySessionView.swift */,
+				42176C77AB175F9F0B3DE89D /* PollyTabView.swift */,
 			);
 			path = Polly;
 			sourceTree = "<group>";
@@ -1122,6 +1128,7 @@
 				738A99A458262EE8C0A0ED45 /* PollyMemoryExtractorTests.swift in Sources */,
 				EFB3B5FBA427E9CBFBC3EBDD /* PollyMemoryStoreTests.swift in Sources */,
 				F9D9A0B113C7D267057D02E5 /* PollyPromptBuilderTests.swift in Sources */,
+				906182F5CD250106DD6EE9D0 /* PollyRouterTests.swift in Sources */,
 				697330B415E9565AA6123D7A /* PollySessionControllerTests.swift in Sources */,
 				DA1190A56E0B55047C8B20EA /* PollyTokenServiceTests.swift in Sources */,
 				5D8679AA456EAD7B6590B239 /* PollyToolRegistryTests.swift in Sources */,
@@ -1244,6 +1251,7 @@
 				3D5472BC87BE24FD767D5417 /* PollySessionController.swift in Sources */,
 				0216AB3A6D2F3366366C349B /* PollySessionSubviews.swift in Sources */,
 				97A600ADD856C20435288E36 /* PollySessionView.swift in Sources */,
+				B0A326032BC6ACF265541E99 /* PollyTabView.swift in Sources */,
 				A5CD6756DCCE850B026D4438 /* PollyTokenService.swift in Sources */,
 				9AE084C305FEEFCD57DA1AF4 /* PollyToolRegistry.swift in Sources */,
 				B3C119F6B06D8A6ADF2A2350 /* PreCookChecklistView.swift in Sources */,

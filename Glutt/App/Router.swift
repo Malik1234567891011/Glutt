@@ -3,13 +3,14 @@ import Observation
 import SwiftData
 
 enum AppTab: String, CaseIterable, Identifiable {
-    case today, recipes, plan, kitchen, progress
+    case today, recipes, polly, plan, kitchen, progress
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .today: "Today"
         case .recipes: "Recipes"
+        case .polly: "Polly"
         case .plan: "Plan"
         case .kitchen: "Kitchen"
         case .progress: "Progress"
@@ -20,6 +21,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .today: "sun.max"
         case .recipes: "book"
+        case .polly: "chef-hat" // placeholder — GluttTabBar draws Ph.chefHat
         case .plan: "calendar"
         case .kitchen: "refrigerator"
         case .progress: "chart.line.uptrend.xyaxis"
@@ -151,6 +153,7 @@ final class Router {
         switch url.host {
         case "today": selectedTab = .today
         case "recipes": selectedTab = .recipes
+        case "polly": selectedTab = .polly
         case "plan": selectedTab = .plan
         case "kitchen": selectedTab = .kitchen
         case "progress": selectedTab = .progress

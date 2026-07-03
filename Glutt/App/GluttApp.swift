@@ -18,6 +18,8 @@ final class NotificationRoutingDelegate: NSObject, UNUserNotificationCenterDeleg
         } else if destination == "plates" {
             router?.selectedTab = .today
             router?.pendingPresentPlates = true
+        } else if destination == "polly" {
+            router?.selectedTab = .polly
         }
     }
 

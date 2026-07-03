@@ -89,6 +89,7 @@ struct RootView: View {
         switch tab {
         case .today: TodayView()
         case .recipes: RecipesView()
+        case .polly: PollyTabView()
         case .plan: PlanView()
         case .kitchen: KitchenView()
         case .progress: ProgressTabView()

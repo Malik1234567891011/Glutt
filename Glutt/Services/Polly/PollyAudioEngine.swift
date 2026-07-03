@@ -141,6 +141,16 @@ final class PollyAudioEngine {
     func start(onChunk: @escaping @Sendable (String) -> Void) throws {
         guard !isRunning else { return }
 
+        // Never touch AVAudioEngine without a granted mic. This is a check,
+        // not a prompt (the session view requests permission BEFORE start()).
+        // It also keeps CoreAudio entirely out of unit tests: accessing
+        // `engine.inputNode` while the host's audio server is unresponsive
+        // aborts the process inside AudioToolbox (RPC timeout) — not a
+        // catchable Swift error.
+        guard AVAudioApplication.shared.recordPermission == .granted else {
+            throw PollyAudioError.microphoneUnavailable
+        }
+
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
         try session.setActive(true)

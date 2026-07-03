@@ -433,18 +433,48 @@ struct RecipeDetailView: View {
 
     // MARK: - Cook bar
 
+    /// Bottom action bar. "Cook with Polly" leads when AI is configured and
+    /// the classic Cook button demotes to secondary — but keeps working
+    /// (restyle golden rule: never remove a feature). Without AI, Cook
+    /// stays primary and nothing changes.
     private var cookBar: some View {
+        VStack(spacing: Theme.Spacing.sm) {
+            if LLMClient.isConfigured {
+                Button {
+                    Haptics.impact(.medium)
+                    PollyPaywallHook.run {
+                        router.pollyLaunch = PollyLaunch(recipe: recipe, scale: scale)
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Ph.chefHat.fill
+                            .resizable().scaledToFit()
+                            .frame(width: 18, height: 18)
+                        Text("Cook with Polly")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.gluttPrimary)
+                classicCookButton
+                    .buttonStyle(.gluttSecondary)
+            } else {
+                classicCookButton
+                    .buttonStyle(.gluttPrimary)
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.top, Theme.Spacing.sm)
+        .padding(.bottom, GluttTabBar.reservedHeight)
+        .background(Theme.Colors.background.opacity(0.95))
+    }
+
+    private var classicCookButton: some View {
         Button {
             Haptics.impact(.medium)
             if pantryMatch.missing.isEmpty { isCooking = true } else { isShowingPreCookChecklist = true }
         } label: {
             Label("Cook", systemImage: "frying.pan").frame(maxWidth: .infinity)
         }
-        .buttonStyle(.gluttPrimary)
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.top, Theme.Spacing.sm)
-        .padding(.bottom, GluttTabBar.reservedHeight)
-        .background(Theme.Colors.background.opacity(0.95))
     }
 
     // MARK: - Below-fold sections (kept unchanged)

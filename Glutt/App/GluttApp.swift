@@ -25,7 +25,11 @@ final class NotificationRoutingDelegate: NSObject, UNUserNotificationCenterDeleg
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        [.banner, .sound]
+        // A live Polly session renders its timers natively over the camera —
+        // a banner on top would announce the same thing twice. Stay quiet
+        // until the session ends.
+        if router?.isPollySessionActive == true { return [] }
+        return [.banner, .sound]
     }
 }
 

@@ -62,6 +62,9 @@ struct RootView: View {
         .fullScreenCover(isPresented: $router.pendingPresentPlates) {
             RecipeFeedView()
         }
+        .fullScreenCover(item: $router.pollyLaunch) { launch in
+            PollySessionView(recipe: launch.recipe, scale: launch.scale)
+        }
         .fullScreenCover(isPresented: Binding(
             get: { needsOnboarding },
             set: { if !$0 { router.forceOnboarding = false } }

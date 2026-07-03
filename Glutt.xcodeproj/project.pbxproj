@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		002692B3AEC64E1C3DD84F06 /* RulesScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A5874C2E7B16225422F113 /* RulesScreen.swift */; };
+		0216AB3A6D2F3366366C349B /* PollySessionSubviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785875B7F3CFBCEC7B298A4C /* PollySessionSubviews.swift */; };
 		030CECE3BDBF4FC85259EA32 /* RecipeImportService+OCR.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D21EDB37D0BDBA3422DA1A1 /* RecipeImportService+OCR.swift */; };
 		0357D9E19E7AB3EE1378A87B /* PantryScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91F167E4E8C32628B9047B00 /* PantryScan.swift */; };
 		04C0DB3AA64572165BE8E75A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F7FD87E0616AE17D79248663 /* PrivacyInfo.xcprivacy */; };
@@ -72,6 +73,7 @@
 		41F57819321FB979C342F6DF /* RealtimeEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77D341D37CC3E15070605929 /* RealtimeEvent.swift */; };
 		45454CC6069E42834813518B /* IngredientLineParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB6518A327FD79D55E715D5 /* IngredientLineParser.swift */; };
 		4555CCCF97EF706EE428D9FC /* PollyMemoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B94ABCDAED53B1B546E05EF4 /* PollyMemoryStore.swift */; };
+		4638CF05DC0838A48D488CB0 /* PollyPaywallHook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31125AFFA7A9DF091F3EF8EC /* PollyPaywallHook.swift */; };
 		47CA4B0E6B9F7F7BD4ABE64C /* UnitConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E76DBE2577BBC32D76A29AB /* UnitConverter.swift */; };
 		48672C214D36836ED9916CA2 /* Buttons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 420CD47E5C2004D61B7D0B32 /* Buttons.swift */; };
 		4AE39AFD4624E614CF4518BA /* Polly.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA085E71905734A9011A2E33 /* Polly.swift */; };
@@ -133,6 +135,7 @@
 		96ED212BB7B42C7A7571B5A7 /* DiscoverFeedViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 053DDC19F78120AC03E52C32 /* DiscoverFeedViewModel.swift */; };
 		9767E9BEFE39E296BEF059B1 /* RecipesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9411345D042807ED2D743474 /* RecipesView.swift */; };
 		97937012B8CA51D69C342C90 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA609EF5F72CEDE2E9F697F /* EmptyStateView.swift */; };
+		97A600ADD856C20435288E36 /* PollySessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C2D69ED879913F664978F89 /* PollySessionView.swift */; };
 		98021F5F7768574981318E58 /* IngredientCategoryStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D834D7374E050EB801F354 /* IngredientCategoryStyle.swift */; };
 		986A927CD8553ECE0374677E /* FeedCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F245440CFA61FD598B067918 /* FeedCardView.swift */; };
 		98D52307F99E058349AA1999 /* PlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289532428C48086D19FF6C54 /* PlanView.swift */; };
@@ -292,6 +295,7 @@
 		2AFBB1EB5B71BF4B7688765E /* OnboardingScaffold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScaffold.swift; sourceTree = "<group>"; };
 		2BA97A87700CD96961371CCC /* ImportedRecipeDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedRecipeDraft.swift; sourceTree = "<group>"; };
 		2C06B098902A220170DB5726 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
+		2C2D69ED879913F664978F89 /* PollySessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollySessionView.swift; sourceTree = "<group>"; };
 		2C905319C8996B5C5CEF7804 /* PollyCameraController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyCameraController.swift; sourceTree = "<group>"; };
 		2CF0F20EF027AE118381BF8D /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		2D56EF729F22F6F3DED29543 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -299,6 +303,7 @@
 		2EADB93BC12EF05C6E2C523B /* TutorialFlowModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialFlowModel.swift; sourceTree = "<group>"; };
 		2F335DD607D3B518B3BC5B64 /* PollyIconAssetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyIconAssetTests.swift; sourceTree = "<group>"; };
 		2F84662B04EA6B5290FE76FA /* WelcomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeScreen.swift; sourceTree = "<group>"; };
+		31125AFFA7A9DF091F3EF8EC /* PollyPaywallHook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyPaywallHook.swift; sourceTree = "<group>"; };
 		3291644CF58C783401973641 /* PlateCardDecodeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlateCardDecodeTests.swift; sourceTree = "<group>"; };
 		341AE603888CC7022D42E417 /* DiscoverCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverCardView.swift; sourceTree = "<group>"; };
 		358FD41FD7F25B2575B5BFB5 /* GluttTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttTabBar.swift; sourceTree = "<group>"; };
@@ -348,6 +353,7 @@
 		73D783DA6055930864D36F17 /* RecipeImageBackfill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImageBackfill.swift; sourceTree = "<group>"; };
 		760EF4DCF55EB8C52DE51A6D /* ImportPipelineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPipelineTests.swift; sourceTree = "<group>"; };
 		77D341D37CC3E15070605929 /* RealtimeEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeEvent.swift; sourceTree = "<group>"; };
+		785875B7F3CFBCEC7B298A4C /* PollySessionSubviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollySessionSubviews.swift; sourceTree = "<group>"; };
 		78CF2A1F5E8425A001C7AE98 /* CookPlanCompiler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookPlanCompiler.swift; sourceTree = "<group>"; };
 		790D532EB881A841E117F130 /* PantryScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PantryScanView.swift; sourceTree = "<group>"; };
 		792E07A262DF875373B88FBE /* TasteProfileBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasteProfileBuilder.swift; sourceTree = "<group>"; };
@@ -900,7 +906,10 @@
 		E2DED507204148D98CE83D15 /* Polly */ = {
 			isa = PBXGroup;
 			children = (
+				31125AFFA7A9DF091F3EF8EC /* PollyPaywallHook.swift */,
 				429066C03FFDC3E644D0741D /* PollySessionController.swift */,
+				785875B7F3CFBCEC7B298A4C /* PollySessionSubviews.swift */,
+				2C2D69ED879913F664978F89 /* PollySessionView.swift */,
 			);
 			path = Polly;
 			sourceTree = "<group>";
@@ -1230,8 +1239,11 @@
 				09D2B5129A39C8B7CB4A40A4 /* PollyConfig.swift in Sources */,
 				858A866E0199A85333682E96 /* PollyMemoryExtractor.swift in Sources */,
 				4555CCCF97EF706EE428D9FC /* PollyMemoryStore.swift in Sources */,
+				4638CF05DC0838A48D488CB0 /* PollyPaywallHook.swift in Sources */,
 				1A90EE765490FEA8BB97B607 /* PollyPromptBuilder.swift in Sources */,
 				3D5472BC87BE24FD767D5417 /* PollySessionController.swift in Sources */,
+				0216AB3A6D2F3366366C349B /* PollySessionSubviews.swift in Sources */,
+				97A600ADD856C20435288E36 /* PollySessionView.swift in Sources */,
 				A5CD6756DCCE850B026D4438 /* PollyTokenService.swift in Sources */,
 				9AE084C305FEEFCD57DA1AF4 /* PollyToolRegistry.swift in Sources */,
 				B3C119F6B06D8A6ADF2A2350 /* PreCookChecklistView.swift in Sources */,

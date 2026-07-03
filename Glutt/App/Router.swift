@@ -68,6 +68,16 @@ enum CaptureAction: String, CaseIterable, Identifiable {
     }
 }
 
+/// A "Cook with Polly" request: the recipe plus the serving scale chosen on
+/// the detail screen. Identifiable so RootView can present the session with
+/// `.fullScreenCover(item:)` — a fresh `id` per tap means re-launching the
+/// same recipe always starts a fresh session.
+struct PollyLaunch: Identifiable, Equatable {
+    let id = UUID()
+    let recipe: Recipe
+    let scale: Double
+}
+
 /// App-wide navigation state + deep link routing skeleton.
 /// Deep links: glutt://today, glutt://recipes, glutt://import?url=..., etc.
 /// The share extension (Phase 2) will route imports through here.
@@ -93,6 +103,15 @@ final class Router {
     /// daily "Today's Plate" notification. RootView presents the Plates feed
     /// (a fullScreenCover, not a tab) whenever this is true.
     var pendingPresentPlates = false
+    /// Set by the "Cook with Polly" button on recipe detail (and, in Task 16,
+    /// the Polly tab's recipe picker). RootView presents the live session
+    /// (a fullScreenCover) whenever this is non-nil; carries the serving
+    /// scale the user chose so Polly cooks the right amounts.
+    var pollyLaunch: PollyLaunch?
+    /// True while a live Polly session is on screen. GluttApp's notification
+    /// delegate suppresses foreground banners while it's set — in-session
+    /// timers already render natively over the camera.
+    var isPollySessionActive = false
     /// Dev/testing hook (`-demoCook`): opens Cook Mode for the first recipe on launch.
     var demoCookOnLaunch = false
     /// Dev/testing hook (`-demoWizard`): opens the week planner wizard on launch.

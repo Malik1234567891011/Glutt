@@ -63,6 +63,7 @@
 		3913B7130EDC0551C2390651 /* TimerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98053B3FFC4BD7D0C20C75CB /* TimerManager.swift */; };
 		3BEF446EA4E6D8F141D53A4C /* Chip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21809502CBC21424D65A50E4 /* Chip.swift */; };
 		3D27ACB58C9C11146529C962 /* RecipeOptimizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC964F22F5D3BA6FB34297B0 /* RecipeOptimizer.swift */; };
+		3D5472BC87BE24FD767D5417 /* PollySessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 429066C03FFDC3E644D0741D /* PollySessionController.swift */; };
 		3EB77E409B5D5BDC12880FCA /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACB6720025A90D44E306C7CE /* FlowLayout.swift */; };
 		404428F79F59C199329F5D2F /* DiscoverSaverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD21CE8C77D93BDDB47D5782 /* DiscoverSaverTests.swift */; };
 		40C39A65B30A85E2207F4D44 /* GluttTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849E4D814CBE9FB1D1E619C /* GluttTests.swift */; };
@@ -97,6 +98,7 @@
 		674CDDCC4697492D9D421A25 /* PlatesSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0253AFA0F0F645D26A917A47 /* PlatesSaver.swift */; };
 		6793F9DC7BC9727DA673BE1C /* CookPlanCompiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78CF2A1F5E8425A001C7AE98 /* CookPlanCompiler.swift */; };
 		67F0FC035B3A8B43F5A22E01 /* PendingImportStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D008D8C56984B887EAC430 /* PendingImportStore.swift */; };
+		697330B415E9565AA6123D7A /* PollySessionControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A45301997FCD1BF1A6D7095C /* PollySessionControllerTests.swift */; };
 		6BD892D3347E8504FBCB7405 /* StoreModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4013BCB69BEE4E7DCC7FFE7D /* StoreModeView.swift */; };
 		6BF2F279EDBA70BACD78AC36 /* RecipeHTMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */; };
 		6C3620872F65393AC9EFB6A8 /* PlatesSaverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE29D712EF7D650D2A01355 /* PlatesSaverTests.swift */; };
@@ -116,6 +118,7 @@
 		8332AA9E1C766FF024BEA4C2 /* ImagePrep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DEB872DB55EE7ADF76A5A7B /* ImagePrep.swift */; };
 		83C5802717F3D0FE2F1A2EDF /* TutorialFlowModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5EFBF02DCC36CCFF5BD0971 /* TutorialFlowModelTests.swift */; };
 		8587DC0BAF1A3EA34F5AE852 /* SuperwallKit in Frameworks */ = {isa = PBXBuildFile; productRef = 591C68092C0509ECBD9FC072 /* SuperwallKit */; };
+		858A866E0199A85333682E96 /* PollyMemoryExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D6BFA58653B47D10CB71BE8 /* PollyMemoryExtractor.swift */; };
 		8D5B5CBDC96D718DBFF8198D /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF3E70A3CCB84A7042B5FE65 /* Haptics.swift */; };
 		8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */; };
 		8EB396B32CC0D7CE28208140 /* GluttTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 358FD41FD7F25B2575B5BFB5 /* GluttTabBar.swift */; };
@@ -305,11 +308,13 @@
 		3B8D8D7D29FB7A4EFEF124F4 /* RecipeShareService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeShareService.swift; sourceTree = "<group>"; };
 		3CF4058EECD1BCDBB2359125 /* TextRecipeParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextRecipeParser.swift; sourceTree = "<group>"; };
 		3D139D25BBBE8E494F7AA325 /* CaptureActionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureActionSheet.swift; sourceTree = "<group>"; };
+		3D6BFA58653B47D10CB71BE8 /* PollyMemoryExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyMemoryExtractor.swift; sourceTree = "<group>"; };
 		4013BCB69BEE4E7DCC7FFE7D /* StoreModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreModeView.swift; sourceTree = "<group>"; };
 		412DD0B2F37BE98BAAEB523D /* Kitchen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kitchen.swift; sourceTree = "<group>"; };
 		420CD47E5C2004D61B7D0B32 /* Buttons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Buttons.swift; sourceTree = "<group>"; };
 		421A2BD5A79AB7F890E43900 /* ImportInbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportInbox.swift; sourceTree = "<group>"; };
 		42276F384744F17772916181 /* PlatesSeedDeck.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = PlatesSeedDeck.json; sourceTree = "<group>"; };
+		429066C03FFDC3E644D0741D /* PollySessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollySessionController.swift; sourceTree = "<group>"; };
 		4365A28A0C4D406680BB297B /* OnboardingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingState.swift; sourceTree = "<group>"; };
 		43FF1ADE4FC6948F3133E078 /* WatchModeSchedulerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchModeSchedulerTests.swift; sourceTree = "<group>"; };
 		4496C14D0D76BAF416BA56F6 /* PlatesDeckFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesDeckFilter.swift; sourceTree = "<group>"; };
@@ -372,6 +377,7 @@
 		9DDECE4B39D1229473B5DFA9 /* PlatesLauncherCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesLauncherCard.swift; sourceTree = "<group>"; };
 		A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeHTMLParser.swift; sourceTree = "<group>"; };
 		A34662C1AB1C5078CE9DA61C /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
+		A45301997FCD1BF1A6D7095C /* PollySessionControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollySessionControllerTests.swift; sourceTree = "<group>"; };
 		A54C0CB6A5BB8B74924F7A87 /* RealtimeTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeTransportTests.swift; sourceTree = "<group>"; };
 		A581E002B169649AB5C28EB6 /* RecipeSearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeSearchEngine.swift; sourceTree = "<group>"; };
 		A6AA607718196B77CD8D95CC /* RecipeFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeFactory.swift; sourceTree = "<group>"; };
@@ -511,6 +517,7 @@
 				979E2590EBF3B795CAAC4659 /* Onboarding */,
 				9164B5F4ECF14AFD399A7D65 /* Plan */,
 				C5F30ED294B8080C6A145467 /* Plates */,
+				E2DED507204148D98CE83D15 /* Polly */,
 				A5BA62F727FBF7ED5F34E335 /* Progress */,
 				ADD22DC369608B86A867151C /* Recipes */,
 				3AA223D98091A93BA8D5F2EF /* Settings */,
@@ -576,6 +583,7 @@
 				2F335DD607D3B518B3BC5B64 /* PollyIconAssetTests.swift */,
 				D8FBB7D507E046F69DAA1BC0 /* PollyMemoryStoreTests.swift */,
 				6E66EA327CD8F3F672E407BC /* PollyPromptBuilderTests.swift */,
+				A45301997FCD1BF1A6D7095C /* PollySessionControllerTests.swift */,
 				CBC6E1BC83BAD99543EF0A36 /* PollyTokenServiceTests.swift */,
 				B27E1FC5F02528DF1B978776 /* PollyToolRegistryTests.swift */,
 				E0928ADDCDC60C9C38655861 /* RealtimeEventCodecTests.swift */,
@@ -628,6 +636,7 @@
 				9C2B0A5A7001C881CB503BF0 /* PollyAudioEngine.swift */,
 				2C905319C8996B5C5CEF7804 /* PollyCameraController.swift */,
 				13252E8FCE4B1C0102B43E57 /* PollyConfig.swift */,
+				3D6BFA58653B47D10CB71BE8 /* PollyMemoryExtractor.swift */,
 				B94ABCDAED53B1B546E05EF4 /* PollyMemoryStore.swift */,
 				45320BAE787463C2D042171F /* PollyPromptBuilder.swift */,
 				FE3C1DC9472FACE2DF637235 /* PollyTokenService.swift */,
@@ -885,6 +894,14 @@
 			path = Screens;
 			sourceTree = "<group>";
 		};
+		E2DED507204148D98CE83D15 /* Polly */ = {
+			isa = PBXGroup;
+			children = (
+				429066C03FFDC3E644D0741D /* PollySessionController.swift */,
+			);
+			path = Polly;
+			sourceTree = "<group>";
+		};
 		E33CE2C84CFAC375CAC4A6CA /* Glutt */ = {
 			isa = PBXGroup;
 			children = (
@@ -1092,6 +1109,7 @@
 				FF83764AFC3CCB1875AC6CC3 /* PollyIconAssetTests.swift in Sources */,
 				EFB3B5FBA427E9CBFBC3EBDD /* PollyMemoryStoreTests.swift in Sources */,
 				F9D9A0B113C7D267057D02E5 /* PollyPromptBuilderTests.swift in Sources */,
+				697330B415E9565AA6123D7A /* PollySessionControllerTests.swift in Sources */,
 				DA1190A56E0B55047C8B20EA /* PollyTokenServiceTests.swift in Sources */,
 				5D8679AA456EAD7B6590B239 /* PollyToolRegistryTests.swift in Sources */,
 				7D2869291F568419AD02BEF7 /* RealtimeEventCodecTests.swift in Sources */,
@@ -1206,8 +1224,10 @@
 				AAF69A06E5BE0CEC26AC86C8 /* PollyAudioEngine.swift in Sources */,
 				0CFE242C313C5C9E31E9B960 /* PollyCameraController.swift in Sources */,
 				09D2B5129A39C8B7CB4A40A4 /* PollyConfig.swift in Sources */,
+				858A866E0199A85333682E96 /* PollyMemoryExtractor.swift in Sources */,
 				4555CCCF97EF706EE428D9FC /* PollyMemoryStore.swift in Sources */,
 				1A90EE765490FEA8BB97B607 /* PollyPromptBuilder.swift in Sources */,
+				3D5472BC87BE24FD767D5417 /* PollySessionController.swift in Sources */,
 				A5CD6756DCCE850B026D4438 /* PollyTokenService.swift in Sources */,
 				9AE084C305FEEFCD57DA1AF4 /* PollyToolRegistry.swift in Sources */,
 				B3C119F6B06D8A6ADF2A2350 /* PreCookChecklistView.swift in Sources */,

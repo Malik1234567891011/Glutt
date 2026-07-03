@@ -235,6 +235,21 @@ final class PollyAudioEngine {
         return playedMs
     }
 
+    /// Non-destructive read of the same player-node timeline `interruptPlayback()`
+    /// reports — cumulative ms rendered since the player node started, NOT ms into
+    /// the current assistant item (the node never stops between turns). The
+    /// controller samples this at the start of each assistant item and subtracts
+    /// the baseline so barge-in can send a per-item `audio_end_ms` that
+    /// `conversation.item.truncate` accepts. Returns 0 when the timeline is
+    /// unavailable. Reads only; does not touch playback state.
+    func currentPlayedMs() -> Int {
+        guard isPlayerAttached,
+              let nodeTime = playerNode.lastRenderTime,
+              let playerTime = playerNode.playerTime(forNodeTime: nodeTime),
+              playerTime.sampleRate > 0 else { return 0 }
+        return max(0, Int(Double(playerTime.sampleTime) * 1_000 / playerTime.sampleRate))
+    }
+
     // MARK: Level metering
 
     private func smoothLevel(_ rawRMS: Float) {

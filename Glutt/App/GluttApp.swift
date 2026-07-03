@@ -57,6 +57,8 @@ struct GluttApp: App {
             FoodLog.self,
             CookSession.self,
             UserPrefs.self,
+            PollyMemory.self,
+            PollyCookLog.self,
         ])
         do {
             let container = try ModelContainer(for: schema)

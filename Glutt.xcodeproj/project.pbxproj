@@ -137,6 +137,7 @@
 		A5D13C7DD0ADCAC196619502 /* RecipeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A982408D84D1386F5B24B7C /* RecipeCard.swift */; };
 		A71A0874129B8FA9A557B7A2 /* TextRecipeParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF4058EECD1BCDBB2359125 /* TextRecipeParser.swift */; };
 		A7D36540FAFB3ACEABE90F95 /* OnboardingStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAAF9C3879AD077BB4FE8E2D /* OnboardingStateTests.swift */; };
+		AAF69A06E5BE0CEC26AC86C8 /* PollyAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C2B0A5A7001C881CB503BF0 /* PollyAudioEngine.swift */; };
 		AB9F73C6FAF05883823B7458 /* YouTubeEmbedTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2408F1FB351D6FCFD32464C /* YouTubeEmbedTests.swift */; };
 		ABFCA4853F7794491D82C568 /* ProgressTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221C1254C1FB19CCB0DCC84B /* ProgressTabView.swift */; };
 		AC406619DAD8BADC992A6542 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6471755924AE9ED5DAC77E /* CameraPicker.swift */; };
@@ -184,6 +185,7 @@
 		D8D1C13E56348D8001E19D3D /* DiscoverService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8286FC956949F5C372F3BB19 /* DiscoverService.swift */; };
 		D9F6403C8798CDBD06320027 /* RecipeHTMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */; };
 		DA1190A56E0B55047C8B20EA /* PollyTokenServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBC6E1BC83BAD99543EF0A36 /* PollyTokenServiceTests.swift */; };
+		DA5DD90A3A7CED0DCBFF96B3 /* PCMTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E69A143731D930A15C0776 /* PCMTests.swift */; };
 		DB8B8594AD637BE18F833C40 /* PlateCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C0EB5E87DDAED1F4E559F0 /* PlateCard.swift */; };
 		DC45CAD57614CC9D6259F9D8 /* UserPrefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA37957DBDDC577B2780A3E /* UserPrefs.swift */; };
 		DC7C749A037C376B47BF6471 /* OnboardingScaffold.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AFBB1EB5B71BF4B7688765E /* OnboardingScaffold.swift */; };
@@ -352,6 +354,7 @@
 		98B24B648D7D946D8F253FC7 /* ImportInboxDrainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportInboxDrainer.swift; sourceTree = "<group>"; };
 		99E981A8041DCF1213946DEF /* PlatesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesService.swift; sourceTree = "<group>"; };
 		9B316F8DA65A1DD6ACA687D0 /* PlatesSeedDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesSeedDeck.swift; sourceTree = "<group>"; };
+		9C2B0A5A7001C881CB503BF0 /* PollyAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyAudioEngine.swift; sourceTree = "<group>"; };
 		9C3C9F5A6E00813FB3A1A565 /* CookPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookPlan.swift; sourceTree = "<group>"; };
 		9DDECE4B39D1229473B5DFA9 /* PlatesLauncherCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesLauncherCard.swift; sourceTree = "<group>"; };
 		A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeHTMLParser.swift; sourceTree = "<group>"; };
@@ -419,6 +422,7 @@
 		EF3E70A3CCB84A7042B5FE65 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		F04DC9E02007A6E7D3264D4D /* ReminderScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderScheduler.swift; sourceTree = "<group>"; };
 		F1A2F97AA4C16C61F7F73AC7 /* ImportReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportReviewView.swift; sourceTree = "<group>"; };
+		F1E69A143731D930A15C0776 /* PCMTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PCMTests.swift; sourceTree = "<group>"; };
 		F245440CFA61FD598B067918 /* FeedCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedCardView.swift; sourceTree = "<group>"; };
 		F340B99C7D917E983864BCDE /* OptimizeRecipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptimizeRecipeView.swift; sourceTree = "<group>"; };
 		F37334F4D4FCC0C8A3291B1C /* ShareImportViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareImportViewModelTests.swift; sourceTree = "<group>"; };
@@ -544,6 +548,7 @@
 				760EF4DCF55EB8C52DE51A6D /* ImportPipelineTests.swift */,
 				A75717406F093E1595C8E676 /* MacroBreakdownTests.swift */,
 				FAAF9C3879AD077BB4FE8E2D /* OnboardingStateTests.swift */,
+				F1E69A143731D930A15C0776 /* PCMTests.swift */,
 				3291644CF58C783401973641 /* PlateCardDecodeTests.swift */,
 				F6771313CA6041A5D72F28AD /* PlatesDeckFilterTests.swift */,
 				7985617331B4A72AC2E04D9E /* PlatesFeedViewModelTests.swift */,
@@ -599,6 +604,7 @@
 			isa = PBXGroup;
 			children = (
 				9C3C9F5A6E00813FB3A1A565 /* CookPlan.swift */,
+				9C2B0A5A7001C881CB503BF0 /* PollyAudioEngine.swift */,
 				13252E8FCE4B1C0102B43E57 /* PollyConfig.swift */,
 				B94ABCDAED53B1B546E05EF4 /* PollyMemoryStore.swift */,
 				FE3C1DC9472FACE2DF637235 /* PollyTokenService.swift */,
@@ -1050,6 +1056,7 @@
 				BCC50C98CE0527AC1C937CBE /* ImportPipelineTests.swift in Sources */,
 				B957862B50FFE59C07090821 /* MacroBreakdownTests.swift in Sources */,
 				A7D36540FAFB3ACEABE90F95 /* OnboardingStateTests.swift in Sources */,
+				DA5DD90A3A7CED0DCBFF96B3 /* PCMTests.swift in Sources */,
 				2B848A0B1A5AEE274131E4C7 /* PlateCardDecodeTests.swift in Sources */,
 				5C440A167E3C257BF73984C5 /* PlatesDeckFilterTests.swift in Sources */,
 				11464D00A532981884504D0A /* PlatesFeedViewModelTests.swift in Sources */,
@@ -1167,6 +1174,7 @@
 				B3F1FADC5C341C289BC70E51 /* PlatesService.swift in Sources */,
 				9E7400B56D09BE5B4C9F4B7C /* PlatesStreak.swift in Sources */,
 				4AE39AFD4624E614CF4518BA /* Polly.swift in Sources */,
+				AAF69A06E5BE0CEC26AC86C8 /* PollyAudioEngine.swift in Sources */,
 				09D2B5129A39C8B7CB4A40A4 /* PollyConfig.swift in Sources */,
 				4555CCCF97EF706EE428D9FC /* PollyMemoryStore.swift in Sources */,
 				A5CD6756DCCE850B026D4438 /* PollyTokenService.swift in Sources */,

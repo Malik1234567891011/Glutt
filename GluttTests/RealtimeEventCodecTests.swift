@@ -113,6 +113,10 @@ final class RealtimeEventCodecTests: XCTestCase {
         XCTAssertEqual(truncation["type"] as? String, "retention_ratio")
         let ratio = try XCTUnwrap(truncation["retention_ratio"] as? Double)
         XCTAssertEqual(ratio, 0.8, accuracy: 0.0001)
+        // Byte-level: a Double 0.8 serializes as 0.80000000000000004 and the
+        // server rejects the whole session.update (17 decimal places > 16).
+        let raw = String(decoding: try RealtimeClientEvent.sessionUpdate(config).encoded(), as: UTF8.self)
+        XCTAssertFalse(raw.contains("0.8000000"), "retention_ratio must serialize as exactly 0.8")
         let tokenLimits = try XCTUnwrap(truncation["token_limits"] as? [String: Any])
         XCTAssertEqual(tokenLimits["post_instructions"] as? Int, 16000)
     }

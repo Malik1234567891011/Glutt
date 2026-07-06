@@ -162,7 +162,13 @@ enum RealtimeClientEvent: Equatable {
                 // instructions, no tools, no Polly.
                 "output": ["format": ["type": "audio/pcm", "rate": 24000], "voice": config.voice]
             ],
-            "truncation": ["type": "retention_ratio", "retention_ratio": 0.8,
+            // NSDecimalNumber, not a Double literal: 0.8 has no exact binary
+            // representation, so JSONSerialization emits 0.80000000000000004
+            // (17 decimal places) and the server rejects the WHOLE
+            // session.update (decimal_max_decimal_places_exceeded) — the
+            // session then runs as a default assistant with no Polly persona.
+            "truncation": ["type": "retention_ratio",
+                           "retention_ratio": NSDecimalNumber(string: "0.8"),
                            "token_limits": ["post_instructions": 16000]]
         ]
     }

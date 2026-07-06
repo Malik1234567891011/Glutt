@@ -80,6 +80,12 @@ final class PollySessionController {
     /// value `conversation.item.truncate` accepts. Forwarding the raw cumulative
     /// value would make truncate invalid on every barge-in after the first turn.
     private var itemStartPlayedMs = 0
+    /// Total audio enqueued for the current assistant item, in ms. The player
+    /// clock keeps ticking through post-item silence, so this is the ceiling
+    /// for any truncate — and when the clock says the whole item played,
+    /// truncating is wrong (live error: "Audio content of 2750ms is already
+    /// shorter than 3910ms").
+    private var itemEnqueuedMs = 0
 
     private var watchScheduler = WatchModeScheduler(
         isEnabled: false, interval: PollyConfig.watchFrameInterval)
@@ -301,9 +307,12 @@ final class PollySessionController {
             // after the first turn.
             if currentAudioItemId != itemId {
                 itemStartPlayedMs = audio.currentPlayedMs()
+                itemEnqueuedMs = 0
                 PollyDebugLog.shared.log("event: audio item START \(itemId) (baseline \(itemStartPlayedMs)ms)")
             }
             audio.enqueue(base64: base64)
+            // 24 kHz PCM16 mono = 48 bytes per ms; base64 is 4 chars per 3 bytes.
+            itemEnqueuedMs += (base64.count * 3) / (4 * 48)
             currentAudioItemId = itemId
             isPollySpeaking = true
             isThinking = false
@@ -318,8 +327,15 @@ final class PollySessionController {
             PollyDebugLog.shared.log("event: SPEECH STARTED (VAD heard the user) — playback interrupted at \(cumulative)ms")
             if let itemId = currentAudioItemId {
                 let itemMs = max(0, cumulative - itemStartPlayedMs)
-                try? await transport?.send(.truncateItem(itemId: itemId, audioEndMs: itemMs))
-                PollyDebugLog.shared.log("sent: truncate \(itemId) @ \(itemMs)ms")
+                if itemMs < itemEnqueuedMs {
+                    try? await transport?.send(.truncateItem(itemId: itemId, audioEndMs: itemMs))
+                    PollyDebugLog.shared.log("sent: truncate \(itemId) @ \(itemMs)ms (of \(itemEnqueuedMs)ms)")
+                } else {
+                    // The item finished playing before the user spoke — there
+                    // is no unheard tail to remove, and the server rejects a
+                    // truncate past the item's real length.
+                    PollyDebugLog.shared.log("skip truncate — item fully played (\(itemEnqueuedMs)ms, clock said \(itemMs)ms)")
+                }
                 currentAudioItemId = nil
             }
             isPollySpeaking = false
@@ -412,6 +428,7 @@ final class PollySessionController {
             lastWatchFrameItemId = nil
             currentAudioItemId = nil
             itemStartPlayedMs = 0
+            itemEnqueuedMs = 0
             isThinking = false
             consumeEvents(from: transport, context: context)
             phase = .live

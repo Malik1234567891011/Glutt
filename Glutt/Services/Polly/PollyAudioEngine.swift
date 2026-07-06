@@ -130,6 +130,7 @@ final class PollyAudioEngine {
     @ObservationIgnored private var isPlayerAttached = false
     @ObservationIgnored private var voiceProcessingActive = false
     @ObservationIgnored private var routeObserver: NSObjectProtocol?
+    @ObservationIgnored private var configObserver: NSObjectProtocol?
     @ObservationIgnored private var enqueueCount = 0
     @ObservationIgnored private var outstandingBuffers = 0
     @ObservationIgnored private let mutedFlag = OSAllocatedUnfairLock(initialState: false)
@@ -255,12 +256,43 @@ final class PollyAudioEngine {
         PollyDebugLog.shared.log(
             "audio: engine running — output=\(Int(engine.outputNode.outputFormat(forBus: 0).sampleRate))Hz "
             + "mixerVol=\(engine.mainMixerNode.outputVolume) playerVol=\(playerNode.volume)")
+
+        // iOS silently STOPS the engine whenever the audio graph gets
+        // reconfigured (voice-processing init, route/category change — the
+        // live-call log showed engineRunning=false 0.02s after start). A
+        // stopped engine is silent playback AND a dead mic tap, so re-arm it.
+        configObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.isRunning else { return }
+                PollyDebugLog.shared.log("audio: CONFIG CHANGE — engineRunning=\(self.engine.isRunning)")
+                self.restartEngineIfNeeded()
+            }
+        }
+    }
+
+    /// Re-arms a stopped engine (playback + mic tap) mid-session.
+    private func restartEngineIfNeeded() {
+        guard isRunning, !engine.isRunning else { return }
+        engine.prepare()
+        do {
+            try engine.start()
+            playerNode.play()
+            PollyDebugLog.shared.log("audio: engine RESTARTED ok")
+        } catch {
+            PollyDebugLog.shared.log("audio: engine restart FAILED — \(error.localizedDescription)")
+        }
     }
 
     func stop() {
         if let routeObserver {
             NotificationCenter.default.removeObserver(routeObserver)
             self.routeObserver = nil
+        }
+        if let configObserver {
+            NotificationCenter.default.removeObserver(configObserver)
+            self.configObserver = nil
         }
         engine.inputNode.removeTap(onBus: 0)
         if isPlayerAttached { playerNode.stop() }
@@ -289,6 +321,9 @@ final class PollyAudioEngine {
             PollyDebugLog.shared.log("audio: enqueue DROPPED — decode/convert failed")
             return
         }
+
+        // Self-heal: scheduling into a stopped engine is silent audio loss.
+        restartEngineIfNeeded()
 
         enqueueCount += 1
         if enqueueCount == 1 || enqueueCount % 50 == 0 {

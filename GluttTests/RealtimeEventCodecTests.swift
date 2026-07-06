@@ -104,6 +104,9 @@ final class RealtimeEventCodecTests: XCTestCase {
         let output = try XCTUnwrap(audio["output"] as? [String: Any])
         let outputFormat = try XCTUnwrap(output["format"] as? [String: Any])
         XCTAssertEqual(outputFormat["type"] as? String, "audio/pcm")
+        // The server REQUIRES output rate; without it the whole session.update
+        // is rejected and the session runs unconfigured (live-call bug).
+        XCTAssertEqual(outputFormat["rate"] as? Int, 24000)
         XCTAssertEqual(output["voice"] as? String, "marin")
 
         let truncation = try XCTUnwrap(session["truncation"] as? [String: Any])

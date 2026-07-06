@@ -156,7 +156,11 @@ enum RealtimeClientEvent: Equatable {
             "tool_choice": "auto",
             "audio": [
                 "input": input,
-                "output": ["format": ["type": "audio/pcm"], "voice": config.voice]
+                // rate is REQUIRED here: omitting it makes the server reject
+                // the whole session.update (missing_required_parameter) and
+                // the session silently runs as a default assistant — no
+                // instructions, no tools, no Polly.
+                "output": ["format": ["type": "audio/pcm", "rate": 24000], "voice": config.voice]
             ],
             "truncation": ["type": "retention_ratio", "retention_ratio": 0.8,
                            "token_limits": ["post_instructions": 16000]]

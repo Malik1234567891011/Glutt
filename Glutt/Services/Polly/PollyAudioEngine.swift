@@ -134,6 +134,10 @@ final class PollyAudioEngine {
     @ObservationIgnored private var enqueueCount = 0
     @ObservationIgnored private var outstandingBuffers = 0
     @ObservationIgnored private let mutedFlag = OSAllocatedUnfairLock(initialState: false)
+    /// Deadline (CFAbsoluteTime) until which mic chunks are dropped. Armed at
+    /// each utterance onset — the AEC-vulnerable window where Polly's own
+    /// opening words leak into the mic and trip server VAD (false barge-ins).
+    @ObservationIgnored private let captureGateDeadline = OSAllocatedUnfairLock(initialState: 0.0)
     /// 4 800 bytes = 2 400 Int16 samples = ~100 ms at 24 kHz.
     @ObservationIgnored private let accumulator = PCMChunkAccumulator(chunkByteCount: 4_800)
 
@@ -220,6 +224,7 @@ final class PollyAudioEngine {
         accumulator.reset()
         let wire = wireFormat
         let muted = mutedFlag
+        let gate = captureGateDeadline
         let accumulator = self.accumulator
         let firstTapLogged = OSAllocatedUnfairLock(initialState: false)
         input.removeTap(onBus: 0)
@@ -240,6 +245,9 @@ final class PollyAudioEngine {
             let level = Self.rms(of: buffer)
             Task { @MainActor [weak self] in self?.smoothLevel(level) }
             guard !muted.withLock({ $0 }) else { return }
+            // Utterance-onset gate: drop chunks while the echo canceller is
+            // still adapting to Polly's voice (see PollyConfig).
+            guard gate.withLock({ CFAbsoluteTimeGetCurrent() >= $0 }) else { return }
             guard let converted = PCM.resample(buffer, to: wire) else { return }
             accumulator.append(PCM.pcm16Data(from: converted), emit: onChunk)
         }
@@ -328,6 +336,15 @@ final class PollyAudioEngine {
 
         // Self-heal: scheduling into a stopped engine is silent audio loss.
         restartEngineIfNeeded()
+
+        // A new utterance is starting (nothing was queued): arm the onset
+        // capture gate so her opening words can't echo back as "user speech".
+        if outstandingBuffers == 0 {
+            captureGateDeadline.withLock {
+                $0 = CFAbsoluteTimeGetCurrent() + PollyConfig.onsetCaptureGateSeconds
+            }
+            PollyDebugLog.shared.log("audio: onset capture gate armed (\(PollyConfig.onsetCaptureGateSeconds)s)")
+        }
 
         enqueueCount += 1
         if enqueueCount == 1 || enqueueCount % 50 == 0 {

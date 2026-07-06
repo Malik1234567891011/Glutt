@@ -6,6 +6,11 @@ enum PollyConfig {
     static let voice = "marin"
     /// Seconds between automatic camera frames while watch mode is on.
     static let watchFrameInterval: TimeInterval = 10
+    /// Mic capture is dropped for this long at the START of each Polly
+    /// utterance: the echo canceller needs a beat to adapt to her voice, and
+    /// her opening words leak through and trip server VAD (live logs: cuts at
+    /// ~450-750ms with the "user" transcribed as her own first words).
+    static let onsetCaptureGateSeconds: TimeInterval = 1.0
     /// Frames are downscaled so the longest side is at most this, then JPEG-compressed.
     static let frameMaxDimension: CGFloat = 1024
     static let frameJPEGQuality: CGFloat = 0.6

@@ -125,8 +125,10 @@ final class PollySessionController {
 
         // 1. Execution plan (compiler never fails — it falls back to linear).
         phase = .compiling
+        PollyDebugLog.shared.log("session: compiling plan for \"\(recipe.title)\"")
         let plan = await deps.compilePlan(recipe, scale)
         self.plan = plan
+        PollyDebugLog.shared.log("session: plan ready — \(plan.steps.count) steps")
 
         // 2. Session snapshot: pantry, prefs, memories, past cooks of this recipe.
         let pantry = (try? context.fetch(FetchDescriptor<PantryItem>())) ?? []
@@ -158,7 +160,9 @@ final class PollySessionController {
         let token: PollySessionToken
         do {
             token = try await deps.mintToken()
+            PollyDebugLog.shared.log("session: token minted — model=\(token.model) voice=\(token.voice)")
         } catch {
+            PollyDebugLog.shared.log("session: token mint FAILED — \(error.localizedDescription)")
             phase = .failed(error.localizedDescription)
             return
         }
@@ -180,7 +184,9 @@ final class PollySessionController {
             try await transport.send(.sessionUpdate(config))
             try await transport.send(.responseCreate)   // Polly speaks first
             isThinking = true
+            PollyDebugLog.shared.log("session: socket connected — session.update + greeting sent")
         } catch {
+            PollyDebugLog.shared.log("session: connect FAILED — \(error.localizedDescription)")
             phase = .failed(error.localizedDescription)
             return
         }
@@ -191,6 +197,7 @@ final class PollySessionController {
                 Task { try? await transport?.send(.appendAudio(base64: chunk)) }
             }
         } catch {
+            PollyDebugLog.shared.log("session: mic start FAILED — \(error.localizedDescription)")
             if requireMic {
                 phase = .failed("Polly needs the microphone to cook with you. Enable it in Settings, or cook without Polly.")
                 await transport.close()
@@ -204,6 +211,7 @@ final class PollySessionController {
         Task { [camera] in await camera.start() }
 
         phase = .live
+        PollyDebugLog.shared.log("session: LIVE")
         consumeEvents(from: transport, context: context)
         startWatchLoop(context: context)
     }
@@ -274,8 +282,14 @@ final class PollySessionController {
 
     private func handle(_ event: RealtimeServerEvent, context: ModelContext) async {
         switch event {
-        case .sessionCreated, .sessionUpdated, .responseCancelled, .unhandled:
-            break
+        case .sessionCreated, .sessionUpdated:
+            PollyDebugLog.shared.log("event: \(event)")
+
+        case .responseCancelled:
+            PollyDebugLog.shared.log("event: response.cancelled (server-side barge-in cancel)")
+
+        case .unhandled(let type):
+            PollyDebugLog.shared.log("event: unhandled '\(type)'")
 
         case .outputAudioDelta(let itemId, let base64):
             // First delta of a NEW assistant item: capture the player-node
@@ -287,6 +301,7 @@ final class PollySessionController {
             // after the first turn.
             if currentAudioItemId != itemId {
                 itemStartPlayedMs = audio.currentPlayedMs()
+                PollyDebugLog.shared.log("event: audio item START \(itemId) (baseline \(itemStartPlayedMs)ms)")
             }
             audio.enqueue(base64: base64)
             currentAudioItemId = itemId
@@ -300,18 +315,22 @@ final class PollySessionController {
             // node started (it never stops between turns), so subtract the item's
             // start baseline to get ms into the current item.
             let cumulative = audio.interruptPlayback()
+            PollyDebugLog.shared.log("event: SPEECH STARTED (VAD heard the user) — playback interrupted at \(cumulative)ms")
             if let itemId = currentAudioItemId {
                 let itemMs = max(0, cumulative - itemStartPlayedMs)
                 try? await transport?.send(.truncateItem(itemId: itemId, audioEndMs: itemMs))
+                PollyDebugLog.shared.log("sent: truncate \(itemId) @ \(itemMs)ms")
                 currentAudioItemId = nil
             }
             isPollySpeaking = false
             isListening = true
 
         case .speechStopped:
+            PollyDebugLog.shared.log("event: speech stopped")
             isListening = false
 
         case .inputTranscript(let text):
+            PollyDebugLog.shared.log("heard: \"\(text)\"")
             captionText = text
             transcriptLog.append("USER: \(text)")
 
@@ -324,6 +343,9 @@ final class PollySessionController {
             captionText = pendingAssistantLine
 
         case .responseDone(let status, let calls):
+            PollyDebugLog.shared.log(
+                "event: response DONE status=\(status) tools=[\(calls.map(\.name).joined(separator: ","))]"
+                + (pendingAssistantLine.isEmpty ? "" : " said=\"\(pendingAssistantLine.prefix(120))\""))
             isPollySpeaking = false
             isThinking = false
             flushPendingAssistantLine()
@@ -341,6 +363,7 @@ final class PollySessionController {
             isThinking = true
 
         case .error(let code, let message):
+            PollyDebugLog.shared.log("event: ERROR code=\(code ?? "nil") \(message)")
             // Only the transport's own failure (code "transport", Task 7) means the
             // socket died. Server protocol errors (e.g. deleting an already-gone
             // item) must not kill a live cook — log them and keep going.

@@ -221,6 +221,7 @@
 		F28F7DAFE3AD2E7FD1BF40CB /* CookFinishView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D7C6652E2AA87A3E2E92ED3 /* CookFinishView.swift */; };
 		F344F24FD367B7A3C0F65F9D /* CookPlanCompilerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23C66664D3534808D99EA91 /* CookPlanCompilerTests.swift */; };
 		F414351CC012911B4E45E28F /* MealPhotoEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 625F2A2C31B9D7D640FBAF29 /* MealPhotoEstimator.swift */; };
+		F439618BC6DBF43006734F54 /* PollyDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0268F027D0F03E7A16372293 /* PollyDebugLog.swift */; };
 		F48EEA8C4B150C6C5279702C /* DiscoverCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 341AE603888CC7022D42E417 /* DiscoverCardView.swift */; };
 		F4AE9A7FAC0923B4C003E79E /* DiscoverVideoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06DC77B86C51C5605387CE5C /* DiscoverVideoTests.swift */; };
 		F6D00E9CFFD30A9AC017C74E /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61F5AFC37B586B18C2468CF /* Typography.swift */; };
@@ -266,6 +267,7 @@
 /* Begin PBXFileReference section */
 		02024086020F095CDDF5F628 /* PreCookChecklistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreCookChecklistView.swift; sourceTree = "<group>"; };
 		0253AFA0F0F645D26A917A47 /* PlatesSaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesSaver.swift; sourceTree = "<group>"; };
+		0268F027D0F03E7A16372293 /* PollyDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyDebugLog.swift; sourceTree = "<group>"; };
 		03E4B5038BD3A803FFA377AD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		053DDC19F78120AC03E52C32 /* DiscoverFeedViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverFeedViewModel.swift; sourceTree = "<group>"; };
 		06DC77B86C51C5605387CE5C /* DiscoverVideoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverVideoTests.swift; sourceTree = "<group>"; };
@@ -650,6 +652,7 @@
 				9C2B0A5A7001C881CB503BF0 /* PollyAudioEngine.swift */,
 				2C905319C8996B5C5CEF7804 /* PollyCameraController.swift */,
 				13252E8FCE4B1C0102B43E57 /* PollyConfig.swift */,
+				0268F027D0F03E7A16372293 /* PollyDebugLog.swift */,
 				3D6BFA58653B47D10CB71BE8 /* PollyMemoryExtractor.swift */,
 				B94ABCDAED53B1B546E05EF4 /* PollyMemoryStore.swift */,
 				45320BAE787463C2D042171F /* PollyPromptBuilder.swift */,
@@ -1244,6 +1247,7 @@
 				AAF69A06E5BE0CEC26AC86C8 /* PollyAudioEngine.swift in Sources */,
 				0CFE242C313C5C9E31E9B960 /* PollyCameraController.swift in Sources */,
 				09D2B5129A39C8B7CB4A40A4 /* PollyConfig.swift in Sources */,
+				F439618BC6DBF43006734F54 /* PollyDebugLog.swift in Sources */,
 				858A866E0199A85333682E96 /* PollyMemoryExtractor.swift in Sources */,
 				4555CCCF97EF706EE428D9FC /* PollyMemoryStore.swift in Sources */,
 				4638CF05DC0838A48D488CB0 /* PollyPaywallHook.swift in Sources */,

@@ -129,6 +129,8 @@ final class PollyAudioEngine {
     @ObservationIgnored private let playerNode = AVAudioPlayerNode()
     @ObservationIgnored private var isPlayerAttached = false
     @ObservationIgnored private var voiceProcessingActive = false
+    @ObservationIgnored private var routeObserver: NSObjectProtocol?
+    @ObservationIgnored private var enqueueCount = 0
     @ObservationIgnored private var outstandingBuffers = 0
     @ObservationIgnored private let mutedFlag = OSAllocatedUnfairLock(initialState: false)
     /// 4 800 bytes = 2 400 Int16 samples = ~100 ms at 24 kHz.
@@ -160,8 +162,26 @@ final class PollyAudioEngine {
         }
 
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+        // No .allowBluetooth for now: a nearby paired device silently stealing
+        // the route ("no sound" + a far-away mic feeding noise the transcriber
+        // hallucinates words from) is indistinguishable from a code bug in the
+        // field. Deterministic built-in speaker + mic while Polly stabilizes.
+        try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker])
         try session.setActive(true)
+        try? session.overrideOutputAudioPort(.speaker)
+        PollyDebugLog.shared.log(
+            "audio: session active — sampleRate=\(session.sampleRate) sysVolume=\(session.outputVolume) "
+            + "route out=[\(session.currentRoute.outputs.map { "\($0.portType.rawValue):\($0.portName)" }.joined(separator: ","))] "
+            + "in=[\(session.currentRoute.inputs.map { "\($0.portType.rawValue):\($0.portName)" }.joined(separator: ","))]")
+        routeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main
+        ) { note in
+            let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt).map(String.init) ?? "?"
+            let route = AVAudioSession.sharedInstance().currentRoute
+            PollyDebugLog.shared.log(
+                "audio: ROUTE CHANGE reason=\(reason) out=[\(route.outputs.map(\.portName).joined(separator: ","))] "
+                + "in=[\(route.inputs.map(\.portName).joined(separator: ","))]")
+        }
 
         let input = engine.inputNode
         // REAL echo cancellation. The session's .voiceChat mode alone does NOT
@@ -174,10 +194,13 @@ final class PollyAudioEngine {
         do {
             try input.setVoiceProcessingEnabled(true)
             voiceProcessingActive = true
+            PollyDebugLog.shared.log("audio: voice processing ENABLED (AEC on)")
         } catch {
             voiceProcessingActive = false   // degraded: raw IO, no AEC
+            PollyDebugLog.shared.log("audio: voice processing FAILED (\(error.localizedDescription)) — no AEC")
         }
         let inputFormat = input.inputFormat(forBus: 0)
+        PollyDebugLog.shared.log("audio: inputFormat=\(Int(inputFormat.sampleRate))Hz ch=\(inputFormat.channelCount)")
         guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
             try? session.setActive(false, options: .notifyOthersOnDeactivation)
             throw PollyAudioError.microphoneUnavailable
@@ -193,9 +216,22 @@ final class PollyAudioEngine {
         let wire = wireFormat
         let muted = mutedFlag
         let accumulator = self.accumulator
+        let firstTapLogged = OSAllocatedUnfairLock(initialState: false)
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 2_400, format: inputFormat) { [weak self] buffer, _ in
             // Audio render thread: PCM math + lock-guarded state only.
+            let logFirst = firstTapLogged.withLock { seen -> Bool in
+                if seen { return false }
+                seen = true
+                return true
+            }
+            if logFirst {
+                // The delivered format is authoritative — with voice processing
+                // it can differ from what inputFormat(forBus:) reported.
+                PollyDebugLog.shared.log(
+                    "audio: first mic buffer — actual=\(Int(buffer.format.sampleRate))Hz "
+                    + "ch=\(buffer.format.channelCount) frames=\(buffer.frameLength)")
+            }
             let level = Self.rms(of: buffer)
             Task { @MainActor [weak self] in self?.smoothLevel(level) }
             guard !muted.withLock({ $0 }) else { return }
@@ -209,33 +245,57 @@ final class PollyAudioEngine {
         } catch {
             input.removeTap(onBus: 0)
             try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            PollyDebugLog.shared.log("audio: engine.start FAILED — \(error.localizedDescription)")
             throw error
         }
+        playerNode.volume = 1
+        engine.mainMixerNode.outputVolume = 1
         playerNode.play()
         isRunning = true
+        PollyDebugLog.shared.log(
+            "audio: engine running — output=\(Int(engine.outputNode.outputFormat(forBus: 0).sampleRate))Hz "
+            + "mixerVol=\(engine.mainMixerNode.outputVolume) playerVol=\(playerNode.volume)")
     }
 
     func stop() {
+        if let routeObserver {
+            NotificationCenter.default.removeObserver(routeObserver)
+            self.routeObserver = nil
+        }
         engine.inputNode.removeTap(onBus: 0)
         if isPlayerAttached { playerNode.stop() }
         engine.stop()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         accumulator.reset()
         outstandingBuffers = 0
+        enqueueCount = 0
         isPlaying = false
         isRunning = false
         inputLevel = 0
+        PollyDebugLog.shared.log("audio: stopped")
     }
 
     // MARK: Playback
 
     /// Decodes a base64 PCM16 24 kHz chunk from the socket and queues it.
     func enqueue(base64: String) {
-        guard isRunning,
-              let data = Data(base64Encoded: base64),
+        guard isRunning else {
+            PollyDebugLog.shared.log("audio: enqueue DROPPED — engine not running")
+            return
+        }
+        guard let data = Data(base64Encoded: base64),
               let wireBuffer = PCM.buffer(fromPCM16: data, format: wireFormat),
-              let playable = PCM.resample(wireBuffer, to: playbackFormat) else { return }
+              let playable = PCM.resample(wireBuffer, to: playbackFormat) else {
+            PollyDebugLog.shared.log("audio: enqueue DROPPED — decode/convert failed")
+            return
+        }
 
+        enqueueCount += 1
+        if enqueueCount == 1 || enqueueCount % 50 == 0 {
+            PollyDebugLog.shared.log(
+                "audio: enqueue #\(enqueueCount) frames=\(playable.frameLength) "
+                + "playerPlaying=\(playerNode.isPlaying) engineRunning=\(engine.isRunning) queued=\(outstandingBuffers)")
+        }
         outstandingBuffers += 1
         isPlaying = true
         playerNode.scheduleBuffer(playable) { [weak self] in

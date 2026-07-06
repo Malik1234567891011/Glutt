@@ -1,6 +1,7 @@
 import AVFAudio
 import SwiftData
 import SwiftUI
+import UIKit
 
 /// Live "Cook with Polly" session: full-bleed camera preview behind a
 /// voice-first overlay — orb, rolling caption, current step, timers, controls.
@@ -18,6 +19,7 @@ struct PollySessionView: View {
     @State private var controller: PollySessionController?
     @State private var startedAt = Date.now
     @State private var isConfirmingExit = false
+    @State private var didCopyDebugLog = false
     @State private var isShowingFinish = false
     @State private var isEndingWithoutSaving = false
     @State private var micDenied = false
@@ -95,7 +97,10 @@ struct PollySessionView: View {
     /// "Try again" path: a fresh controller every time, because start() runs
     /// once per instance.
     private func startSession() async {
+        PollyDebugLog.shared.reset()
+        PollyDebugLog.shared.log("session: starting (scale \(scale))")
         let granted = await AVAudioApplication.requestRecordPermission()
+        PollyDebugLog.shared.log("session: mic permission \(granted ? "granted" : "DENIED")")
         guard granted else {
             micDenied = true
             return
@@ -174,8 +179,25 @@ struct PollySessionView: View {
                 }
             }
             Spacer()
-            // Invisible twin of the X button so the title stays centered.
-            Color.clear.frame(width: 40, height: 40)
+            // Copy the session debug log — pasteable straight into a bug
+            // report. Doubles as the X button's twin so the title stays
+            // centered.
+            Button {
+                UIPasteboard.general.string = PollyDebugLog.shared.dump()
+                Haptics.notify(.success)
+                didCopyDebugLog = true
+                Task {
+                    try? await Task.sleep(for: .seconds(2))
+                    didCopyDebugLog = false
+                }
+            } label: {
+                (didCopyDebugLog ? Ph.check.regular : Ph.clipboard.regular)
+                    .resizable().scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .frame(width: 40, height: 40)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)

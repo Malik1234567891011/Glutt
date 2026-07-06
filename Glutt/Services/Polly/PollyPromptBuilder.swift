@@ -89,6 +89,13 @@ enum PollyPromptBuilder {
         if !match.missingOptional.isEmpty {
             lines.append("Missing but optional: \(match.missingOptional.map(\.name).joined(separator: ", ")).")
         }
+        lines.append("""
+        This pantry list is often stale or empty — many cooks never fill it in. \
+        If the cook SAYS they have (or lack) an ingredient, their word wins: \
+        don't re-run check_pantry to verify, and never contradict them with \
+        "the pantry shows otherwise". Mention missing ingredients once at the \
+        start, then move on.
+        """)
         return lines.joined(separator: "\n")
     }
 

@@ -65,7 +65,11 @@ enum CookPlanCompiler {
         }
     ) async -> CookPlan {
         let key = cacheKey(recipe: recipe, scale: scale)
-        if let cached = cachedPlan(forKey: key) { return cached }
+        if let cached = cachedPlan(forKey: key) {
+            PollyDebugLog.shared.log("plan: cache HIT (\(key.prefix(8)))")
+            return cached
+        }
+        PollyDebugLog.shared.log("plan: cache MISS (\(key.prefix(8)))")
         guard LLMClient.isConfigured else {
             return CookPlan.linear(from: recipe, scale: scale)
         }
@@ -73,9 +77,11 @@ enum CookPlanCompiler {
             var plan = try await llm(systemPrompt, userPrompt(recipe: recipe, scale: scale))
             plan.isFallback = false
             store(plan, forKey: key)
+            PollyDebugLog.shared.log("plan: compiled via LLM, stored (\(plan.steps.count) steps)")
             return plan
         } catch {
             // AI is never load-bearing: the linear plan narrates the raw steps.
+            PollyDebugLog.shared.log("plan: LLM compile FAILED (\(error.localizedDescription)) — linear fallback, not cached")
             return CookPlan.linear(from: recipe, scale: scale)
         }
     }

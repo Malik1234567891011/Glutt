@@ -106,11 +106,18 @@ enum PollyAudioError: LocalizedError {
 @Observable
 final class PollyAudioEngine {
     private(set) var isRunning = false
-    /// While muted the tap stays installed; chunk emission is gated off.
+    /// While muted the tap stays installed; chunk emission is gated off, and
+    /// when voice processing is active the input is also muted at the IO unit
+    /// so nothing can leak upstream.
     var isMuted = false {
         didSet {
             let value = isMuted
             mutedFlag.withLock { $0 = value }
+            // Only touch the input node when start() already ran (accessing
+            // it earlier is the CoreAudio-abort vector on a wedged host).
+            if voiceProcessingActive {
+                engine.inputNode.isVoiceProcessingInputMuted = value
+            }
         }
     }
     /// True while any assistant audio buffer is scheduled and unplayed.
@@ -121,6 +128,7 @@ final class PollyAudioEngine {
     @ObservationIgnored private let engine = AVAudioEngine()
     @ObservationIgnored private let playerNode = AVAudioPlayerNode()
     @ObservationIgnored private var isPlayerAttached = false
+    @ObservationIgnored private var voiceProcessingActive = false
     @ObservationIgnored private var outstandingBuffers = 0
     @ObservationIgnored private let mutedFlag = OSAllocatedUnfairLock(initialState: false)
     /// 4 800 bytes = 2 400 Int16 samples = ~100 ms at 24 kHz.
@@ -156,6 +164,19 @@ final class PollyAudioEngine {
         try session.setActive(true)
 
         let input = engine.inputNode
+        // REAL echo cancellation. The session's .voiceChat mode alone does NOT
+        // give a custom AVAudioEngine graph echo cancellation — without this,
+        // Polly's own voice re-enters the mic, the server's VAD hears "the
+        // user", cancels her mid-sentence, and she answers her own words (the
+        // repeat/stack/cut-off loop from live testing). Enabling voice
+        // processing on the input node pairs the output node automatically,
+        // and brings AGC + noise suppression along — good in a loud kitchen.
+        do {
+            try input.setVoiceProcessingEnabled(true)
+            voiceProcessingActive = true
+        } catch {
+            voiceProcessingActive = false   // degraded: raw IO, no AEC
+        }
         let inputFormat = input.inputFormat(forBus: 0)
         guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
             try? session.setActive(false, options: .notifyOthersOnDeactivation)

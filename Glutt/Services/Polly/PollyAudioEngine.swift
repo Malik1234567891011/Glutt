@@ -167,7 +167,11 @@ final class PollyAudioEngine {
         // the route ("no sound" + a far-away mic feeding noise the transcriber
         // hallucinates words from) is indistinguishable from a code bug in the
         // field. Deterministic built-in speaker + mic while Polly stabilizes.
-        try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker])
+        // .videoChat, not .voiceChat: it tunes the voice-processing chain for
+        // SPEAKERPHONE use (FaceTime-video style) — the phone sits on the
+        // counter at full volume, which is where .voiceChat's handset-oriented
+        // echo cancellation let Polly's own voice leak back into the mic.
+        try session.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker])
         try session.setActive(true)
         try? session.overrideOutputAudioPort(.speaker)
         PollyDebugLog.shared.log(

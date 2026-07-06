@@ -139,10 +139,17 @@ enum RealtimeClientEvent: Equatable {
     private static func sessionPayload(_ config: RealtimeSessionConfig) -> [String: Any] {
         var input: [String: Any] = [
             "format": ["type": "audio/pcm", "rate": 24000],
-            "turn_detection": ["type": "semantic_vad"]
+            // eagerness low: at kitchen speaker volume, residual echo of
+            // Polly's own voice ("I'm here.") and noise ("akademik", "Οξάνα")
+            // tripped default VAD and cut her off mid-sentence on every turn.
+            // Low waits for clearer evidence of real speech before barging in.
+            "turn_detection": ["type": "semantic_vad", "eagerness": "low"],
+            // The phone sits on a counter an arm's length away — far-field
+            // noise reduction cleans sizzle/fan noise before VAD sees it.
+            "noise_reduction": ["type": "far_field"]
         ]
         if config.transcribeInput {
-            input["transcription"] = ["model": "gpt-4o-transcribe"]
+            input["transcription"] = ["model": "gpt-4o-transcribe", "language": "en"]
         }
         let tools: [[String: Any]] = config.tools.map {
             ["type": $0.type, "name": $0.name, "description": $0.description,

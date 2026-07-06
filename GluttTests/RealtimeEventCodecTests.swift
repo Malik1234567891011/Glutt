@@ -99,8 +99,14 @@ final class RealtimeEventCodecTests: XCTestCase {
         XCTAssertEqual(inputFormat["rate"] as? Int, 24000)
         let turnDetection = try XCTUnwrap(input["turn_detection"] as? [String: Any])
         XCTAssertEqual(turnDetection["type"] as? String, "semantic_vad")
+        XCTAssertEqual(turnDetection["eagerness"] as? String, "low",
+                       "default eagerness let speaker echo/noise interrupt Polly mid-sentence")
+        let noiseReduction = try XCTUnwrap(input["noise_reduction"] as? [String: Any])
+        XCTAssertEqual(noiseReduction["type"] as? String, "far_field")
         let transcription = try XCTUnwrap(input["transcription"] as? [String: Any])
         XCTAssertEqual(transcription["model"] as? String, "gpt-4o-transcribe")
+        XCTAssertEqual(transcription["language"] as? String, "en",
+                       "no language hint made noise transcribe as German/Greek words")
         let output = try XCTUnwrap(audio["output"] as? [String: Any])
         let outputFormat = try XCTUnwrap(output["format"] as? [String: Any])
         XCTAssertEqual(outputFormat["type"] as? String, "audio/pcm")

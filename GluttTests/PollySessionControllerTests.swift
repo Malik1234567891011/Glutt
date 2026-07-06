@@ -382,4 +382,55 @@ final class PollySessionControllerTests: XCTestCase {
         XCTAssertEqual(logs.count, 1)
         XCTAssertTrue(logs[0].endedEarly, "no steps were completed — honest endedEarly")
     }
+
+    // MARK: (9) tool batches answer with ONE response, not one per call
+
+    func testMultipleToolCallsProduceOutputsThenSingleResponseCreate() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+        let countBefore = transport.sentNonAudio.count
+
+        transport.push(.responseDone(status: "completed", calls: [
+            RealtimeFunctionCall(name: "get_current_step", callId: "call_a", argumentsJSON: "{}"),
+            RealtimeFunctionCall(name: "check_pantry", callId: "call_b", argumentsJSON: "{}"),
+        ]))
+        await waitUntil({ transport.sentNonAudio.count >= countBefore + 3 },
+                        "expected two function outputs + one response.create")
+
+        let newSends = Array(transport.sentNonAudio.dropFirst(countBefore))
+        XCTAssertEqual(newSends.count, 3, "exactly 2 outputs + 1 response.create — never one create per call")
+        guard case .createFunctionOutput(let id1, _) = newSends[0],
+              case .createFunctionOutput(let id2, _) = newSends[1] else {
+            return XCTFail("first two sends must be the function outputs, got \(newSends)")
+        }
+        XCTAssertEqual(id1, "call_a")
+        XCTAssertEqual(id2, "call_b")
+        XCTAssertEqual(newSends[2], .responseCreate)
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    // MARK: (10) cancelled responses never trigger tool execution
+
+    func testCancelledResponseCallsAreIgnored() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+        let countBefore = transport.sentNonAudio.count
+
+        transport.push(.responseDone(status: "cancelled", calls: [
+            RealtimeFunctionCall(name: "get_current_step", callId: "call_x", argumentsJSON: "{}"),
+        ]))
+        // Ordered stream: once this later event lands, the cancelled one was processed.
+        transport.push(.speechStarted)
+        await waitUntil({ controller.isListening }, "follow-up event processed")
+
+        XCTAssertEqual(transport.sentNonAudio.count, countBefore,
+                       "a cancelled response's partial calls must not be executed or answered")
+
+        await controller.end(context: context, endedEarly: true)
+    }
 }

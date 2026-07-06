@@ -323,17 +323,22 @@ final class PollySessionController {
             pendingAssistantLine += delta
             captionText = pendingAssistantLine
 
-        case .responseDone(_, let calls):
+        case .responseDone(let status, let calls):
             isPollySpeaking = false
             isThinking = false
             flushPendingAssistantLine()
+            // Only execute tool calls from COMPLETED responses — a cancelled
+            // response (barge-in) can carry partial calls, and answering them
+            // talks over the cook who just interrupted.
+            guard status == "completed", !calls.isEmpty, let registry else { break }
             for call in calls {
-                guard let registry else { continue }
                 let output = await registry.handle(name: call.name, argumentsJSON: call.argumentsJSON)
                 try? await transport?.send(.createFunctionOutput(callId: call.callId, output: output))
-                try? await transport?.send(.responseCreate)
-                isThinking = true
             }
+            // ONE response for the whole batch. A response.create per call
+            // queues N spoken replies back to back — Polly repeating herself.
+            try? await transport?.send(.responseCreate)
+            isThinking = true
 
         case .error(let code, let message):
             // Only the transport's own failure (code "transport", Task 7) means the

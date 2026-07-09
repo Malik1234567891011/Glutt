@@ -12,6 +12,13 @@ function nutrient(nutrition, name) {
   return hit ? Math.round(hit.amount) : null;
 }
 
+// Upgrade Spoonacular's small CDN thumbnail (e.g. 312x231) to the largest
+// render (636x393) so full-screen cards aren't blurry.
+function upscaleImage(url) {
+  if (typeof url !== "string" || !url.includes("img.spoonacular.com/recipes/")) return url;
+  return url.replace(/-\d+x\d+(\.\w+)(\?.*)?$/, "-636x393$1$2");
+}
+
 function normalizeRecipe(r) {
   const nutrition = r.nutrition || {};
   const ingredients = (r.extendedIngredients || []).map((ing) => ({
@@ -31,7 +38,7 @@ function normalizeRecipe(r) {
   return {
     id: `spoonacular:${r.id}`,
     title: r.title || "",
-    imageURL: r.image || null,
+    imageURL: upscaleImage(r.image) || null,
     source: "spoonacular",
     sourceURL: r.sourceUrl || null,
     creator: r.creditsText || r.sourceName || null,

@@ -1,10 +1,13 @@
-// Today's Plate: a global, date-seeded deck of 12 photo recipes from
-// Spoonacular. One complexSearch call returns photo + macros + ingredients +
-// steps + servings, normalized into Glutt's PlateCard contract. Edge-cached by
-// UTC date so normal opens cost ~0 Spoonacular points.
+// Discover feed: an endless, paginated stream of photo recipes from
+// Spoonacular. Each page is one complexSearch call (photo + macros +
+// ingredients + steps + servings) normalized into Glutt's PlateCard contract.
+// `pageToken` is a simple integer page cursor; we rotate the query and advance
+// the Spoonacular offset per page so the cook can swipe forever with variety.
+// Every page is edge-cached (by page + UTC day) so repeat opens cost ~0 points.
 
 function resolveSpoonacularKey() {
-  return (process.env.SPOONACULAR_API_KEY || "").trim();
+  // Accept either env var name so setup mismatches don't silently 500.
+  return (process.env.SPOONACULAR_API_KEY || process.env.SPOONACULAR_API || "").trim();
 }
 
 const ROTATING_QUERIES = [
@@ -96,13 +99,21 @@ export default async function handler(req, res) {
     }
   }
 
+  const PAGE_SIZE = 12;
   const dayIndex = Math.floor(Date.now() / 86400000);
-  const query = ROTATING_QUERIES[dayIndex % ROTATING_QUERIES.length];
+  // page cursor: 0, 1, 2, … Each page rotates to a different query and, once a
+  // full lap of queries is done, steps the Spoonacular offset so pages stay
+  // fresh. Day-seeded start so the feed differs day to day.
+  const page = Math.max(0, parseInt((req.query.pageToken || "0").toString(), 10) || 0);
+  const queryIndex = (dayIndex + page) % ROTATING_QUERIES.length;
+  const query = ROTATING_QUERIES[queryIndex];
+  const offset = Math.floor(page / ROTATING_QUERIES.length) * PAGE_SIZE;
 
   const url = new URL("https://api.spoonacular.com/recipes/complexSearch");
   url.searchParams.set("apiKey", apiKey);
   url.searchParams.set("query", query);
-  url.searchParams.set("number", "12");
+  url.searchParams.set("number", String(PAGE_SIZE));
+  url.searchParams.set("offset", String(offset));
   url.searchParams.set("addRecipeInformation", "true");
   url.searchParams.set("addRecipeNutrition", "true");
   url.searchParams.set("fillIngredients", "true");
@@ -118,9 +129,13 @@ export default async function handler(req, res) {
     const data = await upstream.json();
     const recipes = (data.results || []).map(normalizeRecipe).filter(imageWorthy);
 
-    // Date-seeded + globally shared → cache hard so a day's deck is one call.
+    // Endless: always hand back the next cursor. Spoonacular has thousands of
+    // hits per query, and we rotate queries, so the feed effectively never ends.
+    const nextPageToken = String(page + 1);
+
+    // Page-seeded + globally shared → cache hard so each page is one call.
     res.setHeader("Cache-Control", "s-maxage=43200, stale-while-revalidate=86400");
-    return res.status(200).json({ deckTitle: "Today's Plate", recipes, nextPageToken: null });
+    return res.status(200).json({ deckTitle: page === 0 ? "Discover" : null, recipes, nextPageToken });
   } catch (error) {
     return res.status(502).json({
       error: "Spoonacular request failed",

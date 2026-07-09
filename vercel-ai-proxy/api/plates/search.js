@@ -2,7 +2,8 @@
 // offset. Cached per (query) for a day. Same PlateCard contract as deck.js.
 
 function resolveSpoonacularKey() {
-  return (process.env.SPOONACULAR_API_KEY || "").trim();
+  // Accept either env var name so setup mismatches don't silently 500.
+  return (process.env.SPOONACULAR_API_KEY || process.env.SPOONACULAR_API || "").trim();
 }
 
 function nutrient(nutrition, name) {

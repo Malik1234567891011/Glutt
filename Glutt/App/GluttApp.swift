@@ -16,10 +16,7 @@ final class NotificationRoutingDelegate: NSObject, UNUserNotificationCenterDeleg
         if destination == "plan" {
             router?.selectedTab = .plan
         } else if destination == "plates" {
-            router?.selectedTab = .today
-            router?.pendingPresentPlates = true
-        } else if destination == "polly" {
-            router?.selectedTab = .polly
+            router?.selectedTab = .discover
         }
     }
 
@@ -45,7 +42,12 @@ struct GluttApp: App {
     private static let superwallPublicAPIKey = "pk_WahaBcbECKEDins7Lio-Q"
 
     init() {
-        Superwall.configure(apiKey: Self.superwallPublicAPIKey)
+        // `-uiPreview`: dev/screenshot hook — skip Superwall so its test-mode
+        // sheet (shown when the running bundle id differs from the dashboard's)
+        // doesn't cover the UI during local iteration.
+        if !ProcessInfo.processInfo.arguments.contains("-uiPreview") {
+            Superwall.configure(apiKey: Self.superwallPublicAPIKey)
+        }
         notificationDelegate.router = router
         UNUserNotificationCenter.current().delegate = notificationDelegate
     }

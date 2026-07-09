@@ -138,6 +138,12 @@ final class PollyAudioEngine {
     /// each utterance onset — the AEC-vulnerable window where Polly's own
     /// opening words leak into the mic and trip server VAD (false barge-ins).
     @ObservationIgnored private let captureGateDeadline = OSAllocatedUnfairLock(initialState: 0.0)
+    /// Mirrors `isPlaying` for the audio render thread. While true, mic buffers
+    /// quieter than `PollyConfig.bargeInRMSFloor` are dropped — residual echo of
+    /// Polly's own voice and slight room noise stay below it, so they can't trip
+    /// server VAD and cut her off, while a clear close voice clears it and can
+    /// still barge in. Between turns (false) the mic is fully open.
+    @ObservationIgnored private let speakingFlag = OSAllocatedUnfairLock(initialState: false)
     /// 4 800 bytes = 2 400 Int16 samples = ~100 ms at 24 kHz.
     @ObservationIgnored private let accumulator = PCMChunkAccumulator(chunkByteCount: 4_800)
 
@@ -225,6 +231,7 @@ final class PollyAudioEngine {
         let wire = wireFormat
         let muted = mutedFlag
         let gate = captureGateDeadline
+        let speaking = speakingFlag
         let accumulator = self.accumulator
         let firstTapLogged = OSAllocatedUnfairLock(initialState: false)
         input.removeTap(onBus: 0)
@@ -248,6 +255,11 @@ final class PollyAudioEngine {
             // Utterance-onset gate: drop chunks while the echo canceller is
             // still adapting to Polly's voice (see PollyConfig).
             guard gate.withLock({ CFAbsoluteTimeGetCurrent() >= $0 }) else { return }
+            // Barge-in noise floor: while Polly is speaking, drop quiet input
+            // (echo of her own voice / room noise) so it can't trip server VAD
+            // and cut her off. A clear, close voice clears the floor and still
+            // interrupts. (See PollyConfig.bargeInRMSFloor.)
+            if speaking.withLock({ $0 }), level < PollyConfig.bargeInRMSFloor { return }
             guard let converted = PCM.resample(buffer, to: wire) else { return }
             accumulator.append(PCM.pcm16Data(from: converted), emit: onChunk)
         }
@@ -313,10 +325,35 @@ final class PollyAudioEngine {
         accumulator.reset()
         outstandingBuffers = 0
         enqueueCount = 0
-        isPlaying = false
+        setPlaying(false)
         isRunning = false
         inputLevel = 0
         PollyDebugLog.shared.log("audio: stopped")
+    }
+
+    /// Puts the player node into the clean STOPPED state a barge-in leaves it
+    /// in, so the FIRST utterance renders exactly like every later one. After
+    /// the AEC-triggered engine restart the player reports isPlaying but its
+    /// render pipeline hasn't actually re-engaged — the greeting scheduled into
+    /// it is silently dropped (caption shows, no sound), while every later turn
+    /// works because a barge-in stop()/play() cycle preceded it. enqueue()
+    /// re-play()s it fresh when the audio arrives. Only meaningful with an
+    /// empty queue (early startup), so it never discards live audio.
+    func resetPlaybackForNextUtterance() {
+        guard isRunning, isPlayerAttached, outstandingBuffers == 0 else { return }
+        playerNode.stop()
+        setPlaying(false)
+        PollyDebugLog.shared.log("audio: player reset to stopped — fresh render for greeting")
+    }
+
+    /// Suppresses mic capture for `seconds` from now (extends, never shortens,
+    /// any gate already armed). Used to bridge the session-startup window so
+    /// ambient noise / echo can't trip server VAD and truncate Polly's greeting
+    /// before it's heard.
+    func holdCapture(forSeconds seconds: TimeInterval) {
+        let deadline = CFAbsoluteTimeGetCurrent() + seconds
+        captureGateDeadline.withLock { $0 = max($0, deadline) }
+        PollyDebugLog.shared.log("audio: capture held for \(seconds)s")
     }
 
     // MARK: Playback
@@ -339,10 +376,11 @@ final class PollyAudioEngine {
 
         // A new utterance is starting (nothing was queued): arm the onset
         // capture gate so her opening words can't echo back as "user speech".
+        // Use max() so this never SHORTENS a longer hold already in place (e.g.
+        // the greeting mic-hold armed before her first audio arrived).
         if outstandingBuffers == 0 {
-            captureGateDeadline.withLock {
-                $0 = CFAbsoluteTimeGetCurrent() + PollyConfig.onsetCaptureGateSeconds
-            }
+            let deadline = CFAbsoluteTimeGetCurrent() + PollyConfig.onsetCaptureGateSeconds
+            captureGateDeadline.withLock { $0 = max($0, deadline) }
             PollyDebugLog.shared.log("audio: onset capture gate armed (\(PollyConfig.onsetCaptureGateSeconds)s)")
         }
 
@@ -353,12 +391,12 @@ final class PollyAudioEngine {
                 + "playerPlaying=\(playerNode.isPlaying) engineRunning=\(engine.isRunning) queued=\(outstandingBuffers)")
         }
         outstandingBuffers += 1
-        isPlaying = true
+        setPlaying(true)
         playerNode.scheduleBuffer(playable) { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.outstandingBuffers = max(0, self.outstandingBuffers - 1)
-                self.isPlaying = self.outstandingBuffers > 0
+                self.setPlaying(self.outstandingBuffers > 0)
             }
         }
         if !playerNode.isPlaying { playerNode.play() }
@@ -369,7 +407,7 @@ final class PollyAudioEngine {
     @discardableResult
     func interruptPlayback() -> Int {
         outstandingBuffers = 0
-        isPlaying = false
+        setPlaying(false)
         guard isPlayerAttached else { return 0 }
 
         var playedMs = 0
@@ -395,6 +433,13 @@ final class PollyAudioEngine {
               let playerTime = playerNode.playerTime(forNodeTime: nodeTime),
               playerTime.sampleRate > 0 else { return 0 }
         return max(0, Int(Double(playerTime.sampleTime) * 1_000 / playerTime.sampleRate))
+    }
+
+    /// Keeps the observable `isPlaying` and the render-thread `speakingFlag`
+    /// (which gates the barge-in noise floor) in lockstep.
+    private func setPlaying(_ value: Bool) {
+        isPlaying = value
+        speakingFlag.withLock { $0 = value }
     }
 
     // MARK: Level metering

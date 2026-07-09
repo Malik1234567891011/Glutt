@@ -36,6 +36,10 @@ final class PollySessionController {
     private(set) var plan: CookPlan?
     /// Rolling last utterance line (user transcript or Polly's live caption).
     private(set) var captionText = ""
+    /// Polly's latest spoken line (live-updating), shown large on screen so the
+    /// cook can glance and confirm they didn't miss anything. Persists until her
+    /// next utterance — the user's own speech never overwrites it.
+    private(set) var pollyCaption = ""
     private(set) var isPollySpeaking = false
     private(set) var isListening = false
     /// True from any response.create until the first audio delta / response.done —
@@ -188,9 +192,7 @@ final class PollySessionController {
         do {
             try await transport.connect(token: token.value, model: token.model)
             try await transport.send(.sessionUpdate(config))
-            try await transport.send(.responseCreate)   // Polly speaks first
-            isThinking = true
-            PollyDebugLog.shared.log("session: socket connected — session.update + greeting sent")
+            PollyDebugLog.shared.log("session: socket connected — session.update sent")
         } catch {
             PollyDebugLog.shared.log("session: connect FAILED — \(error.localizedDescription)")
             phase = .failed(error.localizedDescription)
@@ -212,14 +214,43 @@ final class PollySessionController {
             captionText = "Microphone unavailable — Polly can't hear you."
         }
 
-        // 6. Camera is optional (denied -> voice-only session) and its
-        //    permission prompt must never block the greeting: fire-and-forget.
-        Task { [camera] in await camera.start() }
+        // 6. Camera stays OFF by default — most cooks keep the phone on the
+        //    counter and cook by voice. They flip it on with the camera button
+        //    only when they want Polly to look (which also requests permission
+        //    then, not up front). Voice-only is the normal path.
 
         phase = .live
         PollyDebugLog.shared.log("session: LIVE")
         consumeEvents(from: transport, context: context)
         startWatchLoop(context: context)
+
+        // Polly speaks first — but this is requested LAST, once the event loop
+        // is already consuming and (on device) the audio graph has settled.
+        // Enabling AEC flips the input node into voice-processing mode, which
+        // fires an AVAudioEngineConfigurationChange that briefly STOPS the engine
+        // ~20ms after start(). A greeting requested before that settles has its
+        // opening audio scheduled into an engine that's about to stop, so the
+        // buffers are flushed unheard — her caption shows but there's no sound
+        // until the user speaks and a later response plays into the now-settled
+        // engine. The short warm-up (only when the mic pipeline is actually up,
+        // so tests / mic-denied never block) lets the restart land first.
+        if audio.isRunning {
+            try? await Task.sleep(for: .seconds(PollyConfig.greetingWarmupSeconds))
+            // Reset the player to the clean stopped state a barge-in leaves it
+            // in, so the greeting's audio render engages like every later turn
+            // (see PollyAudioEngine) — the fix for "caption shows but no audio
+            // until I speak," where the post-restart player never re-engaged.
+            audio.resetPlaybackForNextUtterance()
+            // Hold the mic across the greeting startup: it went live ~1s before
+            // her first audio arrives, and that ambient/echo stream can trip
+            // server VAD and truncate her opening line at ~0ms (caption shows,
+            // no sound). The hold bridges to her first spoken words.
+            audio.holdCapture(forSeconds: PollyConfig.greetingMicHoldSeconds)
+        }
+        guard phase == .live else { return }   // user bailed during warm-up
+        try? await transport.send(.responseCreate)
+        isThinking = true
+        PollyDebugLog.shared.log("session: greeting requested")
     }
 
     /// Idempotent teardown: stop the pipelines, close the socket, extract
@@ -357,6 +388,7 @@ final class PollySessionController {
             }
             pendingAssistantLine += delta
             captionText = pendingAssistantLine
+            pollyCaption = pendingAssistantLine
 
         case .responseDone(let status, let calls):
             PollyDebugLog.shared.log(

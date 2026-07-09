@@ -3,14 +3,14 @@ import Observation
 import SwiftData
 
 enum AppTab: String, CaseIterable, Identifiable {
-    case today, recipes, polly, plan, kitchen, progress
+    case today, recipes, discover, plan, kitchen, progress
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .today: "Today"
         case .recipes: "Recipes"
-        case .polly: "Polly"
+        case .discover: "Discover"
         case .plan: "Plan"
         case .kitchen: "Kitchen"
         case .progress: "Progress"
@@ -21,7 +21,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .today: "sun.max"
         case .recipes: "book"
-        case .polly: "chef-hat" // placeholder — GluttTabBar draws Ph.chefHat
+        case .discover: "sparkles" // placeholder — GluttTabBar draws Ph.sparkle
         case .plan: "calendar"
         case .kitchen: "refrigerator"
         case .progress: "chart.line.uptrend.xyaxis"
@@ -101,10 +101,6 @@ final class Router {
     /// Screens with their own bottom action bar (e.g. recipe detail's Cook button)
     /// bump this to hide the floating + button while they're visible.
     var floatingButtonSuppressors = 0
-    /// Set by the Today launcher card, the glutt://plates deep link, or the
-    /// daily "Today's Plate" notification. RootView presents the Plates feed
-    /// (a fullScreenCover, not a tab) whenever this is true.
-    var pendingPresentPlates = false
     /// Set by the "Cook with Polly" button on recipe detail (and, in Task 16,
     /// the Polly tab's recipe picker). RootView presents the live session
     /// (a fullScreenCover) whenever this is non-nil; carries the serving
@@ -153,7 +149,10 @@ final class Router {
         switch url.host {
         case "today": selectedTab = .today
         case "recipes": selectedTab = .recipes
-        case "polly": selectedTab = .polly
+        case "discover": selectedTab = .discover
+        // Legacy link kept working: Polly now launches from a recipe, so send
+        // its old deep link to the recipe list.
+        case "polly": selectedTab = .recipes
         case "plan": selectedTab = .plan
         case "kitchen": selectedTab = .kitchen
         case "progress": selectedTab = .progress
@@ -172,7 +171,7 @@ final class Router {
             } else {
                 selectedTab = .recipes
             }
-        case "plates": pendingPresentPlates = true
+        case "plates": selectedTab = .discover
         default: break
         }
     }

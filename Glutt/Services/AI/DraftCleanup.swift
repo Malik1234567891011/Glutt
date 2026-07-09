@@ -35,6 +35,14 @@ enum DraftCleanup {
         - For ratio-sensitive mixes (marinades, dressings, batters, brines, sauces), use classic ratios proven for that dish, scale them to the quantity being made, keep them approximate, and tell the user to taste and adjust. Never guess a precise ratio you aren't confident about — when unsure, give a conservative amount and say "add more to taste".
         """
 
+    /// Duplicate-ingredient consolidation: captions often list the same
+    /// ingredient in two places (marinade + garnish). The shopping-style
+    /// ingredient list must show ONE line with the summed total; the steps
+    /// carry the per-stage split so nothing gets lost.
+    private static let mergeGuidance = """
+        - MERGE DUPLICATES: if the same ingredient is listed more than once (e.g. "3 tbsp smoked paprika" for the marinade and "3 tbsp smoked paprika" to garnish), it must appear ONCE in "ingredients" with the TOTAL combined amount ("6 tbsp smoked paprika"). Then in the relevant "steps", state how much to use at each stage ("add 3 tbsp of the smoked paprika to the marinade", "sprinkle the remaining 3 tbsp on top to finish"). The amounts across the steps must add up to the ingredient-list total. Only merge the SAME ingredient in the same form — keep e.g. "lime juice" and "lime zest" separate.
+        """
+
     /// Heuristic for "is this draft messy enough to be worth a cloud call".
     static func wouldImprove(_ draft: ImportedRecipeDraft) -> Bool {
         guard LLMClient.isConfigured else { return false }
@@ -62,6 +70,7 @@ enum DraftCleanup {
         - steps: clear imperative sentences, one action per step, in order. Split run-on paragraphs.
         - Do NOT invent ingredients or steps that aren't implied by the source.
         \(chefGuidance)
+        \(mergeGuidance)
         \(servingsGuidance)
         - tags: up to 5 lowercase tags like "high-protein", "one-pan", "quick".
         - summary: one appetizing sentence, no hype.
@@ -205,6 +214,7 @@ enum DraftCleanup {
         - ingredients: "quantity unit ingredient" per line, realistic home quantities.
         - steps: clear imperative sentences, one action per step.
         \(chefGuidance)
+        \(mergeGuidance)
         \(servingsGuidance)
         - tags: up to 5 lowercase tags.
         - If you cannot tell what dish this is, return {}.

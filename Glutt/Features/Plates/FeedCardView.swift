@@ -1,7 +1,10 @@
 import SwiftUI
 
-/// One full-screen plate: hero photo front (title + stat strip + flip handle)
-/// and a 3D-flip back (macros + servings + ingredients + steps + CTAs).
+/// One plate in the Discover feed: an inset, rounded hero card. The front is a
+/// framed photo (title + stat strip + a tap-for-recipe hint); tapping flips it
+/// to the recipe back (macros + servings + ingredients + steps + save). Being
+/// inset with rounded corners — rather than raw edge-to-edge — keeps the photo
+/// looking intentional instead of cropped and unformatted.
 struct FeedCardView: View {
     let card: PlateCard
     let isSaved: Bool
@@ -13,6 +16,8 @@ struct FeedCardView: View {
 
     @State private var displayServings: Int = 2
 
+    private let cardRadius: CGFloat = Theme.Radius.sheet
+
     private var scale: Double {
         guard let base = card.servings, base > 0 else { return 1 }
         return Double(displayServings) / Double(base)
@@ -21,7 +26,6 @@ struct FeedCardView: View {
     var body: some View {
         ZStack {
             if reduceMotion {
-                // Cross-fade instead of 3D rotation when Reduce Motion is on.
                 if isFlipped { back } else { front }
             } else {
                 front
@@ -32,6 +36,8 @@ struct FeedCardView: View {
                     .rotation3DEffect(.degrees(isFlipped ? 0 : -180), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .shadow(color: .black.opacity(0.35), radius: 18, x: 0, y: 10)
         .onAppear { displayServings = card.servings ?? 2 }
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.8), value: isFlipped)
     }
@@ -41,58 +47,81 @@ struct FeedCardView: View {
     private var front: some View {
         ZStack(alignment: .bottomLeading) {
             heroImage
-            LinearGradient(colors: [.clear, .black.opacity(0.75)], startPoint: .center, endPoint: .bottom)
-                .allowsHitTesting(false)
+
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.15), .black.opacity(0.85)],
+                startPoint: .top, endPoint: .bottom
+            )
+            .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                if isCookableNow {
-                    HStack(spacing: 4) {
-                        Ph.basket.fill.resizable().scaledToFit().frame(width: 13, height: 13)
-                        Text("You can make this now")
-                            .font(.system(size: 13, weight: .heavy, design: .rounded))
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Theme.Colors.accent)
-                    .clipShape(Capsule())
-                }
+                if isCookableNow { cookableBadge }
 
                 Text(card.title)
-                    .font(.gluttLargeTitle)
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(3)
+                    .minimumScaleFactor(0.8)
 
-                if let creator = card.creator {
+                if let creator = card.creator, !creator.isEmpty {
                     Text(creator)
                         .font(.gluttCaption)
                         .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
                 }
 
                 statStrip
-
-                flipHandle
+                flipHint
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Theme.Spacing.lg)
-            .padding(.bottom, 80)  // clear the action bar
         }
-        .contentShape(Rectangle())
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
         .onTapGesture { flip() }
     }
 
     private var heroImage: some View {
-        GeometryReader { geo in
-            AsyncImage(url: card.imageURL.flatMap(URL.init(string:))) { phase in
-                switch phase {
-                case .success(let image): image.resizable().scaledToFill()
-                default:
-                    Theme.Colors.accent.opacity(0.08)
-                        .overlay(Image(systemName: "fork.knife").font(.largeTitle).foregroundStyle(Theme.Colors.accent.opacity(0.35)))
+        // Color.clear fixes the frame to the card; the image draws into the
+        // overlay and `scaledToFill` overflow is clipped to that frame (a bare
+        // AsyncImage + scaledToFill reports the photo's huge intrinsic size and
+        // spills past the card edges).
+        Color.clear
+            .overlay {
+                AsyncImage(url: card.imageURL.flatMap(URL.init(string:))) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    case .empty:
+                        ZStack {
+                            Theme.Colors.card
+                            ProgressView().tint(Theme.Colors.accent)
+                        }
+                    default:
+                        ZStack {
+                            Theme.Colors.accent.opacity(0.12)
+                            Ph.forkKnife.fill
+                                .resizable().scaledToFit()
+                                .frame(width: 48, height: 48)
+                                .foregroundStyle(Theme.Colors.accent.opacity(0.4))
+                        }
+                    }
                 }
             }
-            .frame(width: geo.size.width, height: geo.size.height)
             .clipped()
+    }
+
+    private var cookableBadge: some View {
+        HStack(spacing: 4) {
+            Ph.basket.fill.resizable().scaledToFit().frame(width: 13, height: 13)
+            Text("You can make this now")
+                .font(.system(size: 13, weight: .heavy, design: .rounded))
         }
-        .ignoresSafeArea()
+        .foregroundStyle(.white)
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(Theme.Colors.accent)
+        .clipShape(Capsule())
     }
 
     private var statStrip: some View {
@@ -110,18 +139,17 @@ struct FeedCardView: View {
         }
     }
 
-    private var flipHandle: some View {
+    private var flipHint: some View {
         HStack(spacing: 6) {
-            Ph.bookOpen.fill.resizable().scaledToFit().frame(width: 16, height: 16)
-            Text("Recipe").font(.gluttCaption.weight(.heavy))
-            Ph.caretRight.bold.resizable().scaledToFit().frame(width: 11, height: 11)
+            Ph.bookOpen.fill.resizable().scaledToFit().frame(width: 15, height: 15)
+            Text("Tap for recipe").font(.gluttCaption.weight(.heavy))
+            Ph.caretRight.regular.resizable().scaledToFit().frame(width: 10, height: 10)
         }
         .foregroundStyle(Theme.Colors.textPrimary)
         .padding(.horizontal, 14).padding(.vertical, 9)
         .background(.ultraThinMaterial)
         .clipShape(Capsule())
-        .onTapGesture { flip() }
-        .accessibilityLabel("Show recipe")
+        .padding(.top, 2)
     }
 
     // MARK: Back
@@ -130,7 +158,18 @@ struct FeedCardView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                    Text(card.title).font(.gluttTitle).foregroundStyle(Theme.Colors.textPrimary)
+                    HStack(alignment: .top) {
+                        Text(card.title).font(.gluttTitle).foregroundStyle(Theme.Colors.textPrimary)
+                        Spacer()
+                        Button { flip() } label: {
+                            Ph.x.regular.resizable().scaledToFit().frame(width: 14, height: 14)
+                                .foregroundStyle(Theme.Colors.textSecondary)
+                                .frame(width: 32, height: 32)
+                                .background(Theme.Colors.border.opacity(0.5))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                     if let m = card.macros {
                         MacroStrip(calories: m.caloriesInt, protein: m.proteinInt,
@@ -184,9 +223,9 @@ struct FeedCardView: View {
             .disabled(isSaved)
             .padding(Theme.Spacing.md)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.Colors.background)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sheet, style: .continuous))
-        .padding(Theme.Spacing.sm)
+        .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
     }
 
     private func scaledLine(_ ing: PlateIngredient) -> String {

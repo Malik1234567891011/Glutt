@@ -87,6 +87,180 @@
         "Serve over rice with pan butter."
       ],
       "nutritionNote": null
+    },
+    {
+      "id": "curated:4",
+      "title": "Creamy Tuscan Salmon",
+      "imageURL": "https://images.unsplash.com/photo-1467003909585-2f8a72700288",
+      "source": "curated",
+      "sourceURL": "https://glutt.app/seed/tuscan-salmon",
+      "creator": "Glutt Kitchen",
+      "license": "curated",
+      "summary": "Seared salmon in a sun-dried tomato and spinach cream sauce.",
+      "servings": 4,
+      "prepMinutes": 10,
+      "cookMinutes": 20,
+      "difficulty": "beginner",
+      "tags": ["high-protein", "dinner", "quick"],
+      "dietFlags": ["gluten free"],
+      "macros": { "calories": 560, "protein": 40, "carbs": 12, "fat": 38, "estimated": false },
+      "ingredients": [
+        { "raw": "4 salmon fillets", "name": "salmon", "quantity": 4, "unit": "" },
+        { "raw": "200 ml cream", "name": "cream", "quantity": 200, "unit": "ml" },
+        { "raw": "100 g sun-dried tomatoes", "name": "sun-dried tomatoes", "quantity": 100, "unit": "g" },
+        { "raw": "2 handfuls spinach", "name": "spinach", "quantity": 2, "unit": "handful" }
+      ],
+      "steps": [
+        "Sear salmon skin-side down 4 minutes, flip, set aside.",
+        "In the same pan cook sun-dried tomatoes, add cream and spinach.",
+        "Return salmon to the sauce and simmer 2 minutes."
+      ],
+      "nutritionNote": null
+    },
+    {
+      "id": "curated:5",
+      "title": "Crispy Chicken Street Tacos",
+      "imageURL": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38",
+      "source": "curated",
+      "sourceURL": "https://glutt.app/seed/chicken-tacos",
+      "creator": "Glutt Kitchen",
+      "license": "curated",
+      "summary": "Crispy spiced chicken with lime crema in warm corn tortillas.",
+      "servings": 3,
+      "prepMinutes": 15,
+      "cookMinutes": 15,
+      "difficulty": "beginner",
+      "tags": ["dinner", "mexican", "high-protein"],
+      "dietFlags": ["gluten free"],
+      "macros": { "calories": 520, "protein": 36, "carbs": 40, "fat": 22, "estimated": false },
+      "ingredients": [
+        { "raw": "500 g chicken thighs", "name": "chicken thighs", "quantity": 500, "unit": "g" },
+        { "raw": "2 tsp taco seasoning", "name": "taco seasoning", "quantity": 2, "unit": "tsp" },
+        { "raw": "9 corn tortillas", "name": "corn tortillas", "quantity": 9, "unit": "" },
+        { "raw": "1 lime", "name": "lime", "quantity": 1, "unit": "" }
+      ],
+      "steps": [
+        "Toss chicken with seasoning and sear until crisp and cooked through.",
+        "Chop and squeeze over lime.",
+        "Warm tortillas and fill with chicken and toppings."
+      ],
+      "nutritionNote": null
+    },
+    {
+      "id": "curated:6",
+      "title": "Thai Green Coconut Curry",
+      "imageURL": "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd",
+      "source": "curated",
+      "sourceURL": "https://glutt.app/seed/thai-green-curry",
+      "creator": "Glutt Kitchen",
+      "license": "curated",
+      "summary": "Fragrant green curry with vegetables and creamy coconut milk.",
+      "servings": 4,
+      "prepMinutes": 10,
+      "cookMinutes": 20,
+      "difficulty": "beginner",
+      "tags": ["dinner", "thai", "vegetarian"],
+      "dietFlags": ["vegetarian", "gluten free", "dairy free"],
+      "macros": { "calories": 410, "protein": 12, "carbs": 34, "fat": 26, "estimated": false },
+      "ingredients": [
+        { "raw": "3 tbsp green curry paste", "name": "green curry paste", "quantity": 3, "unit": "tbsp" },
+        { "raw": "1 can coconut milk", "name": "coconut milk", "quantity": 1, "unit": "can" },
+        { "raw": "400 g mixed vegetables", "name": "mixed vegetables", "quantity": 400, "unit": "g" },
+        { "raw": "1 cup jasmine rice", "name": "jasmine rice", "quantity": 1, "unit": "cup" }
+      ],
+      "steps": [
+        "Fry curry paste 1 minute until fragrant.",
+        "Add coconut milk and vegetables; simmer 12 minutes.",
+        "Serve over jasmine rice."
+      ],
+      "nutritionNote": null
+    },
+    {
+      "id": "curated:7",
+      "title": "Lemon Garlic Butter Steak",
+      "imageURL": "https://images.unsplash.com/photo-1546833999-b9f581a1996d",
+      "source": "curated",
+      "sourceURL": "https://glutt.app/seed/butter-steak",
+      "creator": "Glutt Kitchen",
+      "license": "curated",
+      "summary": "Pan-seared steak basted in lemon garlic butter.",
+      "servings": 2,
+      "prepMinutes": 5,
+      "cookMinutes": 12,
+      "difficulty": "intermediate",
+      "tags": ["high-protein", "dinner"],
+      "dietFlags": ["gluten free", "keto"],
+      "macros": { "calories": 640, "protein": 46, "carbs": 3, "fat": 50, "estimated": false },
+      "ingredients": [
+        { "raw": "2 sirloin steaks", "name": "sirloin steak", "quantity": 2, "unit": "" },
+        { "raw": "3 tbsp butter", "name": "butter", "quantity": 3, "unit": "tbsp" },
+        { "raw": "3 cloves garlic", "name": "garlic", "quantity": 3, "unit": "clove" },
+        { "raw": "0.5 lemon", "name": "lemon", "quantity": 0.5, "unit": "" }
+      ],
+      "steps": [
+        "Sear steaks 3 minutes per side in a hot pan.",
+        "Add butter, garlic and a squeeze of lemon; baste 1 minute.",
+        "Rest 5 minutes before slicing."
+      ],
+      "nutritionNote": null
+    },
+    {
+      "id": "curated:8",
+      "title": "Chickpea Coconut Curry",
+      "imageURL": "https://images.unsplash.com/photo-1585937421612-70a008356fbe",
+      "source": "curated",
+      "sourceURL": "https://glutt.app/seed/chickpea-curry",
+      "creator": "Glutt Kitchen",
+      "license": "curated",
+      "summary": "A cozy vegan curry that comes together from the pantry.",
+      "servings": 4,
+      "prepMinutes": 5,
+      "cookMinutes": 20,
+      "difficulty": "beginner",
+      "tags": ["vegan", "dinner", "budget"],
+      "dietFlags": ["vegan", "vegetarian", "gluten free", "dairy free"],
+      "macros": { "calories": 380, "protein": 13, "carbs": 48, "fat": 16, "estimated": false },
+      "ingredients": [
+        { "raw": "2 cans chickpeas, drained", "name": "chickpeas", "quantity": 2, "unit": "can" },
+        { "raw": "1 can coconut milk", "name": "coconut milk", "quantity": 1, "unit": "can" },
+        { "raw": "2 tbsp curry powder", "name": "curry powder", "quantity": 2, "unit": "tbsp" },
+        { "raw": "1 can chopped tomatoes", "name": "chopped tomatoes", "quantity": 1, "unit": "can" }
+      ],
+      "steps": [
+        "Bloom curry powder in oil for 30 seconds.",
+        "Add tomatoes, chickpeas and coconut milk.",
+        "Simmer 15 minutes and season to taste."
+      ],
+      "nutritionNote": null
+    },
+    {
+      "id": "curated:9",
+      "title": "Pesto Pasta with Cherry Tomatoes",
+      "imageURL": "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9",
+      "source": "curated",
+      "sourceURL": "https://glutt.app/seed/pesto-pasta",
+      "creator": "Glutt Kitchen",
+      "license": "curated",
+      "summary": "Bright basil pesto pasta with blistered cherry tomatoes.",
+      "servings": 3,
+      "prepMinutes": 5,
+      "cookMinutes": 15,
+      "difficulty": "beginner",
+      "tags": ["vegetarian", "dinner", "quick"],
+      "dietFlags": ["vegetarian"],
+      "macros": { "calories": 560, "protein": 18, "carbs": 72, "fat": 22, "estimated": false },
+      "ingredients": [
+        { "raw": "300 g pasta", "name": "pasta", "quantity": 300, "unit": "g" },
+        { "raw": "4 tbsp basil pesto", "name": "basil pesto", "quantity": 4, "unit": "tbsp" },
+        { "raw": "200 g cherry tomatoes", "name": "cherry tomatoes", "quantity": 200, "unit": "g" },
+        { "raw": "30 g parmesan", "name": "parmesan", "quantity": 30, "unit": "g" }
+      ],
+      "steps": [
+        "Cook pasta until al dente, reserving a splash of water.",
+        "Blister cherry tomatoes in a hot pan.",
+        "Toss pasta with pesto, tomatoes, a splash of pasta water and parmesan."
+      ],
+      "nutritionNote": null
     }
   ],
   "nextPageToken": null

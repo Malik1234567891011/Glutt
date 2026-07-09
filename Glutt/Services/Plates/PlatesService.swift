@@ -27,6 +27,14 @@ struct PlatesService {
         try await get(path: "plates/deck", queryItems: [])
     }
 
+    /// One page of the endless Discover feed. `pageToken` is the opaque cursor
+    /// the previous page returned (nil for the first page).
+    func feed(pageToken: String?) async throws -> PlatesResponse {
+        var items: [URLQueryItem] = []
+        if let pageToken { items.append(URLQueryItem(name: "pageToken", value: pageToken)) }
+        return try await get(path: "plates/deck", queryItems: items)
+    }
+
     func search(query: String, pageToken: String?) async throws -> PlatesResponse {
         var items = [URLQueryItem(name: "q", value: query)]
         if let pageToken { items.append(URLQueryItem(name: "pageToken", value: pageToken)) }

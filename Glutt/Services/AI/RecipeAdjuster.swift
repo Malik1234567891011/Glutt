@@ -55,6 +55,78 @@ enum RecipeAdjuster {
         }
     }
 
+    /// A concrete adjustment request — either a one-tap preset goal or the
+    /// cook's own free-text ask ("use 2.4 lb chicken breast instead of thighs").
+    struct Request {
+        enum Kind: Equatable {
+            case preset(Goal)
+            case custom(String)
+        }
+
+        let kind: Kind
+
+        static func preset(_ goal: Goal) -> Request { Request(kind: .preset(goal)) }
+        static func custom(_ text: String) -> Request { Request(kind: .custom(text)) }
+
+        var instruction: String {
+            switch kind {
+            case .preset(let goal): goal.instruction
+            case .custom(let text): Request.customInstruction(text)
+            }
+        }
+
+        /// Label used for the saved version.
+        var versionLabel: String {
+            switch kind {
+            case .preset(let goal): goal.versionLabel
+            case .custom: "Custom version"
+            }
+        }
+
+        /// Human phrase for the "Rewriting for …" progress line.
+        var displayName: String {
+            switch kind {
+            case .preset(let goal): goal.label.lowercased()
+            case .custom: "your request"
+            }
+        }
+
+        /// Presets keep servings fixed so the before/after macros stay comparable.
+        /// A free-text ask may legitimately change the yield (e.g. "double the chicken").
+        var allowsServingsChange: Bool {
+            if case .custom = kind { return true }
+            return false
+        }
+
+        /// Wraps the cook's own words in chef-grade guidance so the model swaps
+        /// and scales like a real cook rather than a find-and-replace.
+        private static func customInstruction(_ request: String) -> String {
+            """
+            The cook wants this specific change, in their own words:
+            "\(request)"
+
+            Interpret it like an expert chef and apply it faithfully:
+            - If they swap an ingredient or change its amount (a different cut or protein,
+              "2.4 lb chicken breast instead of the thighs", "half the rice"), make that exact
+              change and SCALE the supporting ingredients — marinade, sauce, oil, seasoning,
+              liquid — proportionally to the new main-ingredient amount so the ratios stay
+              balanced. Never leave a sauce sized for the old quantity.
+            - Respect their units and amounts as given; convert sensibly (lb ↔ g, cups ↔ g) and
+              keep the converted amount in the ingredient line.
+            - Account for the REAL differences between ingredients, not just the name. Example:
+              chicken breast is leaner and drier than thigh — it cooks faster, overcooks easily,
+              and wants slightly more fat or a shorter, gentler cook; adjust the method, times,
+              temperatures, and seasoning to match. Do the equivalent reasoning for any swap.
+            - Food safety is non-negotiable: give correct doneness cues/temperatures for the NEW
+              ingredient (e.g. chicken to 165°F / 74°C).
+            - When an amount or time is your judgement rather than certain, hedge in the change
+              note ("about", "roughly") — never present a guess as exact.
+            If the request isn't about cooking or is impossible, do the closest sensible thing and
+            say what you assumed in the summary.
+            """
+        }
+    }
+
     struct Adjustment: Decodable {
         /// Ingredient lines as plain text ("2 tbsp olive oil") — parsed on apply.
         let ingredients: [String]
@@ -62,29 +134,36 @@ enum RecipeAdjuster {
         /// Human-readable change list ("Swapped cream for Greek yogurt (−180 cal)").
         let changes: [String]
         let summary: String?
+        /// New yield when the change alters how many it feeds; nil keeps the original.
+        let servings: Int?
     }
 
     static func adjust(
         recipe: Recipe,
-        goal: Goal,
+        request: Request,
         rules: [DietaryRule],
         allergies: [String]
     ) async throws -> Adjustment {
+        let servingsRule = request.allowsServingsChange
+            ? "Keep the original \(recipe.servings) servings UNLESS the change clearly alters how many it feeds; if it does, set \"servings\" to the new count."
+            : "Keep the SAME number of servings as the original (\(recipe.servings)), so amounts stay comparable, and omit the \"servings\" field."
+
         let system = """
         You adjust home recipes toward a goal. Return JSON only:
         {"ingredients": ["2 tbsp olive oil", ...], "steps": ["...", ...],
-         "changes": ["short explanation of each change", ...], "summary": "one sentence"}
+         "changes": ["short explanation of each change", ...], "summary": "one sentence",
+         "servings": 4}
 
         Rules:
         - Keep the dish recognizable; this is an adjustment, not a new recipe.
-        - Keep the SAME number of servings as the original, so amounts stay comparable.
+        - \(servingsRule)
         - ingredients: complete final list, one per line, quantities included.
         - steps: the complete final method, updated where changes matter.
         - changes: 2-6 short bullets a home cook understands.
         - Never include anything that violates the dietary rules or allergies listed.
         """
 
-        var user = "GOAL: \(goal.instruction)\n\n"
+        var user = "GOAL: \(request.instruction)\n\n"
         if !rules.isEmpty {
             user += "User's dietary rules: \(rules.map(\.label).joined(separator: ", "))\n"
         }
@@ -121,7 +200,7 @@ enum RecipeAdjuster {
     @discardableResult
     static func apply(
         _ adjustment: Adjustment,
-        goal: Goal,
+        versionLabel: String,
         to recipe: Recipe,
         context: ModelContext
     ) -> Recipe {
@@ -131,7 +210,7 @@ enum RecipeAdjuster {
             sourceCreator: recipe.sourceCreator,
             sourceURL: recipe.sourceURL,
             sourcePlatform: recipe.sourcePlatform,
-            servings: recipe.servings,
+            servings: adjustment.servings ?? recipe.servings,
             prepMinutes: recipe.prepMinutes,
             cookMinutes: recipe.cookMinutes,
             difficulty: recipe.difficulty,
@@ -155,7 +234,7 @@ enum RecipeAdjuster {
         }
         copy.notes = adjustment.changes.map { "• \($0)" }.joined(separator: "\n")
         copy.parentRecipe = recipe.parentRecipe ?? recipe
-        copy.versionLabel = goal.versionLabel
+        copy.versionLabel = versionLabel
         context.insert(copy)
         return copy
     }

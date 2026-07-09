@@ -31,7 +31,9 @@ struct RootView: View {
                 GluttTabBar(selection: $router.selectedTab)
             }
 
-            if router.floatingButtonSuppressors == 0 {
+            // The Discover feed has its own save/skip actions filling the
+            // bottom, so the floating capture button would just collide with them.
+            if router.floatingButtonSuppressors == 0, router.selectedTab != .discover {
                 captureButton
             }
         }
@@ -51,16 +53,16 @@ struct RootView: View {
         .task { drainImportInbox() }
         .task { await RecipeImageBackfill.sweep(in: context) }
         .task {
-            ReminderScheduler.requestPermissionIfNeeded()
-            ReminderScheduler.schedulePlatesDailyReminder()
+            // Skip the notification prompt under the `-uiPreview` screenshot hook.
+            if !ProcessInfo.processInfo.arguments.contains("-uiPreview") {
+                ReminderScheduler.requestPermissionIfNeeded()
+                ReminderScheduler.schedulePlatesDailyReminder()
+            }
         }
         .fullScreenCover(isPresented: $router.demoCookOnLaunch) {
             if let recipe = recipes.first {
                 CookModeView(recipe: recipe)
             }
-        }
-        .fullScreenCover(isPresented: $router.pendingPresentPlates) {
-            RecipeFeedView()
         }
         .fullScreenCover(item: $router.pollyLaunch) { launch in
             PollySessionView(recipe: launch.recipe, scale: launch.scale)
@@ -89,7 +91,7 @@ struct RootView: View {
         switch tab {
         case .today: TodayView()
         case .recipes: RecipesView()
-        case .polly: PollyTabView()
+        case .discover: PlatesTabView()
         case .plan: PlanView()
         case .kitchen: KitchenView()
         case .progress: ProgressTabView()

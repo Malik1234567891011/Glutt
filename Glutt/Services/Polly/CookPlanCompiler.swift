@@ -128,6 +128,9 @@ enum CookPlanCompiler {
     - Preserve the recipe's intent and order; split run-on instructions into single \
     actions; do NOT invent ingredients or steps that aren't implied by the source.
     - Keep instructions short, imperative, and natural to speak aloud.
+    - Keep amounts IN the instruction: "add 1 tbsp salt", not "add the salt". If the \
+    recipe gives no amount for an ingredient, don't invent a precise number — say "to \
+    taste" or "a pinch".
     """
 
     private static func userPrompt(recipe: Recipe, scale: Double) -> String {

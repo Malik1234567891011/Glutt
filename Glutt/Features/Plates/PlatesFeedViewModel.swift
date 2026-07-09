@@ -15,6 +15,11 @@ final class PlatesFeedViewModel {
         /// Today's cached deck, or nil if none/stale (keyed by local date in `.live`).
         var cachedDeck: () -> PlatesResponse?
         var storeDeck: (PlatesResponse) -> Void
+        /// One more page of the endless feed. Defaulted so existing callers
+        /// (and tests) that don't paginate keep compiling unchanged.
+        var feed: (_ pageToken: String?) async throws -> PlatesResponse = { _ in
+            PlatesResponse(deckTitle: nil, recipes: [], nextPageToken: nil)
+        }
 
         static let live = Dependencies(
             daily: { try await PlatesService.live.daily() },
@@ -22,7 +27,8 @@ final class PlatesFeedViewModel {
             save: { try await PlatesSaver.save(card: $0, into: $1) },
             seed: { PlatesSeedDeck.load() },
             cachedDeck: { PlatesDeckCache.today() },
-            storeDeck: { PlatesDeckCache.store($0) }
+            storeDeck: { PlatesDeckCache.store($0) },
+            feed: { try await PlatesService.live.feed(pageToken: $0) }
         )
     }
 
@@ -38,6 +44,11 @@ final class PlatesFeedViewModel {
     private var nextPageToken: String?
     private var query = ""
     private var isExplore = false
+    private var isLoadingMore = false
+    /// Filter context captured on the initial load, reused when appending pages.
+    private var filterRules: [DietaryRule] = []
+    private var filterAllergies: [String] = []
+    private var filterSavedURLs: Set<String> = []
     private let deps: Dependencies
 
     init(deps: Dependencies = .live) { self.deps = deps }
@@ -46,23 +57,52 @@ final class PlatesFeedViewModel {
 
     func loadDaily(rules: [DietaryRule], allergies: [String], savedSourceURLs: Set<String>) async {
         isExplore = false
-        deckTitle = "Today's Plate"
+        deckTitle = "Discover"
+        filterRules = rules
+        filterAllergies = allergies
+        filterSavedURLs = savedSourceURLs
 
-        // 1. Today's cached deck (instant, offline-friendly).
+        // 1. Today's cached deck (instant, offline-friendly first page).
         if let cached = deps.cachedDeck() {
             applyDeck(cached, rules: rules, allergies: allergies, savedSourceURLs: savedSourceURLs, store: false)
             return
         }
 
-        // 2. Network deck → cache it.
+        // 2. Network deck → cache the first page.
         phase = .loading
         do {
             let page = try await deps.daily()
             applyDeck(page, rules: rules, allergies: allergies, savedSourceURLs: savedSourceURLs, store: true)
+            // If everything on page 1 was filtered out (all saved/diet-excluded)
+            // but more pages exist, pull the next one so we don't dead-end.
+            if phase == .empty { await loadMoreIfNeeded(currentIndex: 0) }
         } catch {
             // 3. Bundled seed fallback.
             let seed = deps.seed()
             applyDeck(seed, rules: rules, allergies: allergies, savedSourceURLs: savedSourceURLs, store: false)
+        }
+    }
+
+    /// Endless scroll: pulls the next page as the cook nears the end of what's
+    /// loaded. Safe to call on every card appearance — it self-guards on the
+    /// cursor, an in-flight fetch, and how close to the end we are.
+    func loadMoreIfNeeded(currentIndex: Int) async {
+        guard !isExplore, !isLoadingMore, let token = nextPageToken,
+              currentIndex >= recipes.count - 3 else { return }
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        do {
+            let page = try await deps.feed(token)
+            let existing = Set(recipes.map(\.id))
+            let fresh = PlatesDeckFilter
+                .filter(page.recipes, rules: filterRules, allergies: filterAllergies, savedSourceURLs: filterSavedURLs)
+                .filter { !existing.contains($0.id) }
+            recipes.append(contentsOf: fresh)
+            nextPageToken = page.nextPageToken
+            if phase == .empty, !recipes.isEmpty { phase = .loaded }
+        } catch {
+            // Leave the cursor so a later appearance retries; never surfaces an
+            // error mid-scroll.
         }
     }
 
@@ -122,7 +162,8 @@ final class PlatesFeedViewModel {
         deckTitle = page.deckTitle ?? deckTitle
         recipes = PlatesDeckFilter.filter(page.recipes, rules: rules, allergies: allergies, savedSourceURLs: savedSourceURLs)
         index = 0
-        nextPageToken = nil  // daily deck never paginates
+        // Carry the cursor so the feed can page endlessly (nil in tests / seed).
+        nextPageToken = page.nextPageToken
         phase = recipes.isEmpty ? .empty : .loaded
     }
 

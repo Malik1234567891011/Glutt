@@ -363,7 +363,8 @@ final class PollyToolRegistryTests: XCTestCase {
         registry.onRequestFrame = { false }
         let failed = try result(of: await registry.handle(name: "request_camera_frame", argumentsJSON: "{}"))
         XCTAssertEqual(failed["captured"] as? Bool, false)
-        XCTAssertEqual(failed["reason"] as? String, "frame capture failed")
+        XCTAssertEqual(failed["reason"] as? String,
+                       "camera is off or no frame yet — ask the cook to tap the camera button to show you")
 
         var ended = false
         registry.onEndSession = { ended = true }

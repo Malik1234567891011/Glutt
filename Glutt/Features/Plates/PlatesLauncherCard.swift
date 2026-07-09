@@ -18,9 +18,9 @@ struct PlatesLauncherCard: View {
                         .foregroundStyle(Theme.Colors.accent)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Today's Plate is ready 🍳")
+                    Text("Discover new recipes 🍳")
                         .font(.gluttHeadline).foregroundStyle(Theme.Colors.textPrimary)
-                    Text("12 fresh recipes — swipe, flip, save")
+                    Text("Swipe endless dishes — flip & save")
                         .font(.gluttCaption).foregroundStyle(Theme.Colors.textSecondary)
                 }
                 Spacer()

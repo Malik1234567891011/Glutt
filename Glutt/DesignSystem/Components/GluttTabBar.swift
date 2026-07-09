@@ -50,7 +50,7 @@ struct GluttTabBar: View {
         switch tab {
         case .today:    return active ? Ph.house.fill : Ph.house.regular
         case .recipes:  return active ? Ph.bookOpen.fill : Ph.bookOpen.regular
-        case .polly:    return active ? Ph.chefHat.fill : Ph.chefHat.regular
+        case .discover: return active ? Ph.sparkle.fill : Ph.sparkle.regular
         case .plan:     return active ? Ph.calendarBlank.fill : Ph.calendarBlank.regular
         case .kitchen:  return active ? Ph.cookingPot.fill : Ph.cookingPot.regular
         case .progress: return active ? Ph.chartLineUp.fill : Ph.chartLineUp.regular

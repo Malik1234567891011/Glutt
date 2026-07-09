@@ -12,13 +12,15 @@ struct AdjustRecipeView: View {
 
     enum Phase {
         case pickGoal
-        case working(RecipeAdjuster.Goal)
-        case result(RecipeAdjuster.Goal, RecipeAdjuster.Adjustment)
+        case working(RecipeAdjuster.Request)
+        case result(RecipeAdjuster.Request, RecipeAdjuster.Adjustment)
         case failed(String)
     }
 
     @State private var phase: Phase = .pickGoal
     @State private var didSave = false
+    @State private var customRequest = ""
+    @FocusState private var customFieldFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -27,10 +29,10 @@ struct AdjustRecipeView: View {
                     switch phase {
                     case .pickGoal:
                         goalPicker
-                    case .working(let goal):
-                        workingView(goal)
-                    case .result(let goal, let adjustment):
-                        resultView(goal, adjustment)
+                    case .working(let request):
+                        workingView(request)
+                    case .result(let request, let adjustment):
+                        resultView(request, adjustment)
                     case .failed(let message):
                         EmptyStateView(
                             icon: "exclamationmark.triangle",
@@ -65,7 +67,7 @@ struct AdjustRecipeView: View {
             ForEach(RecipeAdjuster.Goal.allCases) { goal in
                 Button {
                     Haptics.impact(.medium)
-                    run(goal)
+                    run(.preset(goal))
                 } label: {
                     HStack(spacing: Theme.Spacing.md) {
                         goalIcon(for: goal)
@@ -91,10 +93,87 @@ struct AdjustRecipeView: View {
                 .buttonStyle(.plain)
             }
 
+            customRequestField
+
             Text("The result saves as a new version — the original stays exactly as it is.")
                 .font(.gluttCaption)
                 .foregroundStyle(Theme.Colors.textSecondary)
         }
+    }
+
+    // MARK: - Custom request
+
+    /// Free-text ask — "use 2.4 lb chicken breast instead", "make it spicier",
+    /// "swap the rice for cauliflower rice". The chef scales and adapts.
+    private var customRequestField: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack(spacing: Theme.Spacing.sm) {
+                Rectangle().fill(Theme.Colors.border).frame(height: 1)
+                Text("OR ASK IN YOUR OWN WORDS")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .fixedSize()
+                Rectangle().fill(Theme.Colors.border).frame(height: 1)
+            }
+            .padding(.vertical, Theme.Spacing.xs)
+
+            HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+                Ph.magicWand.regular
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 22, height: 22)
+                    .foregroundStyle(Theme.Colors.accent)
+                    .padding(.top, 6)
+
+                TextField(
+                    "e.g. use 2.4 lb chicken breast instead of the thighs",
+                    text: $customRequest,
+                    axis: .vertical
+                )
+                .font(.gluttBody)
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .lineLimit(1...4)
+                .focused($customFieldFocused)
+                .submitLabel(.go)
+                .onSubmit(submitCustom)
+
+                if !trimmedCustom.isEmpty {
+                    Button(action: submitCustom) {
+                        Ph.arrowRight.bold
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 16, height: 16)
+                            .foregroundStyle(Theme.Colors.background)
+                            .frame(width: 32, height: 32)
+                            .background(Theme.Colors.accent)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .padding(Theme.Spacing.md)
+            .background(Theme.Colors.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                    .strokeBorder(customFieldFocused ? Theme.Colors.accent.opacity(0.5) : Theme.Colors.border,
+                                  lineWidth: 1)
+            )
+            .animation(.easeInOut(duration: 0.15), value: trimmedCustom.isEmpty)
+        }
+    }
+
+    private var trimmedCustom: String {
+        customRequest.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func submitCustom() {
+        let text = trimmedCustom
+        guard !text.isEmpty else { return }
+        customFieldFocused = false
+        Haptics.impact(.medium)
+        run(.custom(text))
     }
 
     /// Maps each Goal to a Phosphor icon (already resizable).
@@ -107,19 +186,19 @@ struct AdjustRecipeView: View {
         }
     }
 
-    private func run(_ goal: RecipeAdjuster.Goal) {
-        phase = .working(goal)
+    private func run(_ request: RecipeAdjuster.Request) {
+        phase = .working(request)
         let prefs = UserPrefs.current(in: context)
         Task {
             do {
                 let adjustment = try await RecipeAdjuster.adjust(
                     recipe: recipe,
-                    goal: goal,
+                    request: request,
                     rules: prefs.dietaryRules,
                     allergies: prefs.allergies
                 )
                 Haptics.notify(.success)
-                phase = .result(goal, adjustment)
+                phase = .result(request, adjustment)
             } catch {
                 Haptics.notify(.error)
                 phase = .failed(error.localizedDescription)
@@ -129,11 +208,11 @@ struct AdjustRecipeView: View {
 
     // MARK: - Working / result
 
-    private func workingView(_ goal: RecipeAdjuster.Goal) -> some View {
+    private func workingView(_ request: RecipeAdjuster.Request) -> some View {
         VStack(spacing: Theme.Spacing.md) {
             ProgressView()
                 .controlSize(.large)
-            Text("Rewriting for \u{201C}\(goal.label.lowercased())\u{201D}\u{2026}")
+            Text("Rewriting for \u{201C}\(request.displayName)\u{201D}\u{2026}")
                 .font(.gluttBody)
                 .foregroundStyle(Theme.Colors.textSecondary)
         }
@@ -141,7 +220,7 @@ struct AdjustRecipeView: View {
         .padding(.vertical, Theme.Spacing.xl * 2)
     }
 
-    private func resultView(_ goal: RecipeAdjuster.Goal, _ adjustment: RecipeAdjuster.Adjustment) -> some View {
+    private func resultView(_ request: RecipeAdjuster.Request, _ adjustment: RecipeAdjuster.Adjustment) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
             if let summary = adjustment.summary {
                 Text(summary)
@@ -189,14 +268,14 @@ struct AdjustRecipeView: View {
                         .scaledToFit()
                         .frame(width: 18, height: 18)
                         .foregroundStyle(Theme.Colors.accent)
-                    Text("Saved as \u{201C}\(goal.versionLabel)\u{201D} \u{2014} find it under versions on the recipe")
+                    Text("Saved as \u{201C}\(request.versionLabel)\u{201D} \u{2014} find it under versions on the recipe")
                         .font(.gluttCaption.weight(.medium))
                         .foregroundStyle(Theme.Colors.accent)
                 }
             } else {
-                Button("Save as \(goal.versionLabel.lowercased())") {
+                Button("Save as \(request.versionLabel.lowercased())") {
                     Haptics.notify(.success)
-                    RecipeAdjuster.apply(adjustment, goal: goal, to: recipe, context: context)
+                    RecipeAdjuster.apply(adjustment, versionLabel: request.versionLabel, to: recipe, context: context)
                     didSave = true
                 }
                 .buttonStyle(.gluttPrimary)
@@ -224,7 +303,8 @@ struct AdjustRecipeView: View {
             return RecipeIngredient(name: parsed.name, quantity: parsed.quantity,
                                     unit: parsed.unit, isEstimated: parsed.isEstimated)
         }
-        guard let after = NutritionEstimator.estimate(ingredients: ingredients, servings: recipe.servings) else {
+        let afterServings = adjustment.servings ?? recipe.servings
+        guard let after = NutritionEstimator.estimate(ingredients: ingredients, servings: afterServings) else {
             return nil
         }
         return (before, after)

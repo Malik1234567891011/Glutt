@@ -11,6 +11,26 @@ enum PollyConfig {
     /// her opening words leak through and trip server VAD (live logs: cuts at
     /// ~450-750ms with the "user" transcribed as her own first words).
     static let onsetCaptureGateSeconds: TimeInterval = 1.0
+    /// While Polly is actively speaking, mic audio quieter than this RMS
+    /// (voice tops out around ~0.25) is treated as echo of her own voice or
+    /// room noise and NOT forwarded to the server, so it can't trip VAD and cut
+    /// her off mid-sentence — the "it keeps interrupting itself on a slight
+    /// noise" symptom. A clear, close voice sails past this floor, so
+    /// intentional barge-in still works. Raise it if she still self-interrupts,
+    /// lower it if real interruptions get swallowed. 0 disables the gate.
+    static let bargeInRMSFloor: Float = 0.06
+    /// Beat to wait before requesting Polly's opening line, so the AEC-triggered
+    /// AVAudioEngineConfigurationChange (which briefly stops the engine ~20ms
+    /// after start) lands BEFORE her first audio is scheduled — otherwise the
+    /// greeting buffers get flushed unheard and she's silent until the user
+    /// speaks. Only applied when the mic pipeline is actually running.
+    static let greetingWarmupSeconds: TimeInterval = 0.5
+    /// Mic capture is held silent this long from the moment the greeting is
+    /// requested. It bridges the startup window — the mic goes live ~1s before
+    /// her first audio arrives, and that ambient/echo stream can trip server VAD
+    /// and truncate her opening line at ~0ms (symptom: caption shows, no sound).
+    /// Long enough to cover time-to-first-audio plus the onset adaptation window.
+    static let greetingMicHoldSeconds: TimeInterval = 2.5
     /// Frames are downscaled so the longest side is at most this, then JPEG-compressed.
     static let frameMaxDimension: CGFloat = 1024
     static let frameJPEGQuality: CGFloat = 0.6

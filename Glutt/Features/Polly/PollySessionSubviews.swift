@@ -147,6 +147,64 @@ struct PollyStepCard: View {
     }
 }
 
+// MARK: - Step hero
+
+/// The current CookPlan step, blown up big and centered for a voice-only
+/// session — the one thing a cook needs to glance at across the kitchen. No
+/// card chrome: just large, legible cream text on the dark backdrop, with the
+/// step's timer one tap away.
+struct PollyStepHero: View {
+    let step: CookPlan.PlanStep
+    let totalSteps: Int
+    let onStartTimer: (Int) -> Void
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.md) {
+            Text("STEP \(step.index + 1) OF \(totalSteps)")
+                .font(.system(size: 13, weight: .heavy))
+                .tracking(2)
+                .foregroundStyle(Theme.Colors.accent)
+            Text(step.title)
+                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.Colors.creamText)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.55)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(step.instruction)
+                .font(.system(size: 19, weight: .medium))
+                .foregroundStyle(Theme.Colors.creamText.opacity(0.82))
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+            if let seconds = step.timerSeconds {
+                Button {
+                    Haptics.selection()
+                    onStartTimer(seconds)
+                } label: {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        Ph.timer.regular
+                            .resizable().scaledToFit()
+                            .frame(width: 17, height: 17)
+                        Text("Start \(TimerManager.format(seconds: seconds)) timer")
+                            .font(.gluttBody.weight(.semibold))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, Theme.Spacing.lg)
+                    .padding(.vertical, 12)
+                    .background(Theme.Colors.warning)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, Theme.Spacing.xs)
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.lg)
+        .frame(maxWidth: .infinity)
+        .transition(.opacity)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 // MARK: - Preflight card
 
 /// Missing-ingredients checklist shown while Polly talks through the

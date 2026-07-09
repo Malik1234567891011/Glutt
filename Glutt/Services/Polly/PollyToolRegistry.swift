@@ -371,7 +371,7 @@ final class PollyToolRegistry {
         let captured = await onRequestFrame()
         return captured
             ? Self.json(["captured": true])
-            : Self.json(["captured": false, "reason": "frame capture failed"])
+            : Self.json(["captured": false, "reason": "camera is off or no frame yet — ask the cook to tap the camera button to show you"])
     }
 
     private func endSession() -> String {

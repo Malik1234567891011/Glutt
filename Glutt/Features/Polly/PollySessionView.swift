@@ -124,28 +124,40 @@ struct PollySessionView: View {
         }
     }
 
-    /// Camera preview when running; otherwise a calm dark backdrop with a
-    /// chef-hat watermark (voice-only sessions, permission denied, simulator).
+    /// Camera preview when running; otherwise a calm dark backdrop. The center
+    /// of a voice-only session is reserved for the big, glanceable step card,
+    /// so no watermark competes with it.
     @ViewBuilder
     private var background: some View {
         if let controller, controller.camera.isRunning {
             CameraPreviewView(previewLayer: controller.camera.previewLayer)
                 .ignoresSafeArea()
         } else {
-            ZStack {
-                Theme.Colors.textPrimary.ignoresSafeArea()
-                Ph.chefHat.fill
-                    .resizable().scaledToFit()
-                    .frame(width: 180, height: 180)
-                    .foregroundStyle(Theme.Colors.creamText.opacity(0.08))
-            }
+            LinearGradient(
+                colors: [Theme.Colors.textPrimary, Theme.Colors.textPrimary.opacity(0.88)],
+                startPoint: .top, endPoint: .bottom
+            )
+            .ignoresSafeArea()
         }
     }
 
     private func overlayChrome(for controller: PollySessionController) -> some View {
         VStack(spacing: 0) {
             topBar
-            Spacer()
+            // Voice-only: the current step is the hero — big and centered, the
+            // one thing a cook glances at with wet hands. With the camera on it
+            // moves to a compact card in the bottom stack so it never blocks
+            // the food.
+            if !controller.camera.isRunning, controller.phase == .live,
+               let step = currentStep(of: controller) {
+                Spacer(minLength: Theme.Spacing.md)
+                PollyStepHero(step: step, totalSteps: controller.plan?.steps.count ?? 0) { seconds in
+                    startTimer(for: step, seconds: seconds, controller: controller)
+                }
+                Spacer(minLength: Theme.Spacing.md)
+            } else {
+                Spacer()
+            }
             bottomStack(for: controller)
         }
     }
@@ -217,8 +229,8 @@ struct PollySessionView: View {
                 isSpeaking: controller.isPollySpeaking,
                 isThinking: controller.isThinking
             )
-            if !controller.captionText.isEmpty {
-                captionLine(controller.captionText)
+            if !controller.pollyCaption.isEmpty {
+                pollyCaptionCard(controller.pollyCaption)
             }
             if controller.phase == .live, !controller.missingIngredients.isEmpty,
                !didDismissPreflight {
@@ -226,12 +238,11 @@ struct PollySessionView: View {
                     didDismissPreflight = true
                 }
             }
-            if let step = currentStep(of: controller) {
+            // The step lives in the center hero for voice-only sessions; over
+            // the camera it drops to this compact card so the food stays visible.
+            if controller.camera.isRunning, let step = currentStep(of: controller) {
                 PollyStepCard(step: step, totalSteps: controller.plan?.steps.count ?? 0) { seconds in
-                    controller.timers.start(
-                        label: "Step \(step.index + 1): \(String(step.title.prefix(40)))",
-                        seconds: seconds
-                    )
+                    startTimer(for: step, seconds: seconds, controller: controller)
                 }
             }
             if !controller.timers.timers.isEmpty {
@@ -252,22 +263,35 @@ struct PollySessionView: View {
         }
     }
 
-    private func captionLine(_ text: String) -> some View {
+    /// Polly's latest words, as a subtle live line under the orb — the big
+    /// glanceable content is the step hero above, so this stays quiet and small
+    /// (a "what did she just say" confirmation, not the focal point).
+    private func pollyCaptionCard(_ text: String) -> some View {
         Text(text)
-            .font(.gluttCaption.weight(.semibold))
-            .foregroundStyle(Theme.Colors.creamText)
-            .lineLimit(2)
+            .font(.system(size: 15, weight: .semibold, design: .rounded))
+            .foregroundStyle(Theme.Colors.creamText.opacity(0.9))
             .multilineTextAlignment(.center)
-            .padding(.horizontal, 14)
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, Theme.Spacing.md)
             .padding(.vertical, 8)
-            .background(Theme.Colors.textPrimary.opacity(0.55))
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.pill, style: .continuous))
+            .background(Theme.Colors.textPrimary.opacity(0.45))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.photo, style: .continuous))
+            .animation(.easeInOut(duration: 0.2), value: text)
     }
 
     private func currentStep(of controller: PollySessionController) -> CookPlan.PlanStep? {
         guard let plan = controller.plan,
               plan.steps.indices.contains(controller.stepIndex) else { return nil }
         return plan.steps[controller.stepIndex]
+    }
+
+    private func startTimer(for step: CookPlan.PlanStep, seconds: Int, controller: PollySessionController) {
+        controller.timers.start(
+            label: "Step \(step.index + 1): \(String(step.title.prefix(40)))",
+            seconds: seconds
+        )
     }
 
     private func controlsRow(for controller: PollySessionController) -> some View {
@@ -278,28 +302,33 @@ struct PollySessionView: View {
             ) {
                 controller.toggleMute()
             }
-            PollyControlButton(
-                icon: controller.isWatching ? Ph.eye.fill : Ph.eyeSlash.regular,
-                label: "Polly watches while you cook"
-            ) {
-                controller.isWatching.toggle()
+            // Camera is off by default (phone on the counter). The look/flip/
+            // watch controls only make sense once it's on, so they appear only
+            // then — keeping the default bar to the essentials.
+            if controller.camera.isRunning {
+                PollyControlButton(icon: Ph.camera.regular, label: "Show Polly") {
+                    Task { await controller.sendShowPolly() }
+                }
+                PollyControlButton(
+                    icon: controller.isWatching ? Ph.eye.fill : Ph.eyeSlash.regular,
+                    label: "Polly watches while you cook"
+                ) {
+                    controller.isWatching.toggle()
+                }
+                PollyControlButton(icon: Ph.cameraRotate.regular, label: "Flip camera") {
+                    controller.flipCamera()
+                }
             }
-            PollyControlButton(icon: Ph.camera.regular, label: "Show Polly") {
-                Task { await controller.sendShowPolly() }
-            }
-            // Privacy control: turning the camera OFF is as important as flip.
             PollyControlButton(
                 icon: controller.camera.isRunning ? Ph.videoCamera.fill : Ph.videoCameraSlash.regular,
-                label: "Camera on or off"
+                label: controller.camera.isRunning ? "Turn camera off" : "Turn camera on"
             ) {
                 if controller.camera.isRunning {
                     controller.camera.stop()
+                    controller.isWatching = false
                 } else {
                     Task { await controller.camera.start() }
                 }
-            }
-            PollyControlButton(icon: Ph.cameraRotate.regular, label: "Flip camera") {
-                controller.flipCamera()
             }
             PollyControlButton(icon: Ph.x.regular, tint: Theme.Colors.tomato, label: "End session") {
                 isConfirmingExit = true

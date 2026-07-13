@@ -55,7 +55,7 @@ struct OnboardingFlow: View {
         if reduceMotion { return .opacity }
         let insertion = AnyTransition.opacity.combined(with: .offset(y: 12))
         let removal: AnyTransition = flow.screen == 0
-            ? .scale(scale: 1.12).combined(with: .opacity)
+            ? .scale(scale: 1.35).combined(with: .opacity)
             : .identity
         return .asymmetric(insertion: insertion, removal: removal)
     }

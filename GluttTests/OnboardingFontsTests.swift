@@ -14,3 +14,12 @@ final class OnboardingFontsTests: XCTestCase {
         XCTAssertEqual(OnboardingFonts.uiNunito(13, 700).familyName, "Nunito")
     }
 }
+
+final class MaterialSymbolTests: XCTestCase {
+    func testEveryGlyphAssetExists() {
+        for symbol in MS.allCases {
+            XCTAssertNotNil(UIImage(named: symbol.rawValue),
+                            "Missing imageset for \(symbol.rawValue)")
+        }
+    }
+}

@@ -1,119 +1,86 @@
 import SwiftData
 import SwiftUI
 
-/// First-run flow coordinator: branded welcome → goals → rules → nutrition →
-/// notification primer → scripted import tutorial → finish (paywall hook).
-/// Every step is skippable; the app learns from usage either way.
+/// 1:1 rebuild of the design-handoff onboarding (11 screens, `screen` 0–10).
+/// Spec: docs/superpowers/specs/2026-07-12-onboarding-redesign-design.md
 struct OnboardingFlow: View {
     @Environment(\.modelContext) private var context
     @Environment(Router.self) private var router
 
     let onFinish: () -> Void
 
+    @State private var flow = OnboardingFlowModel()
     @State private var state = OnboardingState()
-    @State private var step: Step = .welcome
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    enum Step: Int, CaseIterable {
-        case welcome, goals, rules, nutrition, notifications, tutorial
-
-        var next: Step? { Step(rawValue: rawValue + 1) }
-        /// Welcome and tutorial are full-bleed and own their own buttons.
-        var usesChrome: Bool { self != .welcome && self != .tutorial }
-        var usesStandardFooter: Bool {
-            self == .goals || self == .rules || self == .nutrition
-        }
-    }
+    /// The reel the tutorial depicts (crispy hot honey chicken bites) —
+    /// "Import my first recipe" imports it for real.
+    private static let demoImportURL = URL(string: "https://www.instagram.com/reel/DYxO-e7JPw3/")
 
     var body: some View {
-        VStack(spacing: 0) {
-            if step.usesChrome { topBar }
+        ZStack(alignment: .top) {
+            OnboardingTheme.cream.ignoresSafeArea()
 
-            Group {
-                switch step {
-                case .welcome:
-                    WelcomeScreen { advance() }
-                case .goals:
-                    GoalsScreen(state: state)
-                case .rules:
-                    RulesScreen(state: state)
-                case .nutrition:
-                    NutritionScreen(state: state)
-                case .notifications:
-                    NotificationPrimerScreen { advance() }
-                case .tutorial:
-                    ImportTutorialScreen(
-                        onImportNow: { finish(thenImport: true) },
-                        onFinish: { finish(thenImport: false) }
-                    )
+            screenView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .id(flow.screen)
+                .transition(.asymmetric(
+                    // Reduce Motion: plain fade instead of the 12pt rise.
+                    insertion: reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 12)),
+                    removal: .identity
+                ))
+
+            // Cream chrome variant. Screen 6 (Polly) draws its own glass chrome.
+            if flow.showsChrome, flow.screen != 6 {
+                OnboardingChrome(progress: flow.progress) { flow.back() }
+            }
+        }
+        .animation(.easeOut(duration: 0.45), value: flow.screen)
+        .onAppear {
+            #if DEBUG
+            // Staging hook (parity with the prototype's startScreen/startPhase props):
+            // launch with `-onboardingScreen 6`, plus `-onboardingPhase 2` on screen 10.
+            let jump = UserDefaults.standard.integer(forKey: "onboardingScreen")
+            guard jump > 0 else { return }
+            flow.go(jump)
+            if jump == 10 {
+                let phase = UserDefaults.standard.integer(forKey: "onboardingPhase")
+                for _ in 0..<min(phase, 3) { _ = flow.tutorialTap() }
+                if phase >= 4 { flow.completeImport() }
+            }
+            #endif
+        }
+    }
+
+    @ViewBuilder
+    private var screenView: some View {
+        switch flow.screen {
+        case 0: WelcomeScreen { flow.advance() }
+        case 1: IntroVideoScreen { flow.advance() }
+        case 2: QuestionsIntroScreen { flow.advance() }
+        case 3: GoalsScreen(state: state) { flow.advance() }
+        case 4: RulesScreen(state: state) { flow.advance() }
+        case 5: FourWeeksScreen { flow.advance() }
+        case 6:
+            PollyHeroScreen { flow.advance() }
+                .overlay(alignment: .top) {
+                    OnboardingChrome(progress: flow.progress, style: .overVideo) { flow.back() }
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if step.usesStandardFooter { standardFooter }
-        }
-        .background(Theme.Colors.background)
-        .animation(.easeInOut, value: step)
-    }
-
-    // MARK: - Chrome
-
-    private var topBar: some View {
-        HStack(spacing: Theme.Spacing.md) {
-            if backTarget != nil {
-                Button { Haptics.impact(.light); goBack() } label: {
-                    Image(systemName: "chevron.left").font(.headline)
-                }
-                .foregroundStyle(Theme.Colors.textSecondary)
-            }
-            Spacer()
-            PageDots(count: Step.allCases.count, index: step.rawValue)
-            Spacer()
-            Button("Skip") { Haptics.impact(.light); finish(thenImport: false) }
-                .font(.gluttCaption.weight(.semibold))
-                .foregroundStyle(Theme.Colors.textSecondary)
-        }
-        .padding(Theme.Spacing.md)
-    }
-
-    private var standardFooter: some View {
-        Button { Haptics.impact(.medium); advance() } label: {
-            HStack(spacing: 8) {
-                Text("Continue").font(.system(size: 16, weight: .bold, design: .rounded))
-                Ph.arrowRight.bold.resizable().scaledToFit().frame(width: 16, height: 16)
-            }
-            .foregroundStyle(Theme.Colors.creamText)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 15)
-            .background(Theme.Colors.accent, in: Capsule())
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.bottom, Theme.Spacing.md)
-    }
-
-    // MARK: - Navigation
-
-    private var backTarget: Step? {
-        // No back from the first chrome'd step (goals) into welcome.
-        step == .goals ? nil : Step(rawValue: step.rawValue - 1)
-    }
-
-    private func goBack() {
-        if let target = backTarget { step = target }
-    }
-
-    private func advance() {
-        if let next = step.next {
-            step = next
-        } else {
-            finish(thenImport: false)
+        case 7: AIFeaturesScreen { flow.advance() }
+        case 8:
+            NotificationsSoftAskScreen(
+                onTurnOn: { flow.toPermission() },
+                onMaybeLater: { flow.skipToTutorial() }
+            )
+        case 9: NotificationPermissionScreen { flow.skipToTutorial() }
+        default:
+            ImportTutorialScreen(
+                flow: flow,
+                onImportNow: { finish(thenImport: true) },
+                onFinish: { finish(thenImport: false) }
+            )
         }
     }
-
-    /// The recipe the tutorial demonstrates — the cheesy ramen reel shown in frame 0.
-    /// "Import my first recipe" imports it for real, so onboarding ends with a
-    /// relevant recipe landing in the user's library (via the normal review screen).
-    private static let demoImportURL = URL(string: "https://www.instagram.com/reel/DYxO-e7JPw3/")
 
     private func finish(thenImport: Bool) {
         state.apply(to: context)

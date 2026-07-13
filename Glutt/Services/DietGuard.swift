@@ -71,6 +71,15 @@ enum DietGuard {
     ]
     /// Non-halal beyond pork: alcohol and gelatin (unless certified, which we can't know).
     private static let gelatinWords: Set<String> = ["gelatin", "gelatine"]
+    private static let nutWords: Set<String> = [
+        "nut", "nuts", "almond", "walnut", "peanut", "cashew", "pecan",
+        "macadamia", "hazelnut", "pistachio", "brazil nut", "pine nut",
+    ]
+    private static let ketoWords: Set<String> = [
+        "sugar", "honey", "syrup", "bread", "pasta", "noodle", "noodles",
+        "potato", "potatoes", "wheat", "oats", "oatmeal", "cornstarch",
+        "tortilla", "couscous", "barley",
+    ]
 
     static func forbiddenWords(for rule: DietaryRule) -> Set<String> {
         switch rule {
@@ -87,6 +96,11 @@ enum DietGuard {
             .union(dairyWords).union(eggWords).union(["honey"])
         case .glutenFree: glutenWords
         case .dairyFree: dairyWords
+        case .nutFree: nutWords
+        // Keto is macro-based; keyword presence is an aid, not a guarantee —
+        // favors avoiding false flags on keto-substitute ingredients
+        // (almond flour, cauliflower rice, baking soda).
+        case .keto: ketoWords
         }
     }
 

@@ -259,3 +259,117 @@ struct SystemShareSheetFrame: View {
 #Preview("Phase 2 — System share sheet") {
     MiniPhoneFrame { SystemShareSheetFrame() }
 }
+
+/// Phase 3 — cream loader: 3 bouncing dots + sweeping bar. Auto-advance is the
+/// screen's job (1800ms), not this view's.
+struct ImportingFrame: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var animating = false
+
+    var body: some View {
+        VStack(spacing: 26) {
+            HStack(spacing: 11) {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle().fill(OnboardingTheme.greenDeep)
+                        .frame(width: 14, height: 14)
+                        .offset(y: reduceMotion ? 0 : (animating ? -13 : 0))
+                        .opacity(reduceMotion ? 1 : (animating ? 1 : 0.45))
+                        .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)
+                            .delay(Double(i) * 0.16), value: animating)
+                }
+            }
+            Text("Pulling out the recipe…")
+                .font(OnboardingFonts.bricolage(22, 600))
+                .foregroundStyle(OnboardingTheme.textHeading)
+            ZStack(alignment: .leading) {
+                Capsule().fill(OnboardingTheme.greenDeep.opacity(0.14))
+                Capsule().fill(OnboardingTheme.greenDeep)
+                    .frame(width: 180 * 0.42)
+                    .offset(x: reduceMotion ? 52 : (animating ? 180 * 1.3 : -180 * 0.55))
+                    .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: false), value: animating)
+            }
+            .frame(width: 180, height: 6)
+            .clipShape(Capsule())
+        }
+        .frame(width: 390, height: 830)
+        .background(OnboardingTheme.cream)
+        .onAppear { animating = true }
+    }
+}
+
+/// Phase 4 — the captured recipe with a popping "Saved" badge.
+struct SavedRecipeFrame: View {
+    @State private var badgeShown = false
+
+    private static let ingredients = [
+        "3 packs Otoki Cheesy Ramen", "1 lb chicken breast", "1 cup buttermilk",
+        "Mozzarella + heavy cream", "Hot honey glaze",
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Color.clear.frame(height: 52)
+            ZStack(alignment: .topLeading) {
+                Image("tutorialHotHoney").resizable().scaledToFill()
+                    .frame(width: 390, height: 230).clipped()
+                LinearGradient(stops: [
+                    .init(color: OnboardingTheme.cream, location: 0.02),
+                    .init(color: .clear, location: 0.46),
+                ], startPoint: .bottom, endPoint: .top)
+                HStack(spacing: 6) {
+                    MS.checkCircleFill.sized(16).foregroundStyle(.white)
+                    Text("Saved to your recipes")
+                        .font(OnboardingFonts.nunito(12.5, 800)).foregroundStyle(.white)
+                }
+                .padding(.vertical, 7).padding(.horizontal, 13)
+                .background(OnboardingTheme.greenDeep.opacity(0.96), in: Capsule())
+                .shadow(color: OnboardingTheme.greenDeep.opacity(0.35), radius: 8, y: 6)
+                .padding(.top, 14).padding(.leading, 16)
+                .scaleEffect(badgeShown ? 1 : 0.7)
+                .opacity(badgeShown ? 1 : 0)
+                .animation(.spring(duration: 0.5, bounce: 0.4), value: badgeShown)
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Crispy hot honey chicken bites")
+                    .font(OnboardingFonts.bricolage(25, 600)).kerning(-0.4)
+                    .foregroundStyle(OnboardingTheme.textHeading)
+                HStack(spacing: 16) {
+                    meta(MS.schedule, "12 min")
+                    meta(MS.fire, "540 cal")
+                    meta(MS.restaurant, "Serves 4")
+                }
+                .padding(.top, 11)
+                Text("INGREDIENTS")
+                    .font(OnboardingFonts.nunito(11, 800)).kerning(0.7)
+                    .foregroundStyle(OnboardingTheme.muted)
+                    .padding(.top, 20).padding(.bottom, 11)
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Self.ingredients, id: \.self) { item in
+                        HStack(spacing: 10) {
+                            MS.checkCircleFill.sized(16)
+                                .foregroundStyle(OnboardingTheme.greenDeep.opacity(0.75))
+                            Text(item).font(OnboardingFonts.nunito(14.5, 600))
+                                .foregroundStyle(OnboardingTheme.textList)
+                        }
+                    }
+                    Text("+ 4 more ingredients")
+                        .font(OnboardingFonts.nunito(13.5, 600))
+                        .foregroundStyle(OnboardingTheme.muted)
+                        .padding(.leading, 26)
+                }
+            }
+            .padding(.horizontal, 24).padding(.top, 34)
+            Spacer(minLength: 0)
+        }
+        .frame(width: 390, height: 830, alignment: .top)
+        .background(OnboardingTheme.cream)
+        .onAppear { badgeShown = true }
+    }
+
+    private func meta(_ glyph: MS, _ text: String) -> some View {
+        HStack(spacing: 5) {
+            glyph.sized(17).foregroundStyle(OnboardingTheme.muted)
+            Text(text).font(OnboardingFonts.nunito(13, 700)).foregroundStyle(OnboardingTheme.muted)
+        }
+    }
+}

@@ -133,23 +133,20 @@ struct WelcomeScreen: View {
         .allowsHitTesting(false)
     }
 
+    /// Centered stack (SketchAR-style): wordmark, balanced H1, pill, airy gap,
+    /// full-width Start.
     private var content: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 9) {
-                Text("Glutt")
-                    .font(OnboardingFonts.bricolage(22, 700)).kerning(-0.3)
-                    .foregroundStyle(OnboardingTheme.textHeading)
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(OnboardingTheme.coral)
-                    .frame(width: 10, height: 10)
-            }
-            .padding(.bottom, 14)
+        VStack(spacing: 0) {
+            Text("Glutt")
+                .font(OnboardingFonts.bricolage(22, 700)).kerning(-0.3)
+                .foregroundStyle(OnboardingTheme.textHeading)
+                .padding(.bottom, 14)
 
             Text("Cook anything\nyou actually want")
                 .font(OnboardingFonts.bricolage(34, 600)).kerning(-1)
                 .lineSpacing(34 * 0.08 / 2)
+                .multilineTextAlignment(.center)
                 .foregroundStyle(OnboardingTheme.textHeading)
-                .frame(maxWidth: 320, alignment: .leading)
                 .padding(.bottom, 18)
 
             HStack(spacing: 8) {
@@ -162,11 +159,12 @@ struct WelcomeScreen: View {
             }
             .padding(.vertical, 8).padding(.horizontal, 14)
             .background(OnboardingTheme.greenTint, in: Capsule())
-            .padding(.bottom, 26)
+            .padding(.bottom, 64)
 
             OnboardingPrimaryButton(title: "Start", action: onStart)
         }
-        .padding(.leading, 28).padding(.trailing, 28)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 28)
         .padding(.bottom, 40)
     }
 }

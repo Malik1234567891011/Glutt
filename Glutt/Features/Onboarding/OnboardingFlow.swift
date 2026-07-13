@@ -36,6 +36,20 @@ struct OnboardingFlow: View {
             }
         }
         .animation(.easeOut(duration: 0.45), value: flow.screen)
+        .onAppear {
+            #if DEBUG
+            // Staging hook (parity with the prototype's startScreen/startPhase props):
+            // launch with `-onboardingScreen 6`, plus `-onboardingPhase 2` on screen 10.
+            let jump = UserDefaults.standard.integer(forKey: "onboardingScreen")
+            guard jump > 0 else { return }
+            flow.go(jump)
+            if jump == 10 {
+                let phase = UserDefaults.standard.integer(forKey: "onboardingPhase")
+                for _ in 0..<min(phase, 3) { _ = flow.tutorialTap() }
+                if phase >= 4 { flow.completeImport() }
+            }
+            #endif
+        }
     }
 
     @ViewBuilder

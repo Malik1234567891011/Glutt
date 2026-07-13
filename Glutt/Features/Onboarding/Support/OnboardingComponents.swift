@@ -18,7 +18,7 @@ struct OnboardingPrimaryButton: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: height)
                 .background(OnboardingTheme.greenDeep, in: Capsule())
-                .shadow(color: OnboardingTheme.greenDeep.opacity(0.3), radius: 12, y: 10)
+                .shadow(color: OnboardingTheme.warmBlack(0.14), radius: 12, y: 10)
         }
         .buttonStyle(PressOffsetStyle())
     }

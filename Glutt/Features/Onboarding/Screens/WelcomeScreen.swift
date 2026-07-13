@@ -123,10 +123,10 @@ struct WelcomeScreen: View {
     /// and CTA (the reference's background effect).
     private var scrim: some View {
         LinearGradient(stops: [
-            .init(color: OnboardingTheme.cream.opacity(0.94), location: 0),
-            .init(color: OnboardingTheme.cream.opacity(0.94), location: 0.35),
-            .init(color: OnboardingTheme.cream.opacity(0.80), location: 0.52),
-            .init(color: OnboardingTheme.cream.opacity(0.30), location: 0.72),
+            .init(color: OnboardingTheme.cream, location: 0),
+            .init(color: OnboardingTheme.cream, location: 0.28),
+            .init(color: OnboardingTheme.cream.opacity(0.88), location: 0.48),
+            .init(color: OnboardingTheme.cream.opacity(0.32), location: 0.72),
             .init(color: OnboardingTheme.cream.opacity(0), location: 1),
         ], startPoint: .bottom, endPoint: .top)
         .ignoresSafeArea()

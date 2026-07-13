@@ -16,6 +16,14 @@ enum OnboardingFonts {
         Font(uiNunito(size, weight))
     }
 
+    /// Apple Color Emoji at an explicit size, for emoji-only `Text` runs that must
+    /// render in color regardless of the surrounding custom-font context. (Note: the
+    /// iOS Simulator's CoreText can't rasterize color-emoji glyphs, so these show as
+    /// tofu boxes on the sim but render correctly on-device.)
+    static func emoji(_ size: CGFloat) -> Font {
+        Font(UIFont(name: "AppleColorEmoji", size: size) ?? .systemFont(ofSize: size))
+    }
+
     static func uiBricolage(_ size: CGFloat, _ weight: CGFloat) -> UIFont {
         variable("Bricolage Grotesque", size: size, axes: [wght: weight, opsz: size])
     }

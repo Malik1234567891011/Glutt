@@ -25,7 +25,7 @@ struct PollyHeroScreen: View {
                 .ignoresSafeArea(edges: .top)
 
                 captionPill
-                    .offset(y: geo.size.height * 0.185 - geo.safeAreaInsets.top)
+                    .offset(y: (geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom) * 0.185 - geo.safeAreaInsets.top)
 
                 VStack(spacing: 0) {
                     Spacer()

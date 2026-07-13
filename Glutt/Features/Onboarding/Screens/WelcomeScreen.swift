@@ -90,7 +90,7 @@ struct WelcomeScreen: View {
             }
             .padding(.bottom, 14)
 
-            Text("Cook anything you actually want")
+            Text("Cook anything\nyou actually want")
                 .font(OnboardingFonts.bricolage(34, 600)).kerning(-1)
                 .lineSpacing(34 * 0.08 / 2)
                 .foregroundStyle(OnboardingTheme.textHeading)

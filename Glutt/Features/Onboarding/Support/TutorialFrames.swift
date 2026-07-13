@@ -31,11 +31,9 @@ struct SocialPostFrame: View {
                 railItem(MS.favoriteFill, 34, "44.7K")
                 railItem(MS.modeComment, 33, "46")
                 VStack(spacing: 4) {
-                    ZStack {
-                        MS.send.sized(33).foregroundStyle(.white)
-                        CoachMark(diameter: 48)
-                    }
-                    .frame(width: 48, height: 48)
+                    MS.send.sized(33).foregroundStyle(.white)
+                        .frame(width: 48, height: 48)
+                        .overlay(CoachMark(diameter: 48))
                     Text("14.8K").font(OnboardingFonts.nunito(12, 700)).foregroundStyle(.white)
                 }
                 railItem(MS.bookmark, 33, "Save")
@@ -45,8 +43,8 @@ struct SocialPostFrame: View {
 
             // Caption (bottom-left)
             VStack(alignment: .leading, spacing: 6) {
-                Text("Crispy hot honey chicken bites 🍯🔥")
-                    .font(.custom("Georgia-Italic", size: 21))
+                (Text("Crispy hot honey chicken bites ").font(.custom("Georgia-Italic", size: 21))
+                    + Text("🍯🔥").font(OnboardingFonts.emoji(21)))
                     .foregroundStyle(.white)
                     .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
                 Text("with cheesy ramen · 12 min · #weeknight")
@@ -109,33 +107,32 @@ struct AppShareSheetFrame: View {
                             Circle().fill(.white)
                                 .shadow(color: OnboardingTheme.greenDeep.opacity(0.3), radius: 4, y: 2)
                             MS.iosShare.sized(26).foregroundStyle(OnboardingTheme.greenDeep)
-                            CoachMark(diameter: 54)
                         }
                         .frame(width: 54, height: 54)
+                        .overlay(CoachMark(diameter: 54))
                         Text("Share to…").font(OnboardingFonts.nunito(11, 700))
                             .foregroundStyle(OnboardingTheme.greenDeep)
                     }
                     .frame(maxWidth: .infinity)
                     shareCircle(icon: MS.link, tint: Color(hex: 0x2A2A2C), bg: .white, label: "Copy", labelColor: Color(hex: 0x3A3A3C))
-                    shareCircle(icon: MS.chatFill, tint: .white, bg: Color(hex: 0x25D366), label: "WhatsApp", labelColor: Color(hex: 0x3A3A3C))
+                    shareCircle(icon: MS.chatFill, tint: .white, bg: Color(hex: 0x25D366), label: "WhatsApp", labelColor: Color(hex: 0x3A3A3C), iconSize: 28)
                 }
                 .padding(.horizontal, 12).padding(.top, 20).padding(.bottom, 22)
             }
             .background(Color(hex: 0xECEBED), in: UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24))
             .shadow(color: .black.opacity(0.35), radius: 20, y: -12)
             .offset(y: shown ? 0 : 400)
-            .animation(.timingCurve(0.2, 0.9, 0.3, 1, duration: 0.4), value: shown)
         }
         .frame(width: 390, height: 830)
         .background(Color(hex: 0x0D0D0F))
-        .onAppear { shown = true }
+        .onAppear { withAnimation(.timingCurve(0.2, 0.9, 0.3, 1, duration: 0.4)) { shown = true } }
     }
 
-    private func shareCircle(icon: MS, tint: Color, bg: Color, label: String, labelColor: Color) -> some View {
+    private func shareCircle(icon: MS, tint: Color, bg: Color, label: String, labelColor: Color, iconSize: CGFloat = 26) -> some View {
         VStack(spacing: 8) {
             ZStack {
                 Circle().fill(bg).shadow(color: .black.opacity(0.1), radius: 1.5, y: 1)
-                icon.sized(26).foregroundStyle(tint)
+                icon.sized(iconSize).foregroundStyle(tint)
             }
             .frame(width: 54, height: 54)
             Text(label).font(OnboardingFonts.nunito(11, 600)).foregroundStyle(labelColor)
@@ -189,9 +186,9 @@ struct SystemShareSheetFrame: View {
                                                      startPoint: .topLeading, endPoint: .bottomTrailing))
                                 .shadow(color: OnboardingTheme.greenDeep.opacity(0.45), radius: 6, y: 4)
                             MS.skilletFill.sized(29).foregroundStyle(OnboardingTheme.creamText)
-                            CoachMark(diameter: 56, ringRadius: 20)
                         }
                         .frame(width: 56, height: 56)
+                        .overlay(CoachMark(diameter: 56, ringRadius: 20))
                         Text("Glutt").font(OnboardingFonts.nunito(11, 700))
                             .foregroundStyle(OnboardingTheme.greenDeep)
                     }
@@ -223,11 +220,10 @@ struct SystemShareSheetFrame: View {
             .background(Color(hex: 0xECEBED), in: UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24))
             .shadow(color: .black.opacity(0.35), radius: 20, y: -12)
             .offset(y: shown ? 0 : 400)
-            .animation(.timingCurve(0.2, 0.9, 0.3, 1, duration: 0.4), value: shown)
         }
         .frame(width: 390, height: 830)
         .background(Color(hex: 0x0D0D0F))
-        .onAppear { shown = true }
+        .onAppear { withAnimation(.timingCurve(0.2, 0.9, 0.3, 1, duration: 0.4)) { shown = true } }
     }
 
     private func appTile<Icon: View>(label: String, labelColor: Color, @ViewBuilder icon: () -> Icon) -> some View {

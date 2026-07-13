@@ -23,15 +23,14 @@ struct RulesScreen: View {
             OnboardingHeadline("Any food rules?", size: 27)
             OnboardingSubhead("Tap all that apply").padding(.top, 9)
 
-            ScrollView(showsIndicators: false) {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
-                    ForEach(OnboardingState.ruleOptions) { rule in
-                        tile(rule, selected: state.selectedRules.contains(rule))
-                    }
+            Spacer(minLength: 12)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
+                ForEach(OnboardingState.ruleOptions) { rule in
+                    tile(rule, selected: state.selectedRules.contains(rule))
                 }
-                .padding(.horizontal, 4).padding(.vertical, 6)
             }
-            .padding(.top, 20).padding(.bottom, 12)
+            .padding(.horizontal, 4).padding(.vertical, 6)
+            Spacer(minLength: 12)
 
             OnboardingPrimaryButton(title: "Continue", action: onContinue)
         }
@@ -106,7 +105,7 @@ struct RulesScreen: View {
                     .strokeBorder(OnboardingTheme.cream, lineWidth: selected ? 3 : 0)
                     .padding(-3)
             )
-            .shadow(color: Color(hex: def.shadow).opacity(selected ? 0.45 : 0.45),
+            .shadow(color: Color(hex: def.shadow).opacity(0.45),
                     radius: selected ? 13 : 9, y: selected ? 10 : 6.5)
             .offset(y: selected ? -3 : 0)
         }

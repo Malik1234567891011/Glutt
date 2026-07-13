@@ -15,7 +15,7 @@ struct FourWeeksScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            OnboardingHeadline("Here's where you'll be in 4 weeks", size: 27, maxWidth: 290)
+            OnboardingHeadline("Here's where you'll be\nin 4 weeks", size: 27, maxWidth: 290)
             VStack(spacing: 14) {
                 ForEach(Self.cards, id: \.title) { card in
                     row(card)

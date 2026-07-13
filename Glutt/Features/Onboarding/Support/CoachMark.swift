@@ -5,7 +5,7 @@ import SwiftUI
 struct CoachMark: View {
     var diameter: CGFloat = 48
     var ringRadius: CGFloat? = nil // nil → circle
-    var label = "Tap here 👇"
+    var label = "Tap here"
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var animating = false
 
@@ -27,8 +27,8 @@ struct CoachMark: View {
                 .scaleEffect(reduceMotion ? 1 : (animating ? 1.09 : 0.95))
                 .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: animating)
 
-            Text(label) // bobbing bubble above
-                .font(OnboardingFonts.nunito(13, 800))
+            (Text(label + " ").font(OnboardingFonts.nunito(13, 800))
+                + Text("👇").font(OnboardingFonts.emoji(13))) // bobbing bubble above
                 .foregroundStyle(.white)
                 .padding(.vertical, 7).padding(.horizontal, 14)
                 .background(OnboardingTheme.coralBright, in: Capsule())

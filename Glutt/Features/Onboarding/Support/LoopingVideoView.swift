@@ -29,6 +29,7 @@ struct LoopingVideoView: UIViewRepresentable {
         private var yOffsetFraction: CGFloat = 0
 
         func configure(resource: String, scale: CGFloat, yOffsetFraction: CGFloat) {
+            guard player == nil else { return }
             self.scale = scale
             self.yOffsetFraction = yOffsetFraction
             guard let url = Bundle.main.url(forResource: resource, withExtension: "mp4") else {
@@ -66,6 +67,7 @@ struct LoopingVideoView: UIViewRepresentable {
 
         func stop() {
             player?.pause()
+            playerLayer.player = nil
             player = nil
             looper = nil
         }

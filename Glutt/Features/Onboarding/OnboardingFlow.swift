@@ -24,11 +24,7 @@ struct OnboardingFlow: View {
             screenView
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .id(flow.screen)
-                .transition(.asymmetric(
-                    // Reduce Motion: plain fade instead of the 12pt rise.
-                    insertion: reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 12)),
-                    removal: .identity
-                ))
+                .transition(screenTransition)
 
             // Cream chrome variant. Screen 6 (Polly) draws its own glass chrome.
             if flow.showsChrome, flow.screen != 6 {
@@ -50,6 +46,18 @@ struct OnboardingFlow: View {
             }
             #endif
         }
+    }
+
+    /// Screen swap: incoming fades in with a 12pt rise (the design's gluttFade).
+    /// The welcome screen exits with a zoom-through (scales up while fading) so
+    /// tapping Start feels like diving into the app. Reduce Motion: plain fade.
+    private var screenTransition: AnyTransition {
+        if reduceMotion { return .opacity }
+        let insertion = AnyTransition.opacity.combined(with: .offset(y: 12))
+        let removal: AnyTransition = flow.screen == 0
+            ? .scale(scale: 1.12).combined(with: .opacity)
+            : .identity
+        return .asymmetric(insertion: insertion, removal: removal)
     }
 
     @ViewBuilder

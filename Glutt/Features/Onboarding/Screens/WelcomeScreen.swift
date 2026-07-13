@@ -17,8 +17,11 @@ struct WelcomeScreen: View {
         ZStack(alignment: .bottom) {
             masonry
                 .padding(.horizontal, 12)
-                .padding(.top, 0) // design 54 − 54: grid starts at safe-area top
-                .frame(maxHeight: .infinity, alignment: .top)
+                // BOTH bounds so the frame clamps to the screen proposal — with
+                // only maxHeight, the taller-than-screen marquee stacks inflate
+                // the frame (and the ZStack), shoving the bottom-aligned
+                // content ~1400pt below the visible screen.
+                .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
                 .clipped()
 
             scrim
@@ -28,53 +31,104 @@ struct WelcomeScreen: View {
         .ignoresSafeArea(edges: .bottom)
     }
 
-    /// 3-column masonry, 76pt row unit, 9pt gaps — hand-placed to match the CSS
-    /// grid's auto-placement (`grid-auto-flow: row`, sparse), verified against
-    /// the prototype HTML: columns are {0,5,7,10}, {1,3,6,9}, {2,4,8}.
+    /// 3-column masonry, 76pt row unit, 9pt gaps — columns match the design
+    /// HTML's auto-placement ({0,5,7,10}, {1,3,6,9}, {2,4,8}), each drifting
+    /// downward in a seamless loop at its own speed (SketchAR-style ambience).
     private var masonry: some View {
-        let unit: CGFloat = 76, gap: CGFloat = 9
-        func h(_ span: Int) -> CGFloat { CGFloat(span) * unit + CGFloat(span - 1) * gap }
-        func tile(_ i: Int) -> some View {
-            // `scaledToFill` reports the image's oversized aspect-filled size
-            // (not the frame it's given) to its parent, and a plain
-            // `.frame(maxWidth: .infinity)` has no upper clamp — so that
-            // oversized width leaks all the way up through the HStack/ZStack
-            // (nearly doubling the whole screen's reported width and shoving
-            // the leading-aligned wordmark/H1/pill off-screen). GeometryReader
-            // always reports exactly its proposed size regardless of content,
-            // so reading the column width from it and applying it as an
-            // explicit (non-flexible) frame on the image contains the overflow
-            // right here; `.clipped()` then only has to do the visual crop.
+        HStack(alignment: .top, spacing: 9) {
+            MarqueeColumn(indices: [0, 5, 7, 10], speed: 12, direction: .up)
+            MarqueeColumn(indices: [1, 3, 6, 9], speed: 16, direction: .down)
+            MarqueeColumn(indices: [2, 4, 8], speed: 10, direction: .up)
+        }
+    }
+
+    /// One endlessly-looping column: its tile stack is drawn three times and
+    /// slid by exactly one copy-height, so the wrap seam is invisible and the
+    /// screen stays covered even for columns shorter than the display.
+    /// Alternating columns drift in opposite directions. Static under Reduce
+    /// Motion (parked mid-loop, ≈ the old still composition).
+    private struct MarqueeColumn: View {
+        enum Direction { case up, down }
+
+        let indices: [Int]
+        let speed: Double // pt/sec drift
+        let direction: Direction
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        @State private var slid = false
+
+        private static let unit: CGFloat = 76, gap: CGFloat = 9
+        private static func h(_ span: Int) -> CGFloat {
+            CGFloat(span) * unit + CGFloat(span - 1) * gap
+        }
+
+        /// Height of one copy plus the seam gap — the exact loop period.
+        private var loopHeight: CGFloat {
+            indices.reduce(0) { $0 + Self.h(WelcomeScreen.tiles[$1].span) }
+                + CGFloat(indices.count) * Self.gap
+        }
+
+        private var offsetY: CGFloat {
+            if reduceMotion { return -loopHeight / 2 }
+            switch direction {
+            case .up: return slid ? -loopHeight : 0
+            case .down: return slid ? 0 : -loopHeight
+            }
+        }
+
+        var body: some View {
+            VStack(spacing: Self.gap) {
+                copy
+                copy
+                copy
+            }
+            .offset(y: offsetY)
+            .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
+            .onAppear {
+                guard !reduceMotion else { return }
+                // withAnimation (not .animation(value:)) so the coordinator's
+                // screen-transition animation can't override the loop.
+                withAnimation(.linear(duration: loopHeight / speed).repeatForever(autoreverses: false)) {
+                    slid = true
+                }
+            }
+        }
+
+        private var copy: some View {
+            VStack(spacing: Self.gap) {
+                ForEach(indices, id: \.self) { i in
+                    tile(i)
+                }
+            }
+        }
+
+        private func tile(_ i: Int) -> some View {
+            // GeometryReader contains scaledToFill's oversized reported width
+            // (see git history: it otherwise leaks up and widens the screen).
             GeometryReader { geo in
-                Image(Self.tiles[i].asset)
+                Image(WelcomeScreen.tiles[i].asset)
                     .resizable().scaledToFill()
                     .frame(width: geo.size.width, height: geo.size.height)
                     .clipped()
             }
-            .frame(height: h(Self.tiles[i].span))
+            .frame(height: Self.h(WelcomeScreen.tiles[i].span))
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .background(RoundedRectangle(cornerRadius: 20).fill(OnboardingTheme.tileBase))
             .shadow(color: OnboardingTheme.warmBlack(0.06), radius: 8, y: 6)
         }
-        // Three independent columns approximate the CSS auto-placed grid.
-        return HStack(alignment: .top, spacing: gap) {
-            VStack(spacing: gap) { tile(0); tile(5); tile(7); tile(10) }
-            VStack(spacing: gap) { tile(1); tile(3); tile(6); tile(9) }
-            VStack(spacing: gap) { tile(2); tile(4); tile(8) }
-        }
     }
 
+    /// Full-height gradient: solid enough at the bottom for legible copy, but
+    /// translucent so the drifting photos ghost through behind the headline
+    /// and CTA (the reference's background effect).
     private var scrim: some View {
-        GeometryReader { geo in
-            LinearGradient(stops: [
-                .init(color: OnboardingTheme.cream, location: 0),
-                .init(color: OnboardingTheme.cream, location: 0.46),
-                .init(color: OnboardingTheme.cream.opacity(0.86), location: 0.60),
-                .init(color: OnboardingTheme.cream.opacity(0), location: 1),
-            ], startPoint: .bottom, endPoint: .top)
-            .frame(height: geo.size.height * 0.62)
-            .frame(maxHeight: .infinity, alignment: .bottom)
-        }
+        LinearGradient(stops: [
+            .init(color: OnboardingTheme.cream.opacity(0.94), location: 0),
+            .init(color: OnboardingTheme.cream.opacity(0.94), location: 0.35),
+            .init(color: OnboardingTheme.cream.opacity(0.80), location: 0.52),
+            .init(color: OnboardingTheme.cream.opacity(0.30), location: 0.72),
+            .init(color: OnboardingTheme.cream.opacity(0), location: 1),
+        ], startPoint: .bottom, endPoint: .top)
+        .ignoresSafeArea()
         .allowsHitTesting(false)
     }
 

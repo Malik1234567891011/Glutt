@@ -34,6 +34,9 @@ targets:
         # Must live HERE, not as INFOPLIST_KEY_* build setting — those are
         # ignored when a custom Info.plist file is used. Dark theme: backlog.
         UIUserInterfaceStyle: Light
+        UIAppFonts:
+          - BricolageGrotesque-Variable.ttf
+          - Nunito-Variable.ttf
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSCameraUsageDescription: Glutt uses the camera to scan your fridge or pantry, to estimate meals you log from photos, and to let Polly watch the pan during live cooking sessions.

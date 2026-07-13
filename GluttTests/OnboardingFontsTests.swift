@@ -1,0 +1,16 @@
+import XCTest
+@testable import Glutt
+
+final class OnboardingFontsTests: XCTestCase {
+    func testBundledFontFamiliesAreRegistered() {
+        XCTAssertTrue(UIFont.familyNames.contains("Bricolage Grotesque"),
+                      "Bricolage Grotesque not registered — check UIAppFonts / bundle")
+        XCTAssertTrue(UIFont.familyNames.contains("Nunito"),
+                      "Nunito not registered — check UIAppFonts / bundle")
+    }
+
+    func testHelpersReturnRequestedFamily() {
+        XCTAssertEqual(OnboardingFonts.uiBricolage(19, 600).familyName, "Bricolage Grotesque")
+        XCTAssertEqual(OnboardingFonts.uiNunito(13, 700).familyName, "Nunito")
+    }
+}

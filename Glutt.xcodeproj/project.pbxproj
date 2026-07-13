@@ -49,6 +49,7 @@
 		2248BBE0D3A09938775F3E7D /* ShareRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C29E3C608EAED22416439D6F /* ShareRootView.swift */; };
 		22AA6B7E63246878771B566E /* ShareImportViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37334F4D4FCC0C8A3291B1C /* ShareImportViewModelTests.swift */; };
 		2309BBAC09BF2C93876CD0EE /* GluttShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FE24BAFEF5FF43C6B4DDF25F /* GluttShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		23E7BF0DC628E856DD9B8512 /* CoachMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200A1D18F9171A9AEC4E0A68 /* CoachMark.swift */; };
 		29BFBF7571F55A8AA2B1A4A6 /* PlatesTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7FF679017B73F8DAD979F79 /* PlatesTabView.swift */; };
 		2A40DDC0A750E0ED5A5A930C /* InventionPaywallHook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4820516244572894C4395483 /* InventionPaywallHook.swift */; };
 		2B848A0B1A5AEE274131E4C7 /* PlateCardDecodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3291644CF58C783401973641 /* PlateCardDecodeTests.swift */; };
@@ -130,6 +131,7 @@
 		8332AA9E1C766FF024BEA4C2 /* ImagePrep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DEB872DB55EE7ADF76A5A7B /* ImagePrep.swift */; };
 		8587DC0BAF1A3EA34F5AE852 /* SuperwallKit in Frameworks */ = {isa = PBXBuildFile; productRef = 591C68092C0509ECBD9FC072 /* SuperwallKit */; };
 		858A866E0199A85333682E96 /* PollyMemoryExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D6BFA58653B47D10CB71BE8 /* PollyMemoryExtractor.swift */; };
+		85CDA7F7003AC6925B7BCBCE /* MiniPhoneFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B21529DC9D6FE7BEC5F4664 /* MiniPhoneFrame.swift */; };
 		8D5B5CBDC96D718DBFF8198D /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF3E70A3CCB84A7042B5FE65 /* Haptics.swift */; };
 		8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */; };
 		8EB396B32CC0D7CE28208140 /* GluttTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 358FD41FD7F25B2575B5BFB5 /* GluttTabBar.swift */; };
@@ -138,6 +140,7 @@
 		906182F5CD250106DD6EE9D0 /* PollyRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 999E0EFAB970BFA5F17622C8 /* PollyRouterTests.swift */; };
 		90B13129DB93AF54ECC8895B /* RecipeImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 598FB7658D86B414965B6432 /* RecipeImportService.swift */; };
 		91E09FBEA927C5B65D548293 /* SocialMediaImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD93233274D874B07BC71E66 /* SocialMediaImport.swift */; };
+		92BA95B82102753E53525278 /* TutorialFrames.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61DC78ADF8EA5883A89DD07D /* TutorialFrames.swift */; };
 		93268C4A6AEE45B7D2FDD33A /* ImportInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421A2BD5A79AB7F890E43900 /* ImportInbox.swift */; };
 		954D8568F4EF068DAB418092 /* TodayPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B33363AD7887FCF10B7DCB0 /* TodayPlanner.swift */; };
 		95DB7718664F7BE654B65721 /* CookPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E719012B888538722A1C490F /* CookPlanTests.swift */; };
@@ -291,6 +294,7 @@
 		079A74C12789D95CC9874F5E /* OnboardingFontsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFontsTests.swift; sourceTree = "<group>"; };
 		07ABF4C86860BFE521940467 /* Phosphor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phosphor.swift; sourceTree = "<group>"; };
 		08F4B7E10CB0E41F45391550 /* PollyMemoryExtractorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyMemoryExtractorTests.swift; sourceTree = "<group>"; };
+		0B21529DC9D6FE7BEC5F4664 /* MiniPhoneFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPhoneFrame.swift; sourceTree = "<group>"; };
 		0B33363AD7887FCF10B7DCB0 /* TodayPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayPlanner.swift; sourceTree = "<group>"; };
 		0D21EDB37D0BDBA3422DA1A1 /* RecipeImportService+OCR.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecipeImportService+OCR.swift"; sourceTree = "<group>"; };
 		13252E8FCE4B1C0102B43E57 /* PollyConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyConfig.swift; sourceTree = "<group>"; };
@@ -306,6 +310,7 @@
 		1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientCanonicalizer.swift; sourceTree = "<group>"; };
 		1DD1434AE00BB088C7F840DE /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
 		1E76DBE2577BBC32D76A29AB /* UnitConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitConverter.swift; sourceTree = "<group>"; };
+		200A1D18F9171A9AEC4E0A68 /* CoachMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachMark.swift; sourceTree = "<group>"; };
 		2179632ACE3988876F4F4170 /* RecipeEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeEditorView.swift; sourceTree = "<group>"; };
 		21809502CBC21424D65A50E4 /* Chip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chip.swift; sourceTree = "<group>"; };
 		21CC5F0D4C0BF8DF830CA4E1 /* ConfidenceBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfidenceBadge.swift; sourceTree = "<group>"; };
@@ -373,6 +378,7 @@
 		5E04BD50411091A43725DB53 /* RecipeImageBackfillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImageBackfillTests.swift; sourceTree = "<group>"; };
 		5EFB5FAA0EF9CA829EE21DFA /* GluttTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GluttTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F53E9D323C8F67248EAD82D /* OptionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionRow.swift; sourceTree = "<group>"; };
+		61DC78ADF8EA5883A89DD07D /* TutorialFrames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialFrames.swift; sourceTree = "<group>"; };
 		625F2A2C31B9D7D640FBAF29 /* MealPhotoEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPhotoEstimator.swift; sourceTree = "<group>"; };
 		62A42B699616E4522DAA5247 /* GlowBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlowBackground.swift; sourceTree = "<group>"; };
 		65FE09E5997ABD5A67C11372 /* RecipeFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeFactoryTests.swift; sourceTree = "<group>"; };
@@ -733,12 +739,15 @@
 		756D188E5C35D8536659B7EA /* Support */ = {
 			isa = PBXGroup;
 			children = (
+				200A1D18F9171A9AEC4E0A68 /* CoachMark.swift */,
 				02F1A8EEDCAB3ACE7B50E2C0 /* LoopingVideoView.swift */,
 				F967DB74C4E6CF025B01AD72 /* MaterialSymbol.swift */,
+				0B21529DC9D6FE7BEC5F4664 /* MiniPhoneFrame.swift */,
 				5315436BAEC0329F2C853629 /* OnboardingComponents.swift */,
 				5BAB836E0CC838FA03110422 /* OnboardingFonts.swift */,
 				25F3CFECAB49DD92009FC400 /* OnboardingPaywallHook.swift */,
 				81270C62F3A5D5904CEB2FEF /* OnboardingTheme.swift */,
+				61DC78ADF8EA5883A89DD07D /* TutorialFrames.swift */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -1234,6 +1243,7 @@
 				F7E4A0E616661F6E90B0CB19 /* CaptureActionSheet.swift in Sources */,
 				0BC8E77BB485332BDEE5D720 /* CategoryCircle.swift in Sources */,
 				3BEF446EA4E6D8F141D53A4C /* Chip.swift in Sources */,
+				23E7BF0DC628E856DD9B8512 /* CoachMark.swift in Sources */,
 				B95774AAB89E3BF80B7815E9 /* CollectionDetailView.swift in Sources */,
 				D36B7671B485CD49168BCA7C /* ConfidenceBadge.swift in Sources */,
 				F28F7DAFE3AD2E7FD1BF40CB /* CookFinishView.swift in Sources */,
@@ -1293,6 +1303,7 @@
 				75229BB601F27BE25B6AD342 /* MaterialSymbol.swift in Sources */,
 				177643D1D447412BD360D00D /* MealCard.swift in Sources */,
 				F414351CC012911B4E45E28F /* MealPhotoEstimator.swift in Sources */,
+				85CDA7F7003AC6925B7BCBCE /* MiniPhoneFrame.swift in Sources */,
 				2F887FC9665F1E8A00349ED0 /* NotificationPermissionScreen.swift in Sources */,
 				7D6EC4A5329A5B9EA8CE3B40 /* NotificationsSoftAskScreen.swift in Sources */,
 				E9E62465FDE3533A7CE521B1 /* NutritionEstimator.swift in Sources */,
@@ -1382,6 +1393,7 @@
 				3913B7130EDC0551C2390651 /* TimerManager.swift in Sources */,
 				954D8568F4EF068DAB418092 /* TodayPlanner.swift in Sources */,
 				133DA52F0F3517E70483BC89 /* TodayView.swift in Sources */,
+				92BA95B82102753E53525278 /* TutorialFrames.swift in Sources */,
 				658FF063B7D0C83A48CE0A3B /* Typography.swift in Sources */,
 				47CA4B0E6B9F7F7BD4ABE64C /* UnitConverter.swift in Sources */,
 				DC45CAD57614CC9D6259F9D8 /* UserPrefs.swift in Sources */,

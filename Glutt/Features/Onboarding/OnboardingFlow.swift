@@ -28,7 +28,7 @@ struct OnboardingFlow: View {
 
             // Cream chrome variant. Screen 6 (Polly) draws its own glass chrome.
             if flow.showsChrome, flow.screen != 6 {
-                OnboardingChrome(progress: flow.progress) { flow.back() }
+                OnboardingChrome(progress: flow.progress)
             }
         }
         .animation(.easeOut(duration: 0.45), value: flow.screen)
@@ -72,7 +72,7 @@ struct OnboardingFlow: View {
         case 6:
             PollyHeroScreen { flow.advance() }
                 .overlay(alignment: .top) {
-                    OnboardingChrome(progress: flow.progress, style: .overVideo) { flow.back() }
+                    OnboardingChrome(progress: flow.progress, style: .overVideo)
                 }
         case 7: AIFeaturesScreen { flow.advance() }
         case 8:

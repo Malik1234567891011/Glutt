@@ -61,43 +61,24 @@ struct OnboardingTextLink: View {
     }
 }
 
-/// Top chrome: 40pt back circle + 8pt progress track. `overVideo` is the
-/// Polly-screen glass variant. Sits at (design 60 − 54) = 6pt below safe top.
+/// Top chrome: full-width 8pt progress track (no back button — forward-only
+/// flow). `overVideo` is the Polly-screen glass variant. Sits 6pt below safe top.
 struct OnboardingChrome: View {
     enum Style { case cream, overVideo }
     let progress: Double
     var style: Style = .cream
-    let onBack: () -> Void
 
     var body: some View {
-        HStack(spacing: 14) {
-            Button {
-                Haptics.impact(.light)
-                onBack()
-            } label: {
-                MS.chevronLeft.sized(24)
-                    .foregroundStyle(style == .cream ? Color(hex: 0x4A4238) : .white)
-                    .frame(width: 40, height: 40)
-                    .background(
-                        Circle().fill(style == .cream ? AnyShapeStyle(Color.white)
-                                                      : AnyShapeStyle(.white.opacity(0.24)))
-                    )
-                    .background(style == .overVideo ? AnyView(Circle().fill(.ultraThinMaterial)) : AnyView(EmptyView()))
-                    .shadow(color: style == .cream ? OnboardingTheme.warmBlack(0.12) : .clear, radius: 3.5, y: 2)
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(style == .cream ? OnboardingTheme.warmBlack(0.09) : .white.opacity(0.32))
+                Capsule()
+                    .fill(style == .cream ? OnboardingTheme.progressFill : OnboardingTheme.progressFillDark)
+                    .frame(width: geo.size.width * progress)
+                    .animation(.timingCurve(0.4, 0, 0.2, 1, duration: 0.45), value: progress)
             }
-            .buttonStyle(.plain)
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(style == .cream ? OnboardingTheme.warmBlack(0.09) : .white.opacity(0.32))
-                    Capsule()
-                        .fill(style == .cream ? OnboardingTheme.progressFill : OnboardingTheme.progressFillDark)
-                        .frame(width: geo.size.width * progress)
-                        .animation(.timingCurve(0.4, 0, 0.2, 1, duration: 0.45), value: progress)
-                }
-            }
-            .frame(height: 8)
         }
+        .frame(height: 8)
         .padding(.horizontal, 24)
         .padding(.top, 6)
     }
@@ -138,7 +119,7 @@ struct OnboardingSubhead: View {
 
 #Preview("Components") {
     VStack(spacing: 20) {
-        OnboardingChrome(progress: 0.3) {}
+        OnboardingChrome(progress: 0.3)
         OnboardingHeadline("Any food rules?")
         OnboardingSubhead("Tap all that apply")
         OnboardingPrimaryButton(title: "Continue") {}

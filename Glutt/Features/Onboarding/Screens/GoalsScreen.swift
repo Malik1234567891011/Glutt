@@ -1,30 +1,20 @@
 import SwiftUI
 
-/// Multi-select goals as full-width emoji rows.
 struct GoalsScreen: View {
     @Bindable var state: OnboardingState
-
+    let onContinue: () -> Void
     var body: some View {
-        OnboardingScaffold(
-            title: "What do you want Glutt for?",
-            subtitle: "Pick anything that sounds like you. This just sets up your home screen."
-        ) {
-            VStack(spacing: Theme.Spacing.sm) {
-                ForEach(OnboardingState.goalOptions) { option in
-                    OptionRow(
-                        emoji: option.emoji,
-                        title: option.label,
-                        isSelected: state.selectedGoals.contains(option.label)
-                    ) {
-                        state.toggleGoal(option.label)
-                    }
-                }
+        VStack {
+            OnboardingHeadline("Why do you want to cook more at home?", size: 26)
+            Spacer()
+            Button("toggle-first-goal-stub") { state.toggleGoal(OnboardingState.goalOptions[0]) }
+            Spacer()
+            if state.canContinueFromGoals {
+                OnboardingPrimaryButton(title: "Continue", action: onContinue)
+            } else {
+                OnboardingDisabledPill(title: "Continue")
             }
         }
+        .padding(.horizontal, 22).padding(.top, 44).padding(.bottom, 8)
     }
-}
-
-#Preview {
-    GoalsScreen(state: OnboardingState())
-        .background(Theme.Colors.background)
 }

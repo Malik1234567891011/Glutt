@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UserNotifications
 
 struct RootView: View {
     @Environment(Router.self) private var router
@@ -52,10 +53,14 @@ struct RootView: View {
         }
         .task { drainImportInbox() }
         .task { await RecipeImageBackfill.sweep(in: context) }
-        .task {
-            // Skip the notification prompt under the `-uiPreview` screenshot hook.
-            if !ProcessInfo.processInfo.arguments.contains("-uiPreview") {
-                ReminderScheduler.requestPermissionIfNeeded()
+        .task(id: needsOnboarding) {
+            // Notification permission is requested exactly once, on onboarding
+            // screen 9. At launch we only (re)schedule if it's already granted —
+            // "Maybe later" must keep meaning *not now*.
+            guard !needsOnboarding,
+                  !ProcessInfo.processInfo.arguments.contains("-uiPreview") else { return }
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
                 ReminderScheduler.schedulePlatesDailyReminder()
             }
         }

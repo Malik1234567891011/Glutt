@@ -1,55 +1,14 @@
 import SwiftUI
 
-/// Dietary rules (multi-select) + allergies + dislikes free text.
 struct RulesScreen: View {
     @Bindable var state: OnboardingState
-
+    let onContinue: () -> Void
     var body: some View {
-        OnboardingScaffold(
-            title: "Any food rules?",
-            subtitle: "Respected everywhere — suggestions, planning, and substitutions."
-        ) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                VStack(spacing: Theme.Spacing.sm) {
-                    ForEach(DietaryRule.allCases, id: \.self) { rule in
-                        OptionRow(
-                            leadingIcon: Ph.leaf.regular
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 22, height: 22)
-                                .foregroundStyle(Theme.Colors.accent),
-                            title: rule.label,
-                            isSelected: state.selectedRules.contains(rule)
-                        ) {
-                            state.toggleRule(rule)
-                        }
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    Text("Allergies")
-                        .font(.gluttHeadline)
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                    TextField("peanuts, shellfish…", text: $state.allergyText)
-                        .textFieldStyle(.roundedBorder)
-                    Text("Separate with commas. Anything here gets a hard warning, always.")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.Colors.textSecondary)
-                }
-
-                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    Text("Things you just don't like")
-                        .font(.gluttHeadline)
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                    TextField("cilantro, olives…", text: $state.dislikeText)
-                        .textFieldStyle(.roundedBorder)
-                }
-            }
+        VStack {
+            OnboardingHeadline("Any food rules?")
+            Spacer()
+            OnboardingPrimaryButton(title: "Continue", action: onContinue)
         }
+        .padding(.horizontal, 22).padding(.top, 42).padding(.bottom, 8)
     }
-}
-
-#Preview {
-    RulesScreen(state: OnboardingState())
-        .background(Theme.Colors.background)
 }

@@ -76,9 +76,9 @@ enum DietGuard {
         "macadamia", "hazelnut", "pistachio", "brazil nut", "pine nut",
     ]
     private static let ketoWords: Set<String> = [
-        "flour", "wheat", "bread", "pasta", "noodle", "rice", "potato",
-        "sugar", "honey", "corn", "cereal", "oat", "bean", "lentil",
-        "chickpea", "pea", "fruit juice", "soda",
+        "sugar", "honey", "syrup", "bread", "pasta", "noodle", "noodles",
+        "potato", "potatoes", "wheat", "oats", "oatmeal", "cornstarch",
+        "tortilla", "couscous", "barley",
     ]
 
     static func forbiddenWords(for rule: DietaryRule) -> Set<String> {
@@ -97,6 +97,9 @@ enum DietGuard {
         case .glutenFree: glutenWords
         case .dairyFree: dairyWords
         case .nutFree: nutWords
+        // Keto is macro-based; keyword presence is an aid, not a guarantee —
+        // favors avoiding false flags on keto-substitute ingredients
+        // (almond flour, cauliflower rice, baking soda).
         case .keto: ketoWords
         }
     }

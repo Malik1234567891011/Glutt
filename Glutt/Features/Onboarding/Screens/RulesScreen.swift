@@ -46,34 +46,41 @@ struct RulesScreen: View {
             Haptics.selection()
             state.toggleRule(rule)
         } label: {
-            VStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 19, style: .continuous)
-                        .fill(.white.opacity(0.22))
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 19))
-                    def.icon.sized(33).foregroundStyle(.white)
-                }
-                .frame(width: 60, height: 60)
-                .shadow(color: .black.opacity(0.12), radius: 7, y: 6)
-
-                Text(rule.label)
-                    .font(OnboardingFonts.bricolage(15, 600)).kerning(-0.2)
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.28), radius: 2, y: 1)
+            // Gradient canvas is the sized base; content goes in an .overlay so
+            // it is proposed the tile's bounded width (aspectRatio measures its
+            // child at ideal width, which would let long labels overflow the
+            // clip instead of shrink-to-fit).
+            ZStack {
+                LinearGradient(colors: [Color(hex: def.start), Color(hex: def.end)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
+                // Top-left white sheen + bottom legibility shade (HTML overlays).
+                RadialGradient(colors: [.white.opacity(0.38), .white.opacity(0)],
+                               center: .init(x: 0.18, y: 0.12), startRadius: 0, endRadius: 130)
+                LinearGradient(stops: [
+                    .init(color: .black.opacity(0.32), location: 0),
+                    .init(color: .black.opacity(0), location: 0.54),
+                ], startPoint: .bottom, endPoint: .top)
             }
-            .frame(maxWidth: .infinity)
             .aspectRatio(1 / 1.1, contentMode: .fit)
-            .background(
-                ZStack {
-                    LinearGradient(colors: [Color(hex: def.start), Color(hex: def.end)],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing)
-                    // Top-left white sheen + bottom legibility shade (HTML overlays).
-                    RadialGradient(colors: [.white.opacity(0.38), .white.opacity(0)],
-                                   center: .init(x: 0.18, y: 0.12), startRadius: 0, endRadius: 130)
-                    LinearGradient(stops: [
-                        .init(color: .black.opacity(0.32), location: 0),
-                        .init(color: .black.opacity(0), location: 0.54),
-                    ], startPoint: .bottom, endPoint: .top)
+            .frame(maxWidth: .infinity)
+            .overlay(
+                VStack(spacing: 10) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 19, style: .continuous)
+                            .fill(.white.opacity(0.22))
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 19))
+                        def.icon.sized(33).foregroundStyle(.white)
+                    }
+                    .frame(width: 60, height: 60)
+                    .shadow(color: .black.opacity(0.12), radius: 7, y: 6)
+
+                    Text(rule.label)
+                        .font(OnboardingFonts.bricolage(15, 600)).kerning(-0.2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.28), radius: 2, y: 1)
+                        .padding(.horizontal, 8)
                 }
             )
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))

@@ -147,6 +147,8 @@ enum DietaryRule: String, Codable, CaseIterable, Identifiable {
     case vegan
     case glutenFree
     case dairyFree
+    case nutFree
+    case keto
     var id: String { rawValue }
 
     var label: String {
@@ -159,6 +161,8 @@ enum DietaryRule: String, Codable, CaseIterable, Identifiable {
         case .vegan: "Vegan"
         case .glutenFree: "Gluten-free"
         case .dairyFree: "Dairy-free"
+        case .nutFree: "Nut-free"
+        case .keto: "Keto"
         }
     }
 }

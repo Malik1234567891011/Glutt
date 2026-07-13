@@ -71,6 +71,15 @@ enum DietGuard {
     ]
     /// Non-halal beyond pork: alcohol and gelatin (unless certified, which we can't know).
     private static let gelatinWords: Set<String> = ["gelatin", "gelatine"]
+    private static let nutWords: Set<String> = [
+        "nut", "nuts", "almond", "walnut", "peanut", "cashew", "pecan",
+        "macadamia", "hazelnut", "pistachio", "brazil nut", "pine nut",
+    ]
+    private static let ketoWords: Set<String> = [
+        "flour", "wheat", "bread", "pasta", "noodle", "rice", "potato",
+        "sugar", "honey", "corn", "cereal", "oat", "bean", "lentil",
+        "chickpea", "pea", "fruit juice", "soda",
+    ]
 
     static func forbiddenWords(for rule: DietaryRule) -> Set<String> {
         switch rule {
@@ -87,6 +96,8 @@ enum DietGuard {
             .union(dairyWords).union(eggWords).union(["honey"])
         case .glutenFree: glutenWords
         case .dairyFree: dairyWords
+        case .nutFree: nutWords
+        case .keto: ketoWords
         }
     }
 

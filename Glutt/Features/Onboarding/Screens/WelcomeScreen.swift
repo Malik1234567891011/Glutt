@@ -23,6 +23,7 @@ struct WelcomeScreen: View {
                 // content ~1400pt below the visible screen.
                 .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
                 .clipped()
+                .ignoresSafeArea(edges: .top) // tiles run under the Dynamic Island
 
             scrim
             content

@@ -5,6 +5,17 @@ import SwiftUI
 struct WelcomeScreen: View {
     let onStart: () -> Void
 
+    /// Zoom-through exit: Start scales the whole screen up while fading it, then
+    /// hands off to the coordinator's screen swap. Self-animated (a SwiftUI
+    /// removal transition fired unreliably through the `.id`-keyed swap). The
+    /// hand-off is tied to the animation's *completion* — not a fixed delay — so
+    /// the screen is already fully faded when the coordinator hard-swaps it out.
+    /// (The old version advanced at 0.2s while the 0.22s zoom was still visible,
+    /// hard-cutting an 86%-done screen mid-fade — that was the jank.)
+    @State private var zoomingOut = false
+    @State private var didHandOff = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     /// 11 tiles; spans from the HTML (tiles 1 & 5 span 3 rows, rest span 2).
     private static let tiles: [(asset: String, span: Int)] = [
         ("hotHoneyChickenRice", 3), ("greenGoddessSteakPlate", 2), ("chickenRiceBowl", 2),
@@ -30,6 +41,33 @@ struct WelcomeScreen: View {
         }
         .background(OnboardingTheme.cream)
         .ignoresSafeArea(edges: .bottom)
+        .scaleEffect(zoomingOut ? 1.18 : 1)
+        .opacity(zoomingOut ? 0 : 1)
+    }
+
+    private func startTapped() {
+        guard !zoomingOut else { return } // ignore repeat taps mid-exit
+        guard !reduceMotion else { return onStart() } // no motion: swap instantly
+        // easeIn keeps the screen opaque until the very end, so it fades out
+        // right as the hand-off fires — the next screen takes over with no
+        // blank-cream gap between them — and the acceleration reads as diving
+        // *into* the app. The completion advances exactly when opacity hits 0,
+        // so the coordinator's instant removal is never seen (no mid-zoom cut).
+        // The button's own press offset + haptic covers the brief wind-up.
+        withAnimation(.easeIn(duration: 0.28)) {
+            zoomingOut = true
+        } completion: {
+            handOff()
+        }
+        // Safety net: if the completion is ever dropped (view torn down mid-
+        // animation), still advance so the user is never stranded. Idempotent.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { handOff() }
+    }
+
+    private func handOff() {
+        guard !didHandOff else { return }
+        didHandOff = true
+        onStart()
     }
 
     /// 3-column masonry, 76pt row unit, 9pt gaps — columns match the design
@@ -161,7 +199,7 @@ struct WelcomeScreen: View {
             .background(OnboardingTheme.greenTint, in: Capsule())
             .padding(.bottom, 64)
 
-            OnboardingPrimaryButton(title: "Start", action: onStart)
+            OnboardingPrimaryButton(title: "Start", action: startTapped)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 28)

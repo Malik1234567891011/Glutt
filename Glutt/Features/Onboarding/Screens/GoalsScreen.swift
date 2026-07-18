@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Screen 3 — 6 selectable rows, ≥1 required to continue.
+/// Screen 3 — 6 selectable rows, ≥1 required to continue. Content only; the
+/// coordinator owns the fixed (gated) "Continue" footer + chrome.
 struct GoalsScreen: View {
     @Bindable var state: OnboardingState
-    let onContinue: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -19,16 +19,9 @@ struct GoalsScreen: View {
                 .padding(2)
             }
             .padding(.top, 20).padding(.bottom, 16)
-
-            if state.canContinueFromGoals {
-                OnboardingPrimaryButton(title: "Continue", action: onContinue)
-            } else {
-                OnboardingDisabledPill(title: "Continue")
-            }
         }
         .padding(.horizontal, 22)
         .padding(.top, 44)   // design 98 − 54
-        .padding(.bottom, 8)
     }
 
     private func row(_ goal: String, selected: Bool) -> some View {

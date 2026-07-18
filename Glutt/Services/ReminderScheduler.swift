@@ -35,8 +35,7 @@ enum PrepDetector {
     }
 }
 
-/// Schedules local notifications for planned meals:
-/// "start cooking at 6:45" and morning prep-ahead nudges.
+/// Schedules the daily "today's plate is ready" local notification.
 enum ReminderScheduler {
 
     static func requestPermissionIfNeeded() {
@@ -61,63 +60,5 @@ enum ReminderScheduler {
         components.minute = 0
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
         center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
-    }
-
-    /// (Re)schedules reminders for a meal. Call after insert or edit.
-    static func schedule(for meal: PlannedMeal) {
-        cancel(for: meal)
-
-        guard let recipe = meal.recipe else { return }
-        let id = reminderID(for: meal)
-
-        // 1. Cooking start reminder, if the meal has an exact time in the future.
-        if let startTime = meal.suggestedStartTime, startTime > .now {
-            let content = UNMutableNotificationContent()
-            content.title = "Time to start cooking"
-            content.body = "\(recipe.title) — \(meal.mealType.label.lowercased()) at \(meal.exactTime!.formatted(date: .omitted, time: .shortened)). Start now to be ready."
-            content.sound = .default
-            content.userInfo = ["destination": "plan"]
-            add(content: content, at: startTime, identifier: "\(id)-start")
-        }
-
-        // 2. Prep-ahead reminder the morning of the meal (9 AM).
-        let prepTasks = PrepDetector.tasks(for: recipe)
-        if let firstTask = prepTasks.first {
-            var morning = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: meal.date)!
-            // If planning for today after 9 AM, fire in 5 minutes instead.
-            if morning <= .now {
-                morning = .now.addingTimeInterval(300)
-            }
-            // Only schedule if the meal itself is still ahead of the reminder.
-            if meal.exactTime == nil || meal.exactTime! > morning {
-                let content = UNMutableNotificationContent()
-                content.title = "Prep ahead"
-                content.body = firstTask.text
-                content.sound = .default
-                content.userInfo = ["destination": "plan"]
-                add(content: content, at: morning, identifier: "\(id)-prep")
-            }
-        }
-    }
-
-    static func cancel(for meal: PlannedMeal) {
-        let id = reminderID(for: meal)
-        UNUserNotificationCenter.current().removePendingNotificationRequests(
-            withIdentifiers: ["\(id)-start", "\(id)-prep"]
-        )
-    }
-
-    private static func reminderID(for meal: PlannedMeal) -> String {
-        if meal.reminderID == nil {
-            meal.reminderID = UUID()
-        }
-        return meal.reminderID!.uuidString
-    }
-
-    private static func add(content: UNMutableNotificationContent, at date: Date, identifier: String) {
-        let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-        UNUserNotificationCenter.current().add(request)
     }
 }

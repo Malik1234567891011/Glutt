@@ -26,7 +26,7 @@ enum PantryScan {
         let items: [Item]
     }
 
-    static func scan(imageData: Data, existingPantry: [PantryItem]) async throws -> [ScannedItem] {
+    static func scan(imageData: Data, existingPantry: [PantryItem], client: LLMClient = .live) async throws -> [ScannedItem] {
         let system = """
         You identify food, drinks, and cooking ingredients in a photo of someone's kitchen,
         fridge, pantry, or counter — including packaged goods.
@@ -52,7 +52,7 @@ enum PantryScan {
           ingredient-like in the photo.
         """
 
-        let response = try await LLMClient.chatJSON(
+        let response = try await client.chatJSON(
             Response.self,
             system: system,
             user: "Identify every food, drink, and grocery item here. Read the labels and packaging text to name packaged items.",

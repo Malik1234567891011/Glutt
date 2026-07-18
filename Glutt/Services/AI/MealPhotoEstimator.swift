@@ -20,7 +20,7 @@ enum MealPhotoEstimator {
         }
     }
 
-    static func estimate(imageData: Data) async throws -> Estimate {
+    static func estimate(imageData: Data, client: LLMClient = .live) async throws -> Estimate {
         let system = """
         You estimate nutrition from a photo of a meal someone is about to eat.
         Return JSON: {"title": str, "calories": int, "caloriesLow": int, "caloriesHigh": int,
@@ -35,7 +35,7 @@ enum MealPhotoEstimator {
         - If the photo clearly contains no food, return {"title": ""}.
         """
 
-        let estimate = try await LLMClient.chatJSON(
+        let estimate = try await client.chatJSON(
             Estimate.self,
             system: system,
             user: "Estimate this meal.",

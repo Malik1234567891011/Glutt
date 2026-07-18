@@ -142,7 +142,8 @@ enum RecipeAdjuster {
         recipe: Recipe,
         request: Request,
         rules: [DietaryRule],
-        allergies: [String]
+        allergies: [String],
+        client: LLMClient = .live
     ) async throws -> Adjustment {
         let servingsRule = request.allowsServingsChange
             ? "Keep the original \(recipe.servings) servings UNLESS the change clearly alters how many it feeds; if it does, set \"servings\" to the new count."
@@ -184,7 +185,7 @@ enum RecipeAdjuster {
             user += "\(step.index + 1). \(step.text)\n"
         }
 
-        let adjustment = try await LLMClient.chatJSON(
+        let adjustment = try await client.chatJSON(
             Adjustment.self,
             system: system,
             user: String(user.prefix(8000)),

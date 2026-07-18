@@ -13,9 +13,7 @@ final class NotificationRoutingDelegate: NSObject, UNUserNotificationCenterDeleg
         didReceive response: UNNotificationResponse
     ) async {
         let destination = response.notification.request.content.userInfo["destination"] as? String
-        if destination == "plan" {
-            router?.selectedTab = .plan
-        } else if destination == "plates" {
+        if destination == "plates" {
             router?.selectedTab = .discover
         }
     }
@@ -60,9 +58,7 @@ struct GluttApp: App {
             RecipeCollection.self,
             PantryItem.self,
             GroceryItem.self,
-            Leftover.self,
-            PlannedMeal.self,
-            FoodLog.self,
+            KitchenTool.self,
             CookSession.self,
             UserPrefs.self,
             PollyMemory.self,

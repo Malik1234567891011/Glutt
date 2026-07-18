@@ -19,7 +19,6 @@ struct PollySessionView: View {
     @State private var controller: PollySessionController?
     @State private var startedAt = Date.now
     @State private var isConfirmingExit = false
-    @State private var didCopyDebugLog = false
     @State private var isShowingFinish = false
     @State private var isEndingWithoutSaving = false
     @State private var micDenied = false
@@ -42,12 +41,10 @@ struct PollySessionView: View {
         }
         .onAppear {
             router.isPollySessionActive = true
-            router.floatingButtonSuppressors += 1
             UIApplication.shared.isIdleTimerDisabled = true
         }
         .onDisappear {
             router.isPollySessionActive = false
-            router.floatingButtonSuppressors -= 1
             UIApplication.shared.isIdleTimerDisabled = false
         }
         .onChange(of: controller?.phase) { _, phase in
@@ -75,7 +72,7 @@ struct PollySessionView: View {
             "End cooking with Polly?", isPresented: $isConfirmingExit, titleVisibility: .visible
         ) {
             Button("Keep cooking", role: .cancel) {}
-            Button("Finish & log") {
+            Button("Finish") {
                 isShowingFinish = true
                 Task { await controller?.end(context: context, endedEarly: false) }
             }
@@ -190,26 +187,15 @@ struct PollySessionView: View {
                         .foregroundStyle(.white.opacity(0.85))
                 }
             }
-            Spacer()
-            // Copy the session debug log — pasteable straight into a bug
-            // report. Doubles as the X button's twin so the title stays
-            // centered.
-            Button {
+            // Hidden developer affordance: long-press the title to copy the
+            // session debug log for a bug report (no visible button now).
+            .onLongPressGesture(minimumDuration: 0.6) {
                 UIPasteboard.general.string = PollyDebugLog.shared.dump()
                 Haptics.notify(.success)
-                didCopyDebugLog = true
-                Task {
-                    try? await Task.sleep(for: .seconds(2))
-                    didCopyDebugLog = false
-                }
-            } label: {
-                (didCopyDebugLog ? Ph.check.regular : Ph.clipboard.regular)
-                    .resizable().scaledToFit()
-                    .frame(width: 16, height: 16)
-                    .foregroundStyle(.white.opacity(0.85))
-                    .frame(width: 40, height: 40)
-                    .background(.ultraThinMaterial, in: Circle())
             }
+            Spacer()
+            // Balances the leading X so the title stays visually centered.
+            Color.clear.frame(width: 40, height: 40)
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)
@@ -302,23 +288,8 @@ struct PollySessionView: View {
             ) {
                 controller.toggleMute()
             }
-            // Camera is off by default (phone on the counter). The look/flip/
-            // watch controls only make sense once it's on, so they appear only
-            // then — keeping the default bar to the essentials.
-            if controller.camera.isRunning {
-                PollyControlButton(icon: Ph.camera.regular, label: "Show Polly") {
-                    Task { await controller.sendShowPolly() }
-                }
-                PollyControlButton(
-                    icon: controller.isWatching ? Ph.eye.fill : Ph.eyeSlash.regular,
-                    label: "Polly watches while you cook"
-                ) {
-                    controller.isWatching.toggle()
-                }
-                PollyControlButton(icon: Ph.cameraRotate.regular, label: "Flip camera") {
-                    controller.flipCamera()
-                }
-            }
+            // Camera on = Polly watches; off = she doesn't. The X in the top bar
+            // ends the session, so the bar stays at two buttons.
             PollyControlButton(
                 icon: controller.camera.isRunning ? Ph.videoCamera.fill : Ph.videoCameraSlash.regular,
                 label: controller.camera.isRunning ? "Turn camera off" : "Turn camera on"
@@ -327,11 +298,9 @@ struct PollySessionView: View {
                     controller.camera.stop()
                     controller.isWatching = false
                 } else {
+                    controller.isWatching = true
                     Task { await controller.camera.start() }
                 }
-            }
-            PollyControlButton(icon: Ph.x.regular, tint: Theme.Colors.tomato, label: "End session") {
-                isConfirmingExit = true
             }
         }
     }

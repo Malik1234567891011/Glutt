@@ -3,11 +3,21 @@ import Foundation
 /// The cloud brain. Every AI feature in Glutt works without it —
 /// heuristics first, LLM as an upgrade when configured.
 /// Production path: backend proxy only (no direct provider keys in app).
-enum LLMClient {
+///
+/// A value type with an injectable `transport` so the request assembly and
+/// every action's prompt-building are testable without a live network — the
+/// same seam `DiscoverService` / `PlatesService` / `PollyTokenService` use.
+/// The static surface (`isConfigured`, `LLMError`) stays for UI gates; the
+/// call path (`chat` / `chatJSON`) lives on the injectable instance.
+struct LLMClient {
+
+    typealias Transport = (URLRequest) async throws -> (Data, URLResponse)
 
     enum Keys {
         static let model = "glutt.llm.model"
     }
+
+    // MARK: - Static config surface (UI feature gates read these)
 
     static var model: String {
         get { UserDefaults.standard.string(forKey: Keys.model) ?? "gpt-4o" }
@@ -22,6 +32,8 @@ enum LLMClient {
         Secrets.aiProxyClientKey.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// Whether this build ships a proxy. UI features gate their visibility on
+    /// this; actions gate on the per-instance `isConfigured` below.
     static var isConfigured: Bool {
         !proxyBaseURL.isEmpty
     }
@@ -40,9 +52,24 @@ enum LLMClient {
         }
     }
 
+    // MARK: - Injectable instance (the call path)
+
+    /// The network hop. Injected in tests; defaults to the shared session.
+    var transport: Transport = { try await URLSession.shared.data(for: $0) }
+    var baseURL: String = LLMClient.proxyBaseURL
+    var clientKey: String = LLMClient.proxyClientKey
+
+    /// Per-instance configured check. A test client with a non-empty `baseURL`
+    /// is "configured" even when the build's `Secrets` are not — so gated
+    /// actions run their prompt-building under test.
+    var isConfigured: Bool { !baseURL.isEmpty }
+
+    /// The production client, reading the build's proxy settings.
+    static let live = LLMClient()
+
     /// Single-turn chat completion. Keep prompts structured; parse strictly.
     /// Pass `imageData` (JPEG, pre-downscaled via `ImagePrep`) for vision calls.
-    static func chat(
+    func chat(
         system: String,
         user: String,
         imageData: Data? = nil,
@@ -51,7 +78,7 @@ enum LLMClient {
         timeout: TimeInterval = 30
     ) async throws -> String {
         guard isConfigured else { throw LLMError.notConfigured }
-        let urlString = "\(proxyBaseURL)/chat/completions"
+        let urlString = "\(baseURL)/chat/completions"
         guard let url = URL(string: urlString) else {
             throw LLMError.badResponse("Bad AI endpoint URL")
         }
@@ -59,8 +86,8 @@ enum LLMClient {
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if !proxyClientKey.isEmpty {
-            request.setValue(proxyClientKey, forHTTPHeaderField: "x-glutt-proxy-key")
+        if !clientKey.isEmpty {
+            request.setValue(clientKey, forHTTPHeaderField: "x-glutt-proxy-key")
         }
 
         let userContent: Any
@@ -76,7 +103,7 @@ enum LLMClient {
         }
 
         var body: [String: Any] = [
-            "model": model,
+            "model": Self.model,
             "temperature": temperature,
             "messages": [
                 ["role": "system", "content": system],
@@ -90,7 +117,7 @@ enum LLMClient {
 
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            (data, response) = try await transport(request)
         } catch let urlError as URLError where urlError.code == .timedOut {
             throw LLMError.timeout
         }
@@ -113,7 +140,7 @@ enum LLMClient {
     /// JSON-mode chat decoded into a Decodable. The strictest, safest way
     /// to consume LLM output — anything malformed throws and callers fall
     /// back to heuristics.
-    static func chatJSON<T: Decodable>(
+    func chatJSON<T: Decodable>(
         _ type: T.Type,
         system: String,
         user: String,

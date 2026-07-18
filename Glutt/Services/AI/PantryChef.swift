@@ -28,9 +28,10 @@ enum PantryChef {
         hint: String? = nil,
         maxMinutes: Int? = nil,
         mealType: MealType? = nil,
-        avoidTitles: [String] = []
+        avoidTitles: [String] = [],
+        client: LLMClient = .live
     ) async -> ImportedRecipeDraft? {
-        guard LLMClient.isConfigured else { return nil }
+        guard client.isConfigured else { return nil }
 
         let onHand = pantry.filter { $0.roughQuantity != .out }
         guard onHand.count >= 2 else { return nil }
@@ -96,7 +97,7 @@ enum PantryChef {
         user += "\nVariation seed: \(Int.random(in: 1000...9999))."
 
         do {
-            let result = try await LLMClient.chatJSON(
+            let result = try await client.chatJSON(
                 Invented.self,
                 system: system,
                 user: user,

@@ -16,9 +16,9 @@ enum ImportPipeline {
         static let live = Dependencies(
             fetch: { try await RecipeImportService.importFrom(urlString: $0) },
             wouldImprove: DraftCleanup.wouldImprove,
-            cleanUp: DraftCleanup.cleanUp,
-            reconstruct: DraftCleanup.reconstruct,
-            inferSteps: DraftCleanup.inferSteps
+            cleanUp: { await DraftCleanup.cleanUp($0) },
+            reconstruct: { await DraftCleanup.reconstruct($0) },
+            inferSteps: { await DraftCleanup.inferSteps($0) }
         )
     }
 

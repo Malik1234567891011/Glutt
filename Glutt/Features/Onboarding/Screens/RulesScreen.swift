@@ -1,9 +1,14 @@
 import SwiftUI
 
-/// Screen 4 — 3×3 gradient tiles, optional multi-select.
+/// Screen 4 — 3×3 gradient tiles, optional multi-select. Content only; the
+/// coordinator owns the fixed "Continue" footer + chrome.
 struct RulesScreen: View {
     @Bindable var state: OnboardingState
-    let onContinue: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
+    /// Per-tile reveal delays, shuffled so the 9 tiles fade in a scattered order.
+    @State private var delays = (0..<OnboardingState.ruleOptions.count)
+        .map { Double($0) * 0.06 }.shuffled()
 
     /// Per-tile visual defs from the HTML (gradient start/end, shadow, glyph).
     private static let tileDefs: [DietaryRule: (icon: MS, start: UInt32, end: UInt32, shadow: UInt32)] = [
@@ -25,18 +30,21 @@ struct RulesScreen: View {
 
             Spacer(minLength: 12)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
-                ForEach(OnboardingState.ruleOptions) { rule in
+                ForEach(Array(OnboardingState.ruleOptions.enumerated()), id: \.offset) { index, rule in
                     tile(rule, selected: state.selectedRules.contains(rule))
+                        .opacity(appeared ? 1 : 0)
+                        .scaleEffect(appeared ? 1 : 0.9)
+                        .animation(reduceMotion ? nil
+                            : .spring(response: 0.5, dampingFraction: 0.82).delay(0.25 + delays[index]),
+                            value: appeared)
                 }
             }
             .padding(.horizontal, 4).padding(.vertical, 6)
             Spacer(minLength: 12)
-
-            OnboardingPrimaryButton(title: "Continue", action: onContinue)
         }
         .padding(.horizontal, 22)
         .padding(.top, 42)   // design 96 − 54
-        .padding(.bottom, 8)
+        .onAppear { appeared = true }
     }
 
     private func tile(_ rule: DietaryRule, selected: Bool) -> some View {

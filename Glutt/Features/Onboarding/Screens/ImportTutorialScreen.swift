@@ -3,7 +3,6 @@ import SwiftUI
 /// Screen 10 — the multi-phase import tutorial in a mini phone.
 struct ImportTutorialScreen: View {
     @Bindable var flow: OnboardingFlowModel
-    let onImportNow: () -> Void
     let onFinish: () -> Void
     @Environment(\.scenePhase) private var scenePhase
 
@@ -71,7 +70,7 @@ struct ImportTutorialScreen: View {
         withAnimation(.easeOut(duration: 0.3)) { _ = flow.tutorialTap() }
     }
 
-    /// Design (`tWalk`): dots + skip on phases 0–2, nothing on 3, CTAs on 4.
+    /// Dots + skip on phases 0–2, nothing on 3, a single Continue on 4.
     @ViewBuilder
     private var footer: some View {
         switch flow.tutPhase {
@@ -90,19 +89,7 @@ struct ImportTutorialScreen: View {
         case 3:
             Color.clear.frame(height: 56)
         default:
-            VStack(spacing: 10) {
-                OnboardingPrimaryButton(title: "Import my first recipe", height: 58, action: onImportNow)
-                Button {
-                    Haptics.impact(.light)
-                    onFinish()
-                } label: {
-                    Text("I'll explore on my own")
-                        .font(OnboardingFonts.bricolage(16, 600))
-                        .foregroundStyle(OnboardingTheme.greenDeep)
-                        .frame(maxWidth: .infinity).frame(height: 48)
-                }
-                .buttonStyle(.plain)
-            }
+            OnboardingPrimaryButton(title: "Continue", action: onFinish)
         }
     }
 }

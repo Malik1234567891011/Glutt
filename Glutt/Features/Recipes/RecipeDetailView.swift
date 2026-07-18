@@ -7,6 +7,7 @@ struct RecipeDetailView: View {
     @Environment(Router.self) private var router
     @Query private var pantryItems: [PantryItem]
     @Query private var groceryItems: [GroceryItem]
+    @Query private var ownedTools: [KitchenTool]
     @Bindable var recipe: Recipe
 
     @State private var displayServings: Int
@@ -17,7 +18,6 @@ struct RecipeDetailView: View {
     @State private var versionLabel = ""
     @State private var isCooking = false
     @State private var isShowingPreCookChecklist = false
-    @State private var isAddingToPlan = false
     @State private var isOptimizing = false
     @State private var isAdjusting = false
     @State private var selectedTab = 0   // 0 = Ingredients, 1 = Steps
@@ -40,6 +40,15 @@ struct RecipeDetailView: View {
         PantryMatcher.match(recipe: recipe, pantry: pantryItems)
     }
 
+    /// Equipment the recipe implies (from its text) that the user hasn't marked owned.
+    private var missingTools: [String] {
+        let text = ([recipe.title, recipe.summary ?? ""] + recipe.steps.map(\.text)).joined(separator: " ")
+        let required = KitchenToolCatalog.requiredTools(inText: text)
+        guard !required.isEmpty else { return [] }
+        let owned = Set(ownedTools.map(\.canonicalName))
+        return required.filter { !owned.contains($0.lowercased()) }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -59,9 +68,6 @@ struct RecipeDetailView: View {
             PreCookChecklistView(recipe: recipe) { isCooking = true }
         }
         .sheet(isPresented: $isShowingEditor) { RecipeEditorView(recipe: recipe) }
-        .sheet(isPresented: $isAddingToPlan) {
-            AddMealSheet(day: Calendar.current.startOfDay(for: .now), fixedRecipe: recipe)
-        }
         .sheet(isPresented: $isOptimizing) { OptimizeRecipeView(recipe: recipe) }
         .sheet(isPresented: $isAdjusting) { AdjustRecipeView(recipe: recipe) }
         .confirmationDialog("Delete this recipe?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
@@ -72,8 +78,6 @@ struct RecipeDetailView: View {
             Button("Create") { createVersion() }
             Button("Cancel", role: .cancel) { versionLabel = "" }
         }
-        .onAppear { router.floatingButtonSuppressors += 1 }
-        .onDisappear { router.floatingButtonSuppressors -= 1 }
     }
 
     // MARK: - Hero
@@ -145,6 +149,7 @@ struct RecipeDetailView: View {
             titleBlock
             adaptRow
             dietWarnings
+            gearWarning
             if recipe.sourcePlatform == .youtube,
                let urlString = recipe.sourceURL,
                let id = YouTubeEmbed.videoId(from: urlString) {
@@ -218,7 +223,6 @@ struct RecipeDetailView: View {
                 if !pantryMatch.missing.isEmpty {
                     adaptPill(Ph.magicWand.regular, "Use what I have") { isOptimizing = true }
                 }
-                adaptPill(Ph.calendarBlank.regular, "Add to plan") { isAddingToPlan = true }
             }
             .padding(.vertical, 2)
         }
@@ -275,6 +279,24 @@ struct RecipeDetailView: View {
                     ? Theme.Colors.tomato.opacity(0.12)
                     : Theme.Colors.warningTint
             )
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        }
+    }
+
+    /// Soft flag: the recipe's text implies equipment not in the user's Tools list.
+    /// A hint, not a blocker — Kitchen › Tools is where they'd add it.
+    @ViewBuilder
+    private var gearWarning: some View {
+        if !missingTools.isEmpty {
+            Label(
+                "Needs gear you haven't added: \(missingTools.joined(separator: ", "))",
+                systemImage: "wrench.and.screwdriver"
+            )
+            .font(.gluttCaption.weight(.medium))
+            .foregroundStyle(Theme.Colors.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Spacing.md)
+            .background(Theme.Colors.warningTint)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
         }
     }
@@ -442,9 +464,9 @@ struct RecipeDetailView: View {
             if LLMClient.isConfigured {
                 Button {
                     Haptics.impact(.medium)
-                    PollyPaywallHook.run {
-                        router.pollyLaunch = PollyLaunch(recipe: recipe, scale: scale)
-                    }
+                    // Premium access is enforced app-wide by `SubscriptionGate`;
+                    // a locked user can't reach this screen, so launch directly.
+                    router.pollyLaunch = PollyLaunch(recipe: recipe, scale: scale)
                 } label: {
                     HStack(spacing: 6) {
                         Ph.chefHat.fill
@@ -455,8 +477,18 @@ struct RecipeDetailView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.gluttPrimary)
-                classicCookButton
-                    .buttonStyle(.gluttSecondary)
+                // Fallback, de-emphasized to a text link: classic step-by-step
+                // without the AI (also the automatic path if Polly can't run).
+                Button {
+                    Haptics.impact(.light)
+                    if pantryMatch.missing.isEmpty { isCooking = true } else { isShowingPreCookChecklist = true }
+                } label: {
+                    Text("Cook without Polly")
+                        .font(.gluttCaption.weight(.semibold))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
             } else {
                 classicCookButton
                     .buttonStyle(.gluttPrimary)

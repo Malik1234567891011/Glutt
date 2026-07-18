@@ -9,6 +9,10 @@ struct RootView: View {
     @Query(sort: \Recipe.createdAt) private var recipes: [Recipe]
     @Query private var allPrefs: [UserPrefs]
 
+    /// The hard-paywall gate. Glutt is unusable without an active subscription;
+    /// this owns that decision app-wide (see `SubscriptionGate`).
+    @State private var gate = SubscriptionGate()
+
     private var needsOnboarding: Bool {
         router.forceOnboarding || allPrefs.first?.hasCompletedOnboarding != true
     }
@@ -16,34 +20,34 @@ struct RootView: View {
     var body: some View {
         @Bindable var router = router
 
-        ZStack(alignment: .bottom) {
-            TabView(selection: $router.selectedTab) {
-                ForEach(AppTab.allCases) { tab in
-                    tabContent(for: tab)
-                        .toolbar(.hidden, for: .tabBar)
-                        .tag(tab)
-                }
-            }
-            // Restore the app-wide accent tint (the native tab bar's `.tint` was
-            // removed with the custom bar; without this, toolbar/system controls
-            // fall back to system blue). The hidden native bar ignores it.
-            .tint(Theme.Colors.accent)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                GluttTabBar(selection: $router.selectedTab)
-            }
-
-            // The Discover feed has its own save/skip actions filling the
-            // bottom, so the floating capture button would just collide with them.
-            if router.floatingButtonSuppressors == 0, router.selectedTab != .discover {
-                captureButton
+        TabView(selection: $router.selectedTab) {
+            ForEach(AppTab.allCases) { tab in
+                tabContent(for: tab)
+                    .toolbar(.hidden, for: .tabBar)
+                    .tag(tab)
             }
         }
-        .sheet(isPresented: $router.isCaptureSheetPresented) {
-            CaptureActionSheet()
-                .presentationDetents([.medium])
-                .presentationCornerRadius(Theme.Radius.sheet)
-                .presentationBackground(Theme.Colors.background)
+        // Restore the app-wide accent tint (the native tab bar's `.tint` was
+        // removed with the custom bar; without this, toolbar/system controls
+        // fall back to system blue). The hidden native bar ignores it.
+        .tint(Theme.Colors.accent)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            GluttTabBar(selection: $router.selectedTab)
         }
+        // Hard paywall. `.resolving` covers the app with a neutral splash while
+        // entitlement loads; `.locked` lets the tabs show but swallows every
+        // touch and bounces to the paywall; `.unlocked` is the full app.
+        // Sits under the onboarding/cook/Polly covers (they present above), so
+        // a locked user still can't reach them — every touch bounces first.
+        .overlay {
+            switch gate.access {
+            case .resolving: GateSplashView()
+            case .locked: PaywallGateOverlay { gate.presentPaywall() }
+            case .unlocked: EmptyView()
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: gate.access)
+        .task { gate.start() }
         .onChange(of: scenePhase) {
             if scenePhase == .active {
                 router.checkForSharedImport()
@@ -94,32 +98,10 @@ struct RootView: View {
     @ViewBuilder
     private func tabContent(for tab: AppTab) -> some View {
         switch tab {
-        case .today: TodayView()
         case .recipes: RecipesView()
-        case .discover: PlatesTabView()
-        case .plan: PlanView()
+        case .discover: DiscoverTabView()
         case .kitchen: KitchenView()
-        case .progress: ProgressTabView()
         }
-    }
-
-    /// Floating universal capture button. Deliberately quiet: it should read
-    /// as part of the tab bar system, not compete with on-screen CTAs.
-    private var captureButton: some View {
-        Button {
-            router.isCaptureSheetPresented = true
-        } label: {
-            Image(systemName: "plus")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.white)
-                .frame(width: 48, height: 48)
-                .background(Theme.Colors.accent)
-                .clipShape(Circle())
-                .overlay(Circle().strokeBorder(Theme.Colors.background, lineWidth: 3))
-                .shadow(color: Theme.Colors.textPrimary.opacity(0.18), radius: 5, x: 0, y: 2)
-        }
-        .offset(y: -78)
-        .accessibilityLabel("Add or import")
     }
 }
 

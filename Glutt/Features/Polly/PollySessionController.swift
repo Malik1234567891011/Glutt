@@ -145,6 +145,7 @@ final class PollySessionController {
         let prefs = UserPrefs.current(in: context)
         let memories = PollyMemoryStore.topFacts(limit: PollyConfig.memoryFactLimit, in: context)
         let pastSessions = recipe.cookSessions(in: context)
+        let ownedTools = (try? context.fetch(FetchDescriptor<KitchenTool>())) ?? []
         let pantryMatch = PantryMatcher.match(recipe: recipe, pantry: pantry)
         missingIngredients = pantryMatch.missing.map(\.name)
 
@@ -180,7 +181,8 @@ final class PollySessionController {
         let config = RealtimeSessionConfig(
             instructions: PollyPromptBuilder.instructions(
                 recipe: recipe, plan: plan, pantryMatch: pantryMatch,
-                prefs: prefs, memories: memories, pastSessions: pastSessions),
+                prefs: prefs, memories: memories, pastSessions: pastSessions,
+                ownedTools: ownedTools),
             tools: PollyToolRegistry.toolDefinitions,
             voice: token.voice,
             model: token.model,

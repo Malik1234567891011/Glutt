@@ -81,8 +81,8 @@ final class PollySessionControllerTests: XCTestCase {
         // PollyMemory — so every connected model rides along.
         let schema = Schema([
             Recipe.self, RecipeIngredient.self, RecipeStep.self, RecipeCollection.self,
-            PantryItem.self, GroceryItem.self, Leftover.self,
-            PlannedMeal.self, FoodLog.self, CookSession.self, UserPrefs.self,
+            PantryItem.self, GroceryItem.self, KitchenTool.self,
+            CookSession.self, UserPrefs.self,
             PollyMemory.self, PollyCookLog.self,
         ])
         container = try ModelContainer(

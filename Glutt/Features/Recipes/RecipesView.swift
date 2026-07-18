@@ -17,17 +17,14 @@ struct RecipesView: View {
     @State private var isGrid = false
     @State private var isShowingEditor = false
     @State private var isShowingImport = false
+    @State private var isShowingSettings = false
     @State private var isNamingCollection = false
     @State private var newCollectionName = ""
-    @State private var segment: RecipeSegment = .myRecipes
-    @State private var discoverModel = DiscoverFeedViewModel()
     @State private var aiHeadline: String?
     @State private var aiResults: [AskGlutt.RankedResult]?
     /// The trimmed query the AI answer corresponds to (for staleness checks).
     @State private var aiQuery = ""
     @State private var isRanking = false
-
-    enum RecipeSegment: Int, CaseIterable { case myRecipes, discover }
 
     enum SortOrder: String, CaseIterable {
         case recentlySaved = "Recently saved"
@@ -90,13 +87,6 @@ struct RecipesView: View {
         }
     }
 
-    /// Simple taste hint for the suggested feed: the most common tags across saved recipes.
-    private var tasteTags: [String] {
-        let counts = libraryRecipes.flatMap { $0.tags }
-            .reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
-        return counts.sorted { $0.value > $1.value }.prefix(5).map(\.key)
-    }
-
     /// Semantic search: "that creamy lemon chicken thing" works.
     /// Results carry "why it matched" reasons shown under each card.
     private var searchResults: [RecipeSearchEngine.SearchResult] {
@@ -107,27 +97,15 @@ struct RecipesView: View {
         NavigationStack(path: $navPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                    if segment == .myRecipes {
-                        if !collections.isEmpty {
-                            collectionsRow
-                        }
-                        if !categoryTags.isEmpty {
-                            categoryRow
-                        }
-                        ChipRow(labels: filterChips, selection: $selectedFilter)
+                    if !collections.isEmpty {
+                        collectionsRow
                     }
-                    SegmentedTabs(
-                        titles: ["My Recipes", "Discover"],
-                        selection: Binding(
-                            get: { segment.rawValue },
-                            set: { segment = RecipeSegment(rawValue: $0) ?? .myRecipes }
-                        )
-                    )
-                    .padding(.horizontal, Theme.Spacing.md)
+                    if !categoryTags.isEmpty {
+                        categoryRow
+                    }
+                    ChipRow(labels: filterChips, selection: $selectedFilter)
 
-                    if segment == .discover {
-                        DiscoverView(model: discoverModel, tasteTags: tasteTags)
-                    } else if searchText.isEmpty {
+                    if searchText.isEmpty {
                         if visibleRecipes.isEmpty {
                             EmptyStateView(
                                 icon: "book",
@@ -198,11 +176,7 @@ struct RecipesView: View {
             }
             .searchable(text: $searchText, prompt: "creamy chicken thing with lemon…")
             .onSubmit(of: .search) {
-                if segment == .discover {
-                    Task { await discoverModel.search(searchText) }
-                } else {
-                    runAIRanking()
-                }
+                runAIRanking()
             }
             .onChange(of: searchText) {
                 // Editing the query invalidates a stale AI answer.
@@ -212,6 +186,14 @@ struct RecipesView: View {
                 }
             }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        Haptics.impact(.light)
+                        isShowingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Picker("Sort", selection: $sortOrder) {
@@ -246,8 +228,11 @@ struct RecipesView: View {
             .sheet(isPresented: $isShowingImport, onDismiss: { router.pendingImportURL = nil }) {
                 ImportRecipeView(initialURL: router.pendingImportURL)
             }
+            .sheet(isPresented: $isShowingSettings) {
+                SettingsView()
+            }
             .onAppear(perform: handlePendingImport)
-            .onChange(of: router.pendingAction) { handlePendingImport() }
+            .onChange(of: router.pendingImportURL) { handlePendingImport() }
             .onChange(of: router.recipeToOpenID) { openRequestedRecipe() }
             .onAppear(perform: openRequestedRecipe)
             .alert("New collection", isPresented: $isNamingCollection) {
@@ -270,12 +255,11 @@ struct RecipesView: View {
         EmptyStateView(
             icon: "sparkle.magnifyingglass",
             title: "Nothing like that in your kitchen yet",
-            message: "You don't have a recipe for \"\(searchText)\" — but Discover probably does. Want me to go look?",
-            actionLabel: "Find it in Discover",
+            message: "You don't have a recipe for \"\(searchText)\" — but Discover probably does.",
+            actionLabel: "Go to Discover",
             action: {
                 Haptics.impact(.light)
-                segment = .discover
-                Task { await discoverModel.search(searchText) }
+                router.selectedTab = .discover
             }
         )
     }
@@ -362,8 +346,9 @@ struct RecipesView: View {
     }
 
     private func handlePendingImport() {
-        if router.pendingAction == .importRecipe {
-            router.pendingAction = nil
+        // A pending URL (from the share extension or a glutt://import link) is the
+        // single trigger for the import sheet now that the capture button is gone.
+        if router.pendingImportURL != nil {
             isShowingImport = true
         }
     }

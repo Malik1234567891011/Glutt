@@ -1,13 +1,15 @@
 import SwiftUI
 
-/// Screen 5 — 3 aspirational benefit cards with glossy gradient icons.
+/// Screen 5 — 3 aspirational benefit cards with glossy gradient icons. Content
+/// only; the coordinator owns the fixed "Continue" footer + chrome.
 struct FourWeeksScreen: View {
-    let onContinue: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
 
     private static let cards: [(title: String, body: String, icon: MS, start: UInt32, end: UInt32, glow: UInt32)] = [
         ("Cook with confidence", "Hands-free guided recipes that actually work",
          .fireFill, 0xF4906F, 0xD9483B, 0xE1523D),
-        ("A kitchen that runs itself", "Grocery lists build themselves from your plan",
+        ("A kitchen that runs itself", "Your pantry, tools, and grocery list in one place",
          .kitchenFill, 0x6FB183, 0x2E5339, 0x2E5339),
         ("Less waste, less takeout", "Use what you have before it goes off",
          .ecoFill, 0xF3C877, 0xD99A3C, 0xD99A3C),
@@ -17,16 +19,20 @@ struct FourWeeksScreen: View {
         VStack(spacing: 0) {
             OnboardingHeadline("Here's where you'll be\nin 4 weeks", size: 27, maxWidth: 290)
             VStack(spacing: 14) {
-                ForEach(Self.cards, id: \.title) { card in
+                ForEach(Array(Self.cards.enumerated()), id: \.element.title) { index, card in
                     row(card)
+                        .opacity(appeared ? 1 : 0)
+                        .offset(y: appeared ? 0 : 14)
+                        .animation(reduceMotion ? nil
+                            : .easeOut(duration: 0.7).delay(0.25 + Double(index) * 0.38),
+                            value: appeared)
                 }
             }
             .frame(maxHeight: .infinity)
-            OnboardingPrimaryButton(title: "Continue", action: onContinue)
         }
         .padding(.horizontal, 24)
         .padding(.top, 50)
-        .padding(.bottom, 10)
+        .onAppear { appeared = true }
     }
 
     private func row(_ card: (title: String, body: String, icon: MS, start: UInt32, end: UInt32, glow: UInt32)) -> some View {

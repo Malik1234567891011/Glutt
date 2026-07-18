@@ -78,32 +78,24 @@ final class GroceryItem {
     }
 }
 
+/// A piece of equipment the user owns. A row exists **iff** the tool is owned —
+/// checking a preset inserts one, unchecking deletes it. Custom tools are just
+/// rows whose name isn't in `KitchenToolCatalog`. Polly reads these mid-cook and
+/// recipes flag gear you don't have (see `KitchenToolCatalog`).
 @Model
-final class Leftover {
-    var title: String
-    var servingsRemaining: Double
-    var cookedAt: Date
-    var isFrozen: Bool
-    var caloriesPerServing: Int?
-    var proteinPerServing: Int?
+final class KitchenTool {
+    var name: String
+    /// Lowercased, trimmed — for matching against recipe text and presets.
+    var canonicalName: String
+    /// Display group: "Appliances", "Cookware", "Tools", or "Custom".
+    var category: String
+    var addedAt: Date
 
-    var sourceRecipe: Recipe?
-
-    var ageInDays: Int {
-        Calendar.current.dateComponents([.day], from: cookedAt, to: .now).day ?? 0
-    }
-
-    init(
-        title: String,
-        servingsRemaining: Double,
-        cookedAt: Date = .now,
-        isFrozen: Bool = false,
-        sourceRecipe: Recipe? = nil
-    ) {
-        self.title = title
-        self.servingsRemaining = servingsRemaining
-        self.cookedAt = cookedAt
-        self.isFrozen = isFrozen
-        self.sourceRecipe = sourceRecipe
+    init(name: String, category: String = "Custom") {
+        self.name = name
+        self.canonicalName = name.lowercased().trimmingCharacters(in: .whitespaces)
+        self.category = category
+        self.addedAt = .now
     }
 }
+

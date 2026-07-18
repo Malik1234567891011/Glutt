@@ -32,16 +32,17 @@ enum AskGlutt {
     static func rankSearch(
         query: String,
         results: [RecipeSearchEngine.SearchResult],
-        pantry: [PantryItem]
+        pantry: [PantryItem],
+        client: LLMClient = .live
     ) async -> RankedSearch {
         let passthrough = results.map {
             RankedResult(recipe: $0.recipe, reasons: $0.reasons, badge: nil)
         }
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !results.isEmpty, LLMClient.isConfigured else {
+        guard !trimmed.isEmpty, !results.isEmpty, client.isConfigured else {
             return RankedSearch(headline: nil, results: passthrough, usedAI: false)
         }
-        guard let llm = await requestRanking(query: trimmed, results: results, pantry: pantry) else {
+        guard let llm = await requestRanking(query: trimmed, results: results, pantry: pantry, client: client) else {
             return RankedSearch(headline: nil, results: passthrough, usedAI: false)
         }
         let picks = llm.picks.map { Pick(index: $0.index, reason: $0.reason, badge: $0.badge) }
@@ -88,7 +89,8 @@ enum AskGlutt {
     private static func requestRanking(
         query: String,
         results: [RecipeSearchEngine.SearchResult],
-        pantry: [PantryItem]
+        pantry: [PantryItem],
+        client: LLMClient
     ) async -> LLMAnswer? {
         let system = """
         You are Glutt, a no-nonsense kitchen sidekick. The user is searching THEIR OWN
@@ -118,7 +120,7 @@ enum AskGlutt {
         }
 
         do {
-            return try await LLMClient.chatJSON(
+            return try await client.chatJSON(
                 LLMAnswer.self,
                 system: system,
                 user: user,

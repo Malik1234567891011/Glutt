@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=swap" rel="stylesheet">
+<style>
+  * { -webkit-font-smoothing: antialiased; box-sizing: border-box; }
+  body { margin: 0; }
+  a { color: #2E5339; text-decoration: none; }
+  a:hover { color: #3d6d4b; }
+  @keyframes gluttFade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @keyframes gluttPop { 0% { transform: scale(.7); opacity: 0; } 60% { transform: scale(1.06); } 100% { transform: scale(1); opacity: 1; } }
+  @keyframes gluttOrb { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  @keyframes gluttRing { 0% { transform: scale(1); opacity: .5; } 100% { transform: scale(1.9); opacity: 0; } }
+  @keyframes gluttPulse { 0%,100% { transform: scale(.95); } 50% { transform: scale(1.09); } }
+  @keyframes gluttSpin { to { transform: rotate(360deg); } }
+  @keyframes gluttSheet { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes gluttCoachRipple { 0% { transform: scale(1); opacity: .8; } 100% { transform: scale(2.3); opacity: 0; } }
+  @keyframes gluttBounce { 0%,80%,100% { transform: translateY(0); opacity: .45; } 40% { transform: translateY(-13px); opacity: 1; } }
+  @keyframes gluttBar { 0% { transform: translateX(-130%); } 100% { transform: translateX(330%); } }
+  @keyframes gluttCoachBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+    <div style="height:100%;position:relative;overflow:hidden;background:#FAF3E7;color:#2A2420;font-family:Nunito;">
+
+      <!-- ============ TOP CHROME (progress + back) ============ -->
+      <sc-if value="{{ hasChrome }}">
+        <div style="position:absolute;top:0;left:0;right:0;z-index:40;padding:60px 24px 0;display:flex;align-items:center;gap:14px;">
+          <sc-if value="{{ showBack }}">
+            <button onClick="{{ back }}" style="width:40px;height:40px;border-radius:50%;background:#FFFFFF;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 7px rgba(42,36,32,0.12);flex-shrink:0;" style-hover="background:#F3ECDB;"><span style="font-family:'Material Symbols Rounded';font-size:24px;color:#4A4238;line-height:1;">chevron_left</span></button>
+          </sc-if>
+          <div style="flex:1;height:8px;border-radius:100px;background:rgba(42,36,32,0.09);overflow:hidden;"><div style="height:100%;border-radius:100px;background:#3E7A50;width:{{ progressWidth }};transition:width .45s cubic-bezier(.4,0,.2,1);"></div></div>
+        </div>
+      </sc-if>
+
+      <!-- ============ SCREEN 0 — WELCOME ============ -->
+      <sc-if value="{{ s0 }}">
+        <div style="position:absolute;inset:0;animation:gluttFade .5s ease both;">
+          <div style="position:absolute;inset:0;padding:54px 12px 0;background:#FAF3E7;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;grid-auto-rows:76px;">
+              <div style="grid-row:span 3;border-radius:20px;overflow:hidden;position:relative;background:#F1E9D6;box-shadow:0 6px 16px rgba(42,36,32,0.06);"><x-import component-from-global-scope="image-slot" from="./image-slot.js" id="glutt-hero" shape="rect" placeholder="Creamy Tomato Rigatoni" hint-size="100%,100%"></x-import></div>
+              <div style="grid-row:span 2;border-radius:20px;overflow:hidden;position:relative;background:#F1E9D6;box-shadow:0 6px 16px rgba(42,36,32,0.06);"><x-import component-from-global-scope="image-slot" from="./image-slot.js" id="meal-2" shape="rect" placeholder="Green Goddess Bowl" hint-size="100%,100%"></x-import></div>
+              <div style="grid-row:span 2;border-radius:20px;overflow:hidden;position:relative;background:#F1E9D6;box-shadow:0 6px 16px rgba(42,36,32,0.06);"><x-import component-from-global-scope="image-slot" from="./image-slot.js" id="meal-3" shape="rect" placeholder="Shakshuka" hint-size="100%,100%"></x-import></div>
+              <div style="grid-row:span 2;border-radius:20px;overflow:hidden;position:relative;background:#F1E9D6;box-shadow:0 6px 16px rgba(42,36,32,0.06);"><x-import component-from-global-scope="image-slot" from="./image-slot.js" id="meal-4" shape="rect" placeholder="Avocado Toast" hint-size="100%,100%"></x-import></div>
+              <div style="grid-row:span 3;border-radius:20px;overflow:hidden;position:relative;background:#F1E9D6;box-shadow:0 6px 16px rgba(42,36,32,0.06);"><x-import component-from-global-scope="image-slot" from="./image-slot.js" id="meal-5" shape="rect" placeholder="Thai Green Curry" hint-size="100%,100%"></x-import></div>
+              <div style="grid-row:span 2;border-radius:20px;overflow:hidden;position:relative;background:#F1E9D6;box-shadow:0 6px 16px rgba(42,36,32,0.06);"><x-import component-from-global-scope="image-slot" from="./image-slot.js" id="meal-6" shape="rect" placeholder="Herb Roast Chicken" hint-size="100%,100%"></x-import></div>
+              <div style="grid-row:span 2;border-radius:20px;overflow:hidden;position:relative;background:#F1E9D6;box-shadow:0 6px 16px rgba(42,36,32,0.06);"><x-import component-from-global-scope="image-slot" from="./image-slot.js" id="meal-7" shape="rect" placeholder="Caesar Salad" hint-size="100%,100%"></x-import></div>
+              <div style="grid-row:span 2;border-radius:20px;overflow:hidden;position:relative;background:#F1E9D6;box-shadow:0 6px 16px rgba(42,36,32,0.06);"><x-import component-from-global-scope="image-slot" from="./image-slot.js" id="meal-8" shape="rect" placeholder="Carnitas Tacos" hint-size="100%,100%"></x-import></div>
+              <div style="grid-row:span 2;border-radius:20px;overflow:hidden;position:relative;background:#F1E9D6;box-shadow:0 6px 16px rgba(42,36,32,0.06);"><x-import component-from-global-scope="image-slot" from="./image-slot.js" id="meal-9" shape="rect" placeholder="Miso Ramen" hint-size="100%,100%"></x-import></div>
+              <div style="grid-row:span 2;border-radius:20px;overflow:hidden;position:relative;background:#F1E9D6;box-shadow:0 6px 16px rgba(42,36,32,0.06);"><x-import component-from-global-scope="image-slot" from="./image-slot.js" id="meal-10" shape="rect" placeholder="Buttermilk Pancakes" hint-size="100%,100%"></x-import></div>
+              <div style="grid-row:span 2;border-radius:20px;overflow:hidden;position:relative;background:#F1E9D6;box-shadow:0 6px 16px rgba(42,36,32,0.06);"><x-import component-from-global-scope="image-slot" from="./image-slot.js" id="meal-11" shape="rect" placeholder="Miso-Glazed Salmon" hint-size="100%,100%"></x-import></div>
+            </div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;height:62%;pointer-events:none;background:linear-gradient(to top,#FAF3E7 46%,rgba(250,243,231,0.86) 60%,rgba(250,243,231,0) 100%);"></div>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:26px 28px 40px;">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:14px;">
+              <span style="font-family:'Bricolage Grotesque';font-weight:700;font-size:22px;color:#241E19;letter-spacing:-.3px;">Glutt</span>
+              <span style="width:10px;height:10px;border-radius:3px;background:#D9483B;"></span>
+            </div>
+            <h1 style="font-family:'Bricolage Grotesque';font-weight:600;font-size:34px;line-height:1.08;letter-spacing:-1px;color:#241E19;margin:0 0 18px;max-width:320px;text-wrap:balance;">Cook anything you actually want</h1>
+            <div style="display:inline-flex;align-items:center;gap:8px;background:#EAF1E7;padding:8px 14px;border-radius:100px;margin-bottom:26px;">
+              <span style="font-family:'Bricolage Grotesque';font-weight:700;font-size:14px;color:#2E5339;">1M+</span>
+              <span style="font-family:Nunito;font-weight:700;font-size:13.5px;color:#4E7A5C;">happy home cooks</span>
+            </div>
+            <button onClick="{{ start }}" style="display:flex;align-items:center;justify-content:center;height:60px;border-radius:100px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:19px;border:none;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(46,83,57,0.32);letter-spacing:.2px;" style-hover="background:#356145;" style-active="transform:translateY(1px);">Start</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ SCREEN 1 — INTRO ============ -->
+      <sc-if value="{{ s1 }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;padding:104px 24px 42px;animation:gluttFade .45s ease both;">
+          <h1 style="font-family:'Bricolage Grotesque';font-weight:600;font-size:28px;line-height:1.2;letter-spacing:-.5px;color:#241E19;text-align:center;margin:0 auto;max-width:310px;text-wrap:balance;">Glutt is a whole new way to cook at home</h1>
+          <div style="position:relative;flex:1;border-radius:28px;margin:22px 0;overflow:hidden;background:#F4EDDC;box-shadow:inset 0 0 0 1px rgba(42,36,32,0.05);">
+            <video src="assets/glutt-intro.mp4" autoplay loop muted playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;transform:translateY(-9%) scale(1.1);transform-origin:center top;"></video>
+            <div style="position:absolute;top:0;left:0;right:0;height:30%;pointer-events:none;background:linear-gradient(to bottom,#F4EDDC 0%,#F4EDDC 70%,rgba(244,237,220,0) 100%);"></div>
+          </div>
+          <button onClick="{{ next }}" style="display:flex;align-items:center;justify-content:center;height:60px;border-radius:100px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:19px;border:none;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(46,83,57,0.3);flex-shrink:0;letter-spacing:.2px;" style-hover="background:#356145;" style-active="transform:translateY(1px);">Continue</button>
+        </div>
+      </sc-if>
+
+      <!-- ============ SCREEN 2 — QUESTIONS INTRO ============ -->
+      <sc-if value="{{ s2 }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;padding:104px 24px 42px;animation:gluttFade .45s ease both;">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:22px;">
+            <h1 style="font-family:'Bricolage Grotesque';font-weight:600;font-size:29px;line-height:1.22;letter-spacing:-.5px;color:#241E19;margin:0;max-width:290px;text-wrap:balance;">Let's tune Glutt to how you actually cook</h1>
+          </div>
+          <button onClick="{{ next }}" style="display:flex;align-items:center;justify-content:center;height:60px;border-radius:100px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:19px;border:none;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(46,83,57,0.3);flex-shrink:0;letter-spacing:.2px;" style-hover="background:#356145;" style-active="transform:translateY(1px);">Continue</button>
+        </div>
+      </sc-if>
+
+      <!-- ============ SCREEN 3 — GOALS ============ -->
+      <sc-if value="{{ s3 }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;padding:98px 22px 40px;animation:gluttFade .45s ease both;">
+          <h1 style="font-family:'Bricolage Grotesque';font-weight:600;font-size:26px;line-height:1.18;letter-spacing:-.5px;color:#241E19;text-align:center;margin:0 auto;max-width:300px;text-wrap:balance;">Why do you want to cook more at home?</h1>
+          <p style="font-family:Nunito;font-weight:600;font-size:14.5px;color:#9A9082;text-align:center;margin:8px 0 0;">Pick anything that sounds like you</p>
+          <div style="flex:1;overflow:auto;display:flex;flex-direction:column;gap:11px;margin:20px 0 16px;padding:2px;">
+            <sc-for list="{{ goals }}" as="g" hint-placeholder-count="6">
+              <div style="{{ g.rowStyle }}" onClick="{{ g.onToggle }}">
+                <span style="font-family:Nunito;font-weight:700;font-size:15.5px;color:#3A342C;">{{ g.label }}</span>
+                <div style="{{ g.boxStyle }}"><sc-if value="{{ g.selected }}"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:18px;color:#FBF5E9;line-height:1;">check</span></sc-if></div>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ anyGoal }}">
+            <button onClick="{{ next }}" style="display:flex;align-items:center;justify-content:center;height:60px;border-radius:100px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:19px;border:none;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(46,83,57,0.3);flex-shrink:0;letter-spacing:.2px;" style-hover="background:#356145;" style-active="transform:translateY(1px);">Continue</button>
+          </sc-if>
+          <sc-if value="{{ noGoal }}">
+            <div style="display:flex;align-items:center;justify-content:center;height:60px;border-radius:100px;background:#DED6C4;color:#A79D8B;font-family:'Bricolage Grotesque';font-weight:600;font-size:19px;width:100%;flex-shrink:0;letter-spacing:.2px;cursor:not-allowed;">Continue</div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ============ SCREEN 4 — FOOD RULES ============ -->
+      <sc-if value="{{ s4 }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;padding:96px 22px 32px;animation:gluttFade .45s ease both;">
+          <h1 style="font-family:'Bricolage Grotesque';font-weight:600;font-size:27px;line-height:1.18;letter-spacing:-.5px;color:#241E19;text-align:center;margin:0 auto;max-width:300px;text-wrap:balance;">Any food rules?</h1>
+          <p style="font-family:Nunito;font-weight:600;font-size:14.5px;color:#9A9082;text-align:center;margin:9px 0 0;">Tap all that apply</p>
+          <div style="flex:1;overflow:auto;margin:20px 0 12px;padding:6px 4px;display:flex;flex-direction:column;justify-content:center;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+              <sc-for list="{{ rules }}" as="r" hint-placeholder-count="9">
+                <div style="{{ r.tileStyle }}" onClick="{{ r.onToggle }}">
+                  <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.32),rgba(0,0,0,0) 54%);border-radius:inherit;"></div>
+                  <div style="position:relative;z-index:1;width:60px;height:60px;border-radius:19px;background:rgba(255,255,255,0.22);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,0.45),0 6px 14px rgba(0,0,0,0.12);"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1,'wght' 400;font-size:33px;line-height:1;color:#fff;">{{ r.icon }}</span></div>
+                  <span style="position:relative;z-index:1;font-family:'Bricolage Grotesque';font-weight:600;font-size:15px;color:#fff;letter-spacing:-.2px;text-align:center;text-shadow:0 1px 4px rgba(0,0,0,0.28);">{{ r.label }}</span>
+                  <sc-if value="{{ r.selected }}"><div style="position:absolute;top:10px;right:10px;z-index:2;width:24px;height:24px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.22);"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:15px;line-height:1;color:#2E5339;">check</span></div></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <button onClick="{{ next }}" style="display:flex;align-items:center;justify-content:center;height:60px;border-radius:100px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:19px;border:none;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(46,83,57,0.3);flex-shrink:0;letter-spacing:.2px;" style-hover="background:#356145;" style-active="transform:translateY(1px);">Continue</button>
+        </div>
+      </sc-if>
+
+      <!-- ============ SCREEN 5 — ACHIEVE ============ -->
+      <sc-if value="{{ s5 }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;padding:104px 24px 42px;animation:gluttFade .45s ease both;">
+          <h1 style="font-family:'Bricolage Grotesque';font-weight:600;font-size:27px;line-height:1.18;letter-spacing:-.5px;color:#241E19;text-align:center;margin:0 auto;max-width:290px;text-wrap:balance;">Here's where you'll be in 4 weeks</h1>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;">
+            <div style="position:relative;display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:24px;background:rgba(255,253,247,0.72);box-shadow:0 8px 22px rgba(42,36,32,0.05);border:1px solid rgba(42,36,32,0.05);overflow:hidden;">
+              <div style="flex:1;"><div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:18px;color:#241E19;">Cook with confidence</div><div style="font-family:Nunito;font-weight:600;font-size:13.5px;color:#9A9082;margin-top:4px;line-height:1.35;">Hands-free guided recipes that actually work</div></div>
+              <div style="position:relative;width:62px;height:62px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:104px;height:104px;border-radius:50%;background:radial-gradient(circle,rgba(225,82,61,0.55) 0%,rgba(225,82,61,0) 68%);"></div>
+                <div style="position:relative;width:62px;height:62px;border-radius:19px;background:linear-gradient(155deg,#F4906F 0%,#D9483B 100%);box-shadow:0 10px 20px rgba(217,72,59,0.45),inset 0 2px 3px rgba(255,255,255,0.55),inset 0 -4px 8px rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:30px;color:#fff;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,0.15);">local_fire_department</span></div>
+              </div>
+            </div>
+            <div style="position:relative;display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:24px;background:rgba(255,253,247,0.72);box-shadow:0 8px 22px rgba(42,36,32,0.05);border:1px solid rgba(42,36,32,0.05);overflow:hidden;">
+              <div style="flex:1;"><div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:18px;color:#241E19;">A kitchen that runs itself</div><div style="font-family:Nunito;font-weight:600;font-size:13.5px;color:#9A9082;margin-top:4px;line-height:1.35;">Grocery lists build themselves from your plan</div></div>
+              <div style="position:relative;width:62px;height:62px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:104px;height:104px;border-radius:50%;background:radial-gradient(circle,rgba(46,83,57,0.5) 0%,rgba(46,83,57,0) 68%);"></div>
+                <div style="position:relative;width:62px;height:62px;border-radius:19px;background:linear-gradient(155deg,#6FB183 0%,#2E5339 100%);box-shadow:0 10px 20px rgba(46,83,57,0.45),inset 0 2px 3px rgba(255,255,255,0.5),inset 0 -4px 8px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:30px;color:#fff;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,0.15);">kitchen</span></div>
+              </div>
+            </div>
+            <div style="position:relative;display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:24px;background:rgba(255,253,247,0.72);box-shadow:0 8px 22px rgba(42,36,32,0.05);border:1px solid rgba(42,36,32,0.05);overflow:hidden;">
+              <div style="flex:1;"><div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:18px;color:#241E19;">Less waste, less takeout</div><div style="font-family:Nunito;font-weight:600;font-size:13.5px;color:#9A9082;margin-top:4px;line-height:1.35;">Use what you have before it goes off</div></div>
+              <div style="position:relative;width:62px;height:62px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:104px;height:104px;border-radius:50%;background:radial-gradient(circle,rgba(217,154,60,0.55) 0%,rgba(217,154,60,0) 68%);"></div>
+                <div style="position:relative;width:62px;height:62px;border-radius:19px;background:linear-gradient(155deg,#F3C877 0%,#D99A3C 100%);box-shadow:0 10px 20px rgba(217,154,60,0.45),inset 0 2px 3px rgba(255,255,255,0.55),inset 0 -4px 8px rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:30px;color:#fff;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,0.15);">eco</span></div>
+              </div>
+            </div>
+          </div>
+          <button onClick="{{ next }}" style="display:flex;align-items:center;justify-content:center;height:60px;border-radius:100px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:19px;border:none;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(46,83,57,0.3);flex-shrink:0;letter-spacing:.2px;" style-hover="background:#356145;" style-active="transform:translateY(1px);">Continue</button>
+        </div>
+      </sc-if>
+
+      <!-- ============ SCREEN 6 — POLLY ============ -->
+      <sc-if value="{{ s6 }}">
+        <div style="position:absolute;inset:0;background:#FAF3E7;animation:gluttFade .45s ease both;">
+          <div style="position:absolute;top:0;left:0;right:0;height:66%;overflow:hidden;background:#1a140f;">
+            <video src="assets/glutt-intro.mp4" autoplay loop muted playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 34%;"></video>
+            <div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(20,15,10,.30) 0%,rgba(20,15,10,0) 24%,rgba(20,15,10,0) 52%,rgba(250,243,231,.55) 82%,#FAF3E7 100%);"></div>
+          </div>
+          <div style="position:absolute;top:0;left:0;right:0;z-index:10;padding:60px 24px 0;display:flex;align-items:center;gap:14px;">
+            <sc-if value="{{ showBack }}">
+              <button onClick="{{ back }}" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.24);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;" style-hover="background:rgba(255,255,255,0.34);"><span style="font-family:'Material Symbols Rounded';font-size:24px;color:#fff;line-height:1;">chevron_left</span></button>
+            </sc-if>
+            <div style="flex:1;height:8px;border-radius:100px;background:rgba(255,255,255,0.32);overflow:hidden;"><div style="height:100%;border-radius:100px;background:#7BD48F;width:{{ progressWidth }};transition:width .45s cubic-bezier(.4,0,.2,1);"></div></div>
+          </div>
+          <div style="position:absolute;top:18.5%;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:11px;width:286px;padding:11px 17px 11px 13px;border-radius:100px;background:rgba(20,15,10,0.44);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 10px 26px rgba(0,0,0,0.28);">
+            <span style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 38% 30%,#8FE3A3,#2E5339);display:flex;align-items:center;justify-content:center;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:18px;color:#fff;line-height:1;">graphic_eq</span></span>
+            <span style="font-family:Nunito;font-weight:600;font-size:13px;color:#fff;line-height:1.3;">"Sear it 2 more minutes, I'll tell you when to flip."</span>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:0 28px 40px;display:flex;flex-direction:column;align-items:center;text-align:center;">
+            <div style="display:inline-flex;align-items:center;gap:10px;padding:8px 16px;border-radius:15px;background:rgba(46,83,57,0.09);margin-bottom:18px;">
+              <span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:22px;color:#2E5339;line-height:1;transform:rotate(-18deg);">eco</span>
+              <div><div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:14px;color:#241E19;line-height:1.05;">4.9 ★ rated</div><div style="font-family:Nunito;font-weight:700;font-size:11px;color:#6E6456;line-height:1.05;margin-top:2px;">Loved by 1M+ home cooks</div></div>
+              <span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:22px;color:#2E5339;line-height:1;transform:rotate(18deg) scaleX(-1);">eco</span>
+            </div>
+            <h1 style="font-family:'Bricolage Grotesque';font-weight:600;font-size:29px;line-height:1.13;letter-spacing:-.6px;color:#241E19;margin:0;max-width:330px;text-wrap:balance;">Polly guides you through recipes, completely hands-free</h1>
+            <div style="display:inline-flex;align-items:center;gap:8px;background:#2E5339;padding:9px 16px;border-radius:100px;margin:15px 0 22px;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:17px;color:#8FE3A3;line-height:1;">mic</span><span style="font-family:Nunito;font-weight:800;font-size:13px;color:#EAF1E7;letter-spacing:.2px;">Real-time voice + camera</span></div>
+            <button onClick="{{ next }}" style="display:flex;align-items:center;justify-content:center;height:60px;border-radius:100px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:19px;border:none;cursor:pointer;width:100%;box-shadow:0 12px 28px rgba(46,83,57,0.32);letter-spacing:.2px;" style-hover="background:#356145;" style-active="transform:translateY(1px);">Continue</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ SCREEN 7 — AI FEATURES ============ -->
+      <sc-if value="{{ s7 }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;padding:104px 24px 42px;animation:gluttFade .45s ease both;">
+          <h1 style="font-family:'Bricolage Grotesque';font-weight:600;font-size:27px;line-height:1.18;letter-spacing:-.5px;color:#241E19;text-align:center;margin:0 auto;max-width:300px;text-wrap:balance;">AI shows up right where you cook</h1>
+          <p style="font-family:Nunito;font-weight:600;font-size:14.5px;color:#9A9082;text-align:center;margin:8px auto 0;max-width:280px;line-height:1.4;">Smart help, right where you're cooking</p>
+          <div style="position:relative;flex:1;border-radius:28px;margin:14px 0;overflow:hidden;background:#F4EDDC;box-shadow:inset 0 0 0 1px rgba(42,36,32,0.05);">
+            <video src="assets/glutt-features.mp4" autoplay loop muted playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;transform:translateY(-8%) scale(1.08);transform-origin:center top;"></video>
+            <div style="position:absolute;top:0;left:0;right:0;height:22%;pointer-events:none;background:linear-gradient(to bottom,#F4EDDC 0%,#F4EDDC 66%,rgba(244,237,220,0) 100%);"></div>
+          </div>
+          <button onClick="{{ next }}" style="display:flex;align-items:center;justify-content:center;height:60px;border-radius:100px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:19px;border:none;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(46,83,57,0.3);flex-shrink:0;letter-spacing:.2px;" style-hover="background:#356145;" style-active="transform:translateY(1px);">Continue</button>
+        </div>
+      </sc-if>
+
+      <!-- ============ SCREEN 8 — NOTIFICATIONS ============ -->
+      <sc-if value="{{ s8 }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;padding:104px 24px 42px;animation:gluttFade .45s ease both;">
+          <h1 style="font-family:'Bricolage Grotesque';font-weight:600;font-size:27px;line-height:1.18;letter-spacing:-.5px;color:#241E19;text-align:center;margin:0 auto;max-width:280px;text-wrap:balance;">Turn on gentle nudges</h1>
+          <p style="font-family:Nunito;font-weight:600;font-size:14.5px;color:#9A9082;text-align:center;margin:8px 0 0;">Cook on rhythm, never nagging</p>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:0 2px;">
+            <div style="width:100%;max-width:344px;display:flex;gap:11px;align-items:flex-start;background:rgba(255,253,247,0.95);border:1px solid rgba(42,36,32,0.05);border-radius:22px;padding:13px 15px;box-shadow:0 12px 30px rgba(42,36,32,0.1);animation:gluttOrb 5s ease-in-out infinite;">
+              <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(150deg,#3C6B4B,#244430);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(46,83,57,0.3);"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:23px;color:#FBF5E9;line-height:1;">skillet</span></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><span style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:.7px;color:#9A9082;">GLUTT</span><span style="font-family:Nunito;font-weight:600;font-size:11px;color:#B3A99A;">now</span></div>
+                <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:14.5px;color:#241E19;line-height:1.2;">Tonight's dinner is 20 minutes away</div>
+                <div style="font-family:Nunito;font-weight:600;font-size:12.5px;color:#8A8072;line-height:1.35;margin-top:2px;">You've got everything for Creamy Tomato Rigatoni.</div>
+              </div>
+            </div>
+            <div style="width:100%;max-width:344px;display:flex;gap:11px;align-items:flex-start;background:rgba(255,253,247,0.95);border:1px solid rgba(42,36,32,0.05);border-radius:22px;padding:13px 15px;box-shadow:0 12px 30px rgba(42,36,32,0.1);animation:gluttOrb 5.4s ease-in-out infinite .55s;">
+              <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(150deg,#3C6B4B,#244430);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(46,83,57,0.3);"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:23px;color:#FBF5E9;line-height:1;">skillet</span></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><span style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:.7px;color:#9A9082;">GLUTT</span><span style="font-family:Nunito;font-weight:600;font-size:11px;color:#B3A99A;">8:00 AM</span></div>
+                <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:14.5px;color:#241E19;line-height:1.2;">Plan this week in 2 minutes</div>
+                <div style="font-family:Nunito;font-weight:600;font-size:12.5px;color:#8A8072;line-height:1.35;margin-top:2px;">Pick a few meals and Glutt builds your list.</div>
+              </div>
+            </div>
+            <div style="width:100%;max-width:344px;display:flex;gap:11px;align-items:flex-start;background:rgba(255,253,247,0.95);border:1px solid rgba(42,36,32,0.05);border-radius:22px;padding:13px 15px;box-shadow:0 12px 30px rgba(42,36,32,0.1);animation:gluttOrb 5.8s ease-in-out infinite 1.05s;">
+              <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(150deg,#3C6B4B,#244430);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(46,83,57,0.3);"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:23px;color:#FBF5E9;line-height:1;">skillet</span></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><span style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:.7px;color:#9A9082;">GLUTT</span><span style="font-family:Nunito;font-weight:600;font-size:11px;color:#B3A99A;">Sun</span></div>
+                <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:14.5px;color:#241E19;line-height:1.2;">Use it before it turns</div>
+                <div style="font-family:Nunito;font-weight:600;font-size:12.5px;color:#8A8072;line-height:1.35;margin-top:2px;">Your spinach and mushrooms expire Sunday.</div>
+              </div>
+            </div>
+          </div>
+          <button onClick="{{ toPerm }}" style="display:flex;align-items:center;justify-content:center;height:60px;border-radius:100px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:19px;border:none;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(46,83,57,0.3);flex-shrink:0;letter-spacing:.2px;" style-hover="background:#356145;" style-active="transform:translateY(1px);">Turn on notifications</button>
+          <div style="text-align:center;margin-top:16px;"><a href="#" onClick="{{ maybeLater }}" style="font-family:Nunito;font-weight:700;font-size:15px;color:#9A9082;cursor:pointer;">Maybe later</a></div>
+        </div>
+      </sc-if>
+
+      <!-- ============ SCREEN 9 — NOTIFICATION PERMISSION ============ -->
+      <sc-if value="{{ s9 }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;padding:104px 24px 42px;animation:gluttFade .45s ease both;">
+          <h1 style="font-family:'Bricolage Grotesque';font-weight:600;font-size:27px;line-height:1.18;letter-spacing:-.5px;color:#241E19;text-align:center;margin:0 auto;max-width:300px;text-wrap:balance;">We'll remind you to cook so it becomes a habit</h1>
+          <p style="font-family:Nunito;font-weight:600;font-size:14.5px;color:#9A9082;text-align:center;margin:8px auto 0;max-width:280px;line-height:1.4;">Only cooking reminders, never spam</p>
+          <div style="flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+            <div style="position:relative;">
+              <div style="position:relative;width:272px;border-radius:14px;background:rgba(249,249,250,0.97);box-shadow:0 24px 60px rgba(42,36,32,0.28);overflow:hidden;">
+                <div style="padding:20px 18px 15px;text-align:center;">
+                  <div style="font-family:-apple-system,'SF Pro Display',system-ui;font-weight:600;font-size:16px;color:#1c1c1e;line-height:1.3;letter-spacing:-.2px;">&quot;Glutt&quot; Would Like to Send You Notifications</div>
+                  <div style="font-family:-apple-system,'SF Pro Text',system-ui;font-weight:400;font-size:12.5px;color:#6b6b70;line-height:1.35;margin-top:6px;">Just gentle reminders to cook. No spam, ever.</div>
+                </div>
+                <div style="display:flex;align-items:stretch;border-top:1px solid rgba(60,60,67,0.16);height:44px;">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:-apple-system,'SF Pro Text',system-ui;font-weight:400;font-size:16px;color:#0a84ff;">Don't Allow</div>
+                  <div style="width:1px;background:rgba(60,60,67,0.16);"></div>
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:-apple-system,'SF Pro Text',system-ui;font-weight:600;font-size:16px;color:#0a84ff;">Allow</div>
+                </div>
+                <div style="position:absolute;right:0;bottom:0;width:50%;height:44px;border-radius:0 0 14px 0;background:rgba(46,83,57,0.08);box-shadow:inset 0 0 0 2px rgba(46,83,57,0.85);pointer-events:none;"></div>
+              </div>
+              <span style="position:absolute;left:75%;top:100%;transform:translateX(-50%);margin-top:14px;font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:36px;color:#2E5339;animation:gluttOrb 1.5s ease-in-out infinite;">arrow_upward</span>
+            </div>
+          </div>
+          <button onClick="{{ enableNotif }}" style="display:flex;align-items:center;justify-content:center;height:60px;border-radius:100px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:19px;border:none;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(46,83,57,0.3);flex-shrink:0;letter-spacing:.2px;" style-hover="background:#356145;" style-active="transform:translateY(1px);">Allow Notifications</button>
+          <div style="text-align:center;margin-top:16px;"><a href="#" onClick="{{ maybeLater }}" style="font-family:Nunito;font-weight:700;font-size:15px;color:#9A9082;cursor:pointer;">Not now</a></div>
+        </div>
+      </sc-if>
+
+      <!-- ============ SCREEN 10 — IMPORT TUTORIAL ============ -->
+      <sc-if value="{{ s10 }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;padding:80px 22px 26px;background:#FAF3E7;animation:gluttFade .45s ease both;">
+          <div style="text-align:center;flex-shrink:0;min-height:64px;">
+            <h1 style="font-family:'Bricolage Grotesque';font-weight:600;font-size:25px;line-height:1.14;letter-spacing:-.5px;color:#241E19;margin:0 auto;max-width:300px;text-wrap:balance;">{{ tutHeadline }}</h1>
+            <p style="font-family:Nunito;font-weight:600;font-size:13.5px;color:#9A9082;margin:7px auto 0;max-width:272px;line-height:1.4;">{{ tutSub }}</p>
+          </div>
+
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0;">
+            <div style="position:relative;width:240px;height:510px;border-radius:46px;overflow:hidden;background:#0d0d0f;box-shadow:0 26px 56px rgba(42,36,32,0.3),0 0 0 2px rgba(42,36,32,0.05);flex-shrink:0;">
+              <div style="position:absolute;top:9px;left:50%;transform:translateX(-50%);width:82px;height:23px;border-radius:100px;background:#000;z-index:30;pointer-events:none;"></div>
+
+              <!-- FRAME 0 — the post -->
+              <sc-if value="{{ tw0 }}">
+                <div onClick="{{ tutAdvance }}" style="position:absolute;top:0;left:0;width:390px;height:830px;transform:scale(0.61538);transform-origin:top left;cursor:pointer;">
+                  <div style="position:absolute;inset:0;overflow:hidden;background:#0d0d0f;animation:gluttFade .35s ease both;">
+                  <img src="assets/hot-honey.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:0;left:0;right:0;height:120px;background:linear-gradient(to bottom,rgba(0,0,0,0.5),transparent);pointer-events:none;"></div>
+                  <div style="position:absolute;bottom:0;left:0;right:0;height:300px;background:linear-gradient(to top,rgba(0,0,0,0.82),transparent);pointer-events:none;"></div>
+                  <div style="position:absolute;top:64px;left:18px;display:flex;align-items:center;gap:9px;">
+                    <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#E1523D,#f0a24a);border:2px solid #fff;"></div>
+                    <span style="font-family:'Bricolage Grotesque';font-weight:700;font-size:15px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,0.5);">thesapor</span>
+                    <span style="font-family:Nunito;font-weight:800;font-size:11px;color:#fff;border:1.5px solid rgba(255,255,255,0.85);border-radius:100px;padding:2px 10px;">Follow</span>
+                  </div>
+                  <div style="position:absolute;right:12px;bottom:118px;display:flex;flex-direction:column;align-items:center;gap:20px;">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:34px;color:#fff;line-height:1;">favorite</span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#fff;">44.7K</span></div>
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><span style="font-family:'Material Symbols Rounded';font-size:33px;color:#fff;line-height:1;">mode_comment</span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#fff;">46</span></div>
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;">
+                      <div style="position:absolute;bottom:100%;right:-4px;margin-bottom:14px;z-index:6;"><div style="white-space:nowrap;background:#E1523D;color:#fff;font-family:Nunito;font-weight:800;font-size:13px;padding:7px 14px;border-radius:100px;box-shadow:0 8px 20px rgba(225,82,61,0.55);animation:gluttCoachBob 1s ease-in-out infinite;">Tap here 👇</div></div>
+                      <div style="position:relative;width:48px;height:48px;display:flex;align-items:center;justify-content:center;">
+                        <div style="position:absolute;inset:-6px;border-radius:50%;border:3px solid #E1523D;animation:gluttCoachRipple 1.4s ease-out infinite;"></div>
+                        <div style="position:absolute;inset:-6px;border-radius:50%;background:rgba(225,82,61,0.16);border:3px solid #E1523D;animation:gluttPulse 1s ease-in-out infinite;"></div>
+                        <span style="position:relative;font-family:'Material Symbols Rounded';font-size:33px;line-height:1;color:#fff;">send</span>
+                      </div>
+                      <span style="font-family:Nunito;font-weight:700;font-size:12px;color:#fff;">14.8K</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><span style="font-family:'Material Symbols Rounded';font-size:33px;color:#fff;line-height:1;">bookmark</span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#fff;">Save</span></div>
+                  </div>
+                  <div style="position:absolute;left:16px;right:80px;bottom:24px;">
+                    <div style="font-family:Georgia,serif;font-style:italic;font-size:21px;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,0.5);line-height:1.15;">Crispy hot honey chicken bites 🍯🔥</div>
+                    <div style="font-family:Nunito;font-weight:600;font-size:13px;color:rgba(255,255,255,0.82);margin-top:6px;">with cheesy ramen · 12 min · #weeknight</div>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+              <!-- FRAME 1 — app share options -->
+              <sc-if value="{{ tw1 }}">
+                <div onClick="{{ tutAdvance }}" style="position:absolute;top:0;left:0;width:390px;height:830px;transform:scale(0.61538);transform-origin:top left;cursor:pointer;">
+                  <div style="position:absolute;inset:0;overflow:hidden;background:#0d0d0f;animation:gluttFade .3s ease both;">
+                  <img src="assets/hot-honey.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.58);"></div>
+                  <div style="position:absolute;left:0;right:0;bottom:0;background:#ECEBED;border-radius:24px 24px 0 0;padding:0 0 22px;box-shadow:0 -12px 40px rgba(0,0,0,0.35);animation:gluttSheet .4s cubic-bezier(.2,.9,.3,1) both;">
+                    <div style="display:flex;justify-content:center;padding-top:11px;"><div style="width:40px;height:5px;border-radius:100px;background:rgba(60,60,67,0.3);"></div></div>
+                    <div style="margin:16px 18px 0;display:flex;align-items:center;gap:9px;background:rgba(120,120,128,0.16);border-radius:12px;padding:11px 13px;">
+                      <span style="font-family:'Material Symbols Rounded';font-size:19px;color:#8a8a8e;line-height:1;">search</span>
+                      <span style="font-family:Nunito;font-weight:600;font-size:14px;color:#8a8a8e;">Search</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:18px 24px 6px;">
+                      <div style="width:54px;height:54px;border-radius:50%;background:rgba(60,60,67,0.1);"></div>
+                      <div style="width:54px;height:54px;border-radius:50%;background:rgba(60,60,67,0.1);"></div>
+                      <div style="width:54px;height:54px;border-radius:50%;background:rgba(60,60,67,0.1);"></div>
+                      <div style="width:54px;height:54px;border-radius:50%;background:rgba(60,60,67,0.1);"></div>
+                    </div>
+                    <div style="height:1px;background:rgba(60,60,67,0.12);margin:10px 18px 0;"></div>
+                    <div style="display:flex;align-items:flex-start;gap:6px;padding:20px 12px 0;">
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;"><div style="width:54px;height:54px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;"><span style="font-family:'Material Symbols Rounded';font-size:26px;color:#2a2a2c;line-height:1;">add_circle</span></div><span style="font-family:Nunito;font-weight:600;font-size:11px;color:#3a3a3c;">Story</span></div>
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;">
+                        <div style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:15px;z-index:5;"><div style="white-space:nowrap;background:#E1523D;color:#fff;font-family:Nunito;font-weight:800;font-size:13px;padding:7px 14px;border-radius:100px;box-shadow:0 8px 20px rgba(225,82,61,0.55);animation:gluttCoachBob 1s ease-in-out infinite;">Tap here 👇</div></div>
+                        <div style="position:relative;width:54px;height:54px;">
+                          <div style="position:absolute;inset:-6px;border-radius:50%;border:3px solid #E1523D;animation:gluttCoachRipple 1.4s ease-out infinite;"></div>
+                          <div style="position:absolute;inset:-6px;border-radius:50%;background:rgba(225,82,61,0.16);border:3px solid #E1523D;animation:gluttPulse 1s ease-in-out infinite;"></div>
+                          <div style="position:relative;width:54px;height:54px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(46,83,57,0.3);display:flex;align-items:center;justify-content:center;"><span style="font-family:'Material Symbols Rounded';font-size:26px;color:#2E5339;line-height:1;">ios_share</span></div>
+                        </div>
+                        <span style="font-family:Nunito;font-weight:700;font-size:11px;color:#2E5339;">Share to…</span>
+                      </div>
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;"><div style="width:54px;height:54px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;"><span style="font-family:'Material Symbols Rounded';font-size:25px;color:#2a2a2c;line-height:1;">link</span></div><span style="font-family:Nunito;font-weight:600;font-size:11px;color:#3a3a3c;">Copy</span></div>
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;"><div style="width:54px;height:54px;border-radius:50%;background:#25D366;box-shadow:0 1px 3px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:28px;color:#fff;line-height:1;">chat</span></div><span style="font-family:Nunito;font-weight:600;font-size:11px;color:#3a3a3c;">WhatsApp</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+              <!-- FRAME 2 — system share sheet -->
+              <sc-if value="{{ tw2 }}">
+                <div onClick="{{ tutAdvance }}" style="position:absolute;top:0;left:0;width:390px;height:830px;transform:scale(0.61538);transform-origin:top left;cursor:pointer;">
+                  <div style="position:absolute;inset:0;overflow:hidden;background:#0d0d0f;animation:gluttFade .3s ease both;">
+                  <img src="assets/hot-honey.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.58);"></div>
+                  <div style="position:absolute;left:0;right:0;bottom:0;background:#ECEBED;border-radius:24px 24px 0 0;padding:0 0 22px;box-shadow:0 -12px 40px rgba(0,0,0,0.35);animation:gluttSheet .4s cubic-bezier(.2,.9,.3,1) both;">
+                    <div style="display:flex;justify-content:center;padding-top:11px;"><div style="width:40px;height:5px;border-radius:100px;background:rgba(60,60,67,0.3);"></div></div>
+                    <div style="display:flex;align-items:center;gap:12px;margin:16px 16px 0;background:#fff;border-radius:14px;padding:12px 14px;">
+                      <div style="width:46px;height:46px;border-radius:10px;overflow:hidden;flex-shrink:0;"><img src="assets/hot-honey.png" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+                      <div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:700;font-size:14px;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Crispy hot honey chicken bites</div><div style="font-family:Nunito;font-weight:600;font-size:12px;color:#8a8a8e;">thesapor.com</div></div>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:6px;padding:20px 12px 4px;">
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;"><div style="width:56px;height:56px;border-radius:16px;background:radial-gradient(circle at 50% 42%,#4aa3ff,#0a6cf0);display:flex;align-items:center;justify-content:center;"><span style="font-family:'Material Symbols Rounded';font-size:27px;color:#fff;line-height:1;">wifi_tethering</span></div><span style="font-family:Nunito;font-weight:600;font-size:11px;color:#3a3a3c;">AirDrop</span></div>
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;">
+                        <div style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:15px;z-index:5;"><div style="white-space:nowrap;background:#E1523D;color:#fff;font-family:Nunito;font-weight:800;font-size:13px;padding:7px 14px;border-radius:100px;box-shadow:0 8px 20px rgba(225,82,61,0.55);animation:gluttCoachBob 1s ease-in-out infinite;">Tap here 👇</div></div>
+                        <div style="position:relative;width:56px;height:56px;">
+                          <div style="position:absolute;inset:-6px;border-radius:20px;border:3px solid #E1523D;animation:gluttCoachRipple 1.4s ease-out infinite;"></div>
+                          <div style="position:absolute;inset:-6px;border-radius:20px;background:rgba(225,82,61,0.16);border:3px solid #E1523D;animation:gluttPulse 1s ease-in-out infinite;"></div>
+                          <div style="position:relative;width:56px;height:56px;border-radius:16px;background:linear-gradient(150deg,#3C6B4B,#244430);box-shadow:0 4px 12px rgba(46,83,57,0.45);display:flex;align-items:center;justify-content:center;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:29px;color:#FBF5E9;line-height:1;">skillet</span></div>
+                        </div>
+                        <span style="font-family:Nunito;font-weight:700;font-size:11px;color:#2E5339;">Glutt</span>
+                      </div>
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;"><div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(150deg,#5be36a,#12b32a);display:flex;align-items:center;justify-content:center;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:27px;color:#fff;line-height:1;">chat_bubble</span></div><span style="font-family:Nunito;font-weight:600;font-size:11px;color:#3a3a3c;">Messages</span></div>
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;"><div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(150deg,#4aa3ff,#0a6cf0);display:flex;align-items:center;justify-content:center;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:26px;color:#fff;line-height:1;">mail</span></div><span style="font-family:Nunito;font-weight:600;font-size:11px;color:#3a3a3c;">Mail</span></div>
+                    </div>
+                    <div style="margin:14px 16px 0;background:#fff;border-radius:14px;overflow:hidden;">
+                      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;"><span style="font-family:Nunito;font-weight:600;font-size:15px;color:#1c1c1e;">Copy</span><span style="font-family:'Material Symbols Rounded';font-size:21px;color:#1c1c1e;line-height:1;">content_copy</span></div>
+                      <div style="height:1px;background:rgba(60,60,67,0.12);margin-left:16px;"></div>
+                      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;"><span style="font-family:Nunito;font-weight:600;font-size:15px;color:#1c1c1e;">Add to Reading List</span><span style="font-family:'Material Symbols Rounded';font-size:21px;color:#1c1c1e;line-height:1;">chrome_reader_mode</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+              <!-- IMPORTING -->
+              <sc-if value="{{ tImporting }}">
+                <div style="position:absolute;top:0;left:0;width:390px;height:830px;transform:scale(0.61538);transform-origin:top left;">
+                  <div style="position:absolute;inset:0;background:#FAF3E7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:40px;animation:gluttFade .3s ease both;">
+                    <div style="display:flex;gap:11px;">
+                      <div style="width:14px;height:14px;border-radius:50%;background:#2E5339;animation:gluttBounce 1s ease-in-out infinite;"></div>
+                      <div style="width:14px;height:14px;border-radius:50%;background:#2E5339;animation:gluttBounce 1s ease-in-out .16s infinite;"></div>
+                      <div style="width:14px;height:14px;border-radius:50%;background:#2E5339;animation:gluttBounce 1s ease-in-out .32s infinite;"></div>
+                    </div>
+                    <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:22px;color:#241E19;">Pulling out the recipe…</div>
+                    <div style="width:180px;height:6px;border-radius:100px;background:rgba(46,83,57,0.14);overflow:hidden;">
+                      <div style="width:42%;height:100%;border-radius:100px;background:#2E5339;animation:gluttBar 1.4s ease-in-out infinite;"></div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+
+              <!-- SAVED -->
+              <sc-if value="{{ tDone }}">
+                <div style="position:absolute;top:0;left:0;width:390px;height:830px;transform:scale(0.61538);transform-origin:top left;">
+                  <div style="position:absolute;inset:0;background:#FAF3E7;overflow:hidden;animation:gluttFade .3s ease both;">
+                    <div style="position:absolute;top:0;left:0;right:0;height:52px;background:#FAF3E7;z-index:3;"></div>
+                <div style="position:absolute;top:52px;left:0;right:0;height:230px;overflow:hidden;">
+                  <img src="assets/hot-honey.png" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;inset:0;background:linear-gradient(to top,#FAF3E7 2%,transparent 46%);"></div>
+                  <div style="position:absolute;top:14px;left:16px;display:inline-flex;align-items:center;gap:6px;background:rgba(46,83,57,0.96);border-radius:100px;padding:7px 13px;box-shadow:0 6px 16px rgba(46,83,57,0.35);animation:gluttPop .5s cubic-bezier(.2,.9,.3,1.3) both;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:16px;color:#fff;line-height:1;">check_circle</span><span style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#fff;">Saved to your recipes</span></div>
+                </div>
+                <div style="position:absolute;top:264px;left:0;right:0;bottom:0;padding:0 24px;overflow:auto;">
+                  <h1 style="font-family:'Bricolage Grotesque';font-weight:600;font-size:25px;line-height:1.14;letter-spacing:-.4px;color:#241E19;margin:0;">Crispy hot honey chicken bites</h1>
+                  <div style="display:flex;gap:16px;margin-top:11px;">
+                    <span style="display:flex;align-items:center;gap:5px;font-family:Nunito;font-weight:700;font-size:13px;color:#9A9082;"><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;">schedule</span>12 min</span>
+                    <span style="display:flex;align-items:center;gap:5px;font-family:Nunito;font-weight:700;font-size:13px;color:#9A9082;"><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;">local_fire_department</span>540 cal</span>
+                    <span style="display:flex;align-items:center;gap:5px;font-family:Nunito;font-weight:700;font-size:13px;color:#9A9082;"><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;">restaurant</span>Serves 4</span>
+                  </div>
+                  <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:.7px;color:#9A9082;margin:20px 0 11px;">INGREDIENTS</div>
+                  <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:150px;">
+                    <div style="display:flex;align-items:center;gap:10px;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:16px;color:rgba(46,83,57,0.75);line-height:1;">check_circle</span><span style="font-family:Nunito;font-weight:600;font-size:14.5px;color:#3A342C;">3 packs Otoki Cheesy Ramen</span></div>
+                    <div style="display:flex;align-items:center;gap:10px;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:16px;color:rgba(46,83,57,0.75);line-height:1;">check_circle</span><span style="font-family:Nunito;font-weight:600;font-size:14.5px;color:#3A342C;">1 lb chicken breast</span></div>
+                    <div style="display:flex;align-items:center;gap:10px;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:16px;color:rgba(46,83,57,0.75);line-height:1;">check_circle</span><span style="font-family:Nunito;font-weight:600;font-size:14.5px;color:#3A342C;">1 cup buttermilk</span></div>
+                    <div style="display:flex;align-items:center;gap:10px;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:16px;color:rgba(46,83,57,0.75);line-height:1;">check_circle</span><span style="font-family:Nunito;font-weight:600;font-size:14.5px;color:#3A342C;">Mozzarella + heavy cream</span></div>
+                    <div style="display:flex;align-items:center;gap:10px;"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1;font-size:16px;color:rgba(46,83,57,0.75);line-height:1;">check_circle</span><span style="font-family:Nunito;font-weight:600;font-size:14.5px;color:#3A342C;">Hot honey glaze</span></div>
+                      <div style="font-family:Nunito;font-weight:600;font-size:13.5px;color:#9A9082;padding-left:26px;">+ 4 more ingredients</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+
+            </div>
+          </div>
+
+          <sc-if value="{{ tWalk }}">
+            <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:13px;padding-top:10px;">
+              <div style="display:flex;align-items:center;gap:7px;">
+                <sc-for list="{{ tutDots }}" as="d" hint-placeholder-count="3">
+                  <div style="{{ d.style }}"></div>
+                </sc-for>
+              </div>
+              <a href="#" onClick="{{ tutFinish }}" style="font-family:Nunito;font-weight:700;font-size:15px;color:#9A9082;">Skip tutorial</a>
+            </div>
+          </sc-if>
+          <sc-if value="{{ tDone }}">
+            <div style="flex-shrink:0;display:flex;flex-direction:column;gap:10px;padding-top:12px;animation:gluttFade .4s ease .12s both;">
+              <button onClick="{{ tutFinish }}" style="display:flex;align-items:center;justify-content:center;height:58px;border-radius:100px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:18px;border:none;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(46,83,57,0.3);letter-spacing:.2px;" style-hover="background:#356145;" style-active="transform:translateY(1px);">Import my first recipe</button>
+              <button onClick="{{ tutFinish }}" style="display:flex;align-items:center;justify-content:center;height:48px;border-radius:100px;background:transparent;color:#2E5339;font-family:'Bricolage Grotesque';font-weight:600;font-size:16px;border:none;cursor:pointer;width:100%;" style-hover="background:rgba(46,83,57,0.06);">I'll explore on my own</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;showBackButton&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Behavior&quot; },
+  &quot;startScreen&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;Welcome&quot;, &quot;Intro&quot;, &quot;Questions intro&quot;, &quot;Goals&quot;, &quot;Rules&quot;, &quot;4 weeks&quot;, &quot;Polly&quot;, &quot;AI features&quot;, &quot;Notifications&quot;, &quot;Allow&quot;, &quot;Tutorial&quot;], &quot;default&quot;: &quot;Welcome&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Behavior&quot; }
+}">
+class Component extends DCLogic {
+  state = { screen: 0, tutPhase: 0, goals: [false, false, false, false, false, false], rules: [false, false, false, false, false, false, false, false, false] };
+
+  screenNames = ['Welcome', 'Intro', 'Questions intro', 'Goals', 'Rules', '4 weeks', 'Polly', 'AI features', 'Notifications', 'Allow', 'Tutorial'];
+
+  componentDidMount() {
+    const i = this.screenNames.indexOf(this.props.startScreen);
+    const patch = {};
+    if (i > 0) patch.screen = i;
+    const ph = parseInt(this.props.startPhase, 10);
+    if (!isNaN(ph)) patch.tutPhase = ph;
+    if (Object.keys(patch).length) this.setState(patch);
+  }
+
+  componentDidUpdate(prev) {
+    if (prev.startScreen !== this.props.startScreen || prev.startPhase !== this.props.startPhase) {
+      const i = this.screenNames.indexOf(this.props.startScreen);
+      const patch = { screen: i < 0 ? 0 : i };
+      const ph = parseInt(this.props.startPhase, 10);
+      if (!isNaN(ph)) patch.tutPhase = ph;
+      this.setState(patch);
+    }
+    this.playIntro();
+  }
+
+  playIntro() {
+    document.querySelectorAll('video').forEach(v => { if (v.paused) { const p = v.play(); if (p && p.catch) p.catch(() => {}); } });
+  }
+
+  go(n) {
+    const c = Math.max(0, Math.min(10, n));
+    const patch = { screen: c };
+    if (c === 10) { patch.tutPhase = 0; clearTimeout(this._impT); }
+    this.setState(patch);
+  }
+  toggleGoal(i) {
+    this.setState(s => { const g = [...s.goals]; g[i] = !g[i]; return { goals: g }; });
+  }
+  toggleRule(i) {
+    this.setState(s => { const r = [...s.rules]; r[i] = !r[i]; return { rules: r }; });
+  }
+  tutAdvance() {
+    const p = this.state.tutPhase;
+    if (p >= 3) return;
+    const np = p + 1;
+    this.setState({ tutPhase: np });
+    if (np === 3) { clearTimeout(this._impT); this._impT = setTimeout(() => this.setState({ tutPhase: 4 }), 1800); }
+  }
+
+  renderVals() {
+    const s = this.state;
+    const screen = s.screen;
+    const labels = [
+      'Eat healthier without the fuss',
+      'Stop wasting food',
+      'Spend less on takeout',
+      'Cook with what I already have',
+      'Build a real cooking habit',
+      'Cook for people I love',
+    ];
+    const goals = labels.map((label, i) => {
+      const sel = !!s.goals[i];
+      return {
+        label,
+        selected: sel,
+        onToggle: () => this.toggleGoal(i),
+        rowStyle: `display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 18px;border-radius:20px;cursor:pointer;transition:all .15s ease;background:${sel ? '#EAF1E7' : '#FFFDF7'};border:1.5px solid ${sel ? '#2E5339' : 'rgba(42,36,32,0.06)'};box-shadow:0 1px 3px rgba(42,36,32,0.04);`,
+        boxStyle: `width:26px;height:26px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s ease;background:${sel ? '#2E5339' : 'transparent'};border:2px solid ${sel ? '#2E5339' : 'rgba(42,36,32,0.2)'};`,
+      };
+    });
+    const ruleDefs = [
+      { label: 'Vegetarian', icon: 'eco', grad: 'linear-gradient(155deg,#7FB56A,#3F7A3A)', sh: 'rgba(63,122,58,0.45)' },
+      { label: 'Vegan', icon: 'spa', grad: 'linear-gradient(155deg,#6CC99A,#2C8A5E)', sh: 'rgba(44,138,94,0.45)' },
+      { label: 'Pescatarian', icon: 'set_meal', grad: 'linear-gradient(155deg,#6BB6C4,#2E7385)', sh: 'rgba(46,115,133,0.45)' },
+      { label: 'Gluten-free', icon: 'grain', grad: 'linear-gradient(155deg,#E8C06A,#C08A2E)', sh: 'rgba(192,138,46,0.45)' },
+      { label: 'Dairy-free', icon: 'icecream', grad: 'linear-gradient(155deg,#F0B98A,#D9884E)', sh: 'rgba(217,136,78,0.45)' },
+      { label: 'Nut-free', icon: 'no_meals', grad: 'linear-gradient(155deg,#E0906E,#B85436)', sh: 'rgba(184,84,54,0.45)' },
+      { label: 'Halal', icon: 'mosque', grad: 'linear-gradient(155deg,#5FA377,#2E5339)', sh: 'rgba(46,83,57,0.5)' },
+      { label: 'Kosher', icon: 'synagogue', grad: 'linear-gradient(155deg,#9088CC,#574C9E)', sh: 'rgba(87,76,158,0.45)' },
+      { label: 'Keto', icon: 'egg', grad: 'linear-gradient(155deg,#E28AA0,#BC4E6E)', sh: 'rgba(188,78,110,0.45)' },
+    ];
+    const rules = ruleDefs.map((d, i) => {
+      const sel = !!s.rules[i];
+      return {
+        label: d.label,
+        icon: d.icon,
+        selected: sel,
+        onToggle: () => this.toggleRule(i),
+        tileStyle: `position:relative;aspect-ratio:1/1.1;border-radius:24px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;padding:14px;cursor:pointer;overflow:hidden;background:radial-gradient(115% 90% at 18% 12%,rgba(255,255,255,0.38),rgba(255,255,255,0) 46%),${d.grad};transition:transform .18s ease,box-shadow .18s ease;${sel ? `box-shadow:0 0 0 3px #FAF3E7,0 0 0 6px #2E5339,0 14px 26px -6px ${d.sh};transform:translateY(-3px);` : `box-shadow:0 8px 18px -5px ${d.sh};`}`,
+      };
+    });
+    const anyGoal = s.goals.some(Boolean);
+    const board = this.props.board === true || this.props.board === 'true';
+    const rootStyle = board
+      ? 'display:inline-flex;font-family:Nunito;'
+      : 'min-height:100vh;display:flex;align-items:center;justify-content:center;padding:36px;background:radial-gradient(130% 120% at 50% -10%, #F1EAD9 0%, #E7DFCC 55%, #E0D7C2 100%);font-family:Nunito;';
+    return {
+      rootStyle,
+      s0: screen === 0, s1: screen === 1, s2: screen === 2, s3: screen === 3,
+      s4: screen === 4, s5: screen === 5, s6: screen === 6, s7: screen === 7, s8: screen === 8, s9: screen === 9,
+      s10: screen === 10,
+      hasChrome: (screen >= 1 && screen <= 5) || screen === 7 || screen === 8 || screen === 9,
+      showBack: this.props.showBackButton !== false,
+      progressWidth: Math.round((screen / 10) * 100) + '%',
+      goals,
+      anyGoal,
+      noGoal: !anyGoal,
+      rules,
+      start: () => this.go(1),
+      next: () => this.go(screen + 1),
+      back: () => this.go(screen - 1),
+      enableNotif: () => this.go(10),
+      maybeLater: () => this.go(10),
+      toPerm: () => this.go(9),
+      tWalk: screen === 10 && s.tutPhase <= 2,
+      tw0: screen === 10 && s.tutPhase === 0,
+      tw1: screen === 10 && s.tutPhase === 1,
+      tw2: screen === 10 && s.tutPhase === 2,
+      tImporting: screen === 10 && s.tutPhase === 3,
+      tDone: screen === 10 && s.tutPhase === 4,
+      tutHeadline: ['Found a recipe you love?', 'Open the share menu', 'Pick Glutt', 'Pulling out the recipe\u2026', "That's it, it's saved!"][s.tutPhase] || '',
+      tutSub: ['Tap the share button on the post.', "Tap your app's Share option.", 'Choose Glutt from the share sheet.', 'Reading ingredients, steps & macros.', 'Glutt captured the full recipe for you.'][s.tutPhase] || '',
+      tutDots: [0, 1, 2].map(i => ({ style: i === s.tutPhase ? 'width:22px;height:7px;border-radius:100px;background:#2E5339;transition:all .25s ease;' : 'width:7px;height:7px;border-radius:100px;background:rgba(42,36,32,0.18);transition:all .25s ease;' })),
+      tutAdvance: () => this.tutAdvance(),
+      impDone: () => { clearTimeout(this._impT); this.setState({ tutPhase: 4 }); },
+      tutFinish: () => this.setState({ screen: 0, tutPhase: 0 }),
+      restart: () => this.setState({ screen: 0, tutPhase: 0, goals: [false, false, false, false, false, false], rules: [false, false, false, false, false, false, false, false, false] }),
+    };
+  }
+}
+</script>
+</body>
+</html>

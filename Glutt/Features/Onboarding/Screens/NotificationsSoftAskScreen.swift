@@ -1,9 +1,10 @@
 import SwiftUI
+import UserNotifications
 
-/// Screen 8 — three floating example notifications, then the ask.
+/// Screen 8 — the single notifications page: three floating example
+/// notifications, then the ask. Content only; the coordinator owns the fixed
+/// `NotificationsFooter` + chrome.
 struct NotificationsSoftAskScreen: View {
-    let onTurnOn: () -> Void
-    let onMaybeLater: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let notes: [(title: String, body: String, time: String, duration: Double, delay: Double)] = [
@@ -23,12 +24,9 @@ struct NotificationsSoftAskScreen: View {
                 }
             }
             .frame(maxWidth: 344).frame(maxHeight: .infinity)
-            OnboardingPrimaryButton(title: "Turn on notifications", action: onTurnOn)
-            OnboardingTextLink(title: "Maybe later", action: onMaybeLater).padding(.top, 16)
         }
         .padding(.horizontal, 24)
         .padding(.top, 50)
-        .padding(.bottom, 10)
     }
 
     private func card(_ note: (title: String, body: String, time: String, duration: Double, delay: Double)) -> some View {
@@ -63,6 +61,32 @@ struct NotificationsSoftAskScreen: View {
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
             .strokeBorder(OnboardingTheme.warmBlack(0.05), lineWidth: 1))
         .shadow(color: OnboardingTheme.warmBlack(0.1), radius: 15, y: 12)
+    }
+}
+
+/// Screen 8's fixed footer. "Turn on notifications" fires the real OS prompt
+/// (any outcome advances); "Maybe later" skips — both land on the tutorial.
+struct NotificationsFooter: View {
+    let onDone: () -> Void
+    @State private var requesting = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            OnboardingPrimaryButton(title: "Turn on notifications", action: requestPermission)
+            OnboardingTextLink(title: "Maybe later", action: onDone).padding(.top, 16)
+        }
+        .padding(.horizontal, 24).padding(.bottom, 10)
+    }
+
+    private func requestPermission() {
+        guard !requesting else { return }
+        requesting = true
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+            DispatchQueue.main.async {
+                if granted { ReminderScheduler.schedulePlatesDailyReminder() }
+                onDone()
+            }
+        }
     }
 }
 

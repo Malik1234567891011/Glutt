@@ -55,8 +55,8 @@ enum DraftCleanup {
         return false
     }
 
-    static func cleanUp(_ draft: ImportedRecipeDraft) async -> ImportedRecipeDraft {
-        guard LLMClient.isConfigured else { return draft }
+    static func cleanUp(_ draft: ImportedRecipeDraft, client: LLMClient = .live) async -> ImportedRecipeDraft {
+        guard client.isConfigured else { return draft }
 
         let system = """
         You clean up recipes extracted from websites, social media captions, and OCR'd screenshots.
@@ -89,7 +89,7 @@ enum DraftCleanup {
         guard source.count > 20 else { return draft }
 
         do {
-            let cleaned = try await LLMClient.chatJSON(
+            let cleaned = try await client.chatJSON(
                 CleanedDraft.self,
                 system: system,
                 user: String(source.prefix(8000))
@@ -145,8 +145,8 @@ enum DraftCleanup {
     /// (common with TikTok/IG captions and screenshots of ingredient lists).
     /// Rather than show a dead-end "No steps detected", draft plausible steps
     /// from the title + ingredients — and flag them honestly as AI-suggested.
-    static func inferSteps(_ draft: ImportedRecipeDraft) async -> ImportedRecipeDraft {
-        guard LLMClient.isConfigured,
+    static func inferSteps(_ draft: ImportedRecipeDraft, client: LLMClient = .live) async -> ImportedRecipeDraft {
+        guard client.isConfigured,
               draft.stepTexts.isEmpty,
               !draft.ingredientLines.isEmpty
         else { return draft }
@@ -171,7 +171,7 @@ enum DraftCleanup {
         """
 
         do {
-            let drafted = try await LLMClient.chatJSON(
+            let drafted = try await client.chatJSON(
                 CleanedDraft.self,
                 system: system,
                 user: String(user.prefix(4000)),
@@ -196,8 +196,8 @@ enum DraftCleanup {
     /// or just vibes, so there is nothing to extract. Draft a standard home
     /// version of the dish from its name — honestly labeled as Glutt's draft,
     /// never passed off as the creator's recipe.
-    static func reconstruct(_ draft: ImportedRecipeDraft) async -> ImportedRecipeDraft {
-        guard LLMClient.isConfigured, draft.ingredientLines.isEmpty else { return draft }
+    static func reconstruct(_ draft: ImportedRecipeDraft, client: LLMClient = .live) async -> ImportedRecipeDraft {
+        guard client.isConfigured, draft.ingredientLines.isEmpty else { return draft }
 
         let dish = [draft.title, draft.caption].compactMap { $0 }.joined(separator: "\n")
         guard dish.count > 3 else { return draft }
@@ -221,7 +221,7 @@ enum DraftCleanup {
         """
 
         do {
-            let drafted = try await LLMClient.chatJSON(
+            let drafted = try await client.chatJSON(
                 CleanedDraft.self,
                 system: system,
                 user: String(dish.prefix(2000)),

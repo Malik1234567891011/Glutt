@@ -442,8 +442,8 @@ final class ModelTests: XCTestCase {
     func testModelContainerCreatesAndSavesAllModels() throws {
         let schema = Schema([
             Recipe.self, RecipeIngredient.self, RecipeStep.self, RecipeCollection.self,
-            PantryItem.self, GroceryItem.self, Leftover.self,
-            PlannedMeal.self, FoodLog.self, CookSession.self, UserPrefs.self,
+            PantryItem.self, GroceryItem.self, KitchenTool.self,
+            CookSession.self, UserPrefs.self,
         ])
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: [config])
@@ -453,23 +453,11 @@ final class ModelTests: XCTestCase {
         recipe.ingredients = [RecipeIngredient(name: "Scallions", quantity: 2)]
         recipe.steps = [RecipeStep(index: 0, text: "Cook it.", durationSeconds: 300)]
         context.insert(recipe)
-
-        let meal = PlannedMeal(
-            date: .now,
-            mealType: .dinner,
-            exactTime: Calendar.current.date(bySettingHour: 19, minute: 0, second: 0, of: .now),
-            recipe: recipe
-        )
-        context.insert(meal)
+        context.insert(KitchenTool(name: "Air fryer", category: "Appliances"))
         try context.save()
 
         XCTAssertEqual(recipe.totalMinutes, 30)
         XCTAssertEqual(recipe.ingredients.first?.canonicalName, "green onion")
-
-        // Start time = meal time - (total + 10 min buffer)
-        let start = try XCTUnwrap(meal.suggestedStartTime)
-        let expected = Calendar.current.date(byAdding: .minute, value: -40, to: meal.exactTime!)
-        XCTAssertEqual(start, expected)
     }
 
     @MainActor
@@ -509,101 +497,6 @@ final class PrepDetectorTests: XCTestCase {
         let recipe = Recipe(title: "Quick Eggs")
         recipe.steps = [RecipeStep(index: 0, text: "Scramble the eggs over medium heat.")]
         XCTAssertTrue(PrepDetector.tasks(for: recipe).isEmpty)
-    }
-}
-
-final class WeekPlannerTests: XCTestCase {
-
-    private func makeRecipe(_ title: String, rating: Int? = nil, pantryFriendly: Bool = false) -> Recipe {
-        let recipe = Recipe(title: title)
-        recipe.rating = rating
-        recipe.ingredients = [RecipeIngredient(name: pantryFriendly ? "Rice" : "Saffron", sortIndex: 0)]
-        recipe.steps = [RecipeStep(index: 0, text: "Cook.")]
-        return recipe
-    }
-
-    func testDraftFillsRequestedSlotsWithoutImmediateRepeats() {
-        let recipes = (1...5).map { makeRecipe("Recipe \($0)") }
-        let input = WeekPlanner.Input(
-            days: 3,
-            mealTypes: [.dinner],
-            useLeftovers: false,
-            recipes: recipes,
-            pantry: [],
-            leftovers: [],
-            recentSessions: []
-        )
-        let slots = WeekPlanner.draft(input)
-
-        XCTAssertEqual(slots.count, 3)
-        XCTAssertTrue(slots.allSatisfy { $0.recipe != nil })
-        // With 5 recipes and 3 slots, no recipe should repeat.
-        let titles = slots.compactMap { $0.recipe?.title }
-        XCTAssertEqual(Set(titles).count, 3)
-    }
-
-    func testLeftoversClaimLunchSlots() {
-        let recipes = (1...4).map { makeRecipe("Recipe \($0)") }
-        let leftover = Leftover(title: "Chili", servingsRemaining: 2)
-        let input = WeekPlanner.Input(
-            days: 2,
-            mealTypes: [.lunch, .dinner],
-            useLeftovers: true,
-            recipes: recipes,
-            pantry: [],
-            leftovers: [leftover],
-            recentSessions: []
-        )
-        let slots = WeekPlanner.draft(input)
-
-        let firstLunch = slots.first { $0.mealType == .lunch }
-        XCTAssertNotNil(firstLunch?.leftover)
-        XCTAssertEqual(firstLunch?.leftover?.title, "Chili")
-        // Dinners are still recipes.
-        XCTAssertTrue(slots.filter { $0.mealType == .dinner }.allSatisfy { $0.recipe != nil })
-    }
-
-    func testScoringPrefersPantryMatchAndRating() {
-        let pantryFriendly = makeRecipe("Fried Rice", rating: 5, pantryFriendly: true)
-        let exotic = makeRecipe("Saffron Risotto")
-        let pantry = [PantryItem(name: "Rice", category: .pantry)]
-        let input = WeekPlanner.Input(
-            days: 1,
-            mealTypes: [.dinner],
-            useLeftovers: false,
-            recipes: [exotic, pantryFriendly],
-            pantry: pantry,
-            leftovers: [],
-            recentSessions: []
-        )
-
-        let friendlyScore = WeekPlanner.score(recipe: pantryFriendly, input: input)
-        let exoticScore = WeekPlanner.score(recipe: exotic, input: input)
-        // Pantry match (3.0) + rating (2.5) dwarfs the 0.4 jitter.
-        XCTAssertGreaterThan(friendlyScore, exoticScore)
-
-        let slots = WeekPlanner.draft(input)
-        XCTAssertEqual(slots.first?.recipe?.title, "Fried Rice")
-    }
-
-    func testSwapAvoidsCurrentRecipe() {
-        let recipes = (1...3).map { makeRecipe("Recipe \($0)") }
-        let input = WeekPlanner.Input(
-            days: 1,
-            mealTypes: [.dinner],
-            useLeftovers: false,
-            recipes: recipes,
-            pantry: [],
-            leftovers: [],
-            recentSessions: []
-        )
-        var slots = WeekPlanner.draft(input)
-        let original = slots[0].recipe
-        let replacement = WeekPlanner.swap(slot: slots[0], in: slots, input: input)
-
-        XCTAssertNotNil(replacement)
-        XCTAssertFalse(replacement === original)
-        slots[0].recipe = replacement
     }
 }
 
@@ -719,52 +612,6 @@ final class NutritionEstimatorTests: XCTestCase {
     }
 }
 
-final class ProgressStatsTests: XCTestCase {
-
-    private func session(daysAgo: Int, recipe: Recipe? = nil) -> CookSession {
-        let date = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now)!
-        return CookSession(date: date, servingsMade: 2, recipe: recipe)
-    }
-
-    func testStreakCountsConsecutiveDays() {
-        let sessions = [session(daysAgo: 0), session(daysAgo: 1), session(daysAgo: 2), session(daysAgo: 5)]
-        XCTAssertEqual(ProgressStats.cookingStreak(sessions: sessions), 3)
-    }
-
-    func testStreakSurvivesIfCookedYesterdayButNotToday() {
-        let sessions = [session(daysAgo: 1), session(daysAgo: 2)]
-        XCTAssertEqual(ProgressStats.cookingStreak(sessions: sessions), 2)
-    }
-
-    func testStreakBreaksAfterAGap() {
-        let sessions = [session(daysAgo: 3), session(daysAgo: 4)]
-        XCTAssertEqual(ProgressStats.cookingStreak(sessions: sessions), 0)
-    }
-
-    func testFrequentMealsNeedAtLeastTwoLogs() {
-        let logs = [
-            FoodLog(title: "Protein shake", source: .quickAdd),
-            FoodLog(title: "Protein shake", source: .quickAdd),
-            FoodLog(title: "One-off salad", source: .manual),
-        ]
-        let frequents = ProgressStats.frequentMeals(logs: logs)
-        XCTAssertEqual(frequents, ["Protein shake"])
-    }
-
-    func testRecipesTriedCountsDistinct() {
-        let recipeA = Recipe(title: "A")
-        let recipeB = Recipe(title: "B")
-        let sessions = [
-            session(daysAgo: 2, recipe: recipeA),
-            session(daysAgo: 1, recipe: recipeA),
-            session(daysAgo: 40, recipe: recipeB),
-        ]
-        let tried = ProgressStats.recipesTried(sessions: sessions)
-        XCTAssertEqual(tried.total, 2)
-        XCTAssertEqual(tried.newThisMonth, 1)
-    }
-}
-
 final class TasteProfileBuilderTests: XCTestCase {
 
     func testLovedTagsFloatToTheTop() {
@@ -785,85 +632,6 @@ final class TasteProfileBuilderTests: XCTestCase {
     }
 }
 
-// MARK: - Phase 8: Today planner
-
-final class TodayPlannerTests: XCTestCase {
-
-    private func meal(
-        _ type: MealType,
-        daysFromNow: Int = 0,
-        exactTime: Date? = nil,
-        status: MealStatus = .planned
-    ) -> PlannedMeal {
-        let date = Calendar.current.date(byAdding: .day, value: daysFromNow, to: .now)!
-        return PlannedMeal(date: date, mealType: type, exactTime: exactTime, status: status)
-    }
-
-    func testNextUpPicksEarliestMealTypeWhenNoExactTimes() {
-        let dinner = meal(.dinner)
-        let lunch = meal(.lunch)
-        let next = TodayPlanner.nextUp(meals: [dinner, lunch])
-        XCTAssertIdentical(next, lunch)
-    }
-
-    func testNextUpPrefersExactTimesOverMealTypeOrder() {
-        let earlyDinner = meal(.dinner, exactTime: Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: .now))
-        let untimedLunch = meal(.lunch)
-        let next = TodayPlanner.nextUp(meals: [untimedLunch, earlyDinner])
-        XCTAssertIdentical(next, earlyDinner)
-    }
-
-    func testNextUpSkipsResolvedMealsAndOtherDays() {
-        let eaten = meal(.breakfast, status: .eaten)
-        let tomorrow = meal(.lunch, daysFromNow: 1)
-        let dinner = meal(.dinner)
-        let next = TodayPlanner.nextUp(meals: [eaten, tomorrow, dinner])
-        XCTAssertIdentical(next, dinner)
-    }
-
-    func testNextUpReturnsNilWhenNothingPlannedToday() {
-        let tomorrow = meal(.dinner, daysFromNow: 1)
-        XCTAssertNil(TodayPlanner.nextUp(meals: [tomorrow]))
-    }
-
-    func testUseSoonExcludesOutOfStockAndSortsByUrgency() {
-        let urgent = PantryItem(name: "Spinach", useSoonDate: .now)
-        let later = PantryItem(name: "Yogurt", useSoonDate: Calendar.current.date(byAdding: .day, value: 2, to: .now))
-        let out = PantryItem(name: "Milk", roughQuantity: .out, useSoonDate: .now)
-        let normal = PantryItem(name: "Rice")
-
-        let items = TodayPlanner.useSoonItems(pantry: [later, out, urgent, normal])
-        XCTAssertEqual(items.map(\.name), ["Spinach", "Yogurt"])
-    }
-
-    func testMissingLineNamesFirstMissingAndCountsRest() {
-        let recipe = Recipe(title: "Curry")
-        recipe.ingredients = [
-            RecipeIngredient(name: "Saffron", sortIndex: 0),
-            RecipeIngredient(name: "Dragon fruit", sortIndex: 1),
-        ]
-        let line = TodayPlanner.missingLine(for: recipe, pantry: [])
-        XCTAssertEqual(line, "Missing: saffron + 1 more")
-    }
-
-    func testMissingLineIsNilWhenPantryCoversEverything() {
-        let recipe = Recipe(title: "Rice Bowl")
-        recipe.ingredients = [RecipeIngredient(name: "Rice", sortIndex: 0)]
-        let line = TodayPlanner.missingLine(for: recipe, pantry: [PantryItem(name: "Rice")])
-        XCTAssertNil(line)
-    }
-
-    func testMissingLineSuggestsSwapWhenPantryHasSubstitute() {
-        let recipe = Recipe(title: "Pasta")
-        recipe.ingredients = [RecipeIngredient(name: "Heavy cream", sortIndex: 0)]
-        let pantry = [PantryItem(name: "Greek yogurt"), PantryItem(name: "Butter")]
-        let line = TodayPlanner.missingLine(for: recipe, pantry: pantry)
-        XCTAssertNotNil(line)
-        XCTAssertTrue(line!.contains("Swap:"), "expected a swap suggestion, got \(line!)")
-    }
-}
-
-// MARK: - Phase 9: Diet guard
 
 final class DietGuardTests: XCTestCase {
 
@@ -948,22 +716,6 @@ final class DietGuardTests: XCTestCase {
         XCTAssertTrue(DietGuard.conflicts(in: salmon, rules: [.kosher], allergies: []).isEmpty)
     }
 
-    func testWeekPlannerNeverPlansAllergens() {
-        let peanutDish = recipe("Peanut Noodles", ingredients: ["Peanuts", "Noodles"])
-        let safeDish = recipe("Tomato Pasta", ingredients: ["Tomato", "Pasta"])
-        let slots = WeekPlanner.draft(WeekPlanner.Input(
-            days: 2,
-            mealTypes: [.dinner],
-            useLeftovers: false,
-            recipes: [peanutDish, safeDish],
-            pantry: [],
-            leftovers: [],
-            recentSessions: [],
-            rules: [],
-            allergies: ["peanut"]
-        ))
-        XCTAssertFalse(slots.contains { $0.recipe === peanutDish })
-    }
 
     func testSubstitutionsRespectRules() {
         // Dairy-free user missing butter: pantry has margarine and... butter? No —
@@ -1059,34 +811,6 @@ final class RecipeShareServiceTests: XCTestCase {
     }
 }
 
-final class LeftoverRemixTests: XCTestCase {
-
-    func testChickenLeftoversGetChickenIdeas() {
-        let ideas = LeftoverRemix.tableIdeas(for: "Hot Honey Chicken Rice")
-        XCTAssertFalse(ideas.isEmpty)
-        XCTAssertTrue(ideas.contains { $0.title.lowercased().contains("chicken") })
-    }
-
-    func testUnknownLeftoversStillGetGenericIdeas() {
-        let ideas = LeftoverRemix.tableIdeas(for: "Grandma's casserole")
-        XCTAssertFalse(ideas.isEmpty)
-        XCTAssertTrue(ideas.allSatisfy { !$0.how.isEmpty })
-    }
-
-    func testRemixedMealShowsItsNewName() {
-        let leftover = Leftover(title: "Korean beef bowls", servingsRemaining: 2)
-        let meal = PlannedMeal(
-            date: .now,
-            mealType: .lunch,
-            leftover: leftover,
-            freeformTitle: "Beef tacos (from Korean beef bowls)"
-        )
-        XCTAssertEqual(meal.displayTitle, "Beef tacos (from Korean beef bowls)")
-    }
-}
-
-// MARK: - Social media import
-
 final class SocialMediaImportTests: XCTestCase {
 
     func testRecognizesVideoPlatformURLs() {
@@ -1157,11 +881,4 @@ final class PantryScanTests: XCTestCase {
         XCTAssertEqual(PantryScan.mapCategory(nil, name: "chicken breast"), GroceryCategorizer.categorize("chicken breast"))
     }
 
-    func testReplacedMealStatusFlow() {
-        let meal = PlannedMeal(date: .now, mealType: .dinner, freeformTitle: "Chicken rice bowl")
-        XCTAssertEqual(meal.status, .planned)
-        // The log-food flow marks it replaced when the user ate something else.
-        meal.status = .replaced
-        XCTAssertEqual(meal.status, .replaced)
-    }
 }

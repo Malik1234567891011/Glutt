@@ -29,10 +29,7 @@ enum SeedData {
             let items = (try? context.fetch(FetchDescriptor<T>())) ?? []
             items.forEach { context.delete($0) }
         }
-        deleteAll(FoodLog.self)
         deleteAll(CookSession.self)
-        deleteAll(PlannedMeal.self)
-        deleteAll(Leftover.self)
         deleteAll(GroceryItem.self)
         deleteAll(PantryItem.self)
         deleteAll(RecipeCollection.self)
@@ -466,24 +463,7 @@ enum SeedData {
         ]
         groceries.forEach(context.insert)
 
-        // Leftovers
-        let beefLeftover = Leftover(
-            title: "Korean beef bowls",
-            servingsRemaining: 2,
-            cookedAt: Calendar.current.date(byAdding: .day, value: -2, to: .now)!,
-            sourceRecipe: koreanBeef
-        )
-        context.insert(beefLeftover)
-
-        // Plan: dinner tonight, leftover lunch tomorrow, salmon Friday
-        let dinnerTime = Calendar.current.date(bySettingHour: 19, minute: 30, second: 0, of: .now)!
-        context.insert(PlannedMeal(date: .now, mealType: .dinner, exactTime: dinnerTime, recipe: chickenRiceBowl))
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: .now)!
-        context.insert(PlannedMeal(date: tomorrow, mealType: .lunch, leftover: beefLeftover))
-        let dayAfter = Calendar.current.date(byAdding: .day, value: 2, to: .now)!
-        context.insert(PlannedMeal(date: dayAfter, mealType: .dinner, recipe: salmonBowl))
-
-        // Cook history ("Cooked before" section + Progress stats)
+        // Cook history ("Cooked before" section)
         let sessions: [(Recipe, Int, Int, Double, String?)] = [
             (koreanBeef, -2, 5, 1, "Sauce is elite. Broccoli slightly overdone."),
             (hotHoney, -5, 2, 2, nil),

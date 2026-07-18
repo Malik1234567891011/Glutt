@@ -27,7 +27,7 @@ enum PollyMemoryExtractor {
         transcript: String,
         recipeTitle: String,
         llm: LLM = { system, user in
-            try await LLMClient.chatJSON(Extraction.self, system: system, user: user, temperature: 0.2, timeout: 30)
+            try await LLMClient.live.chatJSON(Extraction.self, system: system, user: user, temperature: 0.2, timeout: 30)
         }
     ) async throws -> Extraction {
         guard LLMClient.isConfigured else { throw LLMClient.LLMError.notConfigured }

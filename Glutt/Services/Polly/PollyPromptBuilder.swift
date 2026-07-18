@@ -15,7 +15,8 @@ enum PollyPromptBuilder {
         pantryMatch: PantryMatcher.MatchResult,
         prefs: UserPrefs,
         memories: [PollyMemory],
-        pastSessions: [CookSession]
+        pastSessions: [CookSession],
+        ownedTools: [KitchenTool]
     ) -> String {
         [
             personaSection(),
@@ -23,6 +24,7 @@ enum PollyPromptBuilder {
             ingredientsSection(recipe: recipe, plan: plan),
             planSection(plan),
             pantrySection(pantryMatch),
+            toolsSection(ownedTools),
             hardRulesSection(prefs),
             memorySection(memories),
             historySection(pastSessions),
@@ -122,6 +124,27 @@ enum PollyPromptBuilder {
         "the pantry shows otherwise". Mention missing ingredients once at the \
         start, then move on.
         """)
+        return lines.joined(separator: "\n")
+    }
+
+    private static func toolsSection(_ tools: [KitchenTool]) -> String {
+        var lines = ["# Kitchen equipment"]
+        if tools.isEmpty {
+            lines.append("""
+            The user hasn't listed their equipment. Assume a basic kitchen — stove, oven, a \
+            knife, everyday pans and bowls — but before relying on anything specialized (air \
+            fryer, stand mixer, blender, pressure cooker, thermometer), ask whether they have \
+            it instead of assuming.
+            """)
+        } else {
+            let names = tools.sorted { $0.name < $1.name }.map(\.name).joined(separator: ", ")
+            lines.append("The user has told us they own: \(names).")
+            lines.append("""
+            Cook with what they have. If the recipe needs a tool that's NOT on this list, say \
+            so early and offer a workaround using their gear (e.g. the oven instead of an air \
+            fryer) rather than assuming they have it.
+            """)
+        }
         return lines.joined(separator: "\n")
     }
 

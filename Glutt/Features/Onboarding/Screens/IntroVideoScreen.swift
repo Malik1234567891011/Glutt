@@ -1,18 +1,16 @@
 import SwiftUI
 
 /// Screen 1 — H1 over a flex-fill rounded video frame (glutt-intro.mp4).
+/// Content only; the coordinator owns the fixed "Continue" footer + chrome.
 struct IntroVideoScreen: View {
-    let onContinue: () -> Void
     var body: some View {
         VStack(spacing: 0) {
             OnboardingHeadline("Glutt is a whole new way to cook at home", size: 28, maxWidth: 310)
             videoFrame(resource: "glutt-intro", scale: 1.1, yOffset: -0.09, fadeHeight: 0.30)
                 .padding(.vertical, 22)
-            OnboardingPrimaryButton(title: "Continue", action: onContinue)
         }
         .padding(.horizontal, 24)
         .padding(.top, 50)   // design 104 − 54
-        .padding(.bottom, 10)
     }
 }
 

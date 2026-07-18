@@ -8,10 +8,10 @@ iOS-native: SwiftUI + SwiftData, iOS 17+.
 
 | File | What it is |
 |---|---|
-| `product.md` | Product vision, principles, MVP scope |
-| `ideas.md` | Full feature inventory with priorities |
-| `structure.md` | App structure, screens, flows, design direction |
-| `plan.md` | Phase-by-phase build plan (start here) |
+| `docs/product.md` | Product vision, principles, MVP scope |
+| `docs/structure.md` | App structure, screens, flows, design direction (source of truth for the current nav/tabs) |
+| `docs/AI-PROXY-SETUP.md` | Vercel AI proxy: deploy, env vars, endpoints |
+| `docs/REENABLE-PAYMENTS.md` | Subscriptions re-enablement status |
 
 ## Getting started
 
@@ -27,15 +27,20 @@ Build and run the `Glutt` scheme on an iOS 17+ simulator. Debug builds seed samp
 
 ## Architecture
 
-- **Local-first**: all data lives on-device in SwiftData. A thin backend comes later (Phase 6) only for AI calls and recipe import scraping.
+- **Local-first**: all data lives on-device in SwiftData. A thin Vercel proxy (`vercel-ai-proxy/`, see `docs/AI-PROXY-SETUP.md`) handles AI calls and recipe import scraping — no accounts, no sync backend.
 - **Structure**:
   - `Glutt/App` — entry point, root tab shell, deep-link router (`glutt://` scheme)
   - `Glutt/DesignSystem` — theme tokens + reusable components (warm, cream, deep-green)
   - `Glutt/Models` — SwiftData models: `Recipe`, `PantryItem`, `GroceryItem`, `PlannedMeal`, `Leftover`, `FoodLog`, `CookSession`, `UserPrefs`
   - `Glutt/Features` — one folder per tab: Today, Recipes, Polly (live cooking sessions), Plan, Kitchen, Progress, plus Capture (universal + button)
-  - `Glutt/Services` — domain logic (ingredient canonicalization for pantry matching)
-- **Tests**: `GluttTests` covers canonicalization and the data layer. CI runs build + tests on every push.
+  - `Glutt/Services` — domain logic: ingredient canonicalization/pantry matching, AI (import cleanup, pantry chef, recipe adjust, Ask Glutt), recipe import pipeline, Polly session/memory
+- **Tests**: `GluttTests` covers canonicalization, the data layer, and AI/LLM client behavior. CI runs build + tests on every push.
 
 ## Current status
 
-Phase 0 complete: project scaffolding, design system, full data model, navigable 5-tab shell with universal action button. See `plan.md` for what's next (Phase 1: recipe library CRUD).
+Core loop is built and shipping: recipe import (link/screenshot/video), Cook Mode,
+pantry-aware planning/groceries, food logging, and Polly — a realtime voice + camera
+AI chef — live on the six-tab shell (Today, Recipes, Polly, Plan, Kitchen, Progress).
+Onboarding, AI features (via the Vercel proxy), and subscriptions are all in active
+iteration; see `docs/structure.md` for the current nav/screen contract and
+`docs/REENABLE-PAYMENTS.md` for subscription status.

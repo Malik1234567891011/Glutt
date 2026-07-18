@@ -42,10 +42,6 @@
 		<string>BricolageGrotesque-Variable.ttf</string>
 		<string>Nunito-Variable.ttf</string>
 	</array>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
-	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

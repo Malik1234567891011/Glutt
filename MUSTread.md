@@ -1,1 +1,0 @@
-this is a mobile app, ios first xcode,etc. take ur time

@@ -85,7 +85,8 @@ final class PollyPromptBuilderTests: XCTestCase {
             pantryMatch: makeMatch(for: recipe),
             prefs: makePrefs(),
             memories: memories,
-            pastSessions: pastSessions
+            pastSessions: pastSessions,
+            ownedTools: []
         )
     }
 

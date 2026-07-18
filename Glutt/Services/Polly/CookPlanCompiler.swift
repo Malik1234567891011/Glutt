@@ -60,8 +60,8 @@ enum CookPlanCompiler {
         recipe: Recipe,
         scale: Double,
         llm: (String, String) async throws -> CookPlan = { system, user in
-            try await LLMClient.chatJSON(CookPlan.self, system: system, user: user,
-                                         temperature: 0.2, timeout: 45)
+            try await LLMClient.live.chatJSON(CookPlan.self, system: system, user: user,
+                                              temperature: 0.2, timeout: 45)
         }
     ) async -> CookPlan {
         let key = cacheKey(recipe: recipe, scale: scale)

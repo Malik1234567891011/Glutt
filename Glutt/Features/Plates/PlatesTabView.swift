@@ -6,6 +6,10 @@ import SwiftData
 /// (right) or skips (left), with button equivalents in the action bar. New
 /// pages stream in as you near the end, so the feed never dead-ends.
 struct PlatesTabView: View {
+    /// When embedded in the Discover tab (behind the Deck|Videos toggle), the
+    /// toggle serves as the header, so the deck hides its own "Discover" title.
+    var hidesTitle = false
+
     @Environment(\.modelContext) private var context
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query private var recipes: [Recipe]
@@ -263,10 +267,12 @@ struct PlatesTabView: View {
     private var header: some View {
         VStack {
             HStack(alignment: .center) {
-                Text("Discover")
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.4), radius: 4, y: 1)
+                if !hidesTitle {
+                    Text("Discover")
+                        .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.4), radius: 4, y: 1)
+                }
                 Spacer()
                 if model.phase == .loaded, !model.recipes.isEmpty {
                     Text("\(min(model.index + 1, model.recipes.count)) of \(model.recipes.count)")

@@ -62,26 +62,34 @@ been removed. So the rebuild was a re-add, verified in both states via screensho
 
 The paywall **draft is complete**. Everything below is the go-live sequence.
 
-## ⏳ Remaining — publish + ship (do in this order)
+## ⏳ Remaining — publish BEFORE submitting (corrected sequencing)
 
-**Why not publish the paywall right now:** the trial SKU is still **"Ready to Submit"**
-(not approved). Apple requires the *first* auto-renewable sub to be **submitted with an
-app version** before it's purchasable. If we published the toggle paywall to production
-today, current users at `onboarding_complete` could flip the toggle and hit a **dead
-"Start free trial"** (product not purchasable) — the exact 2.1 bug from June. So hold
-publish until the trial is approved *with the app build*.
+Superwall paywalls are server-side: the reviewer's build fetches whatever is **published**
+at review time. So the toggle/trial paywall must be **published before submission**, or the
+reviewer sees the old published version (v4, no trial) — and, worse, because the gate
+placement must resolve to a paywall, an unresolved placement = a **locked app with no
+paywall = automatic rejection**. During review the reviewer completes the trial purchase in
+the **sandbox** (the trial IAP is attached to the build under review), so there's no dead
+button for them.
 
-Also: the hard gate lives in app code (branch `paywall-hard-gate-trial`), so **nothing
-goes live until that build ships anyway.**
+**Gate placement:** the gate reuses **`onboarding_complete`** (already wired in campaign
+91288 → 243875), so **no campaign change is needed** — avoids touching the live campaign.
+(`SubscriptionGate.placement`.) A dedicated `premium_gate` placement is a future analytics
+cleanup, not required to ship.
 
 Go-live order:
-1. Merge/commit `paywall-hard-gate-trial`, bump build, `xcodegen generate`, archive.
-2. **Submit to App Review with the trial IAP attached** (`…premium.yearly.trial`) plus
-   the existing IAPs → this gets the trial **approved**.
-3. On approval: **publish paywall 243875** (its editor draft already has the toggle) and
-   **wire the `premium_gate` placement** → campaign 91288 → 243875 (a ~2-min REST/editor
-   step; the gate fails closed if unwired, so the app just stays locked until then).
-4. Release → hard gate + 3-day trial live together.
+1. ✅ Code on `main`, build 10, Release build verified.
+2. **Publish paywall 243875** (its draft has the toggle + trial product). No API publish
+   endpoint — click **Publish** in the Superwall editor. ⚠️ Only downside: if the app is
+   *already live* on the App Store, existing users would see the toggle and its trial button
+   would be dead until this build is approved (annual "Continue" still works). If not yet
+   released, zero downside.
+3. **Submit to App Review with all three IAPs attached** — `…premium.yearly`,
+   `…premium.monthly`, and the new **`…premium.yearly.trial`** (attaching the trial is what
+   gets it approved *and* makes it testable in the review sandbox). Include review notes:
+   "Glutt requires a subscription; on the paywall tap Continue and purchase with a Sandbox
+   Apple ID (no charge). The toggle starts a 3-day free trial."
+4. On approval → release. Hard gate + 3-day trial live together.
 
 Note: dynamic `{{ products.* }}` price bindings left as static literals for now
 ($49.99 / $0.96/week / $7.99) — the annual price is unchanged by the trial, and the trial

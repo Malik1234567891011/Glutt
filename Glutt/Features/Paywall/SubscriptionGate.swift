@@ -28,10 +28,12 @@ final class SubscriptionGate {
         case unlocked
     }
 
-    /// The placement registered to present the wall. Wired in the "Glutt"
-    /// campaign (91288) → paywall 243875. Distinct from `onboarding_complete`
-    /// so the gate's re-presentations don't pollute the onboarding funnel.
-    static let placement = "premium_gate"
+    /// The placement registered to present the wall. Reuses `onboarding_complete`,
+    /// which is ALREADY wired in the "Glutt" campaign (91288) → paywall 243875,
+    /// so the gate presents without any campaign change (and App Review never
+    /// hits a locked app with no paywall). A dedicated `premium_gate` placement
+    /// would give cleaner funnel analytics — deferred as a future cleanup.
+    static let placement = "onboarding_complete"
 
     private(set) var status: SubscriptionStatus = .unknown
     /// If entitlement never resolves (SDK/network failure) we fail *closed* to

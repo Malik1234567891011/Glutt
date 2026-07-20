@@ -45,6 +45,11 @@ final class PlatesFeedViewModel {
     private var query = ""
     private var isExplore = false
     private var isLoadingMore = false
+    /// True when the current deck is the bundled seed (network unavailable at
+    /// load). Seed has no page cursor, so we keep trying to go live rather than
+    /// dead-ending on ~9 offline cards. See `recoverToLiveIfNeeded`.
+    private var isFallback = false
+    private var isRecovering = false
     /// Filter context captured on the initial load, reused when appending pages.
     private var filterRules: [DietaryRule] = []
     private var filterAllergies: [String] = []
@@ -68,27 +73,62 @@ final class PlatesFeedViewModel {
             return
         }
 
-        // 2. Network deck → cache the first page.
+        // 2. Network deck → cache the first page. Retry once on a cold-start
+        // failure before falling back (the first request after launch often
+        // loses a DNS/TLS race the retry then wins).
         phase = .loading
         do {
-            let page = try await deps.daily()
+            let page = try await fetchDailyWithRetry()
+            isFallback = false
             applyDeck(page, rules: rules, allergies: allergies, savedSourceURLs: savedSourceURLs, store: true)
             // If everything on page 1 was filtered out (all saved/diet-excluded)
             // but more pages exist, pull the next one so we don't dead-end.
             if phase == .empty { await loadMoreIfNeeded(currentIndex: 0) }
         } catch {
-            // 3. Bundled seed fallback.
+            // 3. Bundled seed fallback — but flag it so we keep trying to go live
+            // instead of stranding the user on the offline cards.
+            isFallback = true
             let seed = deps.seed()
             applyDeck(seed, rules: rules, allergies: allergies, savedSourceURLs: savedSourceURLs, store: false)
         }
+    }
+
+    private func fetchDailyWithRetry() async throws -> PlatesResponse {
+        do {
+            return try await deps.daily()
+        } catch {
+            try? await Task.sleep(for: .milliseconds(600))
+            return try await deps.daily()
+        }
+    }
+
+    /// When we're stuck on the offline seed deck, quietly attempt to swap in the
+    /// live feed as the user nears the end — so a transient launch-time network
+    /// blip doesn't permanently cap Discover at ~9 cards.
+    func recoverToLiveIfNeeded() async {
+        guard isFallback, !isRecovering, !isLoadingMore else { return }
+        isRecovering = true
+        defer { isRecovering = false }
+        guard let page = try? await deps.daily() else { return }
+        isFallback = false
+        deps.storeDeck(page)
+        let existing = Set(recipes.map(\.id))
+        let fresh = PlatesDeckFilter
+            .filter(page.recipes, rules: filterRules, allergies: filterAllergies, savedSourceURLs: filterSavedURLs)
+            .filter { !existing.contains($0.id) }
+        recipes.append(contentsOf: fresh)
+        nextPageToken = page.nextPageToken
+        if phase == .empty, !recipes.isEmpty { phase = .loaded }
     }
 
     /// Endless scroll: pulls the next page as the cook nears the end of what's
     /// loaded. Safe to call on every card appearance — it self-guards on the
     /// cursor, an in-flight fetch, and how close to the end we are.
     func loadMoreIfNeeded(currentIndex: Int) async {
-        guard !isExplore, !isLoadingMore, let token = nextPageToken,
-              currentIndex >= recipes.count - 3 else { return }
+        guard !isExplore, currentIndex >= recipes.count - 3 else { return }
+        // On the offline seed deck there's no cursor — try to go live instead.
+        if isFallback { await recoverToLiveIfNeeded(); return }
+        guard !isLoadingMore, let token = nextPageToken else { return }
         isLoadingMore = true
         defer { isLoadingMore = false }
         do {

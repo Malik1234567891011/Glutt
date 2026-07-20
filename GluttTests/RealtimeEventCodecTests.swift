@@ -206,6 +206,13 @@ final class RealtimeEventCodecTests: XCTestCase {
         XCTAssertEqual(payload.count, 1)
     }
 
+    func testResponseCreateSpeechOnlyEncodesToolChoiceNone() throws {
+        let payload = try encodedDictionary(.responseCreateSpeechOnly)
+        XCTAssertEqual(payload["type"] as? String, "response.create")
+        let response = payload["response"] as? [String: Any]
+        XCTAssertEqual(response?["tool_choice"] as? String, "none")
+    }
+
     func testResponseCancelEncodes() throws {
         let payload = try encodedDictionary(.responseCancel)
         XCTAssertEqual(payload["type"] as? String, "response.cancel")

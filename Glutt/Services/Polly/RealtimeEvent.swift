@@ -99,6 +99,10 @@ enum RealtimeClientEvent: Equatable {
     case createFunctionOutput(callId: String, output: String)
     case deleteItem(itemId: String)
     case responseCreate
+    /// Greeting / speech-only turn: `tool_choice: "none"` so the model can't
+    /// call a tool mid-opening and then re-speak the same first line on the
+    /// follow-up response.create after tool results.
+    case responseCreateSpeechOnly
     case responseCancel
     case truncateItem(itemId: String, audioEndMs: Int)
 
@@ -128,6 +132,9 @@ enum RealtimeClientEvent: Equatable {
             return ["type": "conversation.item.delete", "item_id": itemId]
         case .responseCreate:
             return ["type": "response.create"]
+        case .responseCreateSpeechOnly:
+            return ["type": "response.create",
+                    "response": ["tool_choice": "none"]]
         case .responseCancel:
             return ["type": "response.cancel"]
         case .truncateItem(let itemId, let audioEndMs):

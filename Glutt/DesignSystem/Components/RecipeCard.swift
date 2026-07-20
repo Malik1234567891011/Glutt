@@ -71,25 +71,44 @@ struct RecipeCard: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
     }
 
+    /// Cached macros if present, else a cheap local estimate — so protein and
+    /// calories are visible right on the card, not buried in the detail screen.
+    private var nutrition: (calories: Int, protein: Int)? {
+        if let c = recipe.calories, let p = recipe.proteinGrams { return (c, p) }
+        if let est = NutritionEstimator.estimate(for: recipe) { return (est.calories, est.proteinGrams) }
+        return nil
+    }
+
     @ViewBuilder private var statRow: some View {
-        HStack(spacing: 8) {
-            StatPill.time(recipe.timeLabel)
-                .fixedSize(horizontal: true, vertical: false)
-            StatPill.difficulty(compact ? recipe.difficulty.shortLabel : recipe.difficulty.label)
-                .fixedSize(horizontal: true, vertical: false)
-            if !compact {
-                if let rating = recipe.rating {
-                    StatPill.rating("\(rating)")
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-                if let pantryMatch, pantryMatch.total > 0 {
-                    StatPill(icon: Ph.basket.fill,
-                             text: "\(pantryMatch.owned)/\(pantryMatch.total)",
-                             foreground: Theme.Colors.accent, background: Theme.Colors.successTint)
-                        .fixedSize(horizontal: true, vertical: false)
+        // Horizontal scroll keeps the pills from crushing when a card shows
+        // time + difficulty + calories + protein + pantry all at once.
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                StatPill.time(recipe.timeLabel)
+                    .fixedSize(horizontal: true, vertical: false)
+                StatPill.difficulty(compact ? recipe.difficulty.shortLabel : recipe.difficulty.label)
+                    .fixedSize(horizontal: true, vertical: false)
+                if !compact {
+                    if let nutrition {
+                        StatPill(icon: Ph.flame.fill, text: "\(nutrition.calories) cal",
+                                 foreground: Theme.Colors.tomato, background: Theme.Colors.tomatoTint)
+                            .fixedSize(horizontal: true, vertical: false)
+                        StatPill(icon: Ph.barbell.fill, text: "\(nutrition.protein)g protein")
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                    if let rating = recipe.rating {
+                        StatPill.rating("\(rating)")
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                    if let pantryMatch, pantryMatch.total > 0 {
+                        StatPill(icon: Ph.basket.fill,
+                                 text: "\(pantryMatch.owned)/\(pantryMatch.total)",
+                                 foreground: Theme.Colors.accent, background: Theme.Colors.successTint)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
                 }
             }
-            Spacer(minLength: 0)
         }
+        .scrollDisabled(compact)
     }
 }

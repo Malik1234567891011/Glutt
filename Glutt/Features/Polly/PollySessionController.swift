@@ -250,9 +250,11 @@ final class PollySessionController {
             audio.holdCapture(forSeconds: PollyConfig.greetingMicHoldSeconds)
         }
         guard phase == .live else { return }   // user bailed during warm-up
-        try? await transport.send(.responseCreate)
+        // Speech-only: if the opening calls a tool (check_pantry, etc.), the
+        // post-tool response.create makes her restart the same first sentence.
+        try? await transport.send(.responseCreateSpeechOnly)
         isThinking = true
-        PollyDebugLog.shared.log("session: greeting requested")
+        PollyDebugLog.shared.log("session: greeting requested (speech-only)")
     }
 
     /// Idempotent teardown: stop the pipelines, close the socket, extract
@@ -304,6 +306,17 @@ final class PollySessionController {
     }
 
     func toggleMute() { audio.isMuted.toggle() }   // haptic lives in the view
+
+    /// Injects a typed/tapped question as a user turn and asks Polly to answer —
+    /// backs the suggested-question bubbles for cooks who don't know what to ask.
+    func ask(_ text: String) async {
+        guard phase == .live else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        try? await transport?.send(.createUserText(trimmed))
+        try? await transport?.send(.responseCreate)
+        isThinking = true
+    }
 
     func flipCamera() { camera.flip() }
 
@@ -396,6 +409,9 @@ final class PollySessionController {
             PollyDebugLog.shared.log(
                 "event: response DONE status=\(status) tools=[\(calls.map(\.name).joined(separator: ","))]"
                 + (pendingAssistantLine.isEmpty ? "" : " said=\"\(pendingAssistantLine.prefix(120))\""))
+            // Capture before flush — if she already spoke this turn, the
+            // post-tool follow-up must not re-open with the same first line.
+            let alreadySpoke = !pendingAssistantLine.isEmpty
             isPollySpeaking = false
             isThinking = false
             flushPendingAssistantLine()
@@ -406,6 +422,15 @@ final class PollySessionController {
             for call in calls {
                 let output = await registry.handle(name: call.name, argumentsJSON: call.argumentsJSON)
                 try? await transport?.send(.createFunctionOutput(callId: call.callId, output: output))
+            }
+            // Wait until her current audio finishes draining so a follow-up
+            // doesn't stack on top of the still-playing opening sentence.
+            await audio.waitUntilQuiet(timeoutSeconds: 12)
+            if alreadySpoke {
+                try? await transport?.send(.createUserText(
+                    "[system note] Tool results are in. You already spoke this turn aloud — "
+                    + "do NOT greet again and do NOT repeat any sentence you just said. "
+                    + "Only speak if the tools require a short correction; otherwise stay silent and wait for the cook."))
             }
             // ONE response for the whole batch. A response.create per call
             // queues N spoken replies back to back — Polly repeating herself.

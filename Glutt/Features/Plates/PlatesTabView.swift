@@ -275,10 +275,15 @@ struct PlatesTabView: View {
                 }
                 Spacer()
                 if model.phase == .loaded, !model.recipes.isEmpty {
-                    Text("\(min(model.index + 1, model.recipes.count)) of \(model.recipes.count)")
-                        .font(.gluttCaption.weight(.heavy)).foregroundStyle(.white)
-                        .padding(.horizontal, 12).padding(.vertical, 6)
-                        .background(.ultraThinMaterial).clipShape(Capsule())
+                    // Endless feed: show a running tally, not "X of N" (which
+                    // wrongly implies the deck is finite and about to run out).
+                    HStack(spacing: 4) {
+                        Ph.sparkle.fill.resizable().scaledToFit().frame(width: 11, height: 11)
+                        Text("\(model.index + 1)")
+                    }
+                    .font(.gluttCaption.weight(.heavy)).foregroundStyle(.white)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(.ultraThinMaterial).clipShape(Capsule())
                 }
             }
             .padding(.horizontal, Theme.Spacing.md)

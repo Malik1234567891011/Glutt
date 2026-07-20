@@ -20,6 +20,7 @@ struct RecipeDetailView: View {
     @State private var isShowingPreCookChecklist = false
     @State private var isOptimizing = false
     @State private var isAdjusting = false
+    @State private var substituteTarget: DietGuard.Conflict?
     @State private var selectedTab = 0   // 0 = Ingredients, 1 = Steps
 
     init(recipe: Recipe) {
@@ -40,10 +41,15 @@ struct RecipeDetailView: View {
         PantryMatcher.match(recipe: recipe, pantry: pantryItems)
     }
 
+    /// Equipment the recipe implies, inferred from title/summary/steps text.
+    private var requiredTools: [String] {
+        let text = ([recipe.title, recipe.summary ?? ""] + recipe.steps.map(\.text)).joined(separator: " ")
+        return KitchenToolCatalog.requiredTools(inText: text)
+    }
+
     /// Equipment the recipe implies (from its text) that the user hasn't marked owned.
     private var missingTools: [String] {
-        let text = ([recipe.title, recipe.summary ?? ""] + recipe.steps.map(\.text)).joined(separator: " ")
-        let required = KitchenToolCatalog.requiredTools(inText: text)
+        let required = requiredTools
         guard !required.isEmpty else { return [] }
         let owned = Set(ownedTools.map(\.canonicalName))
         return required.filter { !owned.contains($0.lowercased()) }
@@ -70,6 +76,10 @@ struct RecipeDetailView: View {
         .sheet(isPresented: $isShowingEditor) { RecipeEditorView(recipe: recipe) }
         .sheet(isPresented: $isOptimizing) { OptimizeRecipeView(recipe: recipe) }
         .sheet(isPresented: $isAdjusting) { AdjustRecipeView(recipe: recipe) }
+        .sheet(item: $substituteTarget) { conflict in
+            SubstituteSheet(recipe: recipe, conflict: conflict)
+                .presentationDetents([.medium, .large])
+        }
         .confirmationDialog("Delete this recipe?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) { context.delete(recipe); dismiss() }
         }
@@ -147,7 +157,10 @@ struct RecipeDetailView: View {
     private var contentSheet: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
             titleBlock
-            adaptRow
+            // Technique lessons don't need "Make it…" / pantry optimize — keep the focus on learning.
+            if !recipe.isCookingBasic {
+                adaptRow
+            }
             dietWarnings
             gearWarning
             if recipe.sourcePlatform == .youtube,
@@ -174,12 +187,19 @@ struct RecipeDetailView: View {
         .padding(.bottom, -24)
     }
 
+    /// Per-serving calories + protein for the header pills: stored values if we
+    /// have them, otherwise a local estimate so protein is always visible.
+    private var headerNutrition: (calories: Int, protein: Int)? {
+        if let c = recipe.calories, let p = recipe.proteinGrams { return (c, p) }
+        if let est = NutritionEstimator.estimate(for: recipe) { return (est.calories, est.proteinGrams) }
+        return nil
+    }
+
     private var titleBlock: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            (Text(recipe.title).font(.system(size: 26, weight: .heavy, design: .rounded))
-                + Text(recipe.calories.map { ", \($0) Kcal" } ?? "")
-                    .font(.system(size: 26, weight: .heavy, design: .rounded))
-                    .foregroundColor(Theme.Colors.textSecondary))
+        let showNutrition = UserPrefs.current(in: context).nutritionMode.showsNutrition
+        return VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Text(recipe.title)
+                .font(.system(size: 26, weight: .heavy, design: .rounded))
                 .foregroundColor(Theme.Colors.textPrimary)
             if let summary = recipe.summary {
                 Text(summary).font(.gluttBody).foregroundStyle(Theme.Colors.textSecondary)
@@ -187,11 +207,17 @@ struct RecipeDetailView: View {
             Text(recipe.sourceCreator ?? recipe.sourcePlatform.label)
                 .font(.gluttCaption)
                 .foregroundStyle(Theme.Colors.textSecondary)
-            HStack(spacing: 8) {
-                StatPill.time(recipe.timeLabel)
-                StatPill.difficulty(recipe.difficulty.label)
-                if let rating = recipe.rating { StatPill.rating("\(rating)") }
-                Spacer(minLength: 0)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    StatPill.time(recipe.timeLabel)
+                    StatPill.difficulty(recipe.difficulty.label)
+                    if showNutrition, let n = headerNutrition {
+                        StatPill(icon: Ph.flame.fill, text: "\(n.calories) cal",
+                                 foreground: Theme.Colors.tomato, background: Theme.Colors.tomatoTint)
+                        StatPill(icon: Ph.barbell.fill, text: "\(n.protein)g protein")
+                    }
+                    if let rating = recipe.rating { StatPill.rating("\(rating)") }
+                }
             }
             if !recipe.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -262,14 +288,33 @@ struct RecipeDetailView: View {
             dislikes: prefs.dislikedIngredients
         )
         if !conflicts.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 ForEach(conflicts) { conflict in
-                    Label(
-                        conflict.message,
-                        systemImage: conflict.isBlocking ? "exclamationmark.triangle.fill" : "hand.thumbsdown"
-                    )
-                    .font(.gluttCaption.weight(.medium))
-                    .foregroundStyle(conflictColor(conflict))
+                    HStack(alignment: .center, spacing: Theme.Spacing.sm) {
+                        Label(
+                            conflict.message,
+                            systemImage: conflict.isBlocking ? "exclamationmark.triangle.fill" : "hand.thumbsdown"
+                        )
+                        .font(.gluttCaption.weight(.medium))
+                        .foregroundStyle(conflictColor(conflict))
+                        Spacer(minLength: 0)
+                        if conflict.severity != .dislike {
+                            Button {
+                                Haptics.impact(.light)
+                                substituteTarget = conflict
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Ph.swap.regular.resizable().scaledToFit().frame(width: 13, height: 13)
+                                    Text("Substitute").font(.gluttCaption.weight(.heavy))
+                                }
+                                .foregroundStyle(Theme.Colors.accent)
+                                .padding(.horizontal, 12).padding(.vertical, 7)
+                                .background(Theme.Colors.background.opacity(0.6), in: Capsule())
+                                .overlay(Capsule().strokeBorder(Theme.Colors.accent.opacity(0.35)))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -284,19 +329,37 @@ struct RecipeDetailView: View {
     }
 
     /// Soft flag: the recipe's text implies equipment not in the user's Tools list.
-    /// A hint, not a blocker — Kitchen › Tools is where they'd add it.
+    /// "Tools you'll need" — lists the equipment the recipe implies so cooks can
+    /// gather it before starting, marking what they already own vs. still need.
+    /// A hint, not a blocker — Kitchen › Tools is where they'd add missing gear.
     @ViewBuilder
     private var gearWarning: some View {
-        if !missingTools.isEmpty {
-            Label(
-                "Needs gear you haven't added: \(missingTools.joined(separator: ", "))",
-                systemImage: "wrench.and.screwdriver"
-            )
-            .font(.gluttCaption.weight(.medium))
-            .foregroundStyle(Theme.Colors.textSecondary)
+        let required = requiredTools
+        if !required.isEmpty {
+            let owned = Set(ownedTools.map(\.canonicalName))
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                Label("Tools you'll need", systemImage: "wrench.and.screwdriver")
+                    .font(.gluttCaption.weight(.semibold))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                FlowLayout(hSpacing: Theme.Spacing.xs, vSpacing: Theme.Spacing.xs) {
+                    ForEach(required, id: \.self) { tool in
+                        let have = owned.contains(tool.lowercased())
+                        HStack(spacing: 4) {
+                            Image(systemName: have ? "checkmark.circle.fill" : "plus.circle")
+                            Text(tool)
+                        }
+                        .font(.gluttCaption.weight(.medium))
+                        .foregroundStyle(have ? Theme.Colors.accent : Theme.Colors.warning)
+                        .padding(.horizontal, Theme.Spacing.sm)
+                        .padding(.vertical, 6)
+                        .background(have ? Theme.Colors.successTint : Theme.Colors.warningTint)
+                        .clipShape(Capsule())
+                    }
+                }
+            }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Theme.Spacing.md)
-            .background(Theme.Colors.warningTint)
+            .background(Theme.Colors.card)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
         }
     }
@@ -422,6 +485,19 @@ struct RecipeDetailView: View {
         }
     }
 
+    /// Returns the ingredient note only when it reads like an alternate
+    /// measurement (e.g. "400 g", "1 cup"), so the parenthetical unit from the
+    /// source survives on screen — but swap notes / free text stay hidden here.
+    private func alternateAmount(from note: String?) -> String? {
+        guard let note = note?.trimmingCharacters(in: .whitespaces), !note.isEmpty else { return nil }
+        guard note.first?.isNumber == true else { return nil }
+        let units = ["g", "kg", "ml", "l", "oz", "lb", "lbs", "cup", "cups", "tbsp", "tsp",
+                     "gram", "grams", "pound", "pounds", "ounce", "ounces"]
+        let lower = note.lowercased()
+        guard units.contains(where: { lower.contains($0) }) else { return nil }
+        return note
+    }
+
     private func ingredientRow(_ ingredient: RecipeIngredient) -> some View {
         let owned = pantryMatch.owned.contains { $0 === ingredient }
         return HStack(spacing: Theme.Spacing.md) {
@@ -433,8 +509,14 @@ struct RecipeDetailView: View {
                     .foregroundStyle(owned ? Theme.Colors.textSecondary : nameColor(for: ingredient))
                 HStack(spacing: 4) {
                     if let display = UnitConverter.display(quantity: ingredient.quantity, unit: ingredient.unit,
-                                                           scale: scale, system: unitSystem) {
+                                                           scale: scale, system: unitSystem,
+                                                           ingredientName: ingredient.name) {
                         Text(ingredient.isEstimated ? "~\(display)" : display)
+                    }
+                    // Keep the source's other unit visible ("0.8 lb (400 g)")
+                    // when only viewing the original units — many cooks want both.
+                    if unitSystem == .original, let alt = alternateAmount(from: ingredient.note) {
+                        Text("(\(alt))")
                     }
                     if owned { Text("· in your kitchen") }
                     else if ingredient.isOptional { Text("· optional") }
@@ -472,7 +554,7 @@ struct RecipeDetailView: View {
                         Ph.chefHat.fill
                             .resizable().scaledToFit()
                             .frame(width: 18, height: 18)
-                        Text("Cook with Polly")
+                        Text(recipe.isCookingBasic ? "Learn with Polly" : "Cook with Polly")
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -483,7 +565,7 @@ struct RecipeDetailView: View {
                     Haptics.impact(.light)
                     if pantryMatch.missing.isEmpty { isCooking = true } else { isShowingPreCookChecklist = true }
                 } label: {
-                    Text("Cook without Polly")
+                    Text(recipe.isCookingBasic ? "Practice without Polly" : "Cook without Polly")
                         .font(.gluttCaption.weight(.semibold))
                         .foregroundStyle(Theme.Colors.textSecondary)
                         .padding(.vertical, 4)

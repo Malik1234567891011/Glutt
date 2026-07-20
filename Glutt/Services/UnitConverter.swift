@@ -3,6 +3,10 @@ import Foundation
 enum MeasurementSystem: String, CaseIterable {
     case original = "Original"
     case metric = "Metric"
+    /// Converts volume measures (cups/tbsp/tsp) to grams for cooks who prefer to
+    /// weigh everything. Uses per-ingredient density; leaves an amount unchanged
+    /// when we can't convert it honestly.
+    case weight = "Weights (g)"
 }
 
 /// Converts common cooking units to metric and formats quantities for display
@@ -23,24 +27,71 @@ enum UnitConverter {
         "lb": (454, "g"), "lbs": (454, "g"), "pound": (454, "g"), "pounds": (454, "g"),
     ]
 
-    static func convert(quantity: Double, unit: String?, to system: MeasurementSystem) -> (quantity: Double, unit: String?) {
-        guard system == .metric,
-              let unit,
-              let conversion = toMetric[unit.lowercased().trimmingCharacters(in: .whitespaces)]
-        else {
+    /// Volume unit -> milliliters.
+    private static let volumeToML: [String: Double] = [
+        "cup": 240, "cups": 240,
+        "tbsp": 15, "tablespoon": 15, "tablespoons": 15,
+        "tsp": 5, "teaspoon": 5, "teaspoons": 5,
+        "fl oz": 29.6, "quart": 946, "quarts": 946, "pint": 473, "pints": 473,
+        "ml": 1, "l": 1000, "liter": 1000, "liters": 1000,
+    ]
+
+    /// Approx density (g per ml) for volume->weight, keyed by canonical-name
+    /// fragment. First match wins; unlisted solids can't be converted safely.
+    private static let density: [(key: String, gPerML: Double)] = [
+        ("flour", 0.53), ("cocoa", 0.42), ("powdered sugar", 0.5), ("icing sugar", 0.5),
+        ("brown sugar", 0.9), ("sugar", 0.85), ("salt", 1.2), ("rice", 0.78),
+        ("oat", 0.4), ("honey", 1.42), ("maple", 1.32), ("butter", 0.96),
+        ("olive oil", 0.92), ("oil", 0.92), ("milk", 1.03), ("yogurt", 1.03),
+        ("sour cream", 1.0), ("cream", 1.0), ("water", 1.0), ("broth", 1.0),
+        ("stock", 1.0), ("juice", 1.04), ("wine", 0.99), ("vinegar", 1.01),
+        ("honey", 1.42),
+    ]
+
+    private static func densityForVolume(_ name: String?) -> Double? {
+        guard let name = name?.lowercased(), !name.isEmpty else { return nil }
+        for entry in density where name.contains(entry.key) { return entry.gPerML }
+        // A liquid-sounding ingredient we didn't list: treat as water-like.
+        if ["water", "juice", "milk", "broth", "stock", "wine", "sauce", "syrup"].contains(where: name.contains) {
+            return 1.0
+        }
+        return nil
+    }
+
+    static func convert(
+        quantity: Double,
+        unit: String?,
+        to system: MeasurementSystem,
+        ingredientName: String? = nil
+    ) -> (quantity: Double, unit: String?) {
+        switch system {
+        case .original:
             return (quantity, unit)
+        case .weight:
+            guard let unit,
+                  let ml = volumeToML[unit.lowercased().trimmingCharacters(in: .whitespaces)],
+                  let gPerML = densityForVolume(ingredientName)
+            else { return (quantity, unit) }
+            var grams = quantity * ml * gPerML
+            if grams >= 1000 { return ((grams / 1000).rounded(toPlaces: 2), "kg") }
+            grams = grams >= 100 ? grams.rounded() : grams.rounded(toPlaces: 1)
+            return (grams, "g")
+        case .metric:
+            guard let unit,
+                  let conversion = toMetric[unit.lowercased().trimmingCharacters(in: .whitespaces)]
+            else { return (quantity, unit) }
+            var value = quantity * conversion.factor
+            // Promote to liters/kilograms when large.
+            if conversion.unit == "ml", value >= 1000 {
+                return ((value / 1000).rounded(toPlaces: 2), "l")
+            }
+            if conversion.unit == "g", value >= 1000 {
+                return ((value / 1000).rounded(toPlaces: 2), "kg")
+            }
+            // Round to a sensible kitchen precision.
+            value = value >= 100 ? value.rounded() : value.rounded(toPlaces: 1)
+            return (value, conversion.unit)
         }
-        var value = quantity * conversion.factor
-        // Promote to liters/kilograms when large.
-        if conversion.unit == "ml", value >= 1000 {
-            return ((value / 1000).rounded(toPlaces: 2), "l")
-        }
-        if conversion.unit == "g", value >= 1000 {
-            return ((value / 1000).rounded(toPlaces: 2), "kg")
-        }
-        // Round to a sensible kitchen precision.
-        value = value >= 100 ? value.rounded() : value.rounded(toPlaces: 1)
-        return (value, conversion.unit)
     }
 
     static func fahrenheitToCelsius(_ fahrenheit: Double) -> Double {
@@ -78,11 +129,12 @@ enum UnitConverter {
         quantity: Double?,
         unit: String?,
         scale: Double = 1,
-        system: MeasurementSystem = .original
+        system: MeasurementSystem = .original,
+        ingredientName: String? = nil
     ) -> String? {
         guard let quantity else { return nil }
         let scaled = quantity * scale
-        let converted = convert(quantity: scaled, unit: unit, to: system)
+        let converted = convert(quantity: scaled, unit: unit, to: system, ingredientName: ingredientName)
         return format(quantity: converted.quantity, unit: converted.unit)
     }
 }

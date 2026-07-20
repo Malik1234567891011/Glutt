@@ -67,6 +67,7 @@ enum DraftCleanup {
         Rules:
         - Extract the ACTUAL recipe. Strip hashtags, emoji spam, "follow me", engagement bait.
         - ingredients: one ingredient per line, format "quantity unit ingredient" when known (e.g. "2 tbsp soy sauce"). Fix OCR errors (e.g. "1OO g" -> "100 g").
+        - KEEP BOTH UNITS when the source gives them: if a line has an imperial and a metric amount (e.g. "0.8 lb (400 g) ground pork" or "1 cup / 240 ml milk"), preserve them as "0.8 lb (400 g) ground pork" — primary amount first, the other in parentheses. Never drop one; cooks in different regions rely on each.
         - steps: clear imperative sentences, one action per step, in order. Split run-on paragraphs.
         - Do NOT invent ingredients or steps that aren't implied by the source.
         \(chefGuidance)

@@ -22,6 +22,8 @@ enum PantryMatcher {
         var ownedCount: Int { owned.count }
         var totalCount: Int { owned.count + missing.count }
         var hasEverything: Bool { missing.isEmpty }
+        /// Fraction of required ingredients the cook already owns (0...1).
+        var coverage: Double { totalCount == 0 ? 0 : Double(ownedCount) / Double(totalCount) }
     }
 
     static func match(recipe: Recipe, pantry: [PantryItem]) -> MatchResult {

@@ -192,7 +192,8 @@ final class PollySessionControllerTests: XCTestCase {
         XCTAssertEqual(config.voice, "marin")
         XCTAssertEqual(config.model, "gpt-realtime-2")
         XCTAssertTrue(config.transcribeInput)
-        XCTAssertEqual(sent[1], .responseCreate, "Polly greets first")
+        XCTAssertEqual(sent[1], .responseCreateSpeechOnly,
+                       "Polly greets first without tools (avoids re-speaking the opening)")
 
         await controller.end(context: context, endedEarly: true)
     }

@@ -73,6 +73,8 @@ struct GluttApp: App {
             if ProcessInfo.processInfo.arguments.contains("-seed") {
                 SeedData.seedIfNeeded(context: container.mainContext)
             }
+            // Technique lessons (fry an egg, etc.) for every user — not Beta-only.
+            CookingBasics.install(context: container.mainContext)
             return container
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")

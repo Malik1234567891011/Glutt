@@ -106,18 +106,23 @@ enum PollyAudioError: LocalizedError {
 @Observable
 final class PollyAudioEngine {
     private(set) var isRunning = false
-    /// While muted the tap stays installed; chunk emission is gated off, and
-    /// when voice processing is active the input is also muted at the IO unit
-    /// so nothing can leak upstream.
+    /// While muted the tap stays installed but chunk emission is gated off, so
+    /// nothing reaches the socket. We deliberately do NOT toggle the IO unit's
+    /// `isVoiceProcessingInputMuted`: doing so can fire an engine configuration
+    /// change that stops the graph (dead mic tap) and the voice-processing mute
+    /// can wedge so capture never truly re-enables — the "mute → unmute → Polly
+    /// stops listening, silent fail" bug. The render-thread `mutedFlag` gate is
+    /// enough to guarantee silence upstream, and it's instantly reversible.
     var isMuted = false {
         didSet {
             let value = isMuted
             mutedFlag.withLock { $0 = value }
-            // Only touch the input node when start() already ran (accessing
-            // it earlier is the CoreAudio-abort vector on a wedged host).
-            if voiceProcessingActive {
-                engine.inputNode.isVoiceProcessingInputMuted = value
-            }
+            guard !value else { return }
+            // Unmuting: clear any stale onset/greeting capture gate that would
+            // otherwise keep dropping the cook's audio, and make sure the engine
+            // (hence the mic tap) is actually running before we resume.
+            captureGateDeadline.withLock { $0 = 0 }
+            restartEngineIfNeeded()
         }
     }
     /// True while any assistant audio buffer is scheduled and unplayed.
@@ -344,6 +349,16 @@ final class PollyAudioEngine {
         playerNode.stop()
         setPlaying(false)
         PollyDebugLog.shared.log("audio: player reset to stopped — fresh render for greeting")
+    }
+
+    /// Suspends until scheduled assistant audio has finished playing (or the
+    /// timeout elapses). Used so a post-tool follow-up response can't start
+    /// speaking while her previous sentence is still draining from the queue.
+    func waitUntilQuiet(timeoutSeconds: TimeInterval = 12) async {
+        let deadline = CFAbsoluteTimeGetCurrent() + timeoutSeconds
+        while outstandingBuffers > 0, CFAbsoluteTimeGetCurrent() < deadline {
+            try? await Task.sleep(for: .milliseconds(40))
+        }
     }
 
     /// Suppresses mic capture for `seconds` from now (extends, never shortens,

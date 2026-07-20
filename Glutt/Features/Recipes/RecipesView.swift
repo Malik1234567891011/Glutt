@@ -25,11 +25,26 @@ struct RecipesView: View {
     /// The trimmed query the AI answer corresponds to (for staleness checks).
     @State private var aiQuery = ""
     @State private var isRanking = false
+    @State private var isRequestingHowTo = false
 
     enum SortOrder: String, CaseIterable {
         case recentlySaved = "Recently saved"
         case alphabetical = "A to Z"
         case quickest = "Quickest first"
+        case readyToCook = "Ready to cook"          // most ingredients you own
+        case mostProtein = "Most protein"           // highest protein per serving
+        case bestProteinRatio = "Best protein ratio" // most protein per calorie
+
+        var icon: Image {
+            switch self {
+            case .recentlySaved: Ph.clock.regular
+            case .alphabetical: Ph.listBullets.regular
+            case .quickest: Ph.timer.regular
+            case .readyToCook: Ph.basket.regular
+            case .mostProtein: Ph.barbell.regular
+            case .bestProteinRatio: Ph.chartLineUp.regular
+            }
+        }
     }
 
     /// Special chips that aren't tags.
@@ -37,8 +52,14 @@ struct RecipesView: View {
     private static let needsCleanupFilter = "Needs cleanup"
 
     /// Version children stay hidden; they're reachable from their parent's detail screen.
+    /// Cooking Basics lessons live in their own strip, not mixed into "my recipes."
     private var libraryRecipes: [Recipe] {
-        allRecipes.filter { $0.parentRecipe == nil }
+        allRecipes.filter { $0.parentRecipe == nil && !$0.isCookingBasic }
+    }
+
+    private var basicsLessons: [Recipe] {
+        allRecipes.filter { $0.parentRecipe == nil && $0.isCookingBasic }
+            .sorted { $0.title < $1.title }
     }
 
     private var filterChips: [String] {
@@ -81,10 +102,43 @@ struct RecipesView: View {
         }
 
         switch sortOrder {
-        case .recentlySaved: return recipes
-        case .alphabetical: return recipes.sorted { $0.title < $1.title }
-        case .quickest: return recipes.sorted { $0.estimatedMinutes < $1.estimatedMinutes }
+        case .recentlySaved:
+            return recipes
+        case .alphabetical:
+            return recipes.sorted { $0.title < $1.title }
+        case .quickest:
+            return recipes.sorted { $0.estimatedMinutes < $1.estimatedMinutes }
+        case .readyToCook:
+            // Most of the ingredients you already own, by coverage ratio then count.
+            return recipes.sorted { a, b in
+                let ma = PantryMatcher.match(recipe: a, pantry: pantryItems)
+                let mb = PantryMatcher.match(recipe: b, pantry: pantryItems)
+                if ma.coverage != mb.coverage { return ma.coverage > mb.coverage }
+                return ma.ownedCount > mb.ownedCount
+            }
+        case .mostProtein:
+            return recipes.sorted { proteinPerServing($0) > proteinPerServing($1) }
+        case .bestProteinRatio:
+            // Most protein per calorie (grams protein ÷ calories); higher is leaner.
+            return recipes.sorted { proteinDensity($0) > proteinDensity($1) }
         }
+    }
+
+    /// Protein grams per serving — stored value if present, else a local estimate.
+    private func proteinPerServing(_ recipe: Recipe) -> Int {
+        if let p = recipe.proteinGrams { return p }
+        return NutritionEstimator.estimate(for: recipe)?.proteinGrams ?? 0
+    }
+
+    /// Grams of protein per calorie. Recipes with no calorie data sort last.
+    private func proteinDensity(_ recipe: Recipe) -> Double {
+        let protein = Double(proteinPerServing(recipe))
+        let calories: Double
+        if let c = recipe.calories { calories = Double(c) }
+        else if let est = NutritionEstimator.estimate(for: recipe) { calories = Double(est.calories) }
+        else { return 0 }
+        guard calories > 0 else { return 0 }
+        return protein / calories
     }
 
     /// Semantic search: "that creamy lemon chicken thing" works.
@@ -97,6 +151,11 @@ struct RecipesView: View {
         NavigationStack(path: $navPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                    // Always above the fold — teach cooking even with an empty library.
+                    // Show when we have lessons, or when AI can generate a new how-to.
+                    if searchText.isEmpty, !basicsLessons.isEmpty || LLMClient.isConfigured {
+                        basicsStrip
+                    }
                     if !collections.isEmpty {
                         collectionsRow
                     }
@@ -110,7 +169,7 @@ struct RecipesView: View {
                             EmptyStateView(
                                 icon: "book",
                                 title: "No recipes yet",
-                                message: "Import your first recipe from TikTok, Instagram, or any website — or add one yourself.",
+                                message: "Import your first recipe from TikTok, Instagram, or any website — or start with a Cooking basic above.",
                                 actionLabel: "Add a recipe",
                                 action: { isShowingEditor = true }
                             )
@@ -230,6 +289,11 @@ struct RecipesView: View {
             }
             .sheet(isPresented: $isShowingSettings) {
                 SettingsView()
+            }
+            .sheet(isPresented: $isRequestingHowTo) {
+                RequestHowToSheet { recipe in
+                    navPath = [recipe]
+                }
             }
             .onAppear(perform: handlePendingImport)
             .onChange(of: router.pendingImportURL) { handlePendingImport() }
@@ -358,6 +422,112 @@ struct RecipesView: View {
               let recipe = allRecipes.first(where: { $0.persistentModelID == id }) else { return }
         navPath = [recipe]
         router.recipeToOpenID = nil
+    }
+
+    /// Pinned "Cooking basics" — technique lessons (fry an egg, etc.) with chef-style steps.
+    private var basicsStrip: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Cooking basics")
+                        .font(.system(size: 20, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                    Text("Learn like a chef is next to you")
+                        .font(.gluttCaption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+                Spacer()
+                NavigationLink {
+                    CookingBasicsView { recipe in
+                        navPath = [recipe]
+                    }
+                } label: {
+                    Text("See all")
+                        .font(.gluttCaption.weight(.semibold))
+                        .foregroundStyle(Theme.Colors.accent)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, Theme.Spacing.md)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Spacing.sm) {
+                    if LLMClient.isConfigured {
+                        Button {
+                            Haptics.impact(.light)
+                            isRequestingHowTo = true
+                        } label: {
+                            requestHowToCard
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    ForEach(basicsLessons) { lesson in
+                        NavigationLink(value: lesson) {
+                            basicsCard(lesson)
+                        }
+                        .buttonStyle(.plain)
+                        .hapticTap()
+                    }
+                }
+                .padding(.horizontal, Theme.Spacing.md)
+            }
+        }
+    }
+
+    private var requestHowToCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            ZStack {
+                RoundedRectangle(cornerRadius: Theme.Radius.photo, style: .continuous)
+                    .fill(Theme.Colors.accent.opacity(0.10))
+                    .frame(width: 168, height: 112)
+                VStack(spacing: 6) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(Theme.Colors.accent)
+                    Text("Ask for a how-to")
+                        .font(.gluttCaption.weight(.semibold))
+                        .foregroundStyle(Theme.Colors.accent)
+                }
+            }
+            Text("Rice, grilled cheese, anything…")
+                .font(.gluttCaption.weight(.semibold))
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .lineLimit(2)
+                .frame(width: 168, alignment: .leading)
+            Text("AI writes the steps")
+                .font(.caption2)
+                .foregroundStyle(Theme.Colors.textSecondary)
+        }
+        .padding(Theme.Spacing.sm)
+        .background(Theme.Colors.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .strokeBorder(Theme.Colors.accent.opacity(0.35), lineWidth: 1.5)
+        )
+    }
+
+    private func basicsCard(_ lesson: Recipe) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            RecipeImageView(recipe: lesson)
+                .frame(width: 168, height: 112)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.photo, style: .continuous))
+            Text(lesson.title)
+                .font(.gluttCaption.weight(.semibold))
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .lineLimit(2)
+                .frame(width: 168, alignment: .leading)
+            Text(lesson.timeLabel)
+                .font(.caption2)
+                .foregroundStyle(Theme.Colors.textSecondary)
+        }
+        .padding(Theme.Spacing.sm)
+        .background(Theme.Colors.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .strokeBorder(Theme.Colors.accent.opacity(0.18), lineWidth: 1)
+        )
     }
 
     private var collectionsRow: some View {

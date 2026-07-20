@@ -205,6 +205,84 @@ struct PollyStepHero: View {
     }
 }
 
+// MARK: - Status pill (heard-you / thinking cue)
+
+/// A small, glanceable line under the orb that names what Polly is doing right
+/// now — "Listening…", "Thinking…" — so latency or a missed word never reads as
+/// a silent dead session. Hidden while she's speaking (her caption covers that).
+struct PollyStatusPill: View {
+    let isListening: Bool
+    let isThinking: Bool
+    let isSpeaking: Bool
+
+    @State private var pulse = false
+
+    private var state: (text: String, color: Color)? {
+        if isListening { return ("Listening…", Theme.Colors.accent) }
+        if isThinking && !isSpeaking { return ("Thinking…", Theme.Colors.warning) }
+        return nil
+    }
+
+    var body: some View {
+        if let state {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(state.color)
+                    .frame(width: 7, height: 7)
+                    .opacity(pulse ? 0.35 : 1)
+                Text(state.text)
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.Colors.creamText)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(Theme.Colors.textPrimary.opacity(0.5), in: Capsule())
+            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) { pulse = true }
+            }
+        }
+    }
+}
+
+// MARK: - Suggested question bubbles
+
+/// Tappable prompts that teach beginners what to ask Polly ("how do I know the
+/// onions are done?") and double as one-tap questions. Sends the text as a user
+/// turn. Horizontally scrollable so they never crowd the controls.
+struct PollyQuestionBubbles: View {
+    let suggestions: [String]
+    let onTap: (String) -> Void
+
+    var body: some View {
+        if !suggestions.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Spacing.xs) {
+                    ForEach(suggestions, id: \.self) { question in
+                        Button {
+                            Haptics.impact(.light)
+                            onTap(question)
+                        } label: {
+                            HStack(spacing: 5) {
+                                Ph.sparkle.regular.resizable().scaledToFit().frame(width: 13, height: 13)
+                                Text(question)
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .lineLimit(1)
+                            }
+                            .foregroundStyle(Theme.Colors.creamText)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(Theme.Colors.textPrimary.opacity(0.55), in: Capsule())
+                            .overlay(Capsule().strokeBorder(.white.opacity(0.18)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+            .transition(.opacity)
+        }
+    }
+}
+
 // MARK: - Preflight card
 
 /// Missing-ingredients checklist shown while Polly talks through the
@@ -217,26 +295,38 @@ struct PreflightCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             SectionLabel(text: "Before you start")
-            Text("You're missing:")
+            Text("You're missing \(missing.count):")
                 .font(.gluttHeadline)
                 .foregroundStyle(Theme.Colors.textPrimary)
-            ForEach(missing, id: \.self) { name in
-                HStack(spacing: Theme.Spacing.xs) {
-                    Circle()
-                        .fill(Theme.Colors.tomato)
-                        .frame(width: 6, height: 6)
-                    Text(name)
-                        .font(.gluttCaption)
-                        .foregroundStyle(Theme.Colors.textSecondary)
+            // Cap the list height and let it scroll: a long missing list used to
+            // grow the card until the "Got it" button was pushed off-screen and
+            // the cook was stuck. Now the button stays pinned below the scroll.
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    ForEach(missing, id: \.self) { name in
+                        HStack(spacing: Theme.Spacing.xs) {
+                            Circle()
+                                .fill(Theme.Colors.tomato)
+                                .frame(width: 6, height: 6)
+                            Text(name)
+                                .font(.gluttCaption)
+                                .foregroundStyle(Theme.Colors.textSecondary)
+                        }
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxHeight: missing.count > 5 ? 128 : nil)
             Button {
                 Haptics.selection()
                 onDismiss()
             } label: {
                 Text("Got it")
-                    .font(.gluttCaption.weight(.semibold))
-                    .foregroundStyle(Theme.Colors.accent)
+                    .font(.gluttCaption.weight(.heavy))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Theme.Colors.accent, in: Capsule())
             }
             .buttonStyle(.plain)
         }

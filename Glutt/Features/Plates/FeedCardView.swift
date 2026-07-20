@@ -92,7 +92,11 @@ struct FeedCardView: View {
                 AsyncImage(url: card.imageURL.flatMap(URL.init(string:))) { phase in
                     switch phase {
                     case .success(let image):
-                        image.resizable().scaledToFill()
+                        image
+                            .resizable()
+                            .interpolation(.high)
+                            .antialiased(true)
+                            .scaledToFill()
                     case .empty:
                         ZStack {
                             Theme.Colors.card

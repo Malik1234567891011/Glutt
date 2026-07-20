@@ -215,8 +215,27 @@ struct PollySessionView: View {
                 isSpeaking: controller.isPollySpeaking,
                 isThinking: controller.isThinking
             )
+            // Explicit "I heard you / I'm thinking" cue so latency never reads as
+            // a silent failure. Haptic fires the moment she hears the cook.
+            PollyStatusPill(
+                isListening: controller.isListening,
+                isThinking: controller.isThinking,
+                isSpeaking: controller.isPollySpeaking
+            )
+            .onChange(of: controller.isListening) { _, listening in
+                if listening { Haptics.impact(.light) }
+            }
             if !controller.pollyCaption.isEmpty {
                 pollyCaptionCard(controller.pollyCaption)
+            }
+            // Suggested questions for beginners — only in voice mode when Polly
+            // is idle, so they demonstrate what to ask without cluttering.
+            if controller.phase == .live, !controller.camera.isRunning,
+               !controller.isPollySpeaking, !controller.isThinking, !controller.isListening,
+               didDismissPreflight || controller.missingIngredients.isEmpty {
+                PollyQuestionBubbles(suggestions: suggestedQuestions(for: controller)) { question in
+                    Task { await controller.ask(question) }
+                }
             }
             if controller.phase == .live, !controller.missingIngredients.isEmpty,
                !didDismissPreflight {
@@ -271,6 +290,29 @@ struct PollySessionView: View {
         guard let plan = controller.plan,
               plan.steps.indices.contains(controller.stepIndex) else { return nil }
         return plan.steps[controller.stepIndex]
+    }
+
+    /// Beginner-friendly questions, lightly tailored to the current step so they
+    /// feel relevant ("how do I know the onions are done?") and show off what
+    /// Polly can answer. Always ends with a couple of safe generics.
+    private func suggestedQuestions(for controller: PollySessionController) -> [String] {
+        let text = (currentStep(of: controller)?.instruction.lowercased() ?? "")
+            + " " + (currentStep(of: controller)?.title.lowercased() ?? "")
+        var contextual: [String] = []
+        func addIf(_ keywords: [String], _ question: String) {
+            if keywords.contains(where: text.contains) { contextual.append(question) }
+        }
+        addIf(["onion", "shallot", "garlic", "sauté", "saute", "sweat"], "How do I know the onions are done?")
+        addIf(["sauce", "simmer", "reduce", "thicken", "gravy"], "What should the sauce look like now?")
+        addIf(["chicken", "beef", "pork", "steak", "meat", "sear", "fry"], "How do I know the meat is cooked through?")
+        addIf(["bake", "oven", "roast"], "How do I tell when it's done in the oven?")
+        addIf(["boil", "pasta", "noodle", "rice"], "How do I know it's cooked right?")
+        addIf(["season", "salt", "taste", "spice"], "Should I taste and adjust the seasoning now?")
+        var out = contextual
+        for generic in ["What's the next step?", "Can you repeat that?"] where !out.contains(generic) {
+            out.append(generic)
+        }
+        return Array(out.prefix(3))
     }
 
     private func startTimer(for step: CookPlan.PlanStep, seconds: Int, controller: PollySessionController) {

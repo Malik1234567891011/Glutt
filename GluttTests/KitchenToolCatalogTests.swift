@@ -21,7 +21,7 @@ final class KitchenToolCatalogTests: XCTestCase {
         XCTAssertEqual(KitchenToolCatalog.category(for: "Air fryer"), "Appliances")
         XCTAssertEqual(KitchenToolCatalog.category(for: "Dutch oven"), "Cookware")
         XCTAssertEqual(KitchenToolCatalog.category(for: "Chef's knife"), "Tools")
-        XCTAssertEqual(KitchenToolCatalog.category(for: "Sous vide"), "Custom")
+        XCTAssertEqual(KitchenToolCatalog.category(for: "Fondue pot"), "Custom")
     }
 
     func testCanonicalPresetSetCoversEveryListedTool() {

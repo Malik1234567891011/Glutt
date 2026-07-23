@@ -434,4 +434,71 @@ final class PollySessionControllerTests: XCTestCase {
 
         await controller.end(context: context, endedEarly: true)
     }
+
+    // MARK: (11) wake-word gate — starts dormant + muted
+
+    func testStartLeavesSessionDormantAndMuted() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+
+        XCTAssertEqual(controller.phase, .live)
+        XCTAssertEqual(controller.listeningMode, .dormant, "the session gates the mic until \"Polly\"")
+        XCTAssertTrue(controller.audio.isMuted, "dormant means the Realtime input is muted")
+        XCTAssertFalse(controller.wakeWordAvailable, "no Speech auth in the test host")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    // MARK: (12) wakeUp un-gates the input; returnToDormant re-gates
+
+    func testWakeUpUnmutesAndReturnToDormantRemutes() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+
+        controller.wakeUp()
+        XCTAssertEqual(controller.listeningMode, .listening)
+        XCTAssertFalse(controller.audio.isMuted, "listening opens the mic to Polly")
+
+        controller.returnToDormant()
+        XCTAssertEqual(controller.listeningMode, .dormant)
+        XCTAssertTrue(controller.audio.isMuted, "the follow-up window closing re-gates the input")
+
+        // She must wake AGAIN after the window closed — not just the first time.
+        controller.wakeUp()
+        XCTAssertEqual(controller.listeningMode, .listening, "a second \"Polly\" re-opens the mic")
+        XCTAssertFalse(controller.audio.isMuted)
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    // MARK: (13) hard mute silences everything and blocks waking
+
+    func testHardMuteSilencesAndBlocksWake() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+
+        controller.toggleHardMute()
+        XCTAssertTrue(controller.isHardMuted)
+        XCTAssertTrue(controller.audio.isMuted)
+        XCTAssertEqual(controller.listeningMode, .dormant)
+
+        controller.forceListen()   // tap-to-talk must be ignored while hard-muted
+        XCTAssertEqual(controller.listeningMode, .dormant, "hard mute blocks tap-to-talk")
+        controller.wakeUp()        // voice wake must be ignored too
+        XCTAssertEqual(controller.listeningMode, .dormant, "hard mute blocks voice wake")
+
+        controller.toggleHardMute()   // un-mute returns to dormant (armed), not open
+        XCTAssertFalse(controller.isHardMuted)
+        XCTAssertEqual(controller.listeningMode, .dormant)
+        controller.forceListen()
+        XCTAssertEqual(controller.listeningMode, .listening, "tap-to-talk works once un-muted")
+
+        await controller.end(context: context, endedEarly: true)
+    }
 }

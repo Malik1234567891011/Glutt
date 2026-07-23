@@ -30,11 +30,11 @@ struct PlatesTabView: View {
 
     var body: some View {
         ZStack {
-            Theme.Colors.textPrimary.ignoresSafeArea()
+            Theme.Colors.background.ignoresSafeArea()
 
             switch model.phase {
             case .idle, .loading:
-                ProgressView().tint(.white)
+                ProgressView().tint(Theme.Colors.accent)
             case .failed(let message):
                 EmptyStateView(
                     icon: "wifi.slash",
@@ -54,8 +54,9 @@ struct PlatesTabView: View {
                 deck
             }
 
-            // Hide the header behind a flipped card so its light face reads cleanly.
-            if flippedID == nil { header }
+            // Standalone use keeps the in-deck title; embedded in the Discover tab
+            // the parent owns the "Discover" header, so hide this one.
+            if flippedID == nil, !hidesTitle { header }
         }
         .task { if model.phase == .idle { await load() } }
         .alert("Couldn't save", isPresented: Binding(
@@ -76,24 +77,23 @@ struct PlatesTabView: View {
     // MARK: Deck (single-card swipe)
 
     private var deck: some View {
-        VStack(spacing: Theme.Spacing.sm) {
+        VStack(spacing: 14) {
             ZStack {
-                // The next card peeks behind so it's revealed as the top swipes away.
-                if let next = nextCard {
-                    FeedCardView(
-                        card: next,
-                        isSaved: model.savedIDs.contains(next.id),
-                        isCookableNow: cookableNow(next),
-                        onSave: {}, onSkip: {},
-                        isFlipped: .constant(false),
-                        reduceMotion: true
-                    )
-                    .scaleEffect(0.94)
-                    .opacity(0.6)
-                    .allowsHitTesting(false)
-                }
-
                 if let card = model.current {
+                    deckBackers
+                    // The next card peeks behind so it's revealed as the top swipes away.
+                    if let next = nextCard {
+                        FeedCardView(
+                            card: next,
+                            isSaved: model.savedIDs.contains(next.id),
+                            isCookableNow: cookableNow(next),
+                            onSave: {}, onSkip: {},
+                            isFlipped: .constant(false),
+                            reduceMotion: true
+                        )
+                        .scaleEffect(0.985)
+                        .allowsHitTesting(false)
+                    }
                     topCard(card)
                 } else {
                     exhaustedState
@@ -102,14 +102,32 @@ struct PlatesTabView: View {
             .frame(maxHeight: .infinity)
 
             if model.current != nil, flippedID == nil {
+                Text("Swipe right to save, left to skip")
+                    .font(BrandFont.nunito(12.5, 700))
+                    .foregroundStyle(Theme.Colors.muted)
                 actionBar()
             }
         }
-        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.horizontal, 22)
         .padding(.top, Theme.Spacing.sm)
-        // Clear the custom tab bar: the feed fills the whole tab region, which
-        // extends behind the bar, so the action row needs explicit clearance.
         .padding(.bottom, GluttTabBar.reservedHeight)
+    }
+
+    /// Two tilted cream cards peeking behind the top card for a tactile "deck" look.
+    private var deckBackers: some View {
+        ZStack {
+            deckBacker(rotation: 4, scale: 0.965)
+            deckBacker(rotation: -3.5, scale: 0.982)
+        }
+    }
+
+    private func deckBacker(rotation: Double, scale: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 28, style: .continuous)
+            .fill(Theme.Colors.card)
+            .shadow(color: Theme.Colors.textPrimary.opacity(0.09), radius: 12, y: 10)
+            .rotationEffect(.degrees(rotation))
+            .scaleEffect(scale)
+            .allowsHitTesting(false)
     }
 
     private func topCard(_ card: PlateCard) -> some View {
@@ -136,9 +154,9 @@ struct PlatesTabView: View {
 
     private var exhaustedState: some View {
         VStack(spacing: Theme.Spacing.md) {
-            ProgressView().tint(.white)
+            ProgressView().tint(Theme.Colors.accent)
             Text("Finding more recipes…")
-                .font(.gluttBody).foregroundStyle(.white.opacity(0.8))
+                .font(.gluttBody).foregroundStyle(Theme.Colors.textSecondary)
         }
         .task { await model.loadMoreIfNeeded(currentIndex: model.index) }
     }
@@ -214,10 +232,11 @@ struct PlatesTabView: View {
 
     private func stamp(_ text: String, color: Color) -> some View {
         Text(text)
-            .font(.system(size: 28, weight: .heavy, design: .rounded))
+            .font(BrandFont.bricolage(24, 700))
             .foregroundStyle(color)
-            .padding(.horizontal, 12).padding(.vertical, 6)
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(color, lineWidth: 3))
+            .padding(.horizontal, 12).padding(.vertical, 4)
+            .background(RoundedRectangle(cornerRadius: 12).fill(color.opacity(0.14)))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(color, lineWidth: 3))
             .rotationEffect(.degrees(-12))
     }
 
@@ -226,40 +245,37 @@ struct PlatesTabView: View {
     private func actionBar() -> some View {
         let card = model.current
         let isSaved = card.map { model.savedIDs.contains($0.id) } ?? false
-        return HStack(spacing: Theme.Spacing.lg) {
-            circleAction(Ph.x.regular, fg: Theme.Colors.tomato, bg: .white, size: 56) {
+        return HStack(spacing: 18) {
+            circleAction(MS.undo, glyph: Theme.Colors.amber, bg: Theme.Colors.card, size: 46, bordered: true) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { model.undo() }
+            }
+            circleAction(MS.closeIcon, glyph: Theme.Colors.coralBright, bg: Theme.Colors.card, size: 60, bordered: false) {
                 commitSwipe(save: false)
             }
-            Button {
-                if let card { flippedID = card.id; Haptics.impact(.medium) }
-            } label: {
-                HStack(spacing: 6) {
-                    Ph.bookOpen.fill.resizable().scaledToFit().frame(width: 16, height: 16)
-                    Text("Recipe").font(.gluttBody.weight(.heavy))
-                }
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .padding(.horizontal, 22).padding(.vertical, 16)
-                .background(.white, in: Capsule())
+            circleAction(isSaved ? MS.checkFill : MS.favoriteFill, glyph: Theme.Colors.creamText,
+                         bg: Theme.Colors.accent, size: 68, bordered: false) {
+                commitSwipe(save: true)
             }
-            .buttonStyle(.plain)
-            circleAction(
-                isSaved ? Ph.check.bold : Ph.heart.fill,
-                fg: .white, bg: Theme.Colors.accent, size: 56
-            ) { commitSwipe(save: true) }
+            circleAction(MS.menuBookFill, glyph: Theme.Colors.accent, bg: Theme.Colors.card, size: 46, bordered: true) {
+                if let card { flippedID = card.id; Haptics.impact(.medium) }
+            }
         }
-        .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
     }
 
-    private func circleAction(_ icon: Image, fg: Color, bg: Color, size: CGFloat, action: @escaping () -> Void) -> some View {
+    private func circleAction(_ icon: MS, glyph: Color, bg: Color, size: CGFloat, bordered: Bool,
+                              action: @escaping () -> Void) -> some View {
         Button {
             Haptics.impact(.light)
             action()
         } label: {
-            icon.resizable().scaledToFit().frame(width: size * 0.38, height: size * 0.38)
-                .foregroundStyle(fg)
+            icon.sized(size * 0.42).foregroundStyle(glyph)
                 .frame(width: size, height: size)
-                .background(bg, in: Circle())
+                .background(Circle().fill(bg))
+                .overlay(bordered ? Circle().strokeBorder(Theme.Colors.textPrimary.opacity(0.10), lineWidth: 1.5) : nil)
+                .shadow(color: Theme.Colors.textPrimary.opacity(bordered ? 0.05 : 0.14),
+                        radius: bordered ? 10 : 18, y: bordered ? 4 : 10)
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: Top bar
@@ -269,7 +285,7 @@ struct PlatesTabView: View {
             HStack(alignment: .center) {
                 if !hidesTitle {
                     Text("Discover")
-                        .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        .font(BrandFont.bricolage(22, 700))
                         .foregroundStyle(.white)
                         .shadow(color: .black.opacity(0.4), radius: 4, y: 1)
                 }

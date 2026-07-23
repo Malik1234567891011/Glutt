@@ -37,6 +37,8 @@
 	<string>Glutt uses the camera to scan your fridge or pantry, to estimate meals you log from photos, and to let Polly watch the pan during live cooking sessions.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Polly, your live cooking chef, listens so you can ask questions and get guidance hands-free while you cook.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Glutt listens on your device for the word "Polly" so Polly only responds when you call her, not to background chatter. Speech is recognized on-device.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>BricolageGrotesque-Variable.ttf</string>

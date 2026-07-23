@@ -18,7 +18,7 @@ struct RecipeCard: View {
         VStack(alignment: .leading, spacing: 10) {
             mediaBlock
             Text(recipe.title)
-                .font(.system(size: 21, weight: .heavy, design: .rounded))
+                .font(BrandFont.bricolage(21, 700))
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .lineLimit(2)
             if let summary = recipe.summary, !summary.isEmpty {
@@ -63,7 +63,7 @@ struct RecipeCard: View {
     private func tagPill(_ tag: String) -> some View {
         HStack(spacing: 4) {
             Ph.forkKnife.regular.resizable().scaledToFit().frame(width: 11, height: 11)
-            Text(tag).font(.system(size: 12, weight: .bold, design: .rounded)).lineLimit(1)
+            Text(tag).font(BrandFont.nunito(12, 700)).lineLimit(1)
         }
         .foregroundStyle(Theme.Colors.textPrimary)
         .padding(.horizontal, 10).padding(.vertical, 6)

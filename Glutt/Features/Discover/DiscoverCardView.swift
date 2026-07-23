@@ -16,11 +16,11 @@ struct DiscoverCardView: View {
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 Text(video.title)
-                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .font(BrandFont.bricolage(20, 700))
                     .lineLimit(2)
                 if let creator = video.creator {
                     Text(creator)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .font(BrandFont.nunito(14, 600))
                         .foregroundColor(Theme.Colors.textSecondary)
                 }
             }

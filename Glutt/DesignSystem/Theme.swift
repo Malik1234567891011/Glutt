@@ -1,49 +1,77 @@
 import SwiftUI
 
 /// Glutt design tokens: warm premium kitchen app.
-/// Cream background, deep green accent, tomato red secondary, soft rounded cards.
+/// Cream background, deep herb-green accent, tomato red secondary, soft rounded
+/// cards. Exact hexes from the design handoff (`design-doc/.../*.dc.html`).
 enum Theme {
 
     // MARK: - Colors
 
     enum Colors {
-        /// Cream app background — deep enough that white cards visibly lift off it.
-        static let background = Color(red: 0.965, green: 0.94, blue: 0.90)
-        /// Card surfaces — slightly whiter than the background.
-        static let card = Color.white
-        /// Deep herb-green primary accent.
-        static let accent = Color(red: 0.15, green: 0.35, blue: 0.21)
-        /// Tomato red — destructive actions and appetite highlights.
-        static let tomato = Color(red: 0.85, green: 0.28, blue: 0.17)
-        /// Warm near-black text.
-        static let textPrimary = Color(red: 0.15, green: 0.12, blue: 0.10)
-        /// Warm brown-gray secondary text — dark enough to read in a kitchen.
-        static let textSecondary = Color(red: 0.40, green: 0.35, blue: 0.31)
-        /// Subtle warm divider/border.
-        static let border = Color(red: 0.88, green: 0.84, blue: 0.79)
-        /// Soft green tint for success/"you have it" states.
-        static let successTint = Color(red: 0.89, green: 0.94, blue: 0.88)
-        /// Soft amber tint for warnings/"use soon" states.
-        static let warningTint = Color(red: 0.99, green: 0.94, blue: 0.84)
-        static let warning = Color(red: 0.76, green: 0.55, blue: 0.13)
-        /// Soft tomato tint — difficulty pills, protein icon chips. (#F7DDD2)
-        static let tomatoTint = Color(red: 0.969, green: 0.867, blue: 0.824)
-        /// Decorative peach panel tint behind food photos. (#F7E2D4)
-        static let peachPanel = Color(red: 0.969, green: 0.886, blue: 0.831)
-        /// Decorative sage panel tint — semantic alias of successTint.
-        static let sagePanel = successTint
-        /// Cream text/glyph on dark or green fills (tab labels, CTA text, active segment). (#F4ECDF)
-        static let creamText = Color(red: 0.957, green: 0.925, blue: 0.875)
-        /// Segmented-control track. (#EBE2D4)
-        static let segmentTrack = Color(red: 0.922, green: 0.886, blue: 0.831)
-        /// Inactive page-dot fill. (#D8CDBE)
-        static let dotInactive = Color(red: 0.847, green: 0.804, blue: 0.745)
-        /// Muted label for inactive category names. (#9A8A7C)
-        static let mutedLabel = Color(red: 0.604, green: 0.541, blue: 0.486)
+        /// Cream app background. (#FAF3E7)
+        static let background = Color(hex: 0xFAF3E7)
+        /// Primary card surface — cream-white, lifts off the background. (#FFFDF7)
+        static let card = Color(hex: 0xFFFDF7)
+        /// Secondary surface — icon tiles, stat pills, segment insets. (#F4EDDC)
+        static let surface2 = Color(hex: 0xF4EDDC)
+        /// Tertiary surface — deeper warm tile. (#F1E9D6)
+        static let surface3 = Color(hex: 0xF1E9D6)
+        /// Deep herb-green primary accent. (#2E5339)
+        static let accent = Color(hex: 0x2E5339)
+        /// Green pressed/hover. (#356145)
+        static let accentPressed = Color(hex: 0x356145)
+        /// Bright mint accent — waveforms, on-dark highlights. (#8FE3A3)
+        static let brightAccent = Color(hex: 0x8FE3A3)
+        /// Soft green tint for success / "you have it" states. (#EAF1E7)
+        static let greenTint = Color(hex: 0xEAF1E7)
+        /// Tomato red — destructive actions and appetite highlights. (#D9483B)
+        static let tomato = Color(hex: 0xD9483B)
+        /// Brighter coral variant. (#E1523D)
+        static let coralBright = Color(hex: 0xE1523D)
+        /// Soft tomato tint — difficulty pills, "use soon". (#F7DDD2)
+        static let tomatoTint = Color(hex: 0xF7DDD2)
+        /// Amber — need / low / use-soon. (#C28C21)
+        static let amber = Color(hex: 0xC28C21)
+        /// Amber chip background. (#FCF0D6)
+        static let amberChip = Color(hex: 0xFCF0D6)
+        /// Heading text — warm near-black. (#241E19)
+        static let heading = Color(hex: 0x241E19)
+        /// Base body text. (#2A2420) — also the neutral/warm shadow base.
+        static let textPrimary = Color(hex: 0x2A2420)
+        /// Warm brown-gray secondary text. (#6E6456)
+        static let textSecondary = Color(hex: 0x6E6456)
+        /// Muted label / lighter secondary. (#9A9082)
+        static let muted = Color(hex: 0x9A9082)
+        /// Subtle warm divider/border. (#E1D7CA)
+        static let border = Color(hex: 0xE1D7CA)
+        /// Cream text/glyph on green or dark fills (CTA text). (#FBF5E9)
+        static let creamText = Color(hex: 0xFBF5E9)
+        /// Slightly cooler cream for tab labels / active segment glyphs. (#F4ECDF)
+        static let tabLabel = Color(hex: 0xF4ECDF)
+        /// Dark rounded bottom tab bar. (#241F1A)
+        static let tabBar = Color(hex: 0x241F1A)
         /// Inactive bottom-tab glyph + label on the dark bar. (#928377)
-        static let tabInactive = Color(red: 0.573, green: 0.514, blue: 0.467)
+        static let tabInactive = Color(hex: 0x928377)
         /// Active bottom-tab glyph (light green) on the dark bar. (#CFE6CC)
-        static let activeTabGlyph = Color(red: 0.812, green: 0.902, blue: 0.800)
+        static let activeTabGlyph = Color(hex: 0xCFE6CC)
+        /// Decorative peach panel tint behind food photos. (#F7E2D4)
+        static let peachPanel = Color(hex: 0xF7E2D4)
+        /// Segmented-control track. (#EBE2D4)
+        static let segmentTrack = Color(hex: 0xEBE2D4)
+        /// Inactive page-dot fill. (#D8CDBE)
+        static let dotInactive = Color(hex: 0xD8CDBE)
+
+        // MARK: Backwards-compatible aliases (kept so existing call sites compile)
+        /// Semantic alias of `greenTint`.
+        static let successTint = greenTint
+        /// Semantic alias of `amberChip`.
+        static let warningTint = amberChip
+        /// Semantic alias of `amber`.
+        static let warning = amber
+        /// Semantic alias of `greenTint`.
+        static let sagePanel = greenTint
+        /// Semantic alias of `muted`.
+        static let mutedLabel = muted
     }
 
     // MARK: - Spacing
@@ -65,6 +93,10 @@ enum Theme {
         static let cardLarge: CGFloat = 26
         /// Photo tiles nested inside cards.
         static let photo: CGFloat = 18
+        /// Grouped-list container (Fresh/Pantry/inventory sections).
+        static let group: CGFloat = 20
+        /// 46×46 ingredient food-icon tile.
+        static let iconTile: CGFloat = 13
         /// Stat pills, icon chips, active segment.
         static let pill: CGFloat = 11
         /// Segmented-control track.
@@ -77,10 +109,20 @@ enum Theme {
         static let tag: CGFloat = 13
     }
 
-    // MARK: - Shadows
+    // MARK: - Shadows (neutral/warm only — never colored)
 
     static func cardShadow(_ content: some View) -> some View {
         content.shadow(color: Colors.textPrimary.opacity(0.06), radius: 8, x: 0, y: 2)
+    }
+}
+
+// MARK: - Hex color init (shared across the app + the share extension)
+
+extension Color {
+    init(hex: UInt32) {
+        self.init(red: Double((hex >> 16) & 0xFF) / 255,
+                  green: Double((hex >> 8) & 0xFF) / 255,
+                  blue: Double(hex & 0xFF) / 255)
     }
 }
 

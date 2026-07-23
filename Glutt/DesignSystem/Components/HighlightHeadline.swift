@@ -39,7 +39,7 @@ struct HighlightHeadline: View {
         FlowLayout(hSpacing: 8, vSpacing: 8) {
             ForEach(words) { word in
                 Text(word.text)
-                    .font(.system(size: 31, weight: .black, design: .rounded))
+                    .font(BrandFont.bricolage(31, 700))
                     .foregroundColor(word.style.foreground)
                     .padding(.horizontal, word.style.background == nil ? 0 : 15)
                     .padding(.vertical, word.style.background == nil ? 0 : 5)

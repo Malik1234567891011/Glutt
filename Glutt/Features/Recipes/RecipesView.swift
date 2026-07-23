@@ -1,58 +1,46 @@
 import SwiftData
 import SwiftUI
 
-/// The recipe library: search, filters, collections, and the recipe list.
+/// The recipe library, "Feed" design: a cream home with a stat header, an
+/// ask/search pill, a "ready to cook tonight" hero, quick filter chips, and big
+/// single-column recipe cards. Source: `Glutt Main Page.dc.html`, direction B.
 struct RecipesView: View {
     @Environment(\.modelContext) private var context
     @Environment(Router.self) private var router
     @Query(sort: \Recipe.createdAt, order: .reverse) private var allRecipes: [Recipe]
-    @Query(sort: \RecipeCollection.createdAt) private var collections: [RecipeCollection]
     @Query private var pantryItems: [PantryItem]
     @Query private var cookHistory: [CookSession]
 
     @State private var navPath: [Recipe] = []
     @State private var searchText = ""
-    @State private var selectedFilter: String?
-    @State private var sortOrder: SortOrder = .recentlySaved
-    @State private var isGrid = false
+    @FocusState private var searchFocused: Bool
+    @State private var filter: HomeFilter = .all
     @State private var isShowingEditor = false
     @State private var isShowingImport = false
     @State private var isShowingSettings = false
+    @State private var isShowingBasics = false
+    @State private var isShowingCollections = false
+    @State private var isRequestingHowTo = false
     @State private var isNamingCollection = false
     @State private var newCollectionName = ""
     @State private var aiHeadline: String?
     @State private var aiResults: [AskGlutt.RankedResult]?
-    /// The trimmed query the AI answer corresponds to (for staleness checks).
     @State private var aiQuery = ""
     @State private var isRanking = false
-    @State private var isRequestingHowTo = false
 
-    enum SortOrder: String, CaseIterable {
-        case recentlySaved = "Recently saved"
-        case alphabetical = "A to Z"
-        case quickest = "Quickest first"
-        case readyToCook = "Ready to cook"          // most ingredients you own
-        case mostProtein = "Most protein"           // highest protein per serving
-        case bestProteinRatio = "Best protein ratio" // most protein per calorie
-
-        var icon: Image {
-            switch self {
-            case .recentlySaved: Ph.clock.regular
-            case .alphabetical: Ph.listBullets.regular
-            case .quickest: Ph.timer.regular
-            case .readyToCook: Ph.basket.regular
-            case .mostProtein: Ph.barbell.regular
-            case .bestProteinRatio: Ph.chartLineUp.regular
-            }
-        }
+    /// The five fixed quick filters from the mock.
+    enum HomeFilter: String, CaseIterable, Identifiable {
+        case all = "All"
+        case ready = "Ready now"
+        case quick = "Under 30 min"
+        case protein = "High protein"
+        case recent = "Recent"
+        var id: String { rawValue }
     }
 
-    /// Special chips that aren't tags.
-    private static let cookedBeforeFilter = "Cooked before"
-    private static let needsCleanupFilter = "Needs cleanup"
+    // MARK: - Derived data
 
-    /// Version children stay hidden; they're reachable from their parent's detail screen.
-    /// Cooking Basics lessons live in their own strip, not mixed into "my recipes."
+    /// Top-level, non-lesson recipes (versions + Cooking Basics stay out of the feed).
     private var libraryRecipes: [Recipe] {
         allRecipes.filter { $0.parentRecipe == nil && !$0.isCookingBasic }
     }
@@ -62,250 +50,114 @@ struct RecipesView: View {
             .sorted { $0.title < $1.title }
     }
 
-    private var filterChips: [String] {
-        var chips: [String] = []
-        if !cookHistory.isEmpty {
-            chips.append(Self.cookedBeforeFilter)
-        }
-        if libraryRecipes.contains(where: { ($0.importConfidence ?? 1) < 0.8 }) {
-            chips.append(Self.needsCleanupFilter)
-        }
-        let tags = libraryRecipes.flatMap(\.tags)
-        let counted = Dictionary(grouping: tags, by: { $0 }).mapValues(\.count)
-        chips += counted.sorted { $0.value > $1.value }.map(\.key)
-        return chips
+    /// Distinct recipes that have been cooked at least once.
+    private var cookedCount: Int {
+        Set(cookHistory.compactMap { $0.recipe?.persistentModelID }).count
     }
 
-    /// Tag-driven categories: the most-used real tags, each with a representative recipe.
-    private var categoryTags: [(tag: String, recipe: Recipe)] {
-        let special: Set = [Self.cookedBeforeFilter, Self.needsCleanupFilter]
-        return filterChips
-            .filter { !special.contains($0) }
-            .prefix(8)
-            .compactMap { tag in
-                libraryRecipes.first(where: { $0.tags.contains(tag) }).map { (tag, $0) }
-            }
+    private func match(_ recipe: Recipe) -> PantryMatcher.MatchResult {
+        PantryMatcher.match(recipe: recipe, pantry: pantryItems)
+    }
+
+    /// "Ready to cook tonight": the best pantry coverage, ties broken by recency.
+    private var heroRecipe: Recipe? {
+        libraryRecipes.max { a, b in
+            let ma = match(a), mb = match(b)
+            if ma.coverage != mb.coverage { return ma.coverage < mb.coverage }
+            return a.createdAt < b.createdAt
+        }
     }
 
     private var visibleRecipes: [Recipe] {
         var recipes = libraryRecipes
-
-        if let filter = selectedFilter {
-            switch filter {
-            case Self.cookedBeforeFilter:
-                recipes = recipes.filter { !$0.cookSessions(in: context).isEmpty }
-            case Self.needsCleanupFilter:
-                recipes = recipes.filter { ($0.importConfidence ?? 1) < 0.8 }
-            default:
-                recipes = recipes.filter { $0.tags.contains(filter) }
-            }
+        switch filter {
+        case .all:
+            break
+        case .ready:
+            recipes = recipes.sorted { match($0).coverage > match($1).coverage }
+        case .quick:
+            recipes = recipes.filter { $0.estimatedMinutes <= 30 }
+        case .protein:
+            recipes = recipes.sorted { proteinPerServing($0) > proteinPerServing($1) }
+        case .recent:
+            break // already sorted by createdAt desc
         }
-
-        switch sortOrder {
-        case .recentlySaved:
-            return recipes
-        case .alphabetical:
-            return recipes.sorted { $0.title < $1.title }
-        case .quickest:
-            return recipes.sorted { $0.estimatedMinutes < $1.estimatedMinutes }
-        case .readyToCook:
-            // Most of the ingredients you already own, by coverage ratio then count.
-            return recipes.sorted { a, b in
-                let ma = PantryMatcher.match(recipe: a, pantry: pantryItems)
-                let mb = PantryMatcher.match(recipe: b, pantry: pantryItems)
-                if ma.coverage != mb.coverage { return ma.coverage > mb.coverage }
-                return ma.ownedCount > mb.ownedCount
-            }
-        case .mostProtein:
-            return recipes.sorted { proteinPerServing($0) > proteinPerServing($1) }
-        case .bestProteinRatio:
-            // Most protein per calorie (grams protein ÷ calories); higher is leaner.
-            return recipes.sorted { proteinDensity($0) > proteinDensity($1) }
-        }
+        return recipes
     }
 
-    /// Protein grams per serving — stored value if present, else a local estimate.
     private func proteinPerServing(_ recipe: Recipe) -> Int {
-        if let p = recipe.proteinGrams { return p }
-        return NutritionEstimator.estimate(for: recipe)?.proteinGrams ?? 0
+        recipe.proteinGrams ?? NutritionEstimator.estimate(for: recipe)?.proteinGrams ?? 0
     }
 
-    /// Grams of protein per calorie. Recipes with no calorie data sort last.
-    private func proteinDensity(_ recipe: Recipe) -> Double {
-        let protein = Double(proteinPerServing(recipe))
-        let calories: Double
-        if let c = recipe.calories { calories = Double(c) }
-        else if let est = NutritionEstimator.estimate(for: recipe) { calories = Double(est.calories) }
-        else { return 0 }
-        guard calories > 0 else { return 0 }
-        return protein / calories
-    }
-
-    /// Semantic search: "that creamy lemon chicken thing" works.
-    /// Results carry "why it matched" reasons shown under each card.
     private var searchResults: [RecipeSearchEngine.SearchResult] {
-        RecipeSearchEngine.search(query: searchText, recipes: visibleRecipes, sessions: cookHistory)
+        RecipeSearchEngine.search(query: searchText, recipes: libraryRecipes, sessions: cookHistory)
     }
+
+    private var trimmedQuery: String {
+        searchText.trimmingCharacters(in: .whitespaces)
+    }
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack(path: $navPath) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                    // Always above the fold — teach cooking even with an empty library.
-                    // Show when we have lessons, or when AI can generate a new how-to.
-                    if searchText.isEmpty, !basicsLessons.isEmpty || LLMClient.isConfigured {
-                        basicsStrip
-                    }
-                    if !collections.isEmpty {
-                        collectionsRow
-                    }
-                    if !categoryTags.isEmpty {
-                        categoryRow
-                    }
-                    ChipRow(labels: filterChips, selection: $selectedFilter)
+            VStack(spacing: 0) {
+                header
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        searchPill
+                            .padding(.horizontal, 20)
+                            .padding(.top, 6)
+                            .padding(.bottom, 16)
 
-                    if searchText.isEmpty {
-                        if visibleRecipes.isEmpty {
-                            EmptyStateView(
-                                icon: "book",
-                                title: "No recipes yet",
-                                message: "Import your first recipe from TikTok, Instagram, or any website — or start with a Cooking basic above.",
-                                actionLabel: "Add a recipe",
-                                action: { isShowingEditor = true }
-                            )
+                        if trimmedQuery.isEmpty {
+                            feedContent
                         } else {
-                            countHeader
-                            if isGrid {
-                                LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.md),
-                                                    GridItem(.flexible(), spacing: Theme.Spacing.md)],
-                                          spacing: Theme.Spacing.md) {
-                                    ForEach(visibleRecipes) { recipe in
-                                        recipeLink(recipe, reasons: [], compact: true)
-                                    }
-                                }
-                                .padding(.horizontal, Theme.Spacing.md)
-                            } else {
-                                LazyVStack(spacing: Theme.Spacing.md) {
-                                    ForEach(visibleRecipes) { recipe in
-                                        recipeLink(recipe, reasons: [])
-                                    }
-                                }
-                                .padding(.horizontal, Theme.Spacing.md)
-                            }
-                        }
-                    } else {
-                        let results = searchResults
-                        if results.isEmpty {
-                            discoverHandoff
-                        } else {
-                            if isRanking {
-                                rankingIndicator
-                            }
-                            if let aiResults, aiQuery == searchText.trimmingCharacters(in: .whitespaces) {
-                                if let aiHeadline, !aiHeadline.isEmpty {
-                                    searchHeadlineBanner(aiHeadline)
-                                }
-                                LazyVStack(spacing: Theme.Spacing.md) {
-                                    ForEach(aiResults, id: \.recipe.persistentModelID) { result in
-                                        recipeLink(result.recipe, reasons: aiReasons(for: result))
-                                    }
-                                }
-                                .padding(.horizontal, Theme.Spacing.md)
-                            } else {
-                                LazyVStack(spacing: Theme.Spacing.md) {
-                                    ForEach(results, id: \.recipe.persistentModelID) { result in
-                                        recipeLink(result.recipe, reasons: result.reasons)
-                                    }
-                                }
-                                .padding(.horizontal, Theme.Spacing.md)
-                            }
+                            searchContent
                         }
                     }
+                    .padding(.bottom, GluttTabBar.reservedHeight + 24)
                 }
-                .padding(.vertical, Theme.Spacing.md)
+                .scrollDismissesKeyboard(.interactively)
             }
-            .contentMargins(.bottom, GluttTabBar.reservedHeight, for: .scrollContent)
             .background(Theme.Colors.background)
-            .navigationTitle("Recipes")
-            .navigationDestination(for: Recipe.self) { recipe in
-                RecipeDetailView(recipe: recipe)
-            }
-            .navigationDestination(for: RecipeCollection.self) { collection in
-                CollectionDetailView(collection: collection)
-            }
-            .searchable(text: $searchText, prompt: "creamy chicken thing with lemon…")
-            .onSubmit(of: .search) {
-                runAIRanking()
-            }
+            .navigationBarHidden(true)
+            .navigationDestination(for: Recipe.self) { RecipeDetailView(recipe: $0) }
+            .navigationDestination(for: RecipeCollection.self) { CollectionDetailView(collection: $0) }
             .onChange(of: searchText) {
-                // Editing the query invalidates a stale AI answer.
-                if searchText.trimmingCharacters(in: .whitespaces) != aiQuery {
-                    aiResults = nil
-                    aiHeadline = nil
-                }
+                if trimmedQuery != aiQuery { aiResults = nil; aiHeadline = nil }
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        Haptics.impact(.light)
-                        isShowingSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Picker("Sort", selection: $sortOrder) {
-                            ForEach(SortOrder.allCases, id: \.self) { order in
-                                Text(order.rawValue).tag(order)
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "arrow.up.arrow.down")
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button("Import from link or screenshot", systemImage: "link") {
-                            isShowingImport = true
-                        }
-                        Button("Create manually", systemImage: "square.and.pencil") {
-                            isShowingEditor = true
-                        }
-                        Divider()
-                        Button("New collection", systemImage: "folder.badge.plus") {
-                            isNamingCollection = true
-                        }
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                }
-            }
-            .sheet(isPresented: $isShowingEditor) {
-                RecipeEditorView(recipe: nil)
-            }
+            .sheet(isPresented: $isShowingEditor) { RecipeEditorView(recipe: nil) }
             .sheet(isPresented: $isShowingImport, onDismiss: { router.pendingImportURL = nil }) {
                 ImportRecipeView(initialURL: router.pendingImportURL)
             }
-            .sheet(isPresented: $isShowingSettings) {
-                SettingsView()
+            .sheet(isPresented: $isShowingSettings) { SettingsView() }
+            .sheet(isPresented: $isShowingBasics) {
+                NavigationStack {
+                    CookingBasicsView { recipe in isShowingBasics = false; navPath = [recipe] }
+                }
+            }
+            .sheet(isPresented: $isShowingCollections) {
+                CollectionsListSheet()
             }
             .sheet(isPresented: $isRequestingHowTo) {
-                RequestHowToSheet { recipe in
-                    navPath = [recipe]
-                }
+                RequestHowToSheet { recipe in navPath = [recipe] }
             }
             .onAppear(perform: handlePendingImport)
             .onChange(of: router.pendingImportURL) { handlePendingImport() }
             .onChange(of: router.recipeToOpenID) { openRequestedRecipe() }
             .onAppear(perform: openRequestedRecipe)
+            .onAppear {
+                if router.openFirstRecipeOnLaunch, let first = libraryRecipes.first {
+                    router.openFirstRecipeOnLaunch = false
+                    navPath = [first]
+                }
+            }
             .alert("New collection", isPresented: $isNamingCollection) {
                 TextField("Name", text: $newCollectionName)
                 Button("Create") {
                     let trimmed = newCollectionName.trimmingCharacters(in: .whitespaces)
-                    if !trimmed.isEmpty {
-                        context.insert(RecipeCollection(name: trimmed))
-                    }
+                    if !trimmed.isEmpty { context.insert(RecipeCollection(name: trimmed)) }
                     newCollectionName = ""
                 }
                 Button("Cancel", role: .cancel) { newCollectionName = "" }
@@ -313,108 +165,297 @@ struct RecipesView: View {
         }
     }
 
-    /// Shown when the library has nothing matching the query — points the user to Discover,
-    /// carrying the same query into the Discover feed.
-    private var discoverHandoff: some View {
-        EmptyStateView(
-            icon: "sparkle.magnifyingglass",
-            title: "Nothing like that in your kitchen yet",
-            message: "You don't have a recipe for \"\(searchText)\" — but Discover probably does.",
-            actionLabel: "Go to Discover",
-            action: {
-                Haptics.impact(.light)
-                router.selectedTab = .discover
+    // MARK: - Header
+
+    private var header: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(libraryRecipes.count) saved · \(cookedCount) cooked")
+                    .font(BrandFont.nunito(12, 800))
+                    .tracking(1.6)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.Colors.accent)
+                Text("Your recipes")
+                    .font(BrandFont.bricolage(31, 700))
+                    .foregroundStyle(Theme.Colors.heading)
             }
-        )
+            Spacer()
+            HStack(spacing: 9) {
+                Button {
+                    Haptics.impact(.light); isShowingSettings = true
+                } label: {
+                    circleButton(fill: Theme.Colors.card, bordered: true) {
+                        MS.settings.sized(22).foregroundStyle(Color(hex: 0x3A342C))
+                    }
+                }
+                .buttonStyle(.plain)
+
+                Menu {
+                    Button("Import from link or screenshot", systemImage: "link") { isShowingImport = true }
+                    Button("Create manually", systemImage: "square.and.pencil") { isShowingEditor = true }
+                    Divider()
+                    Button("Cooking basics", systemImage: "book") { isShowingBasics = true }
+                    Button("Browse collections", systemImage: "folder") { isShowingCollections = true }
+                    Button("New collection", systemImage: "folder.badge.plus") { isNamingCollection = true }
+                } label: {
+                    circleButton(fill: Theme.Colors.accent, bordered: false) {
+                        MS.add.sized(24).foregroundStyle(Theme.Colors.creamText)
+                    }
+                }
+            }
+            .padding(.top, 6)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+    }
+
+    private func circleButton(fill: Color, bordered: Bool, @ViewBuilder _ glyph: () -> some View) -> some View {
+        glyph()
+            .frame(width: 42, height: 42)
+            .background(Circle().fill(fill))
+            .overlay(bordered ? Circle().strokeBorder(Theme.Colors.textPrimary.opacity(0.07), lineWidth: 1.5) : nil)
+            .shadow(color: Theme.Colors.textPrimary.opacity(bordered ? 0.05 : 0.12), radius: bordered ? 10 : 18, y: bordered ? 3 : 8)
+    }
+
+    // MARK: - Search pill
+
+    private var searchPill: some View {
+        HStack(spacing: 11) {
+            MS.search.sized(22).foregroundStyle(Theme.Colors.muted)
+            TextField("that creamy chicken thing…", text: $searchText)
+                .font(BrandFont.nunito(15, 600))
+                .foregroundStyle(Theme.Colors.heading)
+                .tint(Theme.Colors.accent)
+                .focused($searchFocused)
+                .submitLabel(.search)
+                .onSubmit(runAIRanking)
+            if trimmedQuery.isEmpty {
+                MS.autoAwesomeFill.sized(21).foregroundStyle(Theme.Colors.accent)
+            } else {
+                Button { searchText = ""; searchFocused = false } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.Colors.muted)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 17)
+        .frame(height: 50)
+        .background(Capsule().fill(Theme.Colors.card))
+        .overlay(Capsule().strokeBorder(Theme.Colors.textPrimary.opacity(0.07), lineWidth: 1.5))
+        .shadow(color: Theme.Colors.textPrimary.opacity(0.05), radius: 16, y: 5)
+    }
+
+    // MARK: - Feed content
+
+    @ViewBuilder
+    private var feedContent: some View {
+        if libraryRecipes.isEmpty {
+            EmptyStateView(
+                icon: "book",
+                title: "No recipes yet",
+                message: "Import your first recipe from TikTok, Instagram, or any website, or add one from the plus button.",
+                actionLabel: "Add a recipe",
+                action: { isShowingEditor = true }
+            )
+            .padding(.top, 40)
+        } else {
+            if let hero = heroRecipe {
+                heroCard(hero)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 6)
+            }
+            filterChips
+                .padding(.top, 16)
+            SectionLabel(text: "Saved this week")
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
+            LazyVStack(spacing: 16) {
+                ForEach(visibleRecipes) { recipe in
+                    NavigationLink(value: recipe) {
+                        FeedRecipeCard(recipe: recipe, match: match(recipe))
+                    }
+                    .buttonStyle(.plain)
+                    .hapticTap()
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    // MARK: - Hero
+
+    private func heroCard(_ recipe: Recipe) -> some View {
+        let m = match(recipe)
+        return VStack(alignment: .leading, spacing: 10) {
+            SectionLabel(text: "Ready to cook tonight")
+            NavigationLink(value: recipe) {
+                ZStack(alignment: .bottomLeading) {
+                    RecipeImageView(recipe: recipe)
+                        .frame(height: 230)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous))
+                    LinearGradient(
+                        colors: [Color(hex: 0x140F0A).opacity(0.86), Color(hex: 0x140F0A).opacity(0.30), .clear],
+                        startPoint: .bottom, endPoint: .top
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous))
+                    .allowsHitTesting(false)
+
+                    heroHeart(recipe)
+
+                    VStack(alignment: .leading, spacing: 9) {
+                        heroPantryChip(m)
+                        Text(recipe.title)
+                            .font(BrandFont.bricolage(24, 700))
+                            .foregroundStyle(Theme.Colors.creamText)
+                            .lineLimit(2)
+                        HStack(spacing: 10) {
+                            HStack(spacing: 6) {
+                                MS.skilletFill.sized(18).foregroundStyle(Theme.Colors.creamText)
+                                Text("Cook").font(BrandFont.nunito(15, 800)).foregroundStyle(Theme.Colors.creamText)
+                            }
+                            .padding(.horizontal, 20).padding(.vertical, 11)
+                            .background(Capsule().fill(Theme.Colors.accent))
+                            HStack(spacing: 5) {
+                                MS.schedule.sized(16)
+                                Text("\(recipe.timeLabel) · \(recipe.difficulty.label)")
+                                    .font(BrandFont.nunito(13, 700))
+                            }
+                            .foregroundStyle(Color(hex: 0xEAE0D2))
+                        }
+                    }
+                    .padding(16)
+                }
+                .frame(height: 230)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous))
+                .shadow(color: Theme.Colors.textPrimary.opacity(0.16), radius: 20, y: 12)
+            }
+            .buttonStyle(.plain)
+            .hapticTap()
+        }
+    }
+
+    private func heroHeart(_ recipe: Recipe) -> some View {
+        Button {
+            Haptics.impact(.light); recipe.isFavorite.toggle()
+        } label: {
+            (recipe.isFavorite ? MS.favoriteFill : MS.favorite).sized(19)
+                .foregroundStyle(Theme.Colors.tomato)
+                .frame(width: 34, height: 34)
+                .background(Circle().fill(Theme.Colors.card))
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+        .padding(12)
+    }
+
+    private func heroPantryChip(_ m: PantryMatcher.MatchResult) -> some View {
+        let haveAll = m.totalCount > 0 && m.ownedCount >= m.totalCount
+        return HStack(spacing: 5) {
+            MS.checkCircleFill.sized(14).foregroundStyle(Theme.Colors.brightAccent)
+            Text(haveAll ? "You have all ^[\(m.totalCount) ingredient](inflect: true)"
+                         : "You have \(m.ownedCount) of \(m.totalCount) ingredients")
+                .font(BrandFont.nunito(11, 800))
+                .foregroundStyle(Theme.Colors.greenTint)
+        }
+        .padding(.horizontal, 11).padding(.vertical, 5)
+        .background(Capsule().fill(Theme.Colors.accent))
+    }
+
+    // MARK: - Filter chips
+
+    private var filterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(HomeFilter.allCases) { f in
+                    let active = filter == f
+                    Button {
+                        Haptics.selection(); filter = f
+                    } label: {
+                        Text(f.rawValue)
+                            .font(BrandFont.nunito(13, active ? 800 : 700))
+                            .foregroundStyle(active ? Theme.Colors.creamText : Color(hex: 0x3A342C))
+                            .padding(.horizontal, 16).padding(.vertical, 9)
+                            .background(Capsule().fill(active ? Theme.Colors.accent : Theme.Colors.card))
+                            .overlay(active ? nil : Capsule().strokeBorder(Theme.Colors.textPrimary.opacity(0.08), lineWidth: 1.5))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    // MARK: - Search results
+
+    @ViewBuilder
+    private var searchContent: some View {
+        let results = searchResults
+        if results.isEmpty {
+            EmptyStateView(
+                icon: "sparkle.magnifyingglass",
+                title: "Nothing like that in your kitchen yet",
+                message: "You don't have a recipe for \"\(searchText)\", but Discover probably does.",
+                actionLabel: "Go to Discover",
+                action: { Haptics.impact(.light); router.selectedTab = .discover }
+            )
+            .padding(.top, 24)
+        } else {
+            VStack(alignment: .leading, spacing: 16) {
+                if isRanking {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Glutt\u{2019}s thinking\u{2026}")
+                            .font(.gluttCaption).foregroundStyle(Theme.Colors.textSecondary)
+                    }
+                    .padding(.horizontal, 20)
+                }
+                if let aiResults, aiQuery == trimmedQuery {
+                    if let aiHeadline, !aiHeadline.isEmpty {
+                        Text(aiHeadline)
+                            .font(.gluttHeadline).foregroundStyle(Theme.Colors.heading)
+                            .padding(.horizontal, 20)
+                    }
+                    ForEach(aiResults, id: \.recipe.persistentModelID) { result in
+                        NavigationLink(value: result.recipe) {
+                            FeedRecipeCard(recipe: result.recipe, match: match(result.recipe))
+                        }
+                        .buttonStyle(.plain).hapticTap()
+                    }
+                } else {
+                    ForEach(results, id: \.recipe.persistentModelID) { result in
+                        NavigationLink(value: result.recipe) {
+                            FeedRecipeCard(recipe: result.recipe, match: match(result.recipe))
+                        }
+                        .buttonStyle(.plain).hapticTap()
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+        }
     }
 
     private func runAIRanking() {
-        let query = searchText.trimmingCharacters(in: .whitespaces)
+        let query = trimmedQuery
         let results = searchResults
         guard !query.isEmpty, !results.isEmpty else { return }
         Haptics.impact(.light)
-        isRanking = true
-        aiResults = nil
-        aiHeadline = nil
+        isRanking = true; aiResults = nil; aiHeadline = nil
         Task {
             let outcome = await AskGlutt.rankSearch(query: query, results: results, pantry: pantryItems)
-            // Only apply if the query hasn't changed since we fired.
-            if searchText.trimmingCharacters(in: .whitespaces) == query {
-                aiResults = outcome.results
-                aiHeadline = outcome.headline
-                aiQuery = query
+            if trimmedQuery == query {
+                aiResults = outcome.results; aiHeadline = outcome.headline; aiQuery = query
             }
             isRanking = false
         }
     }
 
-    private func aiReasons(for result: AskGlutt.RankedResult) -> [String] {
-        var chips: [String] = []
-        if let badge = result.badge, !badge.isEmpty { chips.append(badge) }
-        chips.append(contentsOf: result.reasons)
-        return Array(chips.prefix(3))
-    }
-
-    private var rankingIndicator: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            ProgressView()
-            Text("Glutt\u{2019}s thinking\u{2026}")
-                .font(.gluttCaption)
-                .foregroundStyle(Theme.Colors.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Spacing.sm)
-    }
-
-    private func searchHeadlineBanner(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.sm) {
-            Ph.sparkle.regular
-                .resizable().scaledToFit().frame(width: 18, height: 18)
-                .foregroundStyle(Theme.Colors.accent)
-            Text(text)
-                .font(.gluttHeadline)
-                .foregroundStyle(Theme.Colors.textPrimary)
-            Spacer(minLength: 0)
-        }
-        .padding(Theme.Spacing.md)
-        .background(Theme.Colors.accent.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-        .padding(.horizontal, Theme.Spacing.md)
-    }
-
-    private func recipeLink(_ recipe: Recipe, reasons: [String], compact: Bool = false) -> some View {
-        NavigationLink(value: recipe) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                let match = PantryMatcher.match(recipe: recipe, pantry: pantryItems)
-                RecipeCard(
-                    recipe: recipe,
-                    pantryMatch: (match.ownedCount, match.totalCount),
-                    compact: compact
-                )
-                if !reasons.isEmpty {
-                    HStack(spacing: Theme.Spacing.xs) {
-                        Image(systemName: "sparkle.magnifyingglass")
-                            .font(.caption2)
-                            .foregroundStyle(Theme.Colors.accent)
-                        ForEach(reasons, id: \.self) { reason in
-                            Chip(label: reason)
-                                .fixedSize()
-                        }
-                    }
-                    .padding(.leading, Theme.Spacing.xs)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .hapticTap()
-    }
+    // MARK: - Routing helpers
 
     private func handlePendingImport() {
-        // A pending URL (from the share extension or a glutt://import link) is the
-        // single trigger for the import sheet now that the capture button is gone.
-        if router.pendingImportURL != nil {
-            isShowingImport = true
-        }
+        if router.pendingImportURL != nil { isShowingImport = true }
     }
 
     private func openRequestedRecipe() {
@@ -422,178 +463,6 @@ struct RecipesView: View {
               let recipe = allRecipes.first(where: { $0.persistentModelID == id }) else { return }
         navPath = [recipe]
         router.recipeToOpenID = nil
-    }
-
-    /// Pinned "Cooking basics" — technique lessons (fry an egg, etc.) with chef-style steps.
-    private var basicsStrip: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Cooking basics")
-                        .font(.system(size: 20, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                    Text("Learn like a chef is next to you")
-                        .font(.gluttCaption)
-                        .foregroundStyle(Theme.Colors.textSecondary)
-                }
-                Spacer()
-                NavigationLink {
-                    CookingBasicsView { recipe in
-                        navPath = [recipe]
-                    }
-                } label: {
-                    Text("See all")
-                        .font(.gluttCaption.weight(.semibold))
-                        .foregroundStyle(Theme.Colors.accent)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, Theme.Spacing.md)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Spacing.sm) {
-                    if LLMClient.isConfigured {
-                        Button {
-                            Haptics.impact(.light)
-                            isRequestingHowTo = true
-                        } label: {
-                            requestHowToCard
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    ForEach(basicsLessons) { lesson in
-                        NavigationLink(value: lesson) {
-                            basicsCard(lesson)
-                        }
-                        .buttonStyle(.plain)
-                        .hapticTap()
-                    }
-                }
-                .padding(.horizontal, Theme.Spacing.md)
-            }
-        }
-    }
-
-    private var requestHowToCard: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            ZStack {
-                RoundedRectangle(cornerRadius: Theme.Radius.photo, style: .continuous)
-                    .fill(Theme.Colors.accent.opacity(0.10))
-                    .frame(width: 168, height: 112)
-                VStack(spacing: 6) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(Theme.Colors.accent)
-                    Text("Ask for a how-to")
-                        .font(.gluttCaption.weight(.semibold))
-                        .foregroundStyle(Theme.Colors.accent)
-                }
-            }
-            Text("Rice, grilled cheese, anything…")
-                .font(.gluttCaption.weight(.semibold))
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .lineLimit(2)
-                .frame(width: 168, alignment: .leading)
-            Text("AI writes the steps")
-                .font(.caption2)
-                .foregroundStyle(Theme.Colors.textSecondary)
-        }
-        .padding(Theme.Spacing.sm)
-        .background(Theme.Colors.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                .strokeBorder(Theme.Colors.accent.opacity(0.35), lineWidth: 1.5)
-        )
-    }
-
-    private func basicsCard(_ lesson: Recipe) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            RecipeImageView(recipe: lesson)
-                .frame(width: 168, height: 112)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.photo, style: .continuous))
-            Text(lesson.title)
-                .font(.gluttCaption.weight(.semibold))
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .lineLimit(2)
-                .frame(width: 168, alignment: .leading)
-            Text(lesson.timeLabel)
-                .font(.caption2)
-                .foregroundStyle(Theme.Colors.textSecondary)
-        }
-        .padding(Theme.Spacing.sm)
-        .background(Theme.Colors.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                .strokeBorder(Theme.Colors.accent.opacity(0.18), lineWidth: 1)
-        )
-    }
-
-    private var collectionsRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Theme.Spacing.sm) {
-                ForEach(collections) { collection in
-                    NavigationLink(value: collection) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Image(systemName: "folder.fill")
-                                .foregroundStyle(Theme.Colors.accent)
-                            Text(collection.name)
-                                .font(.gluttCaption.weight(.semibold))
-                                .foregroundStyle(Theme.Colors.textPrimary)
-                                .lineLimit(1)
-                            Text("^[\(collection.recipes.count) recipe](inflect: true)")
-                                .font(.caption2)
-                                .foregroundStyle(Theme.Colors.textSecondary)
-                        }
-                        .padding(Theme.Spacing.sm)
-                        .frame(width: 120, alignment: .leading)
-                        .background(Theme.Colors.card)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .hapticTap()
-                }
-            }
-            .padding(.horizontal, Theme.Spacing.md)
-        }
-    }
-
-    private var categoryRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 16) {
-                ForEach(categoryTags, id: \.tag) { item in
-                    CategoryCircle(
-                        label: item.tag,
-                        isActive: selectedFilter == item.tag,
-                        action: { selectedFilter = (selectedFilter == item.tag) ? nil : item.tag }
-                    ) {
-                        RecipeImageView(recipe: item.recipe)
-                    }
-                }
-            }
-            .padding(.horizontal, Theme.Spacing.md)
-        }
-    }
-
-    private var countHeader: some View {
-        HStack {
-            Text("^[\(visibleRecipes.count) recipe](inflect: true)")
-                .font(.system(size: 25, weight: .heavy, design: .rounded))
-                .foregroundStyle(Theme.Colors.textPrimary)
-            Spacer()
-            Button { Haptics.impact(.light); isGrid.toggle() } label: {
-                Ph.squaresFour.fill.resizable().scaledToFit().frame(width: 18, height: 18)
-                    .foregroundStyle(isGrid ? Theme.Colors.accent : Theme.Colors.textSecondary)
-                    .frame(width: 40, height: 40)
-                    .background(Theme.Colors.card)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
-                        .strokeBorder(Theme.Colors.border, lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, Theme.Spacing.md)
     }
 }
 

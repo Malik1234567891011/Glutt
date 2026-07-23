@@ -54,6 +54,9 @@ final class Router {
     var demoCookOnLaunch = false
     /// Dev/testing hook (`-onboarding`): forces the first-run flow even when completed.
     var forceOnboarding = false
+    /// Dev/testing hook (`-openRecipe`): pushes the first library recipe's detail on
+    /// launch, so the detail screen can be captured without UI tapping.
+    var openFirstRecipeOnLaunch = false
 
     init() {
         // Launch-argument hooks for UI tests and tooling: `-tab recipes`, `-importURL https://...`
@@ -71,6 +74,7 @@ final class Router {
         }
         demoCookOnLaunch = arguments.contains("-demoCook")
         forceOnboarding = arguments.contains("-onboarding")
+        openFirstRecipeOnLaunch = arguments.contains("-openRecipe")
     }
 
     func handle(url: URL) {

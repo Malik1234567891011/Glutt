@@ -43,8 +43,22 @@ final class PollySessionController {
     private(set) var isPollySpeaking = false
     private(set) var isListening = false
     /// True from any response.create until the first audio delta / response.done —
-    /// drives the orb's "thinking" state.
+    /// drives the "thinking" state.
     private(set) var isThinking = false
+
+    /// Wake-word gate. `dormant` = Realtime input muted, waiting for "Polly";
+    /// `listening` = un-gated, capturing the cook's question. Polly only hears you
+    /// while listening, so background chatter/music never reaches her.
+    enum ListeningMode: Equatable { case dormant, listening }
+    private(set) var listeningMode: ListeningMode = .dormant
+    /// The cook's live on-device transcript, shown large while Listening.
+    private(set) var liveTranscript = ""
+    /// Master mute (the mic button): silences everything, including the wake word.
+    private(set) var isHardMuted = false
+    /// Whether on-device wake-word recognition is running this session. When false
+    /// (e.g. simulator, Speech denied), the state pill is a tap-to-talk fallback.
+    private(set) var wakeWordAvailable = false
+
     /// PantryMatcher misses, snapshotted during start() — drives the preflight card.
     private(set) var missingIngredients: [String] = []
     /// Set by the `end_session` tool; the session view observes it and calls `end`.
@@ -54,8 +68,13 @@ final class PollySessionController {
 
     let audio: PollyAudioEngine
     let camera: PollyCameraController
+    let wakeWord: WakeWordListening
     let timers = TimerManager()
     var registry: PollyToolRegistry?
+
+    /// The follow-up window: after Polly answers (or you say "Polly" then pause),
+    /// listening stays open this long for a natural follow-up before re-muting.
+    private var dormancyTask: Task<Void, Never>?
 
     var stepIndex: Int { registry?.state.stepIndex ?? 0 }
 
@@ -112,13 +131,15 @@ final class PollySessionController {
         scale: Double,
         deps: Dependencies = .live,
         audio: PollyAudioEngine? = nil,
-        camera: PollyCameraController? = nil
+        camera: PollyCameraController? = nil,
+        wakeWord: WakeWordListening? = nil
     ) {
         self.recipe = recipe
         self.scale = scale
         self.deps = deps
         self.audio = audio ?? PollyAudioEngine()
         self.camera = camera ?? PollyCameraController()
+        self.wakeWord = wakeWord ?? WakeWordListener()
     }
 
     // MARK: - Lifecycle
@@ -201,11 +222,16 @@ final class PollySessionController {
             return
         }
 
-        // 5. Mic. Denied mic in production means no session (spec).
+        // 5. Mic. Denied mic in production means no session (spec). The wake-word
+        //    listener is fed raw buffers via onBuffer so it hears even while the
+        //    Realtime input is muted (dormant).
+        let wake = wakeWord
         do {
-            try audio.start { [weak transport] chunk in
+            try audio.start(onChunk: { [weak transport] chunk in
                 Task { try? await transport?.send(.appendAudio(base64: chunk)) }
-            }
+            }, onBuffer: { [weak wake] buffer in
+                wake?.append(buffer)
+            })
         } catch {
             PollyDebugLog.shared.log("session: mic start FAILED — \(error.localizedDescription)")
             if requireMic {
@@ -225,6 +251,17 @@ final class PollySessionController {
         PollyDebugLog.shared.log("session: LIVE")
         consumeEvents(from: transport, context: context)
         startWatchLoop(context: context)
+
+        // Wake-word gate: start dormant (Realtime input muted) and listen on-device
+        // for "Polly". Her greeting still plays; the cook says "Polly" (or taps the
+        // pill) to un-gate. If on-device recognition is unavailable, the pill is a
+        // tap-to-talk fallback and voice waking is simply off.
+        wakeWord.onWake = { [weak self] in self?.wakeUp() }
+        wakeWord.onPartialTranscript = { [weak self] text in self?.updateLiveTranscript(text) }
+        wakeWordAvailable = wakeWord.isAvailable
+        if wakeWordAvailable { wakeWord.start() }
+        enterDormant()
+        PollyDebugLog.shared.log("session: dormant — wake word \(wakeWordAvailable ? "listening" : "unavailable, tap to talk")")
 
         // Polly speaks first — but this is requested LAST, once the event loop
         // is already consuming and (on device) the audio graph has settled.
@@ -267,6 +304,8 @@ final class PollySessionController {
         watchTask = nil
         eventTask?.cancel()
         eventTask = nil
+        cancelDormancyTimer()
+        wakeWord.stop()
         audio.stop()
         camera.stop()
         timers.cancelAll()
@@ -306,6 +345,79 @@ final class PollySessionController {
     }
 
     func toggleMute() { audio.isMuted.toggle() }   // haptic lives in the view
+
+    // MARK: - Wake-word gate
+
+    /// Un-gate: "Polly" was heard (or the pill tapped). Opens the Realtime input,
+    /// shows the Listening UI, and arms the follow-up window.
+    func wakeUp() {
+        guard phase == .live, !isHardMuted, listeningMode == .dormant else { return }
+        listeningMode = .listening
+        liveTranscript = ""
+        audio.isMuted = false
+        PollyDebugLog.shared.log("gate: LISTENING (woken)")
+        armDormancyTimer()
+    }
+
+    /// Manual wake for the tap-to-talk fallback (tapping the state pill).
+    func forceListen() {
+        guard !isHardMuted else { return }
+        wakeUp()
+    }
+
+    /// Re-gate: mute the Realtime input and return to waiting for "Polly".
+    func returnToDormant() {
+        cancelDormancyTimer()
+        liveTranscript = ""
+        enterDormant()
+        // Fresh recognition segment so the next "Polly" wakes her — the running
+        // transcript still holds the last one, which would otherwise block it.
+        wakeWord.restart()
+        PollyDebugLog.shared.log("gate: dormant (window closed)")
+    }
+
+    private func enterDormant() {
+        listeningMode = .dormant
+        if !isHardMuted { audio.isMuted = true }
+    }
+
+    /// The mic button: hard-mute everything, including the wake word. Un-mute
+    /// returns to dormant (wake-word armed), not open — you still say "Polly".
+    func toggleHardMute() {
+        isHardMuted.toggle()
+        cancelDormancyTimer()
+        listeningMode = .dormant
+        liveTranscript = ""
+        audio.isMuted = true
+        if isHardMuted {
+            wakeWord.stop()
+            PollyDebugLog.shared.log("gate: HARD MUTED")
+        } else {
+            if wakeWordAvailable { wakeWord.start() }
+            PollyDebugLog.shared.log("gate: unmuted → dormant")
+        }
+    }
+
+    private func updateLiveTranscript(_ text: String) {
+        guard listeningMode == .listening else { return }
+        liveTranscript = WakeWordMatcher.strippedQuestion(text)
+    }
+
+    private func armDormancyTimer() {
+        cancelDormancyTimer()
+        dormancyTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(PollyConfig.followUpWindowSeconds))
+            guard let self, !Task.isCancelled else { return }
+            if phase == .live, listeningMode == .listening, !isHardMuted {
+                returnToDormant()
+            }
+        }
+    }
+
+    private func cancelDormancyTimer() {
+        dormancyTask?.cancel()
+        dormancyTask = nil
+    }
 
     /// Injects a typed/tapped question as a user turn and asks Polly to answer —
     /// backs the suggested-question bubbles for cooks who don't know what to ask.
@@ -386,6 +498,8 @@ final class PollySessionController {
             }
             isPollySpeaking = false
             isListening = true
+            // The cook is talking — don't let the follow-up window time out mid-question.
+            cancelDormancyTimer()
 
         case .speechStopped:
             PollyDebugLog.shared.log("event: speech stopped")
@@ -415,6 +529,9 @@ final class PollySessionController {
             isPollySpeaking = false
             isThinking = false
             flushPendingAssistantLine()
+            // Follow-up window: Polly answered this turn — keep listening a few
+            // seconds for a natural follow-up (no "Polly" needed), else re-gate.
+            if listeningMode == .listening { armDormancyTimer() }
             // Only execute tool calls from COMPLETED responses — a cancelled
             // response (barge-in) can carry partial calls, and answering them
             // talks over the cook who just interrupted.

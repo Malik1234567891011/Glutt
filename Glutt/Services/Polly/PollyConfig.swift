@@ -38,6 +38,11 @@ enum PollyConfig {
     static let maxSessionMinutes = 52
     /// When Polly starts steering toward wrapping up.
     static let wrapUpWarningMinutes = 47
+    /// After the wake word un-gates the mic (or Polly answers), listening stays
+    /// open this long for a natural follow-up before re-muting to dormant. Short
+    /// so it doesn't feel like it's hanging on your every word; the cook says
+    /// "Polly" again after it closes.
+    static let followUpWindowSeconds: TimeInterval = 3
     /// How many top PollyMemory facts get injected into the system prompt.
     static let memoryFactLimit = 12
     /// Ephemeral token lifetime requested from the proxy (OpenAI max is 600).

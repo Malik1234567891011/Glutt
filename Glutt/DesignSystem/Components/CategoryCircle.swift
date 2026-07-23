@@ -34,7 +34,7 @@ struct CategoryCircle<Thumb: View>: View {
                 }
                 .frame(width: 66, height: 66)            // reserve max slot → no sibling reflow on activate
                 Text(label)
-                    .font(.system(size: isActive ? 14 : 13, weight: isActive ? .heavy : .bold, design: .rounded))
+                    .font(BrandFont.nunito(isActive ? 14 : 13, isActive ? 800 : 700))
                     .foregroundColor(isActive ? Theme.Colors.textPrimary : Theme.Colors.mutedLabel)
                     .lineLimit(1)
             }

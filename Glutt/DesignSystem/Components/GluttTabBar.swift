@@ -21,13 +21,11 @@ struct GluttTabBar: View {
                 } label: {
                     VStack(spacing: 4) {
                         glyph(for: tab, active: isActive)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 24, height: 24)
+                            .sized(26)
                             .foregroundColor(isActive ? Theme.Colors.activeTabGlyph : Theme.Colors.tabInactive)
                         Text(tab.label)
-                            .font(.system(size: 11, weight: isActive ? .bold : .semibold, design: .rounded))
-                            .foregroundColor(isActive ? Theme.Colors.creamText : Theme.Colors.tabInactive)
+                            .font(BrandFont.nunito(11, isActive ? 800 : 600))
+                            .foregroundColor(isActive ? Theme.Colors.tabLabel : Theme.Colors.tabInactive)
                     }
                     .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
@@ -36,21 +34,21 @@ struct GluttTabBar: View {
                 .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
             }
         }
-        .padding(.top, 12)
-        .padding(.horizontal, 6)
+        .padding(.top, 13)
+        .padding(.horizontal, 8)
         .background(
-            Theme.Colors.textPrimary
+            Theme.Colors.tabBar
                 .clipShape(.rect(topLeadingRadius: Theme.Radius.tabBarTop,
                                  topTrailingRadius: Theme.Radius.tabBarTop))
                 .ignoresSafeArea(edges: .bottom)
         )
     }
 
-    private func glyph(for tab: AppTab, active: Bool) -> Image {
+    private func glyph(for tab: AppTab, active: Bool) -> MS {
         switch tab {
-        case .recipes:  return active ? Ph.bookOpen.fill : Ph.bookOpen.regular
-        case .discover: return active ? Ph.sparkle.fill : Ph.sparkle.regular
-        case .kitchen:  return active ? Ph.cookingPot.fill : Ph.cookingPot.regular
+        case .recipes:  return active ? .menuBookFill : .menuBook
+        case .discover: return active ? .autoAwesomeFill : .autoAwesome
+        case .kitchen:  return active ? .skilletFill : .skillet
         }
     }
 }

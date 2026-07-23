@@ -1,11 +1,11 @@
 import SwiftData
 import SwiftUI
 
-/// The Discover tab — one surface, two modes behind a floating toggle:
-/// **Deck** is the full-screen photo-recipe swipe deck (Plates); **Videos** is a
-/// feed of recipe video clips. The deck stays mounted (just hidden) when you
-/// switch to Videos, so you keep your place; the video feed mounts only while
-/// active so nothing plays in the background.
+/// The Discover tab, "recipe cards" design (`Glutt Screens.dc.html`): a warm cream
+/// header ("Picked for you" / Discover + a streak chip) over the tactile photo-recipe
+/// swipe **Deck** (Plates). A compact toggle flips to **Videos** — a feed of recipe
+/// clips — kept off the mock's primary surface but one tap away. The deck stays
+/// mounted when you visit Videos so you keep your place.
 struct DiscoverTabView: View {
     enum Mode: String, CaseIterable, Identifiable {
         case deck = "Deck"
@@ -17,7 +17,6 @@ struct DiscoverTabView: View {
     @State private var mode: Mode = .deck
     @State private var videosModel = DiscoverFeedViewModel()
 
-    /// Taste hint for the suggested video feed: the most common tags across saved recipes.
     private var tasteTags: [String] {
         let counts = recipes
             .filter { $0.parentRecipe == nil }
@@ -27,58 +26,70 @@ struct DiscoverTabView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            // Deck stays mounted so its position/feed survive a trip to Videos.
-            PlatesTabView(hidesTitle: true)
-                .opacity(mode == .deck ? 1 : 0)
-                .allowsHitTesting(mode == .deck)
-
-            if mode == .videos {
-                videosSurface
+        VStack(spacing: 0) {
+            header
+            ZStack {
+                PlatesTabView(hidesTitle: true)
+                    .opacity(mode == .deck ? 1 : 0)
+                    .allowsHitTesting(mode == .deck)
+                if mode == .videos { videosSurface }
             }
-
-            modeToggle
         }
+        .background(Theme.Colors.background)
+    }
+
+    // MARK: Header
+
+    private var header: some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Picked for you")
+                    .font(BrandFont.nunito(12, 800)).tracking(1.6).textCase(.uppercase)
+                    .foregroundStyle(Theme.Colors.accent)
+                Text("Discover")
+                    .font(BrandFont.bricolage(31, 700))
+                    .foregroundStyle(Theme.Colors.heading)
+            }
+            Spacer()
+            HStack(spacing: 8) {
+                Button {
+                    Haptics.selection()
+                    mode = mode == .deck ? .videos : .deck
+                } label: {
+                    Text(mode == .deck ? "Videos" : "Deck")
+                        .font(BrandFont.nunito(12, 800))
+                        .foregroundStyle(Theme.Colors.accent)
+                        .padding(.horizontal, 13).padding(.vertical, 8)
+                        .background(Capsule().fill(Theme.Colors.accent.opacity(0.10)))
+                        .overlay(Capsule().strokeBorder(Theme.Colors.accent.opacity(0.22), lineWidth: 1.5))
+                }
+                .buttonStyle(.plain)
+                streakChip
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
+    private var streakChip: some View {
+        let days = max(1, PlatesStreak.current)
+        return HStack(spacing: 6) {
+            MS.fireFill.sized(16).foregroundStyle(Theme.Colors.coralBright)
+            Text("^[\(days) day](inflect: true)")
+                .font(BrandFont.nunito(13, 800)).foregroundStyle(Theme.Colors.amber)
+        }
+        .padding(.horizontal, 13).padding(.vertical, 8)
+        .background(Capsule().fill(Theme.Colors.amberChip))
     }
 
     // MARK: Videos
 
     private var videosSurface: some View {
-        ZStack {
-            Theme.Colors.background.ignoresSafeArea()
-            ScrollView {
-                DiscoverView(model: videosModel, tasteTags: tasteTags)
-                    .padding(.top, 72) // clear the floating toggle
-                    .padding(.bottom, GluttTabBar.reservedHeight)
-            }
+        ScrollView {
+            DiscoverView(model: videosModel, tasteTags: tasteTags)
+                .padding(.top, 12)
+                .padding(.bottom, GluttTabBar.reservedHeight)
         }
-    }
-
-    // MARK: Toggle
-
-    private var modeToggle: some View {
-        HStack(spacing: 4) {
-            ForEach(Mode.allCases) { m in
-                let selected = mode == m
-                Button {
-                    Haptics.selection()
-                    mode = m
-                } label: {
-                    Text(m.rawValue)
-                        .font(.gluttCaption.weight(.heavy))
-                        .foregroundStyle(selected ? Theme.Colors.textPrimary : .white)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 8)
-                        .background { if selected { Capsule().fill(.white) } }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        // A dark translucent pill reads cleanly over both the dark deck and the
-        // light video surface, so the toggle looks consistent in either mode.
-        .background(.black.opacity(0.4), in: Capsule())
-        .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
-        .padding(.top, Theme.Spacing.sm)
     }
 }

@@ -353,18 +353,18 @@ struct AdjustRecipeView: View {
             Spacer()
             HStack(spacing: 6) {
                 Text("\(before)\(suffix)")
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(BrandFont.nunito(16, 600))
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .strikethrough(delta != 0, color: Theme.Colors.textSecondary)
                 Ph.arrowRight.bold.resizable().scaledToFit().frame(width: 12, height: 12)
                     .foregroundStyle(Theme.Colors.textSecondary)
                 Text("\(after)\(suffix)")
-                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .font(BrandFont.bricolage(20, 700))
                     .foregroundStyle(Theme.Colors.textPrimary)
             }
             if delta != 0 {
                 Text("\(sign)\(abs(delta))\(suffix)")
-                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .font(BrandFont.nunito(12, 800))
                     .foregroundStyle(deltaColor)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)

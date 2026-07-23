@@ -28,7 +28,7 @@ struct GluttStepper<Value: Strideable>: View where Value.Stride: SignedNumeric {
                 value = max(range.lowerBound, value.advanced(by: -step))
             }
             Text(format(value))
-                .font(.system(size: 13, weight: .heavy, design: .rounded))
+                .font(BrandFont.nunito(13, 800))
                 .foregroundColor(Theme.Colors.textPrimary)
                 .monospacedDigit()
                 .frame(minWidth: 52)

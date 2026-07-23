@@ -41,6 +41,7 @@ targets:
           - UIInterfaceOrientationPortrait
         NSCameraUsageDescription: Glutt uses the camera to scan your fridge or pantry, to estimate meals you log from photos, and to let Polly watch the pan during live cooking sessions.
         NSMicrophoneUsageDescription: Polly, your live cooking chef, listens so you can ask questions and get guidance hands-free while you cook.
+        NSSpeechRecognitionUsageDescription: Glutt listens on your device for the word "Polly" so Polly only responds when you call her, not to background chatter. Speech is recognized on-device.
         ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:
           - CFBundleURLName: com.omarlahmimi.glutt
@@ -80,6 +81,7 @@ targets:
       - path: Glutt/Services/AI/DraftCleanup.swift
       - path: Glutt/DesignSystem/Theme.swift
       - path: Glutt/DesignSystem/Typography.swift
+      - path: Glutt/DesignSystem/BrandFonts.swift
       - path: Glutt/DesignSystem/Components/Buttons.swift
     info:
       path: GluttShare/Info.plist

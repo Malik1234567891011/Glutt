@@ -164,7 +164,11 @@ final class PollyAudioEngine {
 
     // MARK: Capture
 
-    func start(onChunk: @escaping @Sendable (String) -> Void) throws {
+    /// `onBuffer`, if given, receives every raw mic buffer BEFORE the mute gate —
+    /// so an on-device wake-word listener keeps hearing even while the Realtime
+    /// input is muted (dormant). It must be cheap and thread-safe (audio thread).
+    func start(onChunk: @escaping @Sendable (String) -> Void,
+               onBuffer: (@Sendable (AVAudioPCMBuffer) -> Void)? = nil) throws {
         guard !isRunning else { return }
 
         // Never touch AVAudioEngine without a granted mic. This is a check,
@@ -238,6 +242,7 @@ final class PollyAudioEngine {
         let gate = captureGateDeadline
         let speaking = speakingFlag
         let accumulator = self.accumulator
+        let forwardBuffer = onBuffer
         let firstTapLogged = OSAllocatedUnfairLock(initialState: false)
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 2_400, format: inputFormat) { [weak self] buffer, _ in
@@ -256,6 +261,9 @@ final class PollyAudioEngine {
             }
             let level = Self.rms(of: buffer)
             Task { @MainActor [weak self] in self?.smoothLevel(level) }
+            // Wake-word listener hears the raw mic even while the socket is muted
+            // (dormant), so "Polly" can un-gate the Realtime input.
+            forwardBuffer?(buffer)
             guard !muted.withLock({ $0 }) else { return }
             // Utterance-onset gate: drop chunks while the echo canceller is
             // still adapting to Polly's voice (see PollyConfig).

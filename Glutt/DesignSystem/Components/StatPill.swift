@@ -16,7 +16,7 @@ struct StatPill: View {
                 .frame(width: 13, height: 13)
                 .foregroundColor(foreground)
             Text(text)
-                .font(.system(size: 13, weight: .heavy, design: .rounded))
+                .font(BrandFont.nunito(13, 800))
                 .foregroundColor(foreground)
         }
         .padding(.horizontal, 12)

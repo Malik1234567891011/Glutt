@@ -31,10 +31,5 @@ enum OnboardingTheme {
     static func warmBlack(_ opacity: Double) -> Color { Color(hex: 0x2A2420).opacity(opacity) }
 }
 
-extension Color {
-    init(hex: UInt32) {
-        self.init(red: Double((hex >> 16) & 0xFF) / 255,
-                  green: Double((hex >> 8) & 0xFF) / 255,
-                  blue: Double(hex & 0xFF) / 255)
-    }
-}
+// `Color(hex:)` now lives in DesignSystem/Theme.swift (shared with the share
+// extension). Kept out of here to avoid a duplicate declaration.

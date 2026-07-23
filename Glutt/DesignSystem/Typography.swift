@@ -1,20 +1,25 @@
 import SwiftUI
 
+/// App-wide type ramp. **Bricolage Grotesque** for display/headings, **Nunito** for
+/// body/UI (see `BrandFont`). The mocks are pixel-spec'd, so these are fixed sizes.
+/// Weight modifiers applied on top (e.g. `.gluttCaption.weight(.bold)`) may be soft
+/// on a variable custom font — prefer `BrandFont.nunito(size, weight)` directly when
+/// an exact weight matters.
 extension Font {
-    /// Big screen titles ("Good afternoon, Malik").
-    static let gluttLargeTitle = Font.system(.largeTitle, design: .rounded).weight(.bold)
-    /// Section/card titles.
-    static let gluttTitle = Font.system(.title2, design: .rounded).weight(.semibold)
+    /// Big screen titles ("Your recipes", "Kitchen").
+    static let gluttLargeTitle = BrandFont.bricolage(31, 700)
+    /// Section / card titles.
+    static let gluttTitle = BrandFont.bricolage(22, 600)
     /// Card headings.
-    static let gluttHeadline = Font.system(.headline, design: .rounded)
+    static let gluttHeadline = BrandFont.bricolage(17, 600)
     /// Body copy.
-    static let gluttBody = Font.system(.body, design: .rounded)
+    static let gluttBody = BrandFont.nunito(16, 500)
     /// Secondary metadata (time, source, tags).
-    static let gluttCaption = Font.system(.subheadline, design: .rounded)
+    static let gluttCaption = BrandFont.nunito(14, 600)
     /// Cook Mode step text — large and readable from a distance.
-    static let gluttCookStep = Font.system(size: 28, weight: .medium, design: .rounded)
+    static let gluttCookStep = BrandFont.bricolage(27, 600)
     /// Small uppercase section labels ("FRESH", "PANTRY", category headers).
-    static let gluttSectionLabel = Font.system(size: 12, weight: .heavy, design: .rounded)
+    static let gluttSectionLabel = BrandFont.nunito(12, 800)
 }
 
 /// Uppercase, letter-spaced, herb-green section label (FRESH / PANTRY / category headers).
@@ -25,7 +30,7 @@ struct SectionLabel: View {
     var body: some View {
         Text(text.uppercased())
             .font(.gluttSectionLabel)
-            .tracking(1.4)
+            .tracking(1.6)
             .foregroundStyle(color)
     }
 }
@@ -52,7 +57,7 @@ struct SectionHeader: View {
             Spacer()
             if let actionLabel, let action {
                 Button(actionLabel, action: action)
-                    .font(.gluttCaption.weight(.medium))
+                    .font(.gluttCaption.weight(.semibold))
                     .foregroundStyle(Theme.Colors.accent)
             }
         }

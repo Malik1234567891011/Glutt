@@ -24,7 +24,7 @@ struct MacroStrip: View {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
                 if let cal = breakdown.calories {
                     Text("\(prefix)\(cal)")
-                        .font(.system(size: 32, weight: .heavy, design: .rounded))
+                        .font(BrandFont.bricolage(32, 700))
                         .foregroundStyle(Theme.Colors.textPrimary)
                     Text("cal")
                         .font(.gluttCaption.weight(.semibold))
@@ -66,7 +66,7 @@ struct MacroStrip: View {
             HStack(spacing: 4) {
                 Circle().fill(color).frame(width: 8, height: 8)
                 Text("\(letter) \(prefix)\(grams)g")
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .font(BrandFont.nunito(13, 800))
                     .foregroundStyle(Theme.Colors.textPrimary)
             }
             .padding(.horizontal, 10)

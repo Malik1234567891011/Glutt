@@ -42,73 +42,56 @@ struct FeedCardView: View {
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.8), value: isFlipped)
     }
 
-    // MARK: Front
+    // MARK: Front — cream "recipe card" (Glutt Screens.dc.html, Discover)
 
     private var front: some View {
-        ZStack(alignment: .bottomLeading) {
-            heroImage
+        VStack(spacing: 0) {
+            ZStack(alignment: .topLeading) {
+                heroImage.clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                if isCookableNow { cookableBadge.padding(12) }
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            LinearGradient(
-                colors: [.clear, .black.opacity(0.15), .black.opacity(0.85)],
-                startPoint: .top, endPoint: .bottom
-            )
-            .allowsHitTesting(false)
-
-            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                if isCookableNow { cookableBadge }
-
+            VStack(alignment: .leading, spacing: 0) {
                 Text(card.title)
-                    .font(.system(size: 30, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(3)
-                    .minimumScaleFactor(0.8)
-
+                    .font(BrandFont.bricolage(24, 700))
+                    .foregroundStyle(Theme.Colors.heading)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
                 if let creator = card.creator, !creator.isEmpty {
                     Text(creator)
-                        .font(.gluttCaption)
-                        .foregroundStyle(.white.opacity(0.85))
+                        .font(BrandFont.nunito(13, 700))
+                        .foregroundStyle(Theme.Colors.muted)
                         .lineLimit(1)
+                        .padding(.top, 5)
                 }
-
-                statStrip
-                flipHint
+                statStrip.padding(.top, 13)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Theme.Spacing.lg)
+            .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 18)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
+        .background(Theme.Colors.card)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .onTapGesture { flip() }
     }
 
     private var heroImage: some View {
-        // Color.clear fixes the frame to the card; the image draws into the
-        // overlay and `scaledToFill` overflow is clipped to that frame (a bare
-        // AsyncImage + scaledToFill reports the photo's huge intrinsic size and
-        // spills past the card edges).
         Color.clear
             .overlay {
                 AsyncImage(url: card.imageURL.flatMap(URL.init(string:))) { phase in
                     switch phase {
                     case .success(let image):
-                        image
-                            .resizable()
-                            .interpolation(.high)
-                            .antialiased(true)
-                            .scaledToFill()
+                        image.resizable().interpolation(.high).antialiased(true).scaledToFill()
                     case .empty:
-                        ZStack {
-                            Theme.Colors.card
-                            ProgressView().tint(Theme.Colors.accent)
-                        }
+                        ZStack { Theme.Colors.surface2; ProgressView().tint(Theme.Colors.accent) }
                     default:
                         ZStack {
-                            Theme.Colors.accent.opacity(0.12)
-                            Ph.forkKnife.fill
-                                .resizable().scaledToFit()
-                                .frame(width: 48, height: 48)
-                                .foregroundStyle(Theme.Colors.accent.opacity(0.4))
+                            Theme.Colors.accent.opacity(0.10)
+                            MS.restaurantFill.sized(46).foregroundStyle(Theme.Colors.accent.opacity(0.4))
                         }
                     }
                 }
@@ -117,43 +100,37 @@ struct FeedCardView: View {
     }
 
     private var cookableBadge: some View {
-        HStack(spacing: 4) {
-            Ph.basket.fill.resizable().scaledToFit().frame(width: 13, height: 13)
+        HStack(spacing: 6) {
+            MS.checkCircleFill.sized(15).foregroundStyle(Theme.Colors.accent)
             Text("You can make this now")
-                .font(.system(size: 13, weight: .heavy, design: .rounded))
+                .font(BrandFont.nunito(12, 800)).foregroundStyle(Theme.Colors.accent)
         }
-        .foregroundStyle(.white)
-        .padding(.horizontal, 10).padding(.vertical, 6)
-        .background(Theme.Colors.accent)
-        .clipShape(Capsule())
+        .padding(.horizontal, 12).padding(.vertical, 7)
+        .background(.ultraThinMaterial, in: Capsule())
+        .background(Theme.Colors.card.opacity(0.85), in: Capsule())
     }
 
     private var statStrip: some View {
-        HStack(spacing: Theme.Spacing.sm) {
+        HStack(spacing: 8) {
             if let cook = card.cookMinutes, cook > 0 {
-                StatPill.time("\(cook) min")
+                deckPill(MS.schedule, "\(cook) min", fg: Color(hex: 0x4A4238), bg: Theme.Colors.surface2, iconColor: Theme.Colors.textSecondary)
             }
             if let cal = card.macros?.caloriesInt {
-                StatPill(icon: Ph.flame.fill, text: "\(cal) cal",
-                         foreground: Theme.Colors.tomato, background: Theme.Colors.tomatoTint)
+                deckPill(MS.fireFill, "\(cal) cal", fg: Color(hex: 0x4A4238), bg: Theme.Colors.surface2, iconColor: Theme.Colors.coralBright)
             }
             if let protein = card.macros?.proteinInt {
-                StatPill(icon: Ph.barbell.fill, text: "\(protein)g protein")
+                deckPill(MS.boltFill, "\(protein)g", fg: Theme.Colors.accent, bg: Theme.Colors.greenTint, iconColor: Theme.Colors.accent)
             }
         }
     }
 
-    private var flipHint: some View {
-        HStack(spacing: 6) {
-            Ph.bookOpen.fill.resizable().scaledToFit().frame(width: 15, height: 15)
-            Text("Tap for recipe").font(.gluttCaption.weight(.heavy))
-            Ph.caretRight.regular.resizable().scaledToFit().frame(width: 10, height: 10)
+    private func deckPill(_ icon: MS, _ text: String, fg: Color, bg: Color, iconColor: Color) -> some View {
+        HStack(spacing: 5) {
+            icon.sized(15).foregroundStyle(iconColor)
+            Text(text).font(BrandFont.nunito(12.5, 800)).foregroundStyle(fg)
         }
-        .foregroundStyle(Theme.Colors.textPrimary)
-        .padding(.horizontal, 14).padding(.vertical, 9)
-        .background(.ultraThinMaterial)
-        .clipShape(Capsule())
-        .padding(.top, 2)
+        .padding(.horizontal, 12).padding(.vertical, 7)
+        .background(Capsule().fill(bg))
     }
 
     // MARK: Back

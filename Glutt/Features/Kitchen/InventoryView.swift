@@ -7,8 +7,8 @@ struct InventoryView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \PantryItem.name) private var items: [PantryItem]
     @Binding var isAddingItem: Bool
+    @Binding var isScanning: Bool
     @State private var searchText = ""
-    @State private var isScanning = false
     @State private var editingQuantityItem: PantryItem?
     @State private var exactQuantityText = ""
 
@@ -65,46 +65,8 @@ struct InventoryView: View {
                     assumedStaplesSection
                 }
             }
-            .padding(Theme.Spacing.md)
-        }
-        .toolbar {
-            if LLMClient.isConfigured {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Haptics.impact(.light)
-                        isScanning = true
-                    } label: {
-                        // Outlined herb-green circle — pantry scan.
-                        Ph.camera.regular
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 18, height: 18)
-                            .foregroundStyle(Theme.Colors.accent)
-                            .frame(width: 38, height: 38)
-                            .overlay(
-                                Circle().strokeBorder(Theme.Colors.accent, lineWidth: 1.5)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    Haptics.impact(.light)
-                    isAddingItem = true
-                } label: {
-                    // Filled herb-green circle — add item.
-                    Ph.plus.bold
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 18, height: 18)
-                        .foregroundStyle(Theme.Colors.creamText)
-                        .frame(width: 38, height: 38)
-                        .background(Theme.Colors.accent)
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-            }
+            .padding(.horizontal, 20)
+            .padding(.top, Theme.Spacing.sm)
         }
         .sheet(isPresented: $isAddingItem) {
             PantryItemEditorView()
@@ -186,42 +148,38 @@ struct InventoryView: View {
     }
 
     private var searchField: some View {
-        HStack {
-            Ph.magnifyingGlass.regular
-                .resizable()
-                .scaledToFit()
-                .frame(width: 16, height: 16)
-                .foregroundStyle(Theme.Colors.textSecondary)
+        HStack(spacing: 11) {
+            MS.search.sized(20).foregroundStyle(Theme.Colors.muted)
             TextField("Search your kitchen", text: $searchText)
-                .font(.gluttBody)
+                .font(BrandFont.nunito(14.5, 600))
+                .foregroundStyle(Theme.Colors.heading)
+                .tint(Theme.Colors.accent)
         }
-        .padding(Theme.Spacing.sm)
-        .background(Theme.Colors.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
+        .padding(.horizontal, 16)
+        .frame(height: 46)
+        .background(Capsule().fill(Theme.Colors.card))
+        .overlay(Capsule().strokeBorder(Theme.Colors.textPrimary.opacity(0.07), lineWidth: 1.5))
+        .shadow(color: Theme.Colors.textPrimary.opacity(0.04), radius: 12, y: 4)
     }
 
     private func categorySection(_ category: GroceryCategory, items: [PantryItem]) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: 8) {
             SectionLabel(text: category.label)
-                .padding(.leading, Theme.Spacing.xs)
+                .padding(.leading, 2)
             VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     itemRow(item)
-                        .padding(.vertical, Theme.Spacing.sm)
-                        .padding(.horizontal, Theme.Spacing.md)
                     if index < items.count - 1 {
-                        Divider()
-                            .overlay(Theme.Colors.border)
-                            .padding(.leading, Theme.Spacing.md)
+                        Rectangle().fill(Color(hex: 0xEFE7D6)).frame(height: 1).padding(.leading, 59)
                     }
                 }
             }
+            .padding(.horizontal, 14)
             .background(Theme.Colors.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                    .strokeBorder(Theme.Colors.border.opacity(0.55), lineWidth: 1)
-            )
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.group, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.group, style: .continuous)
+                .strokeBorder(Theme.Colors.textPrimary.opacity(0.06), lineWidth: 1))
+            .shadow(color: Theme.Colors.textPrimary.opacity(0.04), radius: 16, y: 6)
         }
     }
 
@@ -235,51 +193,53 @@ struct InventoryView: View {
     /// Peach pill with tomato text for items flagged use-soon.
     private var useSoonBadge: some View {
         Text("Use soon")
-            .font(.caption2.weight(.bold))
+            .font(BrandFont.nunito(10.5, 800))
             .foregroundStyle(Theme.Colors.tomato)
-            .padding(.horizontal, Theme.Spacing.sm)
-            .padding(.vertical, 4)
-            .background(Theme.Colors.peachPanel)
-            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .padding(.horizontal, 9).padding(.vertical, 4)
+            .background(Capsule().fill(Theme.Colors.peachPanel))
+    }
+
+    /// Rough-quantity pill (tap to cycle): Full is solid green, Half/Low tint down.
+    private func quantityPill(_ item: PantryItem) -> some View {
+        let colors: (fg: Color, bg: Color) = {
+            switch item.roughQuantity {
+            case .full: return (Theme.Colors.creamText, Theme.Colors.accent)
+            case .half: return (Theme.Colors.accent, Theme.Colors.greenTint)
+            case .low: return (Theme.Colors.amber, Theme.Colors.amberChip)
+            case .out: return (Theme.Colors.tomato, Theme.Colors.tomatoTint)
+            }
+        }()
+        return Button {
+            Haptics.impact(.light)
+            item.roughQuantity = item.roughQuantity.next
+            item.updatedAt = .now
+        } label: {
+            Text(item.roughQuantity.label)
+                .font(BrandFont.nunito(11.5, 800))
+                .foregroundStyle(colors.fg)
+                .padding(.horizontal, 12).padding(.vertical, 5)
+                .background(Capsule().fill(colors.bg))
+        }
+        .buttonStyle(.plain)
     }
 
     private func itemRow(_ item: PantryItem) -> some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            categoryChip(for: item.category)
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: 13) {
+            IngredientTile(name: item.name, isMissing: item.roughQuantity == .out)
+            VStack(alignment: .leading, spacing: 1) {
                 Text(item.name)
-                    .font(.gluttBody.weight(.bold))
-                    .foregroundStyle(item.roughQuantity == .out ? Theme.Colors.textSecondary : Theme.Colors.textPrimary)
+                    .font(BrandFont.nunito(15, 700))
+                    .foregroundStyle(item.roughQuantity == .out ? Theme.Colors.muted : Theme.Colors.heading)
                     .strikethrough(item.roughQuantity == .out)
                 Text([item.exactQuantity, item.location.label].compactMap { $0 }.joined(separator: " · "))
-                    .font(.caption2)
-                    .foregroundStyle(item.exactQuantity == nil ? Theme.Colors.textSecondary : Theme.Colors.accent)
+                    .font(BrandFont.nunito(12.5, 600))
+                    .foregroundStyle(Theme.Colors.muted)
             }
-            Spacer(minLength: Theme.Spacing.sm)
-            // Right-side status: inline use-soon badge, else an "In stock" caption.
-            if showsUseSoonBadge(item) {
-                useSoonBadge
-            } else {
-                Text("In stock")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(Theme.Colors.textSecondary)
-            }
-            // Tap to cycle: full -> half -> low -> out -> full
-            Button {
-                Haptics.impact(.light)
-                item.roughQuantity = item.roughQuantity.next
-                item.updatedAt = .now
-            } label: {
-                Chip(
-                    label: item.roughQuantity.label,
-                    isSelected: item.roughQuantity == .full,
-                    tint: item.roughQuantity == .low || item.roughQuantity == .out
-                        ? Theme.Colors.warning
-                        : Theme.Colors.accent
-                )
-            }
-            .buttonStyle(.plain)
+            Spacer(minLength: 8)
+            if showsUseSoonBadge(item) { useSoonBadge }
+            quantityPill(item)
         }
+        .padding(.vertical, 12)
         .contextMenu {
             Button("Set exact amount…", systemImage: "scalemass") {
                 exactQuantityText = item.exactQuantity ?? ""

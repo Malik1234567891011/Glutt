@@ -189,6 +189,18 @@ final class PlatesFeedViewModel {
         if index < recipes.count - 1 { index += 1 }
     }
 
+    /// Rewinds to the previous card and clears its saved/skipped mark, backing the
+    /// deck's "undo" button. A saved recipe stays in the cookbook (undo is a visual
+    /// rewind of the deck, not a delete).
+    func undo() {
+        guard index > 0 else { return }
+        index -= 1
+        if let card = current {
+            savedIDs.remove(card.id)
+            skippedIDs.remove(card.id)
+        }
+    }
+
     func clearSaveError() { saveError = nil }
 
     private func applyDeck(

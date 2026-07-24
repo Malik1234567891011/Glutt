@@ -24,7 +24,10 @@ Every documented v1 failure was client-side or config, not the model:
 1. **North star: reliability.** Silence is the unforgivable failure. Speed second,
    naturalness third, cost a ceiling not a goal (quality-first at current scale).
 2. **Target environment:** iPhone on counter + loudspeaker, hands messy. AirPods/locked-screen
-   are not requirements. **Camera is cut** (controller, watch mode, `request_camera_frame`).
+   are not requirements. **Camera (REVISED 2026-07-24):** the "Show Polly" shutter and the
+   `request_camera_frame` tool STAY (they work over the data channel on v2 and cost nothing to
+   keep — Omar re-decided when the deletion consequence was spelled out); only **watch mode**
+   (10s auto-frames + eye button + WatchModeScheduler) is deleted.
 3. **Interaction: hybrid window.** Wake word ("Polly" *or* "Hey Polly") opens a conversation
    that stays open through the exchange; closes after ~10s of true silence or dismissal;
    fully open while Polly is guiding a step. The 3s follow-up window is gone.
@@ -58,8 +61,9 @@ Every documented v1 failure was client-side or config, not the model:
     controller closures) on branch `polly-v2-voice` → Omar's real-kitchen device soak +
     short TestFlight → merge deletes the WS engine + camera stack. Git history is the archive.
 11. **Scope:** in-cook calls only. Engine stays reusable for a future quick-ask Polly.
-    Survivors: 12 tools, `PollyPromptBuilder`, `CookPlanCompiler` (moved to background
-    precompile → instant greeting), memory store, redesigned call UI, `PollyDebugLog` loop.
+    Survivors: all 13 tools (incl. `request_camera_frame`), the "Show Polly" shutter,
+    `PollyPromptBuilder`, `CookPlanCompiler` (moved to background precompile → instant
+    greeting), memory store, redesigned call UI, `PollyDebugLog` loop.
 
 ## Cost basis (research doc has the arithmetic)
 
@@ -85,8 +89,8 @@ LiveKit agent minutes) bill the whole cook — that's why they lost. Cached audi
   churn, both phrases, unit-tested matcher.
 - **Phase 4 — server hardening:** pin turn_detection/voice at mint; per-device monthly cap
   (`x-device-id`); rotate the committed `GLUTT_PROXY_CLIENT_KEY` out of `Secrets.swift`.
-- **Phase 5 — integrate + delete camera stack:** background cook-plan precompile, controller
-  rewire, tests green.
+- **Phase 5 — final integration:** delete watch mode only (shutter + camera tool stay),
+  background cook-plan precompile, dead-code sweep, tests green.
 - **Phase 6 — bake-off + soak:** voice pick, VAD eagerness tuning via server config, ≥5 real
   cooks across ≥2 recipes (quiet + noisy), TestFlight, merge.
 

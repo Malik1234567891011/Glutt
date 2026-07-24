@@ -1,5 +1,5 @@
 {
-  "originHash" : "65d4bffb11dcaf9772a00203b091a9df5d8ce577d18915b47414bf8a43f11553",
+  "originHash" : "bca323af08f2678172ffd90c1d76808e3c992c01ce04f652a52dc1426bb5501a",
   "pins" : [
     {
       "identity" : "superscript-ios-next",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "f738aeb3d55f326f96279fb803ebfa3cac39e3e0",
         "version" : "4.15.3"
+      }
+    },
+    {
+      "identity" : "webrtc-xcframework",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/livekit/webrtc-xcframework",
+      "state" : {
+        "revision" : "46f2af86f06b9a8a9158d37cadda5cb5a214e4c4",
+        "version" : "144.7559.11"
       }
     }
   ],

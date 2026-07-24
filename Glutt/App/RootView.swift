@@ -13,6 +13,10 @@ struct RootView: View {
     /// this owns that decision app-wide (see `SubscriptionGate`).
     @State private var gate = SubscriptionGate()
 
+    /// Polly v2 transport spike (Phase 1, `-pollyV2Spike`). Deleted with the
+    /// spike before the v2 merge.
+    @State private var showPollyV2Spike = ProcessInfo.processInfo.arguments.contains("-pollyV2Spike")
+
     private var needsOnboarding: Bool {
         router.forceOnboarding || allPrefs.first?.hasCompletedOnboarding != true
     }
@@ -75,6 +79,9 @@ struct RootView: View {
         }
         .fullScreenCover(item: $router.pollyLaunch) { launch in
             PollySessionView(recipe: launch.recipe, scale: launch.scale)
+        }
+        .fullScreenCover(isPresented: $showPollyV2Spike) {
+            PollyV2SpikeView()
         }
         .fullScreenCover(isPresented: Binding(
             get: { needsOnboarding },

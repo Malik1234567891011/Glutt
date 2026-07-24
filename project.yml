@@ -16,6 +16,14 @@ packages:
   SuperwallKit:
     url: https://github.com/superwall/Superwall-iOS
     from: "4.0.0"
+  # libWebRTC for Polly v2's OpenAI Realtime WebRTC transport. LiveKit's build is
+  # used STANDALONE (no LiveKit SDK/Cloud) because its ObjC layer exposes the
+  # capture-side audio hooks (LKRTCAudioCustomProcessingDelegate) the wake-word
+  # listener needs — stasel/WebRTC has none. Pinned exactly: floating majors of a
+  # binary framework are not reproducible. See docs/webrtc-transport-vetting-2026-07-23.md.
+  LiveKitWebRTC:
+    url: https://github.com/livekit/webrtc-xcframework
+    exactVersion: "144.7559.11"
 
 targets:
   Glutt:
@@ -58,6 +66,7 @@ targets:
     dependencies:
       - target: GluttShare
       - package: SuperwallKit
+      - package: LiveKitWebRTC
 
   GluttShare:
     type: app-extension
@@ -125,6 +134,10 @@ schemes:
         - GluttTests
     run:
       config: Debug
+      commandLineArguments:
+        # Polly v2 Phase 1 transport spike screen. Tick in the scheme editor to
+        # use on a device; deleted with the spike before the v2 merge.
+        "-pollyV2Spike": false
     archive:
       config: Release
 

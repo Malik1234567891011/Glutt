@@ -55,6 +55,7 @@
 		29BFBF7571F55A8AA2B1A4A6 /* PlatesTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7FF679017B73F8DAD979F79 /* PlatesTabView.swift */; };
 		2B848A0B1A5AEE274131E4C7 /* PlateCardDecodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3291644CF58C783401973641 /* PlateCardDecodeTests.swift */; };
 		2C69CC2242F748A1C4A03834 /* Kitchen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 412DD0B2F37BE98BAAEB523D /* Kitchen.swift */; };
+		2D3CC95CD54BE8A271FD68F0 /* LiveKitWebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = A5AD034822EEDFFE4DEB8FAF /* LiveKitWebRTC */; };
 		2DEF284227B22932F4575048 /* ImportPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60BCB66B0A792A4EAFB58AB /* ImportPipeline.swift */; };
 		2E22D7543240ED83B3350F7C /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5D72BFDA83AFBD303E2775 /* ShareViewController.swift */; };
 		2F8CE75A36C1974FF06DA481 /* LLMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D79524BA975910B84DB07A03 /* LLMClient.swift */; };
@@ -161,11 +162,13 @@
 		9E7400B56D09BE5B4C9F4B7C /* PlatesStreak.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A2071C069E8ECA7573AFA2D /* PlatesStreak.swift */; };
 		9F207D5AA64EE4DB6437BE3B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 03E4B5038BD3A803FFA377AD /* Assets.xcassets */; };
 		9FB227CC6FB03397DDC0B67F /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C06B098902A220170DB5726 /* Secrets.swift */; };
+		A093A0C9C4F78AE2F41B4DE5 /* RealtimeWebRTCTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343C1054427A4C20BB401964 /* RealtimeWebRTCTransport.swift */; };
 		A5C9C8F35D24F4339AB59A4A /* SocialMediaImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD93233274D874B07BC71E66 /* SocialMediaImport.swift */; };
 		A5CD6756DCCE850B026D4438 /* PollyTokenService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3C1DC9472FACE2DF637235 /* PollyTokenService.swift */; };
 		A5D13C7DD0ADCAC196619502 /* RecipeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A982408D84D1386F5B24B7C /* RecipeCard.swift */; };
 		A71A0874129B8FA9A557B7A2 /* TextRecipeParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF4058EECD1BCDBB2359125 /* TextRecipeParser.swift */; };
 		A7D36540FAFB3ACEABE90F95 /* OnboardingStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAAF9C3879AD077BB4FE8E2D /* OnboardingStateTests.swift */; };
+		A7FF637AA962EF3BFF29F20E /* PollyV2SpikeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C175AFEFEC9DD609657BBB7 /* PollyV2SpikeView.swift */; };
 		AAF69A06E5BE0CEC26AC86C8 /* PollyAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C2B0A5A7001C881CB503BF0 /* PollyAudioEngine.swift */; };
 		AB9F73C6FAF05883823B7458 /* YouTubeEmbedTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2408F1FB351D6FCFD32464C /* YouTubeEmbedTests.swift */; };
 		AC406619DAD8BADC992A6542 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6471755924AE9ED5DAC77E /* CameraPicker.swift */; };
@@ -311,6 +314,7 @@
 		16E1DE3B31751026516F5B8A /* PantryChef.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PantryChef.swift; sourceTree = "<group>"; };
 		19E4D80FF0004D4C5B35EB48 /* glutt-features.mp4 */ = {isa = PBXFileReference; path = "glutt-features.mp4"; sourceTree = "<group>"; };
 		1A60ED890D4E70EC6FFBA855 /* MacroBreakdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacroBreakdown.swift; sourceTree = "<group>"; };
+		1C175AFEFEC9DD609657BBB7 /* PollyV2SpikeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyV2SpikeView.swift; sourceTree = "<group>"; };
 		1C1D54FA61060F4C2E87CFD9 /* WakeWordListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeWordListener.swift; sourceTree = "<group>"; };
 		1CFA8BFABD66AB08664C7673 /* DietGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietGuardTests.swift; sourceTree = "<group>"; };
 		1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientCanonicalizer.swift; sourceTree = "<group>"; };
@@ -338,6 +342,7 @@
 		317B1D29DA47591748DD423F /* OnboardingFlowModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowModelTests.swift; sourceTree = "<group>"; };
 		3291644CF58C783401973641 /* PlateCardDecodeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlateCardDecodeTests.swift; sourceTree = "<group>"; };
 		341AE603888CC7022D42E417 /* DiscoverCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverCardView.swift; sourceTree = "<group>"; };
+		343C1054427A4C20BB401964 /* RealtimeWebRTCTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeWebRTCTransport.swift; sourceTree = "<group>"; };
 		358FD41FD7F25B2575B5BFB5 /* GluttTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttTabBar.swift; sourceTree = "<group>"; };
 		37434BCF14AD5C72CF078B97 /* Glutt.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Glutt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3800A614501862AB11EC98A2 /* StarterRecipes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarterRecipes.swift; sourceTree = "<group>"; };
@@ -531,6 +536,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8587DC0BAF1A3EA34F5AE852 /* SuperwallKit in Frameworks */,
+				2D3CC95CD54BE8A271FD68F0 /* LiveKitWebRTC in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -706,6 +712,7 @@
 				FEE6FB8332EA24BD4AC03D0C /* PollyToolRegistry.swift */,
 				77D341D37CC3E15070605929 /* RealtimeEvent.swift */,
 				B43E6B8457F5ABE9B016C3F5 /* RealtimeTransport.swift */,
+				343C1054427A4C20BB401964 /* RealtimeWebRTCTransport.swift */,
 				1C1D54FA61060F4C2E87CFD9 /* WakeWordListener.swift */,
 			);
 			path = Polly;
@@ -950,6 +957,7 @@
 				429066C03FFDC3E644D0741D /* PollySessionController.swift */,
 				785875B7F3CFBCEC7B298A4C /* PollySessionSubviews.swift */,
 				2C2D69ED879913F664978F89 /* PollySessionView.swift */,
+				1C175AFEFEC9DD609657BBB7 /* PollyV2SpikeView.swift */,
 			);
 			path = Polly;
 			sourceTree = "<group>";
@@ -1055,6 +1063,7 @@
 			name = Glutt;
 			packageProductDependencies = (
 				591C68092C0509ECBD9FC072 /* SuperwallKit */,
+				A5AD034822EEDFFE4DEB8FAF /* LiveKitWebRTC */,
 			);
 			productName = Glutt;
 			productReference = 37434BCF14AD5C72CF078B97 /* Glutt.app */;
@@ -1111,6 +1120,7 @@
 			mainGroup = 3B6CE36E69F9C081AAA102AE;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				2164CC89D7388A26F8722614 /* XCRemoteSwiftPackageReference "webrtc-xcframework" */,
 				705A23F7392CDB72FD70435D /* XCRemoteSwiftPackageReference "Superwall-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -1330,10 +1340,12 @@
 				97A600ADD856C20435288E36 /* PollySessionView.swift in Sources */,
 				A5CD6756DCCE850B026D4438 /* PollyTokenService.swift in Sources */,
 				9AE084C305FEEFCD57DA1AF4 /* PollyToolRegistry.swift in Sources */,
+				A7FF637AA962EF3BFF29F20E /* PollyV2SpikeView.swift in Sources */,
 				B3C119F6B06D8A6ADF2A2350 /* PreCookChecklistView.swift in Sources */,
 				CD0FE2C17D4E3E2F01510615 /* QuestionsIntroScreen.swift in Sources */,
 				41F57819321FB979C342F6DF /* RealtimeEvent.swift in Sources */,
 				615AD56320ECA88141DA56F2 /* RealtimeTransport.swift in Sources */,
+				A093A0C9C4F78AE2F41B4DE5 /* RealtimeWebRTCTransport.swift in Sources */,
 				117E9C022592C581920CEFBE /* Recipe.swift in Sources */,
 				117E3A32C7436BA162B16443 /* RecipeAdjuster.swift in Sources */,
 				A5D13C7DD0ADCAC196619502 /* RecipeCard.swift in Sources */,
@@ -1703,6 +1715,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		2164CC89D7388A26F8722614 /* XCRemoteSwiftPackageReference "webrtc-xcframework" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/livekit/webrtc-xcframework";
+			requirement = {
+				kind = exactVersion;
+				version = 144.7559.11;
+			};
+		};
 		705A23F7392CDB72FD70435D /* XCRemoteSwiftPackageReference "Superwall-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/superwall/Superwall-iOS";
@@ -1718,6 +1738,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 705A23F7392CDB72FD70435D /* XCRemoteSwiftPackageReference "Superwall-iOS" */;
 			productName = SuperwallKit;
+		};
+		A5AD034822EEDFFE4DEB8FAF /* LiveKitWebRTC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2164CC89D7388A26F8722614 /* XCRemoteSwiftPackageReference "webrtc-xcframework" */;
+			productName = LiveKitWebRTC;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

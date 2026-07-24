@@ -128,6 +128,11 @@ final class PollyV2SpikeModel {
     /// the AEC is adaptive and the first utterance is the one window where
     /// its own echo can leak back as "user speech" (log: heard "Hello.").
     private var greetingMicHold = false
+    /// v1's onset gate at the track level (the mechanism proven to mute the
+    /// server): the mic track blinks off for the first beat of each Polly
+    /// utterance so her opening words can't bounce back as user speech.
+    /// Cost: no barge-in during her first 1.2s — v1 shipped the same trade.
+    private var onsetGateTask: Task<Void, Never>?
 
     func connect() {
         guard !isBusy else { return }
@@ -280,6 +285,26 @@ final class PollyV2SpikeModel {
         if name == "output_audio_buffer.started", let t0 = speechStoppedAt {
             speechStoppedAt = nil
             append(String(format: "⏱ voice-to-voice %.0f ms", Date().timeIntervalSince(t0) * 1000))
+        }
+
+        // Onset gate: blink the mic track off for her first 1.2s (or until
+        // she stops early). Skipped while dormant or during the greeting
+        // hold — those own the mic state.
+        if name == "output_audio_buffer.started", !isDormant, !greetingMicHold {
+            transport?.setMicEnabled(false)
+            onsetGateTask?.cancel()
+            onsetGateTask = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(1200))
+                guard !Task.isCancelled, let self, !self.isDormant, !self.greetingMicHold else { return }
+                self.transport?.setMicEnabled(true)
+            }
+        }
+        if name == "output_audio_buffer.stopped" || name == "output_audio_buffer.cleared" {
+            onsetGateTask?.cancel()
+            onsetGateTask = nil
+            if !isDormant, !greetingMicHold {
+                transport?.setMicEnabled(true)
+            }
         }
 
         // Greeting done playing → the AEC has real reference audio behind it;

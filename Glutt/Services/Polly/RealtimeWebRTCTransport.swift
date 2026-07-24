@@ -640,10 +640,19 @@ final class PollyEngineTapObserver: NSObject, LKRTCAudioDeviceModuleDelegate, @u
             guard let self else { return }
             let n = Int(buffer.frameLength)
             guard n > 0 else { return }
+            // The ADM's input chain runs Int16 — the float-only math left
+            // rms=0.000 while frames climbed (3:13am log). Handle both.
             var rms: Float = 0
             if let floats = buffer.floatChannelData?[0] {
                 var sum: Float = 0
                 for i in 0..<n { sum += floats[i] * floats[i] }
+                rms = (sum / Float(n)).squareRoot()
+            } else if let ints = buffer.int16ChannelData?[0] {
+                var sum: Float = 0
+                for i in 0..<n {
+                    let v = Float(ints[i]) / Float(Int16.max)
+                    sum += v * v
+                }
                 rms = (sum / Float(n)).squareRoot()
             }
             self.lock.withLock {

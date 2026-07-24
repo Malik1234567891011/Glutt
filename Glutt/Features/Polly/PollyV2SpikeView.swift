@@ -149,10 +149,13 @@ final class PollyV2SpikeModel {
                 startEventDrain(transport)
                 try await transport.connect(token: token.value, model: token.model)
 
-                // Minimal session config: persona + default semantic VAD.
-                // Formats/voice are pinned at mint; WebRTC owns the audio path.
+                // v1's proven server-side armor: far-field noise reduction +
+                // low-eagerness semantic VAD (walked back up during the soak
+                // once echo is confirmed dead). Input transcription is on so
+                // the log PROVES what the server thinks the "user" said —
+                // echo shows up as Polly's own words coming back as input.
                 try transport.sendRaw(#"""
-                {"type":"session.update","session":{"type":"realtime","instructions":"You are Polly, Glutt's warm, brief live cooking companion. This is a transport test. Keep every reply to one or two short sentences.","audio":{"input":{"turn_detection":{"type":"semantic_vad","eagerness":"auto"}}}}}
+                {"type":"session.update","session":{"type":"realtime","instructions":"You are Polly, Glutt's warm, brief live cooking companion. This is a transport test. Keep every reply to one or two short sentences.","audio":{"input":{"turn_detection":{"type":"semantic_vad","eagerness":"low"},"noise_reduction":{"type":"far_field"},"transcription":{"model":"gpt-4o-transcribe","language":"en"}}}}}
                 """#)
                 try transport.sendRaw(#"""
                 {"type":"response.create","response":{"instructions":"Greet the user in one short sentence and ask them to say something back."}}
@@ -253,6 +256,17 @@ final class PollyV2SpikeModel {
         if name == "output_audio_buffer.started", let t0 = speechStoppedAt {
             speechStoppedAt = nil
             append(String(format: "⏱ voice-to-voice %.0f ms", Date().timeIntervalSince(t0) * 1000))
+        }
+
+        // The echo verdict, in plain text: what the server believes the user
+        // said vs what Polly said. Echo = her words arriving as "heard:".
+        if name == "conversation.item.input_audio_transcription.completed",
+           let transcript = type?["transcript"] as? String {
+            append("🎤 heard: \"\(transcript.prefix(90))\"")
+        }
+        if name == "response.output_audio_transcript.done",
+           let transcript = type?["transcript"] as? String {
+            append("🗣 polly: \"\(transcript.prefix(90))\"")
         }
 
         if name.hasSuffix(".delta") { return } // transcript spam

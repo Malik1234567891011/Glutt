@@ -113,7 +113,10 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         let adm = factory.audioDeviceModule
         adm.setPlatformVoiceProcessingAllowed(true)
         adm.isVoiceProcessingBypassed = false
-        adm.isVoiceProcessingAGCEnabled = true
+        // AGC stays OFF: between user turns the "input" is silence + residual
+        // echo, and auto-gain pumping that residue up is a classic way to
+        // resurrect echo the AEC already attenuated.
+        adm.isVoiceProcessingAGCEnabled = false
 
         let config = LKRTCConfiguration()
         config.sdpSemantics = .unifiedPlan

@@ -279,14 +279,14 @@ final class PollySessionController {
             listeningMode = .listening
             liveTranscript = ""
             audio.isMuted = false
+            // v2: the governor owns the mic track — without this the trailer
+            // handoff would LOOK open but the server would hear nothing.
+            // (The v1 engine-warmup dance died with the engine; WebRTC owns
+            // the audio graph and needs no warm-up.)
+            webrtc?.setMicMode(.open)
             pollyCaption = "I’m listening — say when you’re ready to cook."
             captionText = pollyCaption
             PollyDebugLog.shared.log("session: listening for verbal go (no opening speech)")
-            // Warm the audio graph so the first reply after they speak isn't dropped.
-            if audio.isRunning {
-                try? await Task.sleep(for: .seconds(PollyConfig.greetingWarmupSeconds))
-                audio.resetPlaybackForNextUtterance()
-            }
             guard phase == .live else { return }
             // No responseCreate — Polly waits for the cook to speak.
             return

@@ -113,6 +113,10 @@ final class PollyV2SpikeModel {
     private var transport: RealtimeWebRTCTransport?
     private var eventTask: Task<Void, Never>?
     private var meterTask: Task<Void, Never>?
+    /// Set when server VAD reports end-of-speech; cleared when her audio
+    /// starts. The delta is the voice-to-voice number that decides whether
+    /// OpenAI's edge is close enough from THIS kitchen (vs LiveKit-first-mile).
+    private var speechStoppedAt: Date?
 
     func connect() {
         guard !isBusy else { return }
@@ -221,6 +225,15 @@ final class PollyV2SpikeModel {
         // Log just the event type; payloads are huge (audio transcripts etc.).
         let type = (try? JSONSerialization.jsonObject(with: Data(raw.utf8))) as? [String: Any]
         let name = type?["type"] as? String ?? "unparsed"
+
+        // Voice-to-voice turn latency: end of user speech → her audio starts
+        // (output_audio_buffer.started is WebRTC-specific per the GA docs).
+        if name == "input_audio_buffer.speech_stopped" { speechStoppedAt = Date() }
+        if name == "output_audio_buffer.started", let t0 = speechStoppedAt {
+            speechStoppedAt = nil
+            append(String(format: "⏱ voice-to-voice %.0f ms", Date().timeIntervalSince(t0) * 1000))
+        }
+
         if name.hasSuffix(".delta") { return } // transcript spam
         append(name)
     }

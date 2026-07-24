@@ -110,6 +110,11 @@ final class PollySessionController {
     /// session is broken and the reconnect ladder takes over.
     private var responseWatchdogTask: Task<Void, Never>?
     private var watchdogStrikes = 0
+    /// Never-silent, final layer: when the session dies mid-cook and no model
+    /// can speak anymore, the on-device system voice says so — dead air is
+    /// never the outcome, including airplane mode. (Marin-voiced bundled
+    /// lines are the post-soak polish; the guarantee ships now.)
+    private let offlineVoice = AVSpeechSynthesizer()
     /// Wake-question rescue: words spoken in the same breath as "Polly" are
     /// lost while the server mic is still closed (device log: the cook
     /// learned to say the wake word LAST). The on-device recognizer already
@@ -644,8 +649,10 @@ final class PollySessionController {
     /// offers "Cook without Polly".
     private func handleTransportError(message: String, context: ModelContext) async {
         guard !isEnding, phase != .ended else { return }
+        let wasMidCook = phase == .live || phase == .reconnecting
         guard phase == .live, reconnectAttempts < PollyConfig.reconnectAttempts else {
             phase = .failed(message)
+            if wasMidCook { speakOfflineFallback() }
             return
         }
         reconnectAttempts += 1
@@ -684,7 +691,17 @@ final class PollySessionController {
             isThinking = true
         } catch {
             phase = .failed(message)
+            speakOfflineFallback()
         }
+    }
+
+    /// Spoken by the SYSTEM voice — it works with zero network by definition.
+    private func speakOfflineFallback() {
+        PollyDebugLog.shared.log("offline voice: speaking the failure line")
+        let utterance = AVSpeechUtterance(
+            string: "I've lost my connection, chef — your steps stay right here on the screen.")
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        offlineVoice.speak(utterance)
     }
 
     // MARK: - Session clock (cap + wrap-up)

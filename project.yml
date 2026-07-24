@@ -82,6 +82,9 @@ targets:
       - path: Glutt/Services/Import/IngredientLineParser.swift
       - path: Glutt/Services/Import/ServingEstimator.swift
       - path: Glutt/Services/Import/ImportPipeline.swift
+      - path: Glutt/Services/Import/VideoTranscript.swift
+      - path: Glutt/Services/Import/SpeechTranscriptionClient.swift
+      - path: Glutt/Services/Import/VideoRecipeCompiler.swift
       - path: Glutt/Services/Import/ImportInbox.swift
       - path: Glutt/Services/Import/ShareImportViewModel.swift
       - path: Glutt/Services/Import/PendingImportStore.swift

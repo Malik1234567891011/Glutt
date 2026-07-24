@@ -10,6 +10,7 @@ export default function handler(_req, res) {
       has_OPENAI_BASE_URL: Boolean((process.env.OPENAI_BASE_URL || "").trim()),
       has_YOUTUBE_API_KEY: Boolean((process.env.YOUTUBE_API_KEY || process.env.GLUTT_YOUTUBE_KEY || "").trim()),
       has_SPOONACULAR_API_KEY: Boolean((process.env.SPOONACULAR_API_KEY || process.env.SPOONACULAR_API || "").trim()),
+      has_ELEVENLABS_API_KEY: Boolean((process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_LABS_API_KEY || "").trim()),
       has_POLLY_REALTIME_MODEL: Boolean((process.env.POLLY_REALTIME_MODEL || "").trim()),
       has_POLLY_VOICE: Boolean((process.env.POLLY_VOICE || "").trim()),
       node_env: process.env.NODE_ENV || "unknown",

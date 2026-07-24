@@ -40,6 +40,14 @@ struct ImportedRecipeDraft: Identifiable, Codable {
     /// (not imported from a source). Shown as a friendly banner in review.
     var isAIGenerated = false
 
+    /// Plain spoken transcript from ElevenLabs (import-job evidence; may be
+    /// large). Not required for review UI — used by compiler / diagnostics.
+    var speechTranscript: String?
+    var speechLanguageCode: String?
+    /// True when the recipe was compiled primarily from spoken audio + caption
+    /// (video-first path), not freestyle reconstruction.
+    var usedSpeechTranscript = false
+
     /// 0–1 score based on how complete and parseable the extraction was.
     var confidence: Double {
         var score = 0.0

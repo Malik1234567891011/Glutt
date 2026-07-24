@@ -79,6 +79,24 @@ struct PollyV2SpikeView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            // Voice bake-off: tap a chip → fresh session in that voice reads
+            // the same 4 Polly lines (greeting / step / repair / wrap-up).
+            // Pick by ear at counter distance; the winner becomes POLLY_VOICE.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(PollyV2SpikeModel.bakeVoices, id: \.self) { voice in
+                        Button(voice) { model.auditionVoice(voice) }
+                            .font(.caption.weight(model.auditioningVoice == voice ? .bold : .regular))
+                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .background(
+                                Capsule().fill(model.auditioningVoice == voice
+                                               ? Color.accentColor.opacity(0.3)
+                                               : Color.secondary.opacity(0.15)))
+                            .disabled(model.isBusy)
+                    }
+                }
+            }
+
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
@@ -114,6 +132,10 @@ final class PollyV2SpikeModel {
     private(set) var hookAliveWhileDormant = false
     private(set) var log: [String] = []
     private(set) var justCopied = false
+    private(set) var auditioningVoice: String?
+
+    /// GA realtime voices worth auditioning for Polly.
+    static let bakeVoices = ["marin", "cedar", "coral", "sage", "shimmer", "ballad", "alloy", "ash", "verse", "echo"]
 
     private var transport: RealtimeWebRTCTransport?
     private var eventTask: Task<Void, Never>?
@@ -128,9 +150,19 @@ final class PollyV2SpikeModel {
     // transport's governor now (the production engine) — the spike only
     // drives micMode and observes.
 
-    func connect() {
+    /// Bake-off: fresh session in the chosen voice reading the fixed script.
+    /// (Voice is only changeable before the model's first audio, so each
+    /// audition is its own session.)
+    func auditionVoice(_ voice: String) {
+        auditioningVoice = voice
+        disconnect()
+        connect(voice: voice)
+    }
+
+    func connect(voice: String? = nil) {
         guard !isBusy else { return }
         isBusy = true
+        if voice == nil { auditioningVoice = nil }
         status = "Requesting microphone…"
         Task {
             let granted = await AVAudioApplication.requestRecordPermission()
@@ -168,9 +200,19 @@ final class PollyV2SpikeModel {
                 """#)
                 transport.setMicMode(.open)
                 transport.holdMicForGreeting()
-                try transport.sendRaw(#"""
-                {"type":"response.create","response":{"instructions":"Greet the user in one short sentence and ask them to say something back."}}
-                """#)
+                if let voice {
+                    // Override the mint-pinned voice for this audition — legal
+                    // only before her first audio, hence the fresh session.
+                    try transport.sendRaw(#"{"type":"session.update","session":{"type":"realtime","audio":{"output":{"voice":"\#(voice)"}}}}"#)
+                    try transport.sendRaw(#"""
+                    {"type":"response.create","response":{"instructions":"Say exactly these four lines, naturally, with a short pause between each. 1: Hey, I'm Polly — let's cook this together. 2: Melt two thirds of a cup of butter in a medium pot, then add the chopped celery and onion. 3: Sorry — say that again for me? 4: That's everything — you cooked that beautifully. See you next time."}}
+                    """#)
+                    append("🎙 auditioning voice: \(voice)")
+                } else {
+                    try transport.sendRaw(#"""
+                    {"type":"response.create","response":{"instructions":"Greet the user in one short sentence and ask them to say something back."}}
+                    """#)
+                }
                 startMeter()
                 connectedAt = Date()
                 finishConnect(ok: true, message: "Connected — listen for the greeting")

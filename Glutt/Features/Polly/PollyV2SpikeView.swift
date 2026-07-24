@@ -124,6 +124,10 @@ final class PollyV2SpikeModel {
     private var speechStoppedAt: Date?
     /// Log timestamps are relative to this (connect time).
     private var connectedAt: Date?
+    /// Mic is held off from connect until the greeting finishes playing —
+    /// the AEC is adaptive and the first utterance is the one window where
+    /// its own echo can leak back as "user speech" (log: heard "Hello.").
+    private var greetingMicHold = false
 
     func connect() {
         guard !isBusy else { return }
@@ -157,12 +161,15 @@ final class PollyV2SpikeModel {
                 try transport.sendRaw(#"""
                 {"type":"session.update","session":{"type":"realtime","instructions":"You are Polly, Glutt's warm, brief live cooking companion. This is a transport test. Keep every reply to one or two short sentences.","audio":{"input":{"turn_detection":{"type":"semantic_vad","eagerness":"low"},"noise_reduction":{"type":"far_field"},"transcription":{"model":"gpt-4o-transcribe","language":"en"}}}}}
                 """#)
+                greetingMicHold = true
+                transport.setMicEnabled(false)
                 try transport.sendRaw(#"""
                 {"type":"response.create","response":{"instructions":"Greet the user in one short sentence and ask them to say something back."}}
                 """#)
                 startMeter()
                 connectedAt = Date()
                 finishConnect(ok: true, message: "Connected — listen for the greeting")
+                append("mic held through greeting (AEC converging)")
                 append(transport.audioDiagnostics())
 
                 // The echo verdict, from the horse's mouth: if Apple's platform
@@ -175,6 +182,13 @@ final class PollyV2SpikeModel {
                     append("! platform AEC inactive → software AEC3 (mobile) enabled")
                     try? await Task.sleep(for: .milliseconds(500))
                     append(transport.audioDiagnostics())
+                }
+
+                // Failsafe: if the greeting's buffer-stopped event never lands,
+                // don't leave the user with a dead mic.
+                try? await Task.sleep(for: .seconds(6))
+                if greetingMicHold {
+                    releaseGreetingMicHold(reason: "failsafe timeout")
                 }
             } catch {
                 finishConnect(ok: false, message: "Connect failed: \(error.localizedDescription)")
@@ -203,6 +217,14 @@ final class PollyV2SpikeModel {
         transport?.setMicEnabled(!dormant)
         append(dormant ? "mic track DISABLED (dormant) — speak to test the hook"
                        : "mic track enabled")
+    }
+
+    private func releaseGreetingMicHold(reason: String) {
+        greetingMicHold = false
+        if !isDormant {
+            transport?.setMicEnabled(true)
+            append("mic opened (\(reason)) — talk away")
+        }
     }
 
     private func finishConnect(ok: Bool, message: String) {
@@ -256,6 +278,12 @@ final class PollyV2SpikeModel {
         if name == "output_audio_buffer.started", let t0 = speechStoppedAt {
             speechStoppedAt = nil
             append(String(format: "⏱ voice-to-voice %.0f ms", Date().timeIntervalSince(t0) * 1000))
+        }
+
+        // Greeting done playing → the AEC has real reference audio behind it;
+        // safe to open the mic.
+        if name == "output_audio_buffer.stopped", greetingMicHold {
+            releaseGreetingMicHold(reason: "greeting finished")
         }
 
         // The echo verdict, in plain text: what the server believes the user

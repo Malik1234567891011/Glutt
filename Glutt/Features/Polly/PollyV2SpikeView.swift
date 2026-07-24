@@ -215,8 +215,9 @@ final class PollyV2SpikeModel {
         isDormant = dormant
         hookAliveWhileDormant = false
         transport?.setMicEnabled(!dormant)
-        append(dormant ? "server-muted (dormant) — hook stays hot; speak to test"
-                       : "server unmuted — she can hear again")
+        append(dormant ? "dormant (track disabled) — SPEAK NOW; watching hook + renderer feeds"
+                       : "awake (track enabled) — she can hear again")
+        if let transport { append(transport.audioDiagnostics()) }
     }
 
     private func releaseGreetingMicHold(reason: String) {

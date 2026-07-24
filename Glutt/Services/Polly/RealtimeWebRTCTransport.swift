@@ -23,14 +23,18 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     /// `setMicEnabled` — that gate is downstream of this hook.
     var onCaptureBuffer: ((AVAudioPCMBuffer) -> Void)? {
         get { hook.onBuffer }
-        set { hook.onBuffer = newValue }
+        set {
+            hook.onBuffer = newValue
+            trackRenderer.onBuffer = newValue
+        }
     }
 
     /// Raw JSON of every server event, before decoding. Spike/debug use.
     var onRawEvent: ((String) -> Void)?
 
-    /// Latest capture-frame RMS from the hook (spike/diagnostics readout).
-    var captureRMS: Float { hook.latestRMS }
+    /// Latest mic-observation RMS, from whichever feed is actually alive
+    /// (capture hook, or the local-track renderer fallback).
+    var captureRMS: Float { max(hook.latestRMS, trackRenderer.latestRMS) }
 
     /// Is Apple's platform echo canceller actually running right now?
     var isPlatformAECActive: Bool {
@@ -44,12 +48,15 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         guard let adm = lock.withLock({ factory?.audioDeviceModule }) else { return "audio: no ADM" }
         let state = adm.platformAudioProcessingState
         let aec = state.echoCancellation
+        let hookStats = hook.stats
         return "audio: vpAllowed=\(adm.isPlatformVoiceProcessingAllowed ? 1 : 0)"
             + " vpBypassed=\(adm.isVoiceProcessingBypassed ? 1 : 0)"
             + " vpActive=\(state.isVoiceProcessingEnabledActive ? 1 : 0)"
             + " AEC[avail=\(aec.isAvailable ? 1 : 0) req=\(aec.isRequested ? 1 : 0) ACTIVE=\(aec.isActive ? 1 : 0)]"
             + " NS[active=\(state.noiseSuppression.isActive ? 1 : 0)]"
             + " engine=\(adm.isEngineRunning ? "running" : "stopped")"
+            + " hook[init=\(hookStats.inits) frames=\(hookStats.frames)]"
+            + " renderer[frames=\(trackRenderer.frames) rms=\(String(format: "%.3f", trackRenderer.latestRMS))]"
     }
 
     /// Fallback when the platform (VPIO) echo canceller won't engage: turn on
@@ -68,6 +75,7 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     private let continuation: AsyncStream<RealtimeServerEvent>.Continuation
     private let hook: PollyCaptureHook
     private let renderMonitor: PollyRenderMonitor
+    private let trackRenderer = PollyLocalTrackRenderer()
     private let lock = NSLock()
 
     private var factory: LKRTCPeerConnectionFactory?
@@ -137,6 +145,11 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         let source = factory.audioSource(with: constraints)
         let mic = factory.audioTrack(with: source, trackId: "polly-mic")
         pc.add(mic, streamIds: ["polly"])
+        // Parallel wake-feed candidate: a renderer on the local track (the
+        // capture-post hook was device-proven dead — never called by this
+        // ADM). Key open question the spike answers: does this keep seeing
+        // audio while the track is disabled (dormant)?
+        mic.add(trackRenderer)
 
         // Protocol events ride this channel, both directions.
         let dcConfig = LKRTCDataChannelConfiguration()
@@ -178,13 +191,12 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         try sendData(Data(json.utf8))
     }
 
-    /// Dormant gate. Device-proven finding (2026-07-24): disabling the mic
-    /// TRACK kills the whole capture path — including the wake-word feed. So
-    /// dormancy is enforced INSIDE the capture hook instead: the track stays
-    /// enabled, capture keeps running (AEC stays converged, wake feed stays
-    /// hot), and the hook zeroes every frame bound for the server. What
-    /// leaves the device while dormant is literal silence.
+    /// Dormant gate — track disable, the mechanism device-proven to make the
+    /// server deaf (2:51/2:55 runs). Hook-level muting is kept as belt (the
+    /// hook is currently dead — never called by this ADM — so it's inert).
+    /// The open wake-feed question is answered by `trackRenderer`, not here.
     func setMicEnabled(_ enabled: Bool) {
+        lock.withLock { micTrack?.isEnabled = enabled }
         hook.setServerMuted(!enabled)
     }
 
@@ -409,6 +421,15 @@ final class PollyCaptureHook: NSObject, LKRTCAudioCustomProcessingDelegate, @unc
     private var serverMuted = false
     private var lastRenderActiveAt: Date = .distantPast
     private var onsetGateDeadline: Date?
+    private var initCount = 0
+    private var processCount = 0
+
+    /// Liveness forensics: if `frames` stays 0 while a conversation works,
+    /// this ADM never routes capture through the injected APM's custom
+    /// processing — the wake feed must come from elsewhere.
+    var stats: (inits: Int, frames: Int) {
+        lock.withLock { (initCount, processCount) }
+    }
 
     /// Dormant/greeting gate: zero everything bound for the server while the
     /// wake feed keeps the raw frames. Replaces track disabling, which was
@@ -437,6 +458,7 @@ final class PollyCaptureHook: NSObject, LKRTCAudioCustomProcessingDelegate, @unc
 
     func audioProcessingInitialize(sampleRate sampleRateHz: Int, channels: Int) {
         lock.withLock {
+            initCount += 1
             format = AVAudioFormat(
                 commonFormat: .pcmFormatFloat32,
                 sampleRate: Double(sampleRateHz),
@@ -447,6 +469,7 @@ final class PollyCaptureHook: NSObject, LKRTCAudioCustomProcessingDelegate, @unc
     }
 
     func audioProcessingProcess(audioBuffer: LKRTCAudioBuffer) {
+        lock.withLock { processCount += 1 }
         let frames = audioBuffer.frames
         guard frames > 0, audioBuffer.channels > 0 else { return }
         let source = audioBuffer.rawBuffer(forChannel: 0)
@@ -518,4 +541,42 @@ final class PollyRenderMonitor: NSObject, LKRTCAudioCustomProcessingDelegate, @u
     }
 
     func audioProcessingRelease() {}
+}
+
+/// Fallback mic observer: attached to the local audio track via addRenderer.
+/// Observe-only (cannot mute), delivers AVAudioPCMBuffer directly. Candidate
+/// wake-word feed if it stays live while the track is disabled.
+final class PollyLocalTrackRenderer: NSObject, LKRTCAudioRenderer, @unchecked Sendable {
+    var onBuffer: ((AVAudioPCMBuffer) -> Void)?
+
+    var latestRMS: Float { lock.withLock { _latestRMS } }
+    var frames: Int { lock.withLock { frameCount } }
+
+    private let lock = NSLock()
+    private var _latestRMS: Float = 0
+    private var frameCount = 0
+
+    func render(pcmBuffer: AVAudioPCMBuffer) {
+        let n = Int(pcmBuffer.frameLength)
+        guard n > 0 else { return }
+
+        var rms: Float = 0
+        if let floats = pcmBuffer.floatChannelData?[0] {
+            var sum: Float = 0
+            for i in 0..<n { sum += floats[i] * floats[i] }
+            rms = (sum / Float(n)).squareRoot()
+        } else if let ints = pcmBuffer.int16ChannelData?[0] {
+            var sum: Float = 0
+            for i in 0..<n {
+                let v = Float(ints[i]) / Float(Int16.max)
+                sum += v * v
+            }
+            rms = (sum / Float(n)).squareRoot()
+        }
+        lock.withLock {
+            _latestRMS = rms
+            frameCount += 1
+        }
+        onBuffer?(pcmBuffer)
+    }
 }

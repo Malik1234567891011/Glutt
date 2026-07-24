@@ -134,8 +134,14 @@ final class PollyV2SpikeModel {
     /// watches the room; sustained real voice reopens the track, the server
     /// hears you still talking, and barge-in proceeds normally.
     private var assistantSpeaking = false
-    private var bargeStreak = 0
     private var micReopenedByVoice = false
+    /// Reopen rule: instant on clearly-loud voice, or any 2 voice-ish ticks
+    /// within 0.6s (consecutive-ticks was too strict — syllable gaps reset it
+    /// and real interruptions got ignored, 3:29am run).
+    private var bargeWindow: [Date] = []
+    /// Loudest thing the tap heard during her current turn — printed if the
+    /// reopen declined, so threshold tuning becomes arithmetic.
+    private var turnMaxRMS: Float = 0
 
     func connect() {
         guard !isBusy else { return }
@@ -266,7 +272,7 @@ final class PollyV2SpikeModel {
     private func startMeter() {
         meterTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(100))
+                try? await Task.sleep(for: .milliseconds(50))
                 guard let self else { return }
                 let rms = self.transport?.captureRMS ?? 0
                 self.hookRMS = rms
@@ -276,19 +282,22 @@ final class PollyV2SpikeModel {
                     self.hookAliveWhileDormant = true
                     self.append(String(format: "✅ hook heard you while dormant (RMS %.3f) — wake-word feed proven", rms))
                 }
-                // Barge-in gate: she's talking, track is closed, but a real
-                // sustained voice (2 consecutive ticks over the floor) means
-                // the user wants in — reopen and let server VAD take over.
-                if self.assistantSpeaking, !self.isDormant, !self.greetingMicHold, !self.micReopenedByVoice {
-                    if rms > 0.07 {
-                        self.bargeStreak += 1
-                        if self.bargeStreak >= 2 {
+                // Barge-in gate: she's talking, track is closed, but real
+                // voice means the user wants in — reopen and let server VAD
+                // take over. Instant on loud; windowed for normal volume.
+                if self.assistantSpeaking, !self.isDormant, !self.greetingMicHold {
+                    self.turnMaxRMS = max(self.turnMaxRMS, rms)
+                    if !self.micReopenedByVoice {
+                        let now = Date()
+                        if rms > 0.055 {
+                            self.bargeWindow.append(now)
+                            self.bargeWindow.removeAll { now.timeIntervalSince($0) > 0.6 }
+                        }
+                        if rms > 0.12 || self.bargeWindow.count >= 2 {
                             self.micReopenedByVoice = true
                             self.transport?.setMicEnabled(true)
-                            self.append("🔊 real voice during her turn — mic reopened for barge-in")
+                            self.append(String(format: "🔊 voice during her turn (rms %.3f) — mic reopened for barge-in", rms))
                         }
-                    } else {
-                        self.bargeStreak = 0
                     }
                 }
             }
@@ -313,15 +322,20 @@ final class PollyV2SpikeModel {
         // dormant or during the greeting hold — those own the mic state.
         if name == "output_audio_buffer.started" {
             assistantSpeaking = true
-            bargeStreak = 0
             micReopenedByVoice = false
+            bargeWindow.removeAll()
+            turnMaxRMS = 0
             if !isDormant, !greetingMicHold {
                 transport?.setMicEnabled(false)
             }
         }
         if name == "output_audio_buffer.stopped" || name == "output_audio_buffer.cleared" {
             assistantSpeaking = false
-            bargeStreak = 0
+            if !micReopenedByVoice, turnMaxRMS > 0.03 {
+                append(String(format: "ℹ️ peak voice %.3f during her turn — below the reopen rule", turnMaxRMS))
+            }
+            bargeWindow.removeAll()
+            turnMaxRMS = 0
             if !isDormant, !greetingMicHold {
                 transport?.setMicEnabled(true)
             }

@@ -128,11 +128,14 @@ final class PollyV2SpikeModel {
     /// the AEC is adaptive and the first utterance is the one window where
     /// its own echo can leak back as "user speech" (log: heard "Hello.").
     private var greetingMicHold = false
-    /// v1's onset gate at the track level (the mechanism proven to mute the
-    /// server): the mic track blinks off for the first beat of each Polly
-    /// utterance so her opening words can't bounce back as user speech.
-    /// Cost: no barge-in during her first 1.2s — v1 shipped the same trade.
-    private var onsetGateTask: Task<Void, Never>?
+    /// Half-duplex with voice-reopen: the mic track is closed for her WHOLE
+    /// utterance (phantom echo trips became possible at any point in her
+    /// turn, not just onset — 9.6s "Trash" was at 1.6s). The live tap
+    /// watches the room; sustained real voice reopens the track, the server
+    /// hears you still talking, and barge-in proceeds normally.
+    private var assistantSpeaking = false
+    private var bargeStreak = 0
+    private var micReopenedByVoice = false
 
     func connect() {
         guard !isBusy else { return }
@@ -154,6 +157,9 @@ final class PollyV2SpikeModel {
                 self.transport = transport
                 transport.onRawEvent = { [weak self] raw in
                     Task { @MainActor in self?.appendRaw(raw) }
+                }
+                transport.onGraphInfo = { [weak self] info in
+                    Task { @MainActor in self?.append(info) }
                 }
                 startEventDrain(transport)
                 try await transport.connect(token: token.value, model: token.model)
@@ -270,6 +276,21 @@ final class PollyV2SpikeModel {
                     self.hookAliveWhileDormant = true
                     self.append(String(format: "✅ hook heard you while dormant (RMS %.3f) — wake-word feed proven", rms))
                 }
+                // Barge-in gate: she's talking, track is closed, but a real
+                // sustained voice (2 consecutive ticks over the floor) means
+                // the user wants in — reopen and let server VAD take over.
+                if self.assistantSpeaking, !self.isDormant, !self.greetingMicHold, !self.micReopenedByVoice {
+                    if rms > 0.07 {
+                        self.bargeStreak += 1
+                        if self.bargeStreak >= 2 {
+                            self.micReopenedByVoice = true
+                            self.transport?.setMicEnabled(true)
+                            self.append("🔊 real voice during her turn — mic reopened for barge-in")
+                        }
+                    } else {
+                        self.bargeStreak = 0
+                    }
+                }
             }
         }
     }
@@ -287,21 +308,20 @@ final class PollyV2SpikeModel {
             append(String(format: "⏱ voice-to-voice %.0f ms", Date().timeIntervalSince(t0) * 1000))
         }
 
-        // Onset gate: blink the mic track off for her first 1.2s (or until
-        // she stops early). Skipped while dormant or during the greeting
-        // hold — those own the mic state.
-        if name == "output_audio_buffer.started", !isDormant, !greetingMicHold {
-            transport?.setMicEnabled(false)
-            onsetGateTask?.cancel()
-            onsetGateTask = Task { [weak self] in
-                try? await Task.sleep(for: .milliseconds(1200))
-                guard !Task.isCancelled, let self, !self.isDormant, !self.greetingMicHold else { return }
-                self.transport?.setMicEnabled(true)
+        // Half-duplex: track closed for her whole utterance; the meter loop
+        // reopens it on sustained real voice (barge-in). Skipped while
+        // dormant or during the greeting hold — those own the mic state.
+        if name == "output_audio_buffer.started" {
+            assistantSpeaking = true
+            bargeStreak = 0
+            micReopenedByVoice = false
+            if !isDormant, !greetingMicHold {
+                transport?.setMicEnabled(false)
             }
         }
         if name == "output_audio_buffer.stopped" || name == "output_audio_buffer.cleared" {
-            onsetGateTask?.cancel()
-            onsetGateTask = nil
+            assistantSpeaking = false
+            bargeStreak = 0
             if !isDormant, !greetingMicHold {
                 transport?.setMicEnabled(true)
             }

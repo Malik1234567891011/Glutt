@@ -33,6 +33,12 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     /// Raw JSON of every server event, before decoding. Spike/debug use.
     var onRawEvent: ((String) -> Void)?
 
+    /// One-time X-ray of the ADM's input graph (spike/debug).
+    var onGraphInfo: ((String) -> Void)? {
+        get { engineTap.onGraphInfo }
+        set { engineTap.onGraphInfo = newValue }
+    }
+
     /// Latest mic-observation RMS, from whichever feed is actually alive
     /// (capture hook, local-track renderer, or the engine tap).
     var captureRMS: Float {
@@ -58,9 +64,9 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
             + " AEC[avail=\(aec.isAvailable ? 1 : 0) req=\(aec.isRequested ? 1 : 0) ACTIVE=\(aec.isActive ? 1 : 0)]"
             + " NS[active=\(state.noiseSuppression.isActive ? 1 : 0)]"
             + " engine=\(adm.isEngineRunning ? "running" : "stopped")"
-            + " hook[init=\(hookStats.inits) frames=\(hookStats.frames)]"
-            + " renderer[frames=\(trackRenderer.frames) rms=\(String(format: "%.3f", trackRenderer.latestRMS))]"
-            + " tap[frames=\(engineTap.frames) rms=\(String(format: "%.3f", engineTap.latestRMS))]"
+            + " hook[frames=\(hookStats.frames)]"
+            + " tapA[f=\(engineTap.statsA.frames) rms=\(String(format: "%.3f", engineTap.statsA.rms)) pk=\(String(format: "%.3f", engineTap.statsA.peak))]"
+            + " tapB[f=\(engineTap.statsB.frames) rms=\(String(format: "%.3f", engineTap.statsB.rms)) pk=\(String(format: "%.3f", engineTap.statsB.peak))]"
     }
 
     /// Fallback when the platform (VPIO) echo canceller won't engage: turn on
@@ -558,16 +564,33 @@ final class PollyRenderMonitor: NSObject, LKRTCAudioCustomProcessingDelegate, @u
 /// delegate seam and taps the mic-side node inside it. One engine — no VPIO
 /// exclusivity conflict — and the tap sits upstream of WebRTC's track gating,
 /// so it should keep hearing the room while the track is disabled (dormant).
+///
+/// 3:18am forensics round: frames flow but carry ZEROS on `source ??
+/// inputNode` — the node renders on schedule without the mic signal. This
+/// version X-rays the graph (`onGraphInfo`) and runs TWO probes — A on the
+/// source/input node, B on the context's input mixer — to find which node
+/// actually carries audio.
 final class PollyEngineTapObserver: NSObject, LKRTCAudioDeviceModuleDelegate, @unchecked Sendable {
-    var onBuffer: ((AVAudioPCMBuffer) -> Void)?
+    struct ProbeStats {
+        var frames = 0
+        var rms: Float = 0
+        var peak: Float = 0
+    }
 
-    var latestRMS: Float { lock.withLock { _latestRMS } }
-    var frames: Int { lock.withLock { frameCount } }
+    var onBuffer: ((AVAudioPCMBuffer) -> Void)?
+    /// One-time description of the ADM's input graph, for the spike log.
+    var onGraphInfo: ((String) -> Void)?
+
+    var statsA: ProbeStats { lock.withLock { probeA } }
+    var statsB: ProbeStats { lock.withLock { probeB } }
+    var latestRMS: Float { lock.withLock { max(probeA.rms, probeB.rms) } }
+    var frames: Int { lock.withLock { probeA.frames } }
 
     private let lock = NSLock()
-    private var _latestRMS: Float = 0
-    private var frameCount = 0
-    private weak var tappedNode: AVAudioNode?
+    private var probeA = ProbeStats()
+    private var probeB = ProbeStats()
+    private weak var nodeA: AVAudioNode?
+    private weak var nodeB: AVAudioNode?
 
     // MARK: LKRTCAudioDeviceModuleDelegate
 
@@ -618,9 +641,23 @@ final class PollyEngineTapObserver: NSObject, LKRTCAudioDeviceModuleDelegate, @u
         configureInputFromSource source: AVAudioNode?, toDestination destination: AVAudioNode,
         format: AVAudioFormat, context: [AnyHashable: Any]
     ) -> Int {
-        // The ADM is wiring its input graph — tap the mic-side node it hands
-        // us. Runs on every (re)configuration, so route changes re-tap.
-        installTap(on: source ?? engine.inputNode, format: format)
+        let mixer = context.values.compactMap { $0 as? AVAudioMixerNode }.first
+
+        let sourceDesc = source.map { String(describing: type(of: $0)) } ?? "nil"
+        let keys = context.keys.map { String(describing: $0) }.joined(separator: ",")
+        onGraphInfo?(
+            "🧭 input graph: src=\(sourceDesc) dst=\(String(describing: type(of: destination)))"
+            + " fmt=\(Int(format.sampleRate))Hz/\(format.channelCount)ch/"
+            + (format.commonFormat == .pcmFormatInt16 ? "i16" : format.commonFormat == .pcmFormatFloat32 ? "f32" : "other")
+            + " ctx=[\(keys)] mixer=\(mixer != nil ? "yes" : "no")"
+        )
+
+        // Probe A: the node the ADM hands us (previous rounds: frames flowed
+        // but all-zero). Probe B: the input mixer from the context, if any.
+        installProbe(on: source ?? engine.inputNode, format: format, index: 0, forward: true)
+        if let mixer, mixer !== (source ?? engine.inputNode) {
+            installProbe(on: mixer, format: nil, index: 1, forward: false)
+        }
         return 0
     }
 
@@ -632,41 +669,51 @@ final class PollyEngineTapObserver: NSObject, LKRTCAudioDeviceModuleDelegate, @u
 
     func audioDeviceModuleDidUpdateDevices(_ audioDeviceModule: LKRTCAudioDeviceModule) {}
 
-    // MARK: Tap
+    // MARK: Probes
 
-    private func installTap(on node: AVAudioNode, format: AVAudioFormat) {
-        removeTap()
+    private func installProbe(on node: AVAudioNode, format: AVAudioFormat?, index: Int, forward: Bool) {
+        (index == 0 ? nodeA : nodeB)?.removeTap(onBus: 0)
         node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             guard let self else { return }
             let n = Int(buffer.frameLength)
             guard n > 0 else { return }
-            // The ADM's input chain runs Int16 — the float-only math left
-            // rms=0.000 while frames climbed (3:13am log). Handle both.
-            var rms: Float = 0
+            var sum: Float = 0
+            var peak: Float = 0
             if let floats = buffer.floatChannelData?[0] {
-                var sum: Float = 0
-                for i in 0..<n { sum += floats[i] * floats[i] }
-                rms = (sum / Float(n)).squareRoot()
+                for i in 0..<n {
+                    let v = floats[i]
+                    sum += v * v
+                    peak = max(peak, abs(v))
+                }
             } else if let ints = buffer.int16ChannelData?[0] {
-                var sum: Float = 0
                 for i in 0..<n {
                     let v = Float(ints[i]) / Float(Int16.max)
                     sum += v * v
+                    peak = max(peak, abs(v))
                 }
-                rms = (sum / Float(n)).squareRoot()
             }
+            let rms = (sum / Float(n)).squareRoot()
             self.lock.withLock {
-                self._latestRMS = rms
-                self.frameCount += 1
+                if index == 0 {
+                    self.probeA.frames += 1
+                    self.probeA.rms = rms
+                    self.probeA.peak = max(self.probeA.peak, peak)
+                } else {
+                    self.probeB.frames += 1
+                    self.probeB.rms = rms
+                    self.probeB.peak = max(self.probeB.peak, peak)
+                }
             }
-            self.onBuffer?(buffer)
+            if forward { self.onBuffer?(buffer) }
         }
-        tappedNode = node
+        if index == 0 { nodeA = node } else { nodeB = node }
     }
 
     private func removeTap() {
-        tappedNode?.removeTap(onBus: 0)
-        tappedNode = nil
+        nodeA?.removeTap(onBus: 0)
+        nodeB?.removeTap(onBus: 0)
+        nodeA = nil
+        nodeB = nil
     }
 }
 

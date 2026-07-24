@@ -116,6 +116,13 @@ final class PollySessionController {
     /// session is broken and the reconnect ladder takes over.
     private var responseWatchdogTask: Task<Void, Never>?
     private var watchdogStrikes = 0
+    /// Wake-question rescue: words spoken in the same breath as "Polly" are
+    /// lost while the server mic is still closed (device log: the cook
+    /// learned to say the wake word LAST). The on-device recognizer already
+    /// transcribed the whole sentence — if server VAD hears nothing shortly
+    /// after a wake, the transcript is injected as a text turn instead.
+    private var speechSinceWake = false
+    private var wakeInjectionTask: Task<Void, Never>?
 
     // Deviation from the brief's signature (documented in the report): the brief
     // declares `audio: PollyAudioEngine = PollyAudioEngine()` /
@@ -284,6 +291,7 @@ final class PollySessionController {
         eventTask = nil
         cancelDormancyTimer()
         cancelResponseWatchdog()
+        wakeInjectionTask?.cancel()
         wakeWord.stop()
         audio.stop()
         camera.stop()
@@ -330,13 +338,45 @@ final class PollySessionController {
     /// Un-gate: "Polly" was heard (or the pill tapped). Opens the Realtime input,
     /// shows the Listening UI, and arms the follow-up window.
     func wakeUp() {
-        guard phase == .live, !isHardMuted, listeningMode == .dormant else { return }
+        guard phase == .live, !isHardMuted else { return }
+        // "Polly" spoken over her = interrupt her, even if already listening.
+        if isPollySpeaking {
+            PollyDebugLog.shared.log("gate: wake during her turn — cancelling her response")
+            Task {
+                try? await transport?.send(.responseCancel)
+                try? await transport?.send(.outputAudioBufferClear)
+            }
+        }
+        guard listeningMode == .dormant else { return }
         listeningMode = .listening
         liveTranscript = ""
         audio.isMuted = false
         webrtc?.setMicMode(.open)
         PollyDebugLog.shared.log("gate: LISTENING (woken)")
         armDormancyTimer()
+        armWakeInjection()
+    }
+
+    /// If server VAD hasn't heard anything ~1.6s after the wake, the words
+    /// were spoken in the same breath as "Polly" and are gone — inject the
+    /// on-device transcript as a text turn so the question still lands.
+    private func armWakeInjection() {
+        speechSinceWake = false
+        wakeInjectionTask?.cancel()
+        wakeInjectionTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(1600))
+            guard let self, !Task.isCancelled else { return }
+            guard phase == .live, listeningMode == .listening,
+                  !speechSinceWake, !isPollySpeaking else { return }
+            let question = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard question.split(separator: " ").count >= 3,
+                  !WakeWordMatcher.containsWake(question) || question.split(separator: " ").count >= 4
+            else { return }
+            PollyDebugLog.shared.log("wake: injecting transcribed question — \"\(question.prefix(60))\"")
+            try? await transport?.send(.createUserText(question))
+            try? await transport?.send(.responseCreate)
+            isThinking = true
+        }
     }
 
     /// Manual wake for the tap-to-talk fallback (tapping the state pill).
@@ -348,6 +388,7 @@ final class PollySessionController {
     /// Re-gate: mute the Realtime input and return to waiting for "Polly".
     func returnToDormant() {
         cancelDormancyTimer()
+        wakeInjectionTask?.cancel()
         liveTranscript = ""
         enterDormant()
         // Fresh recognition segment so the next "Polly" wakes her — the running
@@ -437,6 +478,13 @@ final class PollySessionController {
         case .responseCancelled:
             PollyDebugLog.shared.log("event: response.cancelled (server-side barge-in cancel)")
 
+        case .responseCreated:
+            // A response is generating — server-initiated ones (normal voice
+            // turns) never came through the client, so the Thinking pill was
+            // invisible exactly when the cook was waiting. Not while she's
+            // audibly speaking (queued follow-ups would flicker the pill).
+            if !isPollySpeaking { isThinking = true }
+
         case .unhandled(let type):
             PollyDebugLog.shared.log("event: unhandled '\(type)'")
 
@@ -470,6 +518,9 @@ final class PollySessionController {
             PollyDebugLog.shared.log("event: SPEECH STARTED (VAD heard the user)")
             isPollySpeaking = false
             isListening = true
+            // The server heard real speech — no wake-transcript rescue needed.
+            speechSinceWake = true
+            wakeInjectionTask?.cancel()
             // The cook is talking — don't let the window time out mid-question.
             cancelDormancyTimer()
             cancelResponseWatchdog()
@@ -516,9 +567,12 @@ final class PollySessionController {
                 let output = await registry.handle(name: call.name, argumentsJSON: call.argumentsJSON)
                 try? await transport?.send(.createFunctionOutput(callId: call.callId, output: output))
             }
-            // Wait until her current audio finishes draining so a follow-up
-            // doesn't stack on top of the still-playing opening sentence.
-            await webrtc?.waitUntilAssistantQuiet(timeoutSeconds: 12)
+            // v2: send tool results IMMEDIATELY — the WebRTC output buffer
+            // serializes audio server-side, so the follow-up response
+            // generates DURING any preamble she's still speaking and plays
+            // seamlessly after it. (The v1 wait-until-quiet existed for the
+            // client-side player and was pure latency here — device log
+            // showed 3-6s tool turns.)
             if alreadySpoke {
                 try? await transport?.send(.createUserText(
                     "[system note] Tool results are in. You already spoke this turn aloud — "

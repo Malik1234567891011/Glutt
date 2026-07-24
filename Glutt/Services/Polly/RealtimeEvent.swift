@@ -112,6 +112,9 @@ enum RealtimeClientEvent: Equatable {
     /// apply to this response only, the session prompt is untouched.
     case responseCreateWithInstructions(String)
     case responseCancel
+    /// WebRTC-only: stop client playback NOW (clears the remote audio
+    /// buffer). Paired with responseCancel when "Polly" is spoken over her.
+    case outputAudioBufferClear
     case truncateItem(itemId: String, audioEndMs: Int)
 
     func encoded() throws -> Data {
@@ -148,6 +151,8 @@ enum RealtimeClientEvent: Equatable {
                     "response": ["instructions": instructions]]
         case .responseCancel:
             return ["type": "response.cancel"]
+        case .outputAudioBufferClear:
+            return ["type": "output_audio_buffer.clear"]
         case .truncateItem(let itemId, let audioEndMs):
             return ["type": "conversation.item.truncate", "item_id": itemId,
                     "content_index": 0, "audio_end_ms": audioEndMs]
@@ -221,6 +226,10 @@ enum RealtimeServerEvent: Equatable {
     case outputTranscriptDelta(itemId: String, delta: String)
     case responseDone(status: String, calls: [RealtimeFunctionCall])
     case responseCancelled
+    /// A response began generating (server-initiated after VAD turns too) —
+    /// drives the Thinking indicator for voice turns, which the client never
+    /// requested itself.
+    case responseCreated
     /// WebRTC-only: assistant audio physically started/stopped playing on the
     /// client (output_audio_buffer.started / .stopped / .cleared). These are
     /// the v2 controller's speaking-state + hybrid-window signals — audio
@@ -269,6 +278,8 @@ enum RealtimeServerEvent: Equatable {
             return .responseDone(status: response["status"] as? String ?? "unknown", calls: calls)
         case "response.cancelled":
             return .responseCancelled
+        case "response.created":
+            return .responseCreated
         case "output_audio_buffer.started":
             return .outputAudioStarted
         case "output_audio_buffer.stopped", "output_audio_buffer.cleared":

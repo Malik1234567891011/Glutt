@@ -27,3 +27,5 @@ xcuserdata/
 Secrets.xcconfig
 build-device/
 .superpowers/
+.vercel
+.env*

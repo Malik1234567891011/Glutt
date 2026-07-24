@@ -27,5 +27,19 @@ xcuserdata/
 Secrets.xcconfig
 build-device/
 .superpowers/
+# Installed agent skills (via the `skills` CLI): ignore materialized skill files +
+# per-agent symlinks; keep the project-owned skills committed. skills-lock.json stays
+# tracked as the manifest (like package-lock.json alongside an ignored node_modules/).
+.agents/skills/*
+!.agents/skills/grilling/
+!.agents/skills/improve-codebase-architecture/
+!.agents/skills/research/
+!.agents/skills/to-tickets/
+!.agents/skills/writing-great-skills/
+.claude/skills/
+
+# Proxy client key lives here (see Secrets.swift); example file is committed.
+Secrets.local.plist
+
 .vercel
 .env*

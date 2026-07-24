@@ -24,7 +24,10 @@ Every documented v1 failure was client-side or config, not the model:
 1. **North star: reliability.** Silence is the unforgivable failure. Speed second,
    naturalness third, cost a ceiling not a goal (quality-first at current scale).
 2. **Target environment:** iPhone on counter + loudspeaker, hands messy. AirPods/locked-screen
-   are not requirements. **Camera is cut** (controller, watch mode, `request_camera_frame`).
+   are not requirements. **Camera (REVISED 2026-07-24):** the "Show Polly" shutter and the
+   `request_camera_frame` tool STAY (they work over the data channel on v2 and cost nothing to
+   keep — Omar re-decided when the deletion consequence was spelled out); only **watch mode**
+   (10s auto-frames + eye button + WatchModeScheduler) is deleted.
 3. **Interaction: hybrid window.** Wake word ("Polly" *or* "Hey Polly") opens a conversation
    that stays open through the exchange; closes after ~10s of true silence or dismissal;
    fully open while Polly is guiding a step. The 3s follow-up window is gone.
@@ -58,8 +61,9 @@ Every documented v1 failure was client-side or config, not the model:
     controller closures) on branch `polly-v2-voice` → Omar's real-kitchen device soak +
     short TestFlight → merge deletes the WS engine + camera stack. Git history is the archive.
 11. **Scope:** in-cook calls only. Engine stays reusable for a future quick-ask Polly.
-    Survivors: 12 tools, `PollyPromptBuilder`, `CookPlanCompiler` (moved to background
-    precompile → instant greeting), memory store, redesigned call UI, `PollyDebugLog` loop.
+    Survivors: all 13 tools (incl. `request_camera_frame`), the "Show Polly" shutter,
+    `PollyPromptBuilder`, `CookPlanCompiler` (moved to background precompile → instant
+    greeting), memory store, redesigned call UI, `PollyDebugLog` loop.
 
 ## Cost basis (research doc has the arithmetic)
 
@@ -85,10 +89,44 @@ LiveKit agent minutes) bill the whole cook — that's why they lost. Cached audi
   churn, both phrases, unit-tested matcher.
 - **Phase 4 — server hardening:** pin turn_detection/voice at mint; per-device monthly cap
   (`x-device-id`); rotate the committed `GLUTT_PROXY_CLIENT_KEY` out of `Secrets.swift`.
-- **Phase 5 — integrate + delete camera stack:** background cook-plan precompile, controller
-  rewire, tests green.
+- **Phase 5 — final integration:** delete watch mode only (shutter + camera tool stay),
+  background cook-plan precompile, dead-code sweep, tests green.
 - **Phase 6 — bake-off + soak:** voice pick, VAD eagerness tuning via server config, ≥5 real
   cooks across ≥2 recipes (quiet + noisy), TestFlight, merge.
+
+## Status 2026-07-24 (~6am) + Phase 6 runbook
+
+Phases 0–5 SHIPPED. Engine device-validated across two in-app cooks ("pretty impressed");
+server hardening live on prod (dual-key, mint-pinned audio plane, dormant device cap).
+Pending outside the repo: friend adds `GLUTT_PROXY_CLIENT_KEY_NEXT` (value is in the local
+`Secrets.local.plist` comment) to the glutt-sable Vercel project + redeploys → then swap the
+local plist to the NEXT key.
+
+**Phase 6 runbook (mechanical):**
+1. **Voice bake-off:** run the spike (`-pollyV2Spike`), tap voice chips (marin/cedar/coral/…)
+   — each reads the same 4 lines in a fresh session. Winner → `POLLY_VOICE` env on the
+   sable project (friend/dashboard) or keep marin (code default).
+2. **Eagerness walk-up:** during real cooks, step `POLLY_VAD_EAGERNESS` low → auto → high
+   (env flip + redeploy; no app builds). Stop at the last value with zero false cut-ins.
+3. **Canned offline audio:** generate the failure lines in the WINNING voice (TTS), bundle as
+   assets, play on token-mint failure / reconnects-exhausted (the last never-silent gap).
+4. **Soak:** ≥5 real cooks across ≥2 recipes, quiet + noisy (fan/tap/music). Watch
+   PollyDebugLog for: phantom interruptions (expect zero), watchdog strikes, reconnects.
+5. **Merge-time deletions (single commit):** `PollyAudioEngine.swift` (+PCM helpers if
+   unreferenced), `RealtimeWebSocketTransport`/`URLSessionWebSocket` + WS-only codec paths
+   (appendAudio/outputAudioDelta/truncateItem cases + their tests), `PollyV2SpikeView` +
+   `-pollyV2Spike` scheme arg + RootView hook, dead transport probes (PollyCaptureHook gates,
+   PollyRenderMonitor, PollyLocalTrackRenderer — KEEP PollyEngineTapObserver, it IS the wake
+   feed), PollyConfig leftovers (`onsetCaptureGateSeconds`, `bargeInRMSFloor`), controller's
+   legacy `audio.isMuted` shadow writes + tests that pin them. Re-run one device cook after.
+6. **TestFlight** → merge to main → App Store build carries the NEXT proxy key; after
+   adoption, promote NEXT → primary on Vercel and retire the old (git-leaked) key.
+
+**Post-soak follow-up (deliberately deferred):** SpeechAnalyzer wake path (iOS 26+) —
+availability-gated inside `WakeWordListener.beginTask()`, feed `AnalyzerInput(buffer:)` from
+the same tap, volatile results → `WakeWordMatcher`, HARD fallback to SFSpeech on any setup
+failure. Deferred because it can't be validated on the sim and would replace the working wake
+path on the primary test device untested.
 
 ## Risks / open spike questions
 

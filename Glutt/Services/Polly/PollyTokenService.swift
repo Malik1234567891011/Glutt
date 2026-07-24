@@ -1,5 +1,19 @@
 import Foundation
 
+/// Stable per-install identifier for the proxy's abuse cap. Not personal
+/// data — a random UUID minted once and kept in UserDefaults; it never
+/// identifies the user, only rate-limits a device.
+enum GluttDeviceID {
+    private static let defaultsKey = "glutt.device.id"
+    static var current: String {
+        let defaults = UserDefaults.standard
+        if let existing = defaults.string(forKey: defaultsKey) { return existing }
+        let fresh = UUID().uuidString
+        defaults.set(fresh, forKey: defaultsKey)
+        return fresh
+    }
+}
+
 /// The short-lived OpenAI Realtime credential minted by the Glutt proxy.
 /// Wire shape from `POST {proxy}/polly/session`:
 /// `{"value": "ek_...", "expiresAt": 1751500000, "model": "...", "voice": "..."}`.
@@ -48,10 +62,14 @@ struct PollyTokenService {
         if !clientKey.isEmpty {
             request.setValue(clientKey, forHTTPHeaderField: "x-glutt-proxy-key")
         }
+        request.setValue(GluttDeviceID.current, forHTTPHeaderField: "x-glutt-device-id")
 
         let (data, response) = try await transport(request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            if code == 429 {
+                throw PollyTokenError.badResponse("This device hit its monthly Polly limit.")
+            }
             throw PollyTokenError.badResponse("HTTP \(code)")
         }
         do {

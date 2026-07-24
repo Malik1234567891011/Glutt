@@ -77,6 +77,13 @@ struct RealtimeSessionConfig: Equatable {
     var voice: String              // PollyConfig.voice
     var model: String              // PollyConfig.realtimeModel
     var transcribeInput: Bool      // true -> audio.input.transcription = {model: "gpt-4o-transcribe"}
+    /// v2/WebRTC: the ENTIRE audio plane — formats, voice, turn detection,
+    /// noise reduction, transcription, truncation — is pinned server-side at
+    /// token mint (vercel-ai-proxy/api/polly/session.js), so VAD tuning is a
+    /// Vercel env flip, never an App Store release. The session.update then
+    /// carries only the brain plane (instructions + tools). WS keeps the full
+    /// GA shape (default false) for the legacy transport and its tests.
+    var audioPinnedAtMint: Bool = false
 }
 
 /// A function call the model asked us to run, lifted out of `response.done`.
@@ -103,7 +110,13 @@ enum RealtimeClientEvent: Equatable {
     /// call a tool mid-opening and then re-speak the same first line on the
     /// follow-up response.create after tool results.
     case responseCreateSpeechOnly
+    /// One-off steered turn (repair lines, reconnection acks) — instructions
+    /// apply to this response only, the session prompt is untouched.
+    case responseCreateWithInstructions(String)
     case responseCancel
+    /// WebRTC-only: stop client playback NOW (clears the remote audio
+    /// buffer). Paired with responseCancel when "Polly" is spoken over her.
+    case outputAudioBufferClear
     case truncateItem(itemId: String, audioEndMs: Int)
 
     func encoded() throws -> Data {
@@ -135,8 +148,13 @@ enum RealtimeClientEvent: Equatable {
         case .responseCreateSpeechOnly:
             return ["type": "response.create",
                     "response": ["tool_choice": "none"]]
+        case .responseCreateWithInstructions(let instructions):
+            return ["type": "response.create",
+                    "response": ["instructions": instructions]]
         case .responseCancel:
             return ["type": "response.cancel"]
+        case .outputAudioBufferClear:
+            return ["type": "output_audio_buffer.clear"]
         case .truncateItem(let itemId, let audioEndMs):
             return ["type": "conversation.item.truncate", "item_id": itemId,
                     "content_index": 0, "audio_end_ms": audioEndMs]
@@ -144,8 +162,23 @@ enum RealtimeClientEvent: Equatable {
     }
 
     private static func sessionPayload(_ config: RealtimeSessionConfig) -> [String: Any] {
+        let tools: [[String: Any]] = config.tools.map {
+            ["type": $0.type, "name": $0.name, "description": $0.description,
+             "parameters": $0.parameters.jsonObject]
+        }
+        var payload: [String: Any] = [
+            "type": "realtime",
+            "output_modalities": ["audio"],
+            "instructions": config.instructions,
+            "tools": tools,
+            "tool_choice": "auto"
+        ]
+        // v2: the audio plane is mint-pinned — sending any of it here would
+        // OVERRIDE the server's tunable config and re-couple VAD tuning to
+        // app releases. Brain plane only.
+        guard !config.audioPinnedAtMint else { return payload }
+
         var input: [String: Any] = [
-            "format": ["type": "audio/pcm", "rate": 24000],
             // eagerness low: at kitchen speaker volume, residual echo of
             // Polly's own voice ("I'm here.") and noise ("akademik", "Οξάνα")
             // tripped default VAD and cut her off mid-sentence on every turn.
@@ -153,38 +186,28 @@ enum RealtimeClientEvent: Equatable {
             "turn_detection": ["type": "semantic_vad", "eagerness": "low"],
             // The phone sits on a counter an arm's length away — far-field
             // noise reduction cleans sizzle/fan noise before VAD sees it.
-            "noise_reduction": ["type": "far_field"]
+            "noise_reduction": ["type": "far_field"],
+            // rate is REQUIRED: omitting it makes the server reject the whole
+            // session.update (missing_required_parameter) and the session
+            // silently runs as a default assistant — no Polly.
+            "format": ["type": "audio/pcm", "rate": 24000]
         ]
         if config.transcribeInput {
             input["transcription"] = ["model": "gpt-4o-transcribe", "language": "en"]
         }
-        let tools: [[String: Any]] = config.tools.map {
-            ["type": $0.type, "name": $0.name, "description": $0.description,
-             "parameters": $0.parameters.jsonObject]
-        }
-        return [
-            "type": "realtime",
-            "output_modalities": ["audio"],
-            "instructions": config.instructions,
-            "tools": tools,
-            "tool_choice": "auto",
-            "audio": [
-                "input": input,
-                // rate is REQUIRED here: omitting it makes the server reject
-                // the whole session.update (missing_required_parameter) and
-                // the session silently runs as a default assistant — no
-                // instructions, no tools, no Polly.
-                "output": ["format": ["type": "audio/pcm", "rate": 24000], "voice": config.voice]
-            ],
-            // NSDecimalNumber, not a Double literal: 0.8 has no exact binary
-            // representation, so JSONSerialization emits 0.80000000000000004
-            // (17 decimal places) and the server rejects the WHOLE
-            // session.update (decimal_max_decimal_places_exceeded) — the
-            // session then runs as a default assistant with no Polly persona.
-            "truncation": ["type": "retention_ratio",
-                           "retention_ratio": NSDecimalNumber(string: "0.8"),
-                           "token_limits": ["post_instructions": 16000]]
+        payload["audio"] = [
+            "input": input,
+            "output": ["format": ["type": "audio/pcm", "rate": 24000], "voice": config.voice]
         ]
+        // NSDecimalNumber, not a Double literal: 0.8 has no exact binary
+        // representation, so JSONSerialization emits 0.80000000000000004
+        // (17 decimal places) and the server rejects the WHOLE session.update
+        // (decimal_max_decimal_places_exceeded) — the session then runs as a
+        // default assistant with no Polly persona.
+        payload["truncation"] = ["type": "retention_ratio",
+                                 "retention_ratio": NSDecimalNumber(string: "0.8"),
+                                 "token_limits": ["post_instructions": 16000]]
+        return payload
     }
 }
 
@@ -201,6 +224,16 @@ enum RealtimeServerEvent: Equatable {
     case outputTranscriptDelta(itemId: String, delta: String)
     case responseDone(status: String, calls: [RealtimeFunctionCall])
     case responseCancelled
+    /// A response began generating (server-initiated after VAD turns too) —
+    /// drives the Thinking indicator for voice turns, which the client never
+    /// requested itself.
+    case responseCreated
+    /// WebRTC-only: assistant audio physically started/stopped playing on the
+    /// client (output_audio_buffer.started / .stopped / .cleared). These are
+    /// the v2 controller's speaking-state + hybrid-window signals — audio
+    /// deltas never arrive as JSON over the data channel.
+    case outputAudioStarted
+    case outputAudioStopped
     case error(code: String?, message: String)
     case unhandled(type: String)
 
@@ -243,6 +276,12 @@ enum RealtimeServerEvent: Equatable {
             return .responseDone(status: response["status"] as? String ?? "unknown", calls: calls)
         case "response.cancelled":
             return .responseCancelled
+        case "response.created":
+            return .responseCreated
+        case "output_audio_buffer.started":
+            return .outputAudioStarted
+        case "output_audio_buffer.stopped", "output_audio_buffer.cleared":
+            return .outputAudioStopped
         case "error":
             let error = object["error"] as? [String: Any] ?? [:]
             return .error(code: error["code"] as? String,

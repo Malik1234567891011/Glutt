@@ -266,8 +266,11 @@ struct PollySessionView: View {
 
     @ViewBuilder
     private func speechLine(for controller: PollySessionController) -> some View {
-        if isActivelyListening(controller) {
-            Text("\u{201C}\(controller.liveTranscript.isEmpty ? "…" : controller.liveTranscript)\u{2026}\u{201D}")
+        // The big live quote shows only while there ARE live words — with the
+        // hybrid window the listening state now persists after her answer,
+        // and an empty/stale quote here read as "the captions are buggy".
+        if isActivelyListening(controller), !controller.liveTranscript.isEmpty {
+            Text("\u{201C}\(controller.liveTranscript)\u{2026}\u{201D}")
                 .font(BrandFont.nunito(18, 700))
                 .foregroundStyle(Theme.Colors.creamText)
                 .multilineTextAlignment(.center)
@@ -391,9 +394,8 @@ struct PollySessionView: View {
             Button {
                 Haptics.impact(.light)
                 if controller.camera.isRunning {
-                    controller.camera.stop(); controller.isWatching = false
+                    controller.camera.stop()
                 } else {
-                    controller.isWatching = true
                     Task { await controller.camera.start() }
                 }
             } label: {

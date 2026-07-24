@@ -26,6 +26,7 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         set {
             hook.onBuffer = newValue
             trackRenderer.onBuffer = newValue
+            engineTap.onBuffer = newValue
         }
     }
 
@@ -33,8 +34,10 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     var onRawEvent: ((String) -> Void)?
 
     /// Latest mic-observation RMS, from whichever feed is actually alive
-    /// (capture hook, or the local-track renderer fallback).
-    var captureRMS: Float { max(hook.latestRMS, trackRenderer.latestRMS) }
+    /// (capture hook, local-track renderer, or the engine tap).
+    var captureRMS: Float {
+        max(hook.latestRMS, trackRenderer.latestRMS, engineTap.latestRMS)
+    }
 
     /// Is Apple's platform echo canceller actually running right now?
     var isPlatformAECActive: Bool {
@@ -57,6 +60,7 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
             + " engine=\(adm.isEngineRunning ? "running" : "stopped")"
             + " hook[init=\(hookStats.inits) frames=\(hookStats.frames)]"
             + " renderer[frames=\(trackRenderer.frames) rms=\(String(format: "%.3f", trackRenderer.latestRMS))]"
+            + " tap[frames=\(engineTap.frames) rms=\(String(format: "%.3f", engineTap.latestRMS))]"
     }
 
     /// Fallback when the platform (VPIO) echo canceller won't engage: turn on
@@ -76,6 +80,7 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     private let hook: PollyCaptureHook
     private let renderMonitor: PollyRenderMonitor
     private let trackRenderer = PollyLocalTrackRenderer()
+    private let engineTap = PollyEngineTapObserver()
     private let lock = NSLock()
 
     private var factory: LKRTCPeerConnectionFactory?
@@ -133,6 +138,12 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         // echo, and auto-gain pumping that residue up is a classic way to
         // resurrect echo the AEC already attenuated.
         adm.isVoiceProcessingAGCEnabled = false
+        // Wake-feed path #3 (paths #1 capture-post APM and #2 track renderer
+        // were device-proven dead — init=0/frames=0): observe the ADM's OWN
+        // AVAudioEngine and tap its mic node. Same engine, no VPIO conflict.
+        // Recording stays prepared so dormancy can't idle capture out.
+        adm.observer = engineTap
+        adm.setRecordingAlwaysPreparedMode(true)
 
         let config = LKRTCConfiguration()
         config.sdpSemantics = .unifiedPlan
@@ -541,6 +552,113 @@ final class PollyRenderMonitor: NSObject, LKRTCAudioCustomProcessingDelegate, @u
     }
 
     func audioProcessingRelease() {}
+}
+
+/// Wake-feed path #3: observes the ADM's own AVAudioEngine via the module's
+/// delegate seam and taps the mic-side node inside it. One engine — no VPIO
+/// exclusivity conflict — and the tap sits upstream of WebRTC's track gating,
+/// so it should keep hearing the room while the track is disabled (dormant).
+final class PollyEngineTapObserver: NSObject, LKRTCAudioDeviceModuleDelegate, @unchecked Sendable {
+    var onBuffer: ((AVAudioPCMBuffer) -> Void)?
+
+    var latestRMS: Float { lock.withLock { _latestRMS } }
+    var frames: Int { lock.withLock { frameCount } }
+
+    private let lock = NSLock()
+    private var _latestRMS: Float = 0
+    private var frameCount = 0
+    private weak var tappedNode: AVAudioNode?
+
+    // MARK: LKRTCAudioDeviceModuleDelegate
+
+    func audioDeviceModule(
+        _ audioDeviceModule: LKRTCAudioDeviceModule,
+        didReceiveSpeechActivityEvent speechActivityEvent: LKRTCSpeechActivityEvent
+    ) {}
+
+    func audioDeviceModule(
+        _ audioDeviceModule: LKRTCAudioDeviceModule, didCreateEngine engine: AVAudioEngine
+    ) -> Int { 0 }
+
+    func audioDeviceModule(
+        _ audioDeviceModule: LKRTCAudioDeviceModule, willEnableEngine engine: AVAudioEngine,
+        isPlayoutEnabled: Bool, isRecordingEnabled: Bool
+    ) -> Int { 0 }
+
+    func audioDeviceModule(
+        _ audioDeviceModule: LKRTCAudioDeviceModule, willStartEngine engine: AVAudioEngine,
+        isPlayoutEnabled: Bool, isRecordingEnabled: Bool
+    ) -> Int { 0 }
+
+    func audioDeviceModule(
+        _ audioDeviceModule: LKRTCAudioDeviceModule, didStopEngine engine: AVAudioEngine,
+        isPlayoutEnabled: Bool, isRecordingEnabled: Bool
+    ) -> Int {
+        removeTap()
+        return 0
+    }
+
+    func audioDeviceModule(
+        _ audioDeviceModule: LKRTCAudioDeviceModule, didDisableEngine engine: AVAudioEngine,
+        isPlayoutEnabled: Bool, isRecordingEnabled: Bool
+    ) -> Int {
+        removeTap()
+        return 0
+    }
+
+    func audioDeviceModule(
+        _ audioDeviceModule: LKRTCAudioDeviceModule, willReleaseEngine engine: AVAudioEngine
+    ) -> Int {
+        removeTap()
+        return 0
+    }
+
+    func audioDeviceModule(
+        _ audioDeviceModule: LKRTCAudioDeviceModule, engine: AVAudioEngine,
+        configureInputFromSource source: AVAudioNode?, toDestination destination: AVAudioNode,
+        format: AVAudioFormat, context: [AnyHashable: Any]
+    ) -> Int {
+        // The ADM is wiring its input graph — tap the mic-side node it hands
+        // us. Runs on every (re)configuration, so route changes re-tap.
+        installTap(on: source ?? engine.inputNode, format: format)
+        return 0
+    }
+
+    func audioDeviceModule(
+        _ audioDeviceModule: LKRTCAudioDeviceModule, engine: AVAudioEngine,
+        configureOutputFromSource source: AVAudioNode, toDestination destination: AVAudioNode?,
+        format: AVAudioFormat, context: [AnyHashable: Any]
+    ) -> Int { 0 }
+
+    func audioDeviceModuleDidUpdateDevices(_ audioDeviceModule: LKRTCAudioDeviceModule) {}
+
+    // MARK: Tap
+
+    private func installTap(on node: AVAudioNode, format: AVAudioFormat) {
+        removeTap()
+        node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            guard let self else { return }
+            let n = Int(buffer.frameLength)
+            guard n > 0 else { return }
+            var rms: Float = 0
+            if let floats = buffer.floatChannelData?[0] {
+                var sum: Float = 0
+                for i in 0..<n { sum += floats[i] * floats[i] }
+                rms = (sum / Float(n)).squareRoot()
+            }
+            self.lock.withLock {
+                self._latestRMS = rms
+                self.frameCount += 1
+            }
+            self.onBuffer?(buffer)
+        }
+        tappedNode = node
+    }
+
+    private func removeTap() {
+        tappedNode?.removeTap(onBus: 0)
+        tappedNode = nil
+    }
 }
 
 /// Fallback mic observer: attached to the local audio track via addRenderer.

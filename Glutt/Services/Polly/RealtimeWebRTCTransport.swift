@@ -177,6 +177,12 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         lock.withLock { micTrack?.isEnabled = enabled }
     }
 
+    /// Call when assistant audio playback starts/stops (output_audio_buffer
+    /// events). Drives the hook's anti-echo gates — v1's proven onset gate +
+    /// RMS floor, rebuilt inside the capture chain.
+    func noteAssistantAudioStarted() { hook.noteOutputStarted() }
+    func noteAssistantAudioStopped() { hook.noteOutputStopped() }
+
     func close() async {
         lock.withLock { isClosing = true }
         iceGatheringContinuation?.resume()
@@ -395,6 +401,31 @@ final class PollyCaptureHook: NSObject, LKRTCAudioCustomProcessingDelegate, @unc
     private let lock = NSLock()
     private var _latestRMS: Float = 0
     private var format: AVAudioFormat?
+    private var outputPlaying = false
+    private var onsetGateDeadline: Date?
+
+    /// v1's two battle-proven anti-echo gates, rebuilt inside the WebRTC
+    /// capture chain, applied ONLY to what the server hears (frames are
+    /// forwarded raw to the wake-word feed first):
+    /// - onset gate: server gets silence for the first beat of each Polly
+    ///   utterance, while the adaptive AEC re-converges on her voice (v1 saw
+    ///   her opening words transcribed as user speech at ~450-750ms).
+    /// - RMS floor: while she's speaking, capture quieter than a close human
+    ///   voice is zeroed so residual echo can't trip server VAD. A clear
+    ///   deliberate barge-in sails over the floor.
+    func noteOutputStarted() {
+        lock.withLock {
+            outputPlaying = true
+            onsetGateDeadline = Date().addingTimeInterval(PollyConfig.onsetCaptureGateSeconds)
+        }
+    }
+
+    func noteOutputStopped() {
+        lock.withLock {
+            outputPlaying = false
+            onsetGateDeadline = nil
+        }
+    }
 
     func audioProcessingInitialize(sampleRate sampleRateHz: Int, channels: Int) {
         lock.withLock {
@@ -417,20 +448,34 @@ final class PollyCaptureHook: NSObject, LKRTCAudioCustomProcessingDelegate, @unc
         let rms = (sum / Float(frames)).squareRoot()
         lock.withLock { _latestRMS = rms }
 
-        guard let onBuffer, let format = lock.withLock({ format }),
-              let pcm = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frames))
-        else { return }
-        pcm.frameLength = AVAudioFrameCount(frames)
-        if let dest = pcm.floatChannelData?[0] {
-            dest.update(from: source, count: frames)
+        // Wake-word feed gets the RAW frames, before any server-side gating —
+        // "Polly" must be hearable even while she's talking or gated.
+        if let onBuffer, let format = lock.withLock({ format }),
+           let pcm = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frames)) {
+            pcm.frameLength = AVAudioFrameCount(frames)
+            if let dest = pcm.floatChannelData?[0] {
+                dest.update(from: source, count: frames)
+            }
+            onBuffer(pcm)
         }
-        onBuffer(pcm)
+
+        // Anti-echo gates (server-bound path only).
+        let (gateOnset, playing) = lock.withLock {
+            ((onsetGateDeadline.map { Date() < $0 } ?? false), outputPlaying)
+        }
+        if gateOnset || (playing && rms < PollyConfig.bargeInRMSFloor) {
+            for channel in 0..<audioBuffer.channels {
+                audioBuffer.rawBuffer(forChannel: channel).update(repeating: 0, count: frames)
+            }
+        }
     }
 
     func audioProcessingRelease() {
         lock.withLock {
             format = nil
             _latestRMS = 0
+            outputPlaying = false
+            onsetGateDeadline = nil
         }
     }
 }

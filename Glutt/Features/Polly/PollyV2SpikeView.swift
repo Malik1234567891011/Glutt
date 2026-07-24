@@ -260,8 +260,9 @@ final class PollyV2SpikeModel {
                 self.hookRMS = rms
                 // Speech at counter distance lands well above this floor; zeros
                 // mean the hook died (the failure the vetting doc warns about).
-                if self.isDormant, rms > 0.01 {
+                if self.isDormant, rms > 0.01, !self.hookAliveWhileDormant {
                     self.hookAliveWhileDormant = true
+                    self.append(String(format: "✅ hook heard you while dormant (RMS %.3f) — wake-word feed proven", rms))
                 }
             }
         }
@@ -278,6 +279,14 @@ final class PollyV2SpikeModel {
         if name == "output_audio_buffer.started", let t0 = speechStoppedAt {
             speechStoppedAt = nil
             append(String(format: "⏱ voice-to-voice %.0f ms", Date().timeIntervalSince(t0) * 1000))
+        }
+
+        // Drive the capture hook's anti-echo gates from playback state.
+        if name == "output_audio_buffer.started" {
+            transport?.noteAssistantAudioStarted()
+        }
+        if name == "output_audio_buffer.stopped" || name == "output_audio_buffer.cleared" {
+            transport?.noteAssistantAudioStopped()
         }
 
         // Greeting done playing → the AEC has real reference audio behind it;

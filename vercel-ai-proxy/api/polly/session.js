@@ -44,7 +44,7 @@ async function deviceCapExceeded(deviceId) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("x-glutt-proxy-version", "polly-2026-07-24-1");
+  res.setHeader("x-glutt-proxy-version", "polly-2026-07-24-2");
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");

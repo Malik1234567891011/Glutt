@@ -2,6 +2,21 @@ import AVFoundation
 import Foundation
 import LiveKitWebRTC
 
+/// What the session wants from the mic. The transport's governor combines
+/// this with live playback state (half-duplex + voice-reopen + greeting
+/// hold) to decide the actual track state.
+enum PollyMicMode: Equatable {
+    /// Conversation window open — Polly hears the cook (subject to the
+    /// half-duplex gate while she's speaking).
+    case open
+    /// Asleep, waiting for "Polly" — the server hears nothing; the wake feed
+    /// (capture tap) keeps hearing the room.
+    case dormant
+    /// The mic button — nothing reaches the server, wake word is off too
+    /// (the controller stops the listener; the tap's frames go nowhere).
+    case hardMuted
+}
+
 /// Polly v2 transport: OpenAI Realtime GA over first-party WebRTC.
 ///
 /// Why WebRTC (see docs/plan-polly-v2-voice.md, docs/webrtc-transport-vetting-2026-07-23.md):
@@ -38,6 +53,14 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         get { engineTap.onGraphInfo }
         set { engineTap.onGraphInfo = newValue }
     }
+
+    /// Fired when Polly's audio physically starts/stops playing (from the
+    /// WebRTC-only output_audio_buffer events). Called on a transport thread —
+    /// consumers hop to the main actor themselves.
+    var onAssistantAudioChange: ((Bool) -> Void)?
+    /// Fired when the voice-reopen gate detected a real voice during her turn
+    /// and reopened the mic for barge-in. Transport thread.
+    var onBargeInReopen: (() -> Void)?
 
     /// Latest mic-observation RMS, from whichever feed is actually alive
     /// (capture hook, local-track renderer, or the engine tap).
@@ -98,6 +121,18 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     private var iceGatheringContinuation: CheckedContinuation<Void, Never>?
     private var channelOpenContinuation: CheckedContinuation<Void, Error>?
     private var isClosing = false
+
+    // Audio governor state (lock-guarded). Device-proven rules, 2026-07-24:
+    // half-duplex (track closed for her whole utterance — echo phantoms are
+    // physically impossible), voice-reopen (real voice reopens for barge-in),
+    // greeting hold (mic closed until her first utterance finishes playing so
+    // the adaptive AEC converges), dormancy (wake-word sleep).
+    private var micMode: PollyMicMode = .dormant
+    private var assistantSpeaking = false
+    private var greetingHold = false
+    private var voiceReopened = false
+    private var meterTask: Task<Void, Never>?
+    private var greetingFailsafeTask: Task<Void, Never>?
 
     override init() {
         let (stream, continuation) = AsyncStream.makeStream(of: RealtimeServerEvent.self)
@@ -201,6 +236,7 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
 
         // Connected means "events can flow": the data channel is open.
         try await waitForDataChannelOpen(timeoutSeconds: 10)
+        startReopenMeter()
     }
 
     func send(_ event: RealtimeClientEvent) async throws {
@@ -214,17 +250,127 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         try sendData(Data(json.utf8))
     }
 
-    /// Dormant gate — track disable, the mechanism device-proven to make the
-    /// server deaf (2:51/2:55 runs). Hook-level muting is kept as belt (the
-    /// hook is currently dead — never called by this ADM — so it's inert).
-    /// The open wake-feed question is answered by `trackRenderer`, not here.
+    // MARK: - Audio governor
+
+    /// The session's intent; the governor combines it with playback state.
+    func setMicMode(_ mode: PollyMicMode) {
+        lock.withLock {
+            micMode = mode
+            if mode != .open { voiceReopened = false }
+            resolveTrackLocked()
+        }
+        PollyDebugLog.shared.log("governor: micMode=\(mode)")
+    }
+
+    /// Mic stays closed until the greeting finishes playing (first
+    /// output_audio_buffer.stopped) — the adaptive AEC's convergence window
+    /// is the one place her own words can bounce back as user speech.
+    /// A 6s failsafe prevents a lost event from leaving the mic dead.
+    func holdMicForGreeting() {
+        lock.withLock {
+            greetingHold = true
+            resolveTrackLocked()
+        }
+        PollyDebugLog.shared.log("governor: greeting hold ON")
+        greetingFailsafeTask?.cancel()
+        greetingFailsafeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled else { return }
+            self?.releaseGreetingHold(reason: "failsafe")
+        }
+    }
+
+    /// Blocks until Polly's current audio finishes draining (or timeout) —
+    /// keeps post-tool follow-ups from stacking onto a still-playing reply.
+    func waitUntilAssistantQuiet(timeoutSeconds: Double) async {
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+        while Date() < deadline {
+            if !lock.withLock({ assistantSpeaking }) { return }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+    }
+
+    /// Legacy spike API: true = open, false = dormant.
     func setMicEnabled(_ enabled: Bool) {
-        lock.withLock { micTrack?.isEnabled = enabled }
+        setMicMode(enabled ? .open : .dormant)
+    }
+
+    private func releaseGreetingHold(reason: String) {
+        let released = lock.withLock { () -> Bool in
+            guard greetingHold else { return false }
+            greetingHold = false
+            resolveTrackLocked()
+            return true
+        }
+        if released {
+            greetingFailsafeTask?.cancel()
+            greetingFailsafeTask = nil
+            PollyDebugLog.shared.log("governor: greeting hold released (\(reason))")
+        }
+    }
+
+    /// The one place track state is computed. Caller must hold `lock`.
+    private func resolveTrackLocked() {
+        let enabled = micMode == .open && !greetingHold && (!assistantSpeaking || voiceReopened)
+        micTrack?.isEnabled = enabled
         hook.setServerMuted(!enabled)
+    }
+
+    /// Assistant playback state, driven from the data channel's
+    /// output_audio_buffer events (parsed before decode so the governor works
+    /// with any consumer, including tests that never read raw events).
+    private func noteAssistantAudio(playing: Bool) {
+        lock.withLock {
+            assistantSpeaking = playing
+            if playing { voiceReopened = false }
+            resolveTrackLocked()
+        }
+        if !playing { releaseGreetingHold(reason: "greeting finished") }
+        onAssistantAudioChange?(playing)
+    }
+
+    /// 50ms voice-reopen meter: while she talks and the track is gated, a
+    /// real sustained voice reopens the mic (instant when loud, 2-in-600ms
+    /// when normal). Consecutive-tick rules fail on syllable gaps.
+    private func startReopenMeter() {
+        meterTask?.cancel()
+        meterTask = Task.detached(priority: .userInitiated) { [weak self] in
+            var window: [Date] = []
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(50))
+                guard let self else { return }
+                let rms = self.captureRMS
+                let fired: Bool = self.lock.withLock {
+                    guard self.assistantSpeaking, self.micMode == .open,
+                          !self.voiceReopened, !self.greetingHold else {
+                        window.removeAll()
+                        return false
+                    }
+                    let now = Date()
+                    if rms > PollyConfig.bargeReopenSoftRMS { window.append(now) }
+                    window.removeAll { now.timeIntervalSince($0) > 0.6 }
+                    if rms > PollyConfig.bargeReopenLoudRMS || window.count >= 2 {
+                        self.voiceReopened = true
+                        self.resolveTrackLocked()
+                        window.removeAll()
+                        return true
+                    }
+                    return false
+                }
+                if fired {
+                    PollyDebugLog.shared.log(String(format: "governor: voice during her turn (rms %.3f) — mic reopened", rms))
+                    self.onBargeInReopen?()
+                }
+            }
+        }
     }
 
     func close() async {
         lock.withLock { isClosing = true }
+        meterTask?.cancel()
+        meterTask = nil
+        greetingFailsafeTask?.cancel()
+        greetingFailsafeTask = nil
         iceGatheringContinuation?.resume()
         iceGatheringContinuation = nil
         channelOpenContinuation?.resume(throwing: CancellationError())
@@ -237,6 +383,9 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
             micTrack = nil
             factory = nil
             processingModule = nil
+            assistantSpeaking = false
+            greetingHold = false
+            voiceReopened = false
         }
         continuation.finish()
     }
@@ -385,7 +534,13 @@ extension RealtimeWebRTCTransport: LKRTCDataChannelDelegate {
         if let onRawEvent, let text = String(data: buffer.data, encoding: .utf8) {
             onRawEvent(text)
         }
-        continuation.yield(RealtimeServerEvent.decode(buffer.data))
+        let event = RealtimeServerEvent.decode(buffer.data)
+        switch event {
+        case .outputAudioStarted: noteAssistantAudio(playing: true)
+        case .outputAudioStopped: noteAssistantAudio(playing: false)
+        default: break
+        }
+        continuation.yield(event)
     }
 }
 

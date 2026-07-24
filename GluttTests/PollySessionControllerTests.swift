@@ -225,29 +225,33 @@ final class PollySessionControllerTests: XCTestCase {
         await controller.end(context: context, endedEarly: true)
     }
 
-    // MARK: (3) barge-in truncation
+    // MARK: (3) barge-in (v2: server-side truncation over WebRTC)
 
-    func testBargeInTruncatesTheInterruptedAssistantItem() async throws {
+    /// v2 contract: on barge-in the CLIENT sends nothing — the server clears
+    /// its own output buffer and truncates the item (device-proven; the v1
+    /// client-side truncate math died with the audio engine). The controller
+    /// just flips the speaking/listening flags.
+    func testBargeInFlipsFlagsAndSendsNoClientTruncate() async throws {
         let recipe = insertRecipe()
         let transport = FakeRealtimeTransport()
         let controller = makeController(recipe: recipe, transport: transport)
         await controller.start(context: context, requireMic: false)
 
-        let silence = Data(repeating: 0, count: 4_800).base64EncodedString()  // ~100 ms PCM16 24k
-        transport.push(.outputAudioDelta(itemId: "item_7", base64: silence))
-        await waitUntil({ controller.isPollySpeaking }, "audio delta marks Polly speaking")
+        transport.push(.outputAudioStarted)
+        await waitUntil({ controller.isPollySpeaking }, "audio start marks Polly speaking")
 
         transport.push(.speechStarted)
         await waitUntil({ controller.isListening }, "speech_started marks listening")
 
         XCTAssertFalse(controller.isPollySpeaking)
-        let truncates = transport.sent.compactMap { event -> (itemId: String, ms: Int)? in
-            if case .truncateItem(let itemId, let ms) = event { return (itemId, ms) }
-            return nil
+        let truncates = transport.sent.filter {
+            if case .truncateItem = $0 { return true }
+            return false
         }
-        XCTAssertEqual(truncates.count, 1)
-        XCTAssertEqual(truncates[0].itemId, "item_7")
-        XCTAssertGreaterThanOrEqual(truncates[0].ms, 0)
+        XCTAssertTrue(truncates.isEmpty, "v2 must not send client-side truncates")
+
+        transport.push(.outputAudioStopped)
+        await waitUntil({ !controller.isPollySpeaking }, "audio stop clears speaking flag")
 
         await controller.end(context: context, endedEarly: true)
     }

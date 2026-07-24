@@ -124,24 +124,9 @@ final class PollyV2SpikeModel {
     private var speechStoppedAt: Date?
     /// Log timestamps are relative to this (connect time).
     private var connectedAt: Date?
-    /// Mic is held off from connect until the greeting finishes playing —
-    /// the AEC is adaptive and the first utterance is the one window where
-    /// its own echo can leak back as "user speech" (log: heard "Hello.").
-    private var greetingMicHold = false
-    /// Half-duplex with voice-reopen: the mic track is closed for her WHOLE
-    /// utterance (phantom echo trips became possible at any point in her
-    /// turn, not just onset — 9.6s "Trash" was at 1.6s). The live tap
-    /// watches the room; sustained real voice reopens the track, the server
-    /// hears you still talking, and barge-in proceeds normally.
-    private var assistantSpeaking = false
-    private var micReopenedByVoice = false
-    /// Reopen rule: instant on clearly-loud voice, or any 2 voice-ish ticks
-    /// within 0.6s (consecutive-ticks was too strict — syllable gaps reset it
-    /// and real interruptions got ignored, 3:29am run).
-    private var bargeWindow: [Date] = []
-    /// Loudest thing the tap heard during her current turn — printed if the
-    /// reopen declined, so threshold tuning becomes arithmetic.
-    private var turnMaxRMS: Float = 0
+    // Greeting hold, half-duplex, and voice-reopen all live in the
+    // transport's governor now (the production engine) — the spike only
+    // drives micMode and observes.
 
     func connect() {
         guard !isBusy else { return }
@@ -167,6 +152,9 @@ final class PollyV2SpikeModel {
                 transport.onGraphInfo = { [weak self] info in
                     Task { @MainActor in self?.append(info) }
                 }
+                transport.onBargeInReopen = { [weak self] in
+                    Task { @MainActor in self?.append("🔊 voice during her turn — mic reopened for barge-in") }
+                }
                 startEventDrain(transport)
                 try await transport.connect(token: token.value, model: token.model)
 
@@ -178,15 +166,15 @@ final class PollyV2SpikeModel {
                 try transport.sendRaw(#"""
                 {"type":"session.update","session":{"type":"realtime","instructions":"You are Polly, Glutt's warm, brief live cooking companion. This is a transport test. Keep every reply to one or two short sentences.","audio":{"input":{"turn_detection":{"type":"semantic_vad","eagerness":"low"},"noise_reduction":{"type":"far_field"},"transcription":{"model":"gpt-4o-transcribe","language":"en"}}}}}
                 """#)
-                greetingMicHold = true
-                transport.setMicEnabled(false)
+                transport.setMicMode(.open)
+                transport.holdMicForGreeting()
                 try transport.sendRaw(#"""
                 {"type":"response.create","response":{"instructions":"Greet the user in one short sentence and ask them to say something back."}}
                 """#)
                 startMeter()
                 connectedAt = Date()
                 finishConnect(ok: true, message: "Connected — listen for the greeting")
-                append("mic held through greeting (AEC converging)")
+                append("governor: mic held through greeting (AEC converging)")
                 append(transport.audioDiagnostics())
 
                 // The echo verdict, from the horse's mouth: if Apple's platform
@@ -199,13 +187,6 @@ final class PollyV2SpikeModel {
                     append("! platform AEC inactive → software AEC3 (mobile) enabled")
                     try? await Task.sleep(for: .milliseconds(500))
                     append(transport.audioDiagnostics())
-                }
-
-                // Failsafe: if the greeting's buffer-stopped event never lands,
-                // don't leave the user with a dead mic.
-                try? await Task.sleep(for: .seconds(6))
-                if greetingMicHold {
-                    releaseGreetingMicHold(reason: "failsafe timeout")
                 }
             } catch {
                 finishConnect(ok: false, message: "Connect failed: \(error.localizedDescription)")
@@ -235,14 +216,6 @@ final class PollyV2SpikeModel {
         append(dormant ? "dormant (track disabled) — SPEAK NOW; watching hook + renderer feeds"
                        : "awake (track enabled) — she can hear again")
         if let transport { append(transport.audioDiagnostics()) }
-    }
-
-    private func releaseGreetingMicHold(reason: String) {
-        greetingMicHold = false
-        if !isDormant {
-            transport?.setMicEnabled(true)
-            append("mic opened (\(reason)) — talk away")
-        }
     }
 
     private func finishConnect(ok: Bool, message: String) {
@@ -282,24 +255,6 @@ final class PollyV2SpikeModel {
                     self.hookAliveWhileDormant = true
                     self.append(String(format: "✅ hook heard you while dormant (RMS %.3f) — wake-word feed proven", rms))
                 }
-                // Barge-in gate: she's talking, track is closed, but real
-                // voice means the user wants in — reopen and let server VAD
-                // take over. Instant on loud; windowed for normal volume.
-                if self.assistantSpeaking, !self.isDormant, !self.greetingMicHold {
-                    self.turnMaxRMS = max(self.turnMaxRMS, rms)
-                    if !self.micReopenedByVoice {
-                        let now = Date()
-                        if rms > 0.055 {
-                            self.bargeWindow.append(now)
-                            self.bargeWindow.removeAll { now.timeIntervalSince($0) > 0.6 }
-                        }
-                        if rms > 0.12 || self.bargeWindow.count >= 2 {
-                            self.micReopenedByVoice = true
-                            self.transport?.setMicEnabled(true)
-                            self.append(String(format: "🔊 voice during her turn (rms %.3f) — mic reopened for barge-in", rms))
-                        }
-                    }
-                }
             }
         }
     }
@@ -315,36 +270,6 @@ final class PollyV2SpikeModel {
         if name == "output_audio_buffer.started", let t0 = speechStoppedAt {
             speechStoppedAt = nil
             append(String(format: "⏱ voice-to-voice %.0f ms", Date().timeIntervalSince(t0) * 1000))
-        }
-
-        // Half-duplex: track closed for her whole utterance; the meter loop
-        // reopens it on sustained real voice (barge-in). Skipped while
-        // dormant or during the greeting hold — those own the mic state.
-        if name == "output_audio_buffer.started" {
-            assistantSpeaking = true
-            micReopenedByVoice = false
-            bargeWindow.removeAll()
-            turnMaxRMS = 0
-            if !isDormant, !greetingMicHold {
-                transport?.setMicEnabled(false)
-            }
-        }
-        if name == "output_audio_buffer.stopped" || name == "output_audio_buffer.cleared" {
-            assistantSpeaking = false
-            if !micReopenedByVoice, turnMaxRMS > 0.03 {
-                append(String(format: "ℹ️ peak voice %.3f during her turn — below the reopen rule", turnMaxRMS))
-            }
-            bargeWindow.removeAll()
-            turnMaxRMS = 0
-            if !isDormant, !greetingMicHold {
-                transport?.setMicEnabled(true)
-            }
-        }
-
-        // Greeting done playing → the AEC has real reference audio behind it;
-        // safe to open the mic.
-        if name == "output_audio_buffer.stopped", greetingMicHold {
-            releaseGreetingMicHold(reason: "greeting finished")
         }
 
         // The echo verdict, in plain text: what the server believes the user

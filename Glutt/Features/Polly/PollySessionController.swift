@@ -1,3 +1,5 @@
+import AVFAudio
+import AudioToolbox
 import Foundation
 import Observation
 import SwiftData
@@ -25,7 +27,7 @@ final class PollySessionController {
 
         static let live = Dependencies(
             mintToken: { try await PollyTokenService.live.mint() },
-            makeTransport: { RealtimeWebSocketTransport() },
+            makeTransport: { RealtimeWebRTCTransport() },
             compilePlan: { await CookPlanCompiler.compile(recipe: $0, scale: $1) },
             extractMemories: { try await PollyMemoryExtractor.extract(transcript: $0, recipeTitle: $1) },
             now: { .now }
@@ -94,29 +96,26 @@ final class PollySessionController {
     private var transcriptLog: [String] = []
     private var pendingAssistantItemId: String?
     private var pendingAssistantLine = ""
-    /// The assistant audio item currently playing — the barge-in truncate target.
-    private var currentAudioItemId: String?
-    /// Player-node cumulative-ms baseline captured on the first audio delta of the
-    /// current assistant item. `interruptPlayback()`/`currentPlayedMs()` count ms
-    /// since the player node started (it never stops between turns), so this
-    /// baseline is subtracted on barge-in to yield ms INTO the current item — the
-    /// value `conversation.item.truncate` accepts. Forwarding the raw cumulative
-    /// value would make truncate invalid on every barge-in after the first turn.
-    private var itemStartPlayedMs = 0
-    /// Total audio enqueued for the current assistant item, in ms. The player
-    /// clock keeps ticking through post-item silence, so this is the ceiling
-    /// for any truncate — and when the clock says the whole item played,
-    /// truncating is wrong (live error: "Audio content of 2750ms is already
-    /// shorter than 3910ms").
-    private var itemEnqueuedMs = 0
 
     private var watchScheduler = WatchModeScheduler(
         isEnabled: false, interval: PollyConfig.watchFrameInterval)
     private var watchFrameCount = 0
     private var lastWatchFrameItemId: String?
-    private var didAttemptReconnect = false
+    /// v2 allows two silent reconnects (never-silent contract) — v1 allowed one.
+    private var reconnectAttempts = 0
     private var didSendWrapUpWarning = false
     private var isEnding = false
+
+    /// The v2 transport, when live (nil under scripted test transports —
+    /// governor calls no-op and the WS-shaped flow still works for tests).
+    private var webrtc: RealtimeWebRTCTransport? { transport as? RealtimeWebRTCTransport }
+    /// Kept for the watchdog/reconnect paths, which fire outside handle().
+    private var sessionContext: ModelContext?
+    /// Never-silent contract: armed when the cook stops talking; if her audio
+    /// hasn't started when it fires, force a spoken repair; two strikes = the
+    /// session is broken and the reconnect ladder takes over.
+    private var responseWatchdogTask: Task<Void, Never>?
+    private var watchdogStrikes = 0
 
     // Deviation from the brief's signature (documented in the report): the brief
     // declares `audio: PollyAudioEngine = PollyAudioEngine()` /
@@ -153,6 +152,7 @@ final class PollySessionController {
     func start(context: ModelContext, requireMic: Bool = true) async {
         guard phase == .idle else { return }
         startedAt = deps.now()
+        sessionContext = context
 
         // 1. Execution plan (compiler never fails — it falls back to linear).
         phase = .compiling
@@ -187,8 +187,18 @@ final class PollySessionController {
         registry.onEndSession = { [weak self] in self?.wantsEnd = true }
         self.registry = registry
 
-        // 4. Mint + connect + configure. Only these failures fail the session.
+        // 4. Mic permission FIRST (WebRTC starts capture at connect), then
+        //    mint + connect + configure. Only these failures fail the session.
         phase = .connecting
+        if requireMic {
+            let granted = await AVAudioApplication.requestRecordPermission()
+            guard granted else {
+                PollyDebugLog.shared.log("session: mic permission DENIED")
+                phase = .failed("Polly needs the microphone to cook with you. Enable it in Settings, or cook without Polly.")
+                return
+            }
+        }
+
         let token: PollySessionToken
         do {
             token = try await deps.mintToken()
@@ -207,39 +217,26 @@ final class PollySessionController {
             tools: PollyToolRegistry.toolDefinitions,
             voice: token.voice,
             model: token.model,
-            transcribeInput: true)
+            transcribeInput: true,
+            omitAudioFormats: true)
         liveConfig = config
 
         let transport = deps.makeTransport()
         self.transport = transport
+        // 5. Wake-word feed: the transport's capture tap hears the room even
+        //    while dormant (device-proven) — wire it before capture starts.
+        if let webrtc = transport as? RealtimeWebRTCTransport {
+            let wake = wakeWord
+            webrtc.onCaptureBuffer = { buffer in wake.append(buffer) }
+        }
         do {
             try await transport.connect(token: token.value, model: token.model)
             try await transport.send(.sessionUpdate(config))
-            PollyDebugLog.shared.log("session: socket connected — session.update sent")
+            PollyDebugLog.shared.log("session: WebRTC connected — session.update sent")
         } catch {
             PollyDebugLog.shared.log("session: connect FAILED — \(error.localizedDescription)")
             phase = .failed(error.localizedDescription)
             return
-        }
-
-        // 5. Mic. Denied mic in production means no session (spec). The wake-word
-        //    listener is fed raw buffers via onBuffer so it hears even while the
-        //    Realtime input is muted (dormant).
-        let wake = wakeWord
-        do {
-            try audio.start(onChunk: { [weak transport] chunk in
-                Task { try? await transport?.send(.appendAudio(base64: chunk)) }
-            }, onBuffer: { [weak wake] buffer in
-                wake?.append(buffer)
-            })
-        } catch {
-            PollyDebugLog.shared.log("session: mic start FAILED — \(error.localizedDescription)")
-            if requireMic {
-                phase = .failed("Polly needs the microphone to cook with you. Enable it in Settings, or cook without Polly.")
-                await transport.close()
-                return
-            }
-            captionText = "Microphone unavailable — Polly can't hear you."
         }
 
         // 6. Camera stays OFF by default — most cooks keep the phone on the
@@ -263,30 +260,11 @@ final class PollySessionController {
         enterDormant()
         PollyDebugLog.shared.log("session: dormant — wake word \(wakeWordAvailable ? "listening" : "unavailable, tap to talk")")
 
-        // Polly speaks first — but this is requested LAST, once the event loop
-        // is already consuming and (on device) the audio graph has settled.
-        // Enabling AEC flips the input node into voice-processing mode, which
-        // fires an AVAudioEngineConfigurationChange that briefly STOPS the engine
-        // ~20ms after start(). A greeting requested before that settles has its
-        // opening audio scheduled into an engine that's about to stop, so the
-        // buffers are flushed unheard — her caption shows but there's no sound
-        // until the user speaks and a later response plays into the now-settled
-        // engine. The short warm-up (only when the mic pipeline is actually up,
-        // so tests / mic-denied never block) lets the restart land first.
-        if audio.isRunning {
-            try? await Task.sleep(for: .seconds(PollyConfig.greetingWarmupSeconds))
-            // Reset the player to the clean stopped state a barge-in leaves it
-            // in, so the greeting's audio render engages like every later turn
-            // (see PollyAudioEngine) — the fix for "caption shows but no audio
-            // until I speak," where the post-restart player never re-engaged.
-            audio.resetPlaybackForNextUtterance()
-            // Hold the mic across the greeting startup: it went live ~1s before
-            // her first audio arrives, and that ambient/echo stream can trip
-            // server VAD and truncate her opening line at ~0ms (caption shows,
-            // no sound). The hold bridges to her first spoken words.
-            audio.holdCapture(forSeconds: PollyConfig.greetingMicHoldSeconds)
-        }
-        guard phase == .live else { return }   // user bailed during warm-up
+        // Polly speaks first. The governor holds the mic until her greeting
+        // finishes playing — the adaptive AEC's convergence window is the one
+        // place her own words can bounce back as user speech (device-proven).
+        webrtc?.holdMicForGreeting()
+        guard phase == .live else { return }   // user bailed during setup
         // Speech-only: if the opening calls a tool (check_pantry, etc.), the
         // post-tool response.create makes her restart the same first sentence.
         try? await transport.send(.responseCreateSpeechOnly)
@@ -305,6 +283,7 @@ final class PollySessionController {
         eventTask?.cancel()
         eventTask = nil
         cancelDormancyTimer()
+        cancelResponseWatchdog()
         wakeWord.stop()
         audio.stop()
         camera.stop()
@@ -355,6 +334,7 @@ final class PollySessionController {
         listeningMode = .listening
         liveTranscript = ""
         audio.isMuted = false
+        webrtc?.setMicMode(.open)
         PollyDebugLog.shared.log("gate: LISTENING (woken)")
         armDormancyTimer()
     }
@@ -379,6 +359,7 @@ final class PollySessionController {
     private func enterDormant() {
         listeningMode = .dormant
         if !isHardMuted { audio.isMuted = true }
+        webrtc?.setMicMode(isHardMuted ? .hardMuted : .dormant)
     }
 
     /// The mic button: hard-mute everything, including the wake word. Un-mute
@@ -389,6 +370,7 @@ final class PollySessionController {
         listeningMode = .dormant
         liveTranscript = ""
         audio.isMuted = true
+        webrtc?.setMicMode(isHardMuted ? .hardMuted : .dormant)
         if isHardMuted {
             wakeWord.stop()
             PollyDebugLog.shared.log("gate: HARD MUTED")
@@ -406,7 +388,10 @@ final class PollySessionController {
     private func armDormancyTimer() {
         cancelDormancyTimer()
         dormancyTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(PollyConfig.followUpWindowSeconds))
+            // v2 hybrid window: closes only after this much TRUE silence.
+            // Every activity signal (user speech, her audio, a fresh answer)
+            // re-arms or cancels it — the v1 3-second window is gone.
+            try? await Task.sleep(for: .seconds(PollyConfig.hybridWindowSeconds))
             guard let self, !Task.isCancelled else { return }
             if phase == .live, listeningMode == .listening, !isHardMuted {
                 returnToDormant()
@@ -455,55 +440,46 @@ final class PollySessionController {
         case .unhandled(let type):
             PollyDebugLog.shared.log("event: unhandled '\(type)'")
 
-        case .outputAudioDelta(let itemId, let base64):
-            // First delta of a NEW assistant item: capture the player-node
-            // baseline (cumulative ms since the node started) BEFORE enqueueing,
-            // so a later barge-in can subtract it and send a per-item
-            // audio_end_ms. The node never stops between turns, so the raw
-            // cumulative value would make conversation.item.truncate reject the
-            // audio_end_ms (it would exceed the item's length) on every barge-in
-            // after the first turn.
-            if currentAudioItemId != itemId {
-                itemStartPlayedMs = audio.currentPlayedMs()
-                itemEnqueuedMs = 0
-                PollyDebugLog.shared.log("event: audio item START \(itemId) (baseline \(itemStartPlayedMs)ms)")
-            }
-            audio.enqueue(base64: base64)
-            // 24 kHz PCM16 mono = 48 bytes per ms; base64 is 4 chars per 3 bytes.
-            itemEnqueuedMs += (base64.count * 3) / (4 * 48)
-            currentAudioItemId = itemId
+        case .outputAudioDelta:
+            // WS legacy — audio never arrives as JSON over WebRTC (it rides
+            // the media track). Kept only so scripted WS tests still drive
+            // the speaking flags.
             isPollySpeaking = true
             isThinking = false
 
+        case .outputAudioStarted:
+            // Her voice is physically coming out of the speaker (WebRTC-only
+            // event). Playback, interruption, and truncation are all handled
+            // server-side + by the transport's governor now.
+            PollyDebugLog.shared.log("event: assistant audio START")
+            isPollySpeaking = true
+            isThinking = false
+            watchdogStrikes = 0
+            cancelResponseWatchdog()
+            // Her audio counts as activity — the hybrid window stays open.
+            cancelDormancyTimer()
+
+        case .outputAudioStopped:
+            PollyDebugLog.shared.log("event: assistant audio STOP")
+            isPollySpeaking = false
+            if listeningMode == .listening { armDormancyTimer() }
+
         case .speechStarted:
-            // Barge-in: stop playback and tell the server how much of THIS item
-            // was heard so the truncated tail never pollutes the conversation
-            // state. interruptPlayback() returns cumulative ms since the player
-            // node started (it never stops between turns), so subtract the item's
-            // start baseline to get ms into the current item.
-            let cumulative = audio.interruptPlayback()
-            PollyDebugLog.shared.log("event: SPEECH STARTED (VAD heard the user) — playback interrupted at \(cumulative)ms")
-            if let itemId = currentAudioItemId {
-                let itemMs = max(0, cumulative - itemStartPlayedMs)
-                if itemMs < itemEnqueuedMs {
-                    try? await transport?.send(.truncateItem(itemId: itemId, audioEndMs: itemMs))
-                    PollyDebugLog.shared.log("sent: truncate \(itemId) @ \(itemMs)ms (of \(itemEnqueuedMs)ms)")
-                } else {
-                    // The item finished playing before the user spoke — there
-                    // is no unheard tail to remove, and the server rejects a
-                    // truncate past the item's real length.
-                    PollyDebugLog.shared.log("skip truncate — item fully played (\(itemEnqueuedMs)ms, clock said \(itemMs)ms)")
-                }
-                currentAudioItemId = nil
-            }
+            // Barge-in and truncation are server-side over WebRTC (the buffer
+            // clears and conversation.item.truncated arrives on its own).
+            PollyDebugLog.shared.log("event: SPEECH STARTED (VAD heard the user)")
             isPollySpeaking = false
             isListening = true
-            // The cook is talking — don't let the follow-up window time out mid-question.
+            // The cook is talking — don't let the window time out mid-question.
             cancelDormancyTimer()
+            cancelResponseWatchdog()
 
         case .speechStopped:
             PollyDebugLog.shared.log("event: speech stopped")
             isListening = false
+            // Never-silent contract: her audio must start within the watchdog
+            // window, or a spoken repair is forced.
+            armResponseWatchdog()
 
         case .inputTranscript(let text):
             PollyDebugLog.shared.log("heard: \"\(text)\"")
@@ -542,7 +518,7 @@ final class PollySessionController {
             }
             // Wait until her current audio finishes draining so a follow-up
             // doesn't stack on top of the still-playing opening sentence.
-            await audio.waitUntilQuiet(timeoutSeconds: 12)
+            await webrtc?.waitUntilAssistantQuiet(timeoutSeconds: 12)
             if alreadySpoke {
                 try? await transport?.send(.createUserText(
                     "[system note] Tool results are in. You already spoke this turn aloud — "
@@ -575,20 +551,61 @@ final class PollySessionController {
         pendingAssistantItemId = nil
     }
 
-    /// One silent reconnect (spec degradation ladder); anything after that
-    /// fails the session and the view offers "Cook without Polly".
+    // MARK: - Never-silent contract
+
+    private func armResponseWatchdog() {
+        cancelResponseWatchdog()
+        responseWatchdogTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(PollyConfig.responseWatchdogSeconds))
+            guard let self, !Task.isCancelled else { return }
+            await self.responseWatchdogFired()
+        }
+    }
+
+    private func cancelResponseWatchdog() {
+        responseWatchdogTask?.cancel()
+        responseWatchdogTask = nil
+    }
+
+    /// The cook said something and her audio never started. Strike one is a
+    /// forced spoken repair; strike two means the session is broken — hand
+    /// off to the reconnect ladder. Silence is never the outcome.
+    private func responseWatchdogFired() async {
+        guard phase == .live, !isPollySpeaking, !isEnding else { return }
+        watchdogStrikes += 1
+        PollyDebugLog.shared.log("watchdog: no reply \(Int(PollyConfig.responseWatchdogSeconds))s after user turn (strike \(watchdogStrikes))")
+        if watchdogStrikes >= 2, let context = sessionContext {
+            await handleTransportError(message: "Polly stopped responding", context: context)
+        } else {
+            try? await transport?.send(.responseCreateWithInstructions(
+                "You did not respond to what the cook just said. In one short sentence, apologize and ask them to say it again."))
+            isThinking = true
+            armResponseWatchdog()   // the repair itself is watched too
+        }
+    }
+
+    /// Silent reconnects with transcript replay (never-silent ladder): an
+    /// audible chime marks the drop, the new session gets the recent
+    /// conversation back, and Polly acknowledges the recovery out loud.
+    /// After the attempts run out the session fails visibly and the view
+    /// offers "Cook without Polly".
     private func handleTransportError(message: String, context: ModelContext) async {
         guard !isEnding, phase != .ended else { return }
-        guard phase == .live, !didAttemptReconnect else {
+        guard phase == .live, reconnectAttempts < PollyConfig.reconnectAttempts else {
             phase = .failed(message)
             return
         }
-        didAttemptReconnect = true
+        reconnectAttempts += 1
+        AudioServicesPlaySystemSound(1057)   // audible: the drop is heard, not guessed
         captionText = "Connection hiccup — getting Polly back…"
         phase = .reconnecting
         do {
             let token = try await deps.mintToken()
             let transport = deps.makeTransport()
+            if let webrtc = transport as? RealtimeWebRTCTransport {
+                let wake = wakeWord
+                webrtc.onCaptureBuffer = { buffer in wake.append(buffer) }
+            }
             try await transport.connect(token: token.value, model: token.model)
             if var config = liveConfig {
                 config.voice = token.voice
@@ -599,15 +616,23 @@ final class PollySessionController {
             self.transport = transport
             // A reconnect opens a NEW realtime conversation: item ids from the
             // old one are gone, so forget them — otherwise the next watch tick
-            // would delete a nonexistent item and trigger a server error, and a
-            // barge-in would truncate against a stale baseline.
+            // would delete a nonexistent item and trigger a server error.
             lastWatchFrameItemId = nil
-            currentAudioItemId = nil
-            itemStartPlayedMs = 0
-            itemEnqueuedMs = 0
             isThinking = false
             consumeEvents(from: transport, context: context)
             phase = .live
+            // Restore the mic state the cook expects, replay recent context,
+            // and say so out loud (never-silent: recovery is audible).
+            webrtc?.setMicMode(
+                isHardMuted ? .hardMuted : (listeningMode == .listening ? .open : .dormant))
+            let tail = transcriptLog.suffix(12).joined(separator: "\n")
+            if !tail.isEmpty {
+                try? await transport.send(.createUserText(
+                    "[system note] The connection dropped and recovered. Recent conversation:\n\(tail)\nContinue from where you left off — do not re-greet."))
+            }
+            try? await transport.send(.responseCreateWithInstructions(
+                "In a few words, let the cook know you're back, then continue helping."))
+            isThinking = true
         } catch {
             phase = .failed(message)
         }

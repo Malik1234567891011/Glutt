@@ -43,6 +43,21 @@ enum PollyConfig {
     /// so it doesn't feel like it's hanging on your every word; the cook says
     /// "Polly" again after it closes.
     static let followUpWindowSeconds: TimeInterval = 3
+    /// v2 hybrid window: the conversation stays open until this much TRUE
+    /// silence (no user speech, no Polly audio) passes — the v1 3s window was
+    /// the #1 "she stopped listening" generator.
+    static let hybridWindowSeconds: TimeInterval = 10
+    /// Never-silent contract: if Polly's audio hasn't started this long after
+    /// the cook stopped talking, force a spoken repair ("say that again?").
+    static let responseWatchdogSeconds: TimeInterval = 4
+    /// Never-silent contract: silent reconnect attempts before failing loud.
+    /// (v1 allowed exactly one.)
+    static let reconnectAttempts = 2
+    /// Voice-reopen (barge-in through the half-duplex gate): instant reopen
+    /// at this capture RMS…
+    static let bargeReopenLoudRMS: Float = 0.12
+    /// …or two ticks above this within 0.6s (syllable-gap tolerant).
+    static let bargeReopenSoftRMS: Float = 0.055
     /// How many top PollyMemory facts get injected into the system prompt.
     static let memoryFactLimit = 12
     /// Ephemeral token lifetime requested from the proxy (OpenAI max is 600).

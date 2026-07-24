@@ -1,3 +1,4 @@
+import { isAuthorized } from "../_lib/auth.js";
 // Discover feed: an endless, paginated stream of photo recipes from
 // Spoonacular. Each page is one complexSearch call (photo + macros +
 // ingredients + steps + servings) normalized into Glutt's PlateCard contract.
@@ -95,16 +96,12 @@ export default async function handler(req, res) {
   }
 
   const apiKey = resolveSpoonacularKey();
-  const expectedProxyKey = process.env.GLUTT_PROXY_CLIENT_KEY || "";
 
   if (!apiKey) {
     return res.status(500).json({ error: "Server misconfigured: missing SPOONACULAR_API_KEY" });
   }
-  if (expectedProxyKey) {
-    const incomingKey = req.headers["x-glutt-proxy-key"] || "";
-    if (incomingKey !== expectedProxyKey) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+  if (!isAuthorized(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   const PAGE_SIZE = 12;

@@ -1,3 +1,4 @@
+import { isAuthorized } from "../_lib/auth.js";
 // Discover suggested feed: shown when the user opens Discover with no query.
 // Returns the same shape as /discover/search. Biased by optional taste `tags`
 // (comma-separated, derived from the user's saved-recipe tags); otherwise a
@@ -47,17 +48,13 @@ export default async function handler(req, res) {
   }
 
   const apiKey = resolveYouTubeKey();
-  const expectedProxyKey = process.env.GLUTT_PROXY_CLIENT_KEY || "";
 
   if (!apiKey) {
     return res.status(500).json({ error: "Server misconfigured: missing YOUTUBE_API_KEY" });
   }
 
-  if (expectedProxyKey) {
-    const incomingKey = req.headers["x-glutt-proxy-key"] || "";
-    if (incomingKey !== expectedProxyKey) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+  if (!isAuthorized(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   const tags = (req.query.tags || "")

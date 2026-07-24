@@ -29,6 +29,10 @@ TikTok / YouTube URL
 ### Deploy note
 Set `ELEVENLABS_API_KEY` on the Vercel project and redeploy before speech imports work in production. Without it, the pipeline soft-fails listening and falls back to the old caption path.
 
+**Important:** until this branch is merged, a Vercel deploy from `main` will wipe
+`/api/import/transcribe` (that file only exists on this branch). Redeploy the
+proxy from `vercel-ai-proxy/` after any main deploy, or merge this branch first.
+
 ## Later phases (not yet)
 2. Frame OCR (on-screen quantities)
 3. Visual action understanding (Gemini / sampled frames)

@@ -23,7 +23,7 @@ final class ShareImportViewModelTests: XCTestCase {
             fetch: { _ in draft },
             wouldImprove: { _ in false },
             cleanUp: { $0 }, reconstruct: { $0 }, inferSteps: { $0 },
-            transcribe: { _, _ in nil },
+            transcribe: { _, _ in (nil, nil) },
             compileFromSpeech: { d, _ in d },
             verifySpeech: { d, _ in d }
         )
@@ -34,7 +34,7 @@ final class ShareImportViewModelTests: XCTestCase {
             fetch: { _ in throw error },
             wouldImprove: { _ in false },
             cleanUp: { $0 }, reconstruct: { $0 }, inferSteps: { $0 },
-            transcribe: { _, _ in nil },
+            transcribe: { _, _ in (nil, nil) },
             compileFromSpeech: { d, _ in d },
             verifySpeech: { d, _ in d }
         )

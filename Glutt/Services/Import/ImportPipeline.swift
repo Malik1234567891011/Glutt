@@ -13,8 +13,8 @@ enum ImportPipeline {
         var cleanUp: (ImportedRecipeDraft) async -> ImportedRecipeDraft
         var reconstruct: (ImportedRecipeDraft) async -> ImportedRecipeDraft
         var inferSteps: (ImportedRecipeDraft) async -> ImportedRecipeDraft
-        /// Speech collector for TikTok/YouTube. Returns nil when unavailable.
-        var transcribe: (String, ImportedRecipeDraft) async -> VideoTranscript?
+        /// Speech collector for TikTok/YouTube. `failure` explains soft misses.
+        var transcribe: (String, ImportedRecipeDraft) async -> (transcript: VideoTranscript?, failure: String?)
         var compileFromSpeech: (ImportedRecipeDraft, VideoTranscript) async -> ImportedRecipeDraft
         var verifySpeech: (ImportedRecipeDraft, VideoTranscript?) -> ImportedRecipeDraft
 
@@ -26,16 +26,23 @@ enum ImportPipeline {
             inferSteps: { await DraftCleanup.inferSteps($0) },
             transcribe: { url, draft in
                 let client = SpeechTranscriptionClient.live
-                guard client.isConfigured else { return nil }
+                guard client.isConfigured else {
+                    return (nil, "Speech listening isn’t configured in this build")
+                }
                 // Speech path is for video platforms Scribe can fetch by URL.
-                guard draft.platform == .tiktok || draft.platform == .youtube else { return nil }
+                guard draft.platform == .tiktok || draft.platform == .youtube else {
+                    return (nil, nil)
+                }
                 do {
-                    return try await client.transcribe(
+                    let transcript = try await client.transcribe(
                         sourceURL: url,
                         keyterms: SpeechTranscriptionClient.keyterms(from: draft)
                     )
+                    return (transcript, nil)
                 } catch {
-                    return nil
+                    let detail = (error as? LocalizedError)?.errorDescription
+                        ?? error.localizedDescription
+                    return (nil, detail)
                 }
             },
             compileFromSpeech: { draft, transcript in
@@ -59,7 +66,15 @@ enum ImportPipeline {
         var transcript: VideoTranscript?
         if draft.platform == .tiktok || draft.platform == .youtube {
             await progress("Listening to the video…")
-            transcript = await deps.transcribe(urlString, draft)
+            let listened = await deps.transcribe(urlString, draft)
+            transcript = listened.transcript
+            if let failure = listened.failure, !failure.isEmpty {
+                draft.issues.append("Couldn’t listen to the video: \(failure)")
+            } else if listened.transcript == nil {
+                draft.issues.append("Couldn’t hear enough spoken recipe detail in the video")
+            } else if !VideoRecipeCompiler.shouldCompile(transcript: listened.transcript) {
+                draft.issues.append("Video audio was too short or quiet to extract a recipe from")
+            }
             if VideoRecipeCompiler.shouldCompile(transcript: transcript),
                let transcript {
                 await progress("Building the recipe from what was said…")

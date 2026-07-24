@@ -19,7 +19,7 @@ final class ImportPipelineTests: XCTestCase {
             cleanUp: { cleanUp($0) },
             reconstruct: { reconstruct($0) },
             inferSteps: { inferSteps($0) },
-            transcribe: { _, _ in transcript },
+            transcribe: { _, _ in (transcript, nil) },
             compileFromSpeech: { d, t in compileFromSpeech(d, t) },
             verifySpeech: { d, _ in d }
         )

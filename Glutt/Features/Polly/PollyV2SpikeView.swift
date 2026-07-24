@@ -1,5 +1,6 @@
 import AVFoundation
 import SwiftUI
+import UIKit
 
 /// Phase 1 spike harness for the Polly v2 WebRTC transport. Launch-arg gated
 /// (`-pollyV2Spike`), device-only in practice (sim has no reliable VPIO), and
@@ -20,6 +21,9 @@ struct PollyV2SpikeView: View {
                 Text("Polly v2 transport spike")
                     .font(.headline)
                 Spacer()
+                Button(model.justCopied ? "Copied ✓" : "Copy log") {
+                    model.copyLog()
+                }
                 Button("Close") {
                     model.disconnect()
                     dismiss()
@@ -109,6 +113,7 @@ final class PollyV2SpikeModel {
     private(set) var hookRMS: Float = 0
     private(set) var hookAliveWhileDormant = false
     private(set) var log: [String] = []
+    private(set) var justCopied = false
 
     private var transport: RealtimeWebRTCTransport?
     private var eventTask: Task<Void, Never>?
@@ -117,6 +122,8 @@ final class PollyV2SpikeModel {
     /// starts. The delta is the voice-to-voice number that decides whether
     /// OpenAI's edge is close enough from THIS kitchen (vs LiveKit-first-mile).
     private var speechStoppedAt: Date?
+    /// Log timestamps are relative to this (connect time).
+    private var connectedAt: Date?
 
     func connect() {
         guard !isBusy else { return }
@@ -151,7 +158,21 @@ final class PollyV2SpikeModel {
                 {"type":"response.create","response":{"instructions":"Greet the user in one short sentence and ask them to say something back."}}
                 """#)
                 startMeter()
+                connectedAt = Date()
                 finishConnect(ok: true, message: "Connected — listen for the greeting")
+                append(transport.audioDiagnostics())
+
+                // The echo verdict, from the horse's mouth: if Apple's platform
+                // echo canceller isn't ACTIVE shortly after the engine starts,
+                // flip on libWebRTC's software AEC (mobile mode) live.
+                try? await Task.sleep(for: .seconds(1.5))
+                append(transport.audioDiagnostics())
+                if !transport.isPlatformAECActive {
+                    transport.enableSoftwareAEC()
+                    append("! platform AEC inactive → software AEC3 (mobile) enabled")
+                    try? await Task.sleep(for: .milliseconds(500))
+                    append(transport.audioDiagnostics())
+                }
             } catch {
                 finishConnect(ok: false, message: "Connect failed: \(error.localizedDescription)")
             }
@@ -238,8 +259,23 @@ final class PollyV2SpikeModel {
         append(name)
     }
 
+    func copyLog() {
+        let device = UIDevice.current
+        let header = "Polly v2 spike — \(device.systemName) \(device.systemVersion) — \(Date().formatted())"
+        UIPasteboard.general.string = ([header] + log).joined(separator: "\n")
+        justCopied = true
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            justCopied = false
+        }
+    }
+
     private func append(_ line: String) {
-        log.append(line)
-        if log.count > 200 { log.removeFirst(log.count - 200) }
+        if let connectedAt {
+            log.append(String(format: "%6.1f  %@", Date().timeIntervalSince(connectedAt), line))
+        } else {
+            log.append(line)
+        }
+        if log.count > 500 { log.removeFirst(log.count - 500) }
     }
 }

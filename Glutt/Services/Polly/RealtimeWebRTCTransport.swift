@@ -32,6 +32,39 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     /// Latest capture-frame RMS from the hook (spike/diagnostics readout).
     var captureRMS: Float { hook.latestRMS }
 
+    /// Is Apple's platform echo canceller actually running right now?
+    var isPlatformAECActive: Bool {
+        lock.withLock {
+            factory?.audioDeviceModule.platformAudioProcessingState.echoCancellation.isActive ?? false
+        }
+    }
+
+    /// One-line snapshot of the audio stack's health for the spike log.
+    func audioDiagnostics() -> String {
+        guard let adm = lock.withLock({ factory?.audioDeviceModule }) else { return "audio: no ADM" }
+        let state = adm.platformAudioProcessingState
+        let aec = state.echoCancellation
+        return "audio: vpAllowed=\(adm.isPlatformVoiceProcessingAllowed ? 1 : 0)"
+            + " vpBypassed=\(adm.isVoiceProcessingBypassed ? 1 : 0)"
+            + " vpActive=\(state.isVoiceProcessingEnabledActive ? 1 : 0)"
+            + " AEC[avail=\(aec.isAvailable ? 1 : 0) req=\(aec.isRequested ? 1 : 0) ACTIVE=\(aec.isActive ? 1 : 0)]"
+            + " NS[active=\(state.noiseSuppression.isActive ? 1 : 0)]"
+            + " engine=\(adm.isEngineRunning ? "running" : "stopped")"
+    }
+
+    /// Fallback when the platform (VPIO) echo canceller won't engage: turn on
+    /// libWebRTC's software AEC in mobile mode. Runtime-swappable by design —
+    /// the APM's `config` property applies live.
+    func enableSoftwareAEC() {
+        guard let apm = lock.withLock({ processingModule }) else { return }
+        let config = LKRTCAudioProcessingConfig()
+        config.isEchoCancellationEnabled = true
+        config.isEchoCancellationMobileMode = true
+        config.isNoiseSuppressionEnabled = true
+        config.isHighpassFilterEnabled = true
+        apm.config = config
+    }
+
     private let continuation: AsyncStream<RealtimeServerEvent>.Continuation
     private let hook = PollyCaptureHook()
     private let lock = NSLock()
@@ -73,6 +106,14 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
             decoderFactory: LKRTCDefaultVideoDecoderFactory(),
             audioProcessingModule: apm
         )
+
+        // Apple's voice-processing unit is the echo canceller. Nothing here is
+        // assumed: the spike reads platformAudioProcessingState back after
+        // connect and falls back to software AEC if the platform unit refuses.
+        let adm = factory.audioDeviceModule
+        adm.setPlatformVoiceProcessingAllowed(true)
+        adm.isVoiceProcessingBypassed = false
+        adm.isVoiceProcessingAGCEnabled = true
 
         let config = LKRTCConfiguration()
         config.sdpSemantics = .unifiedPlan
@@ -162,9 +203,16 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
 
     /// Mirrors v1's proven speakerphone config: `.videoChat` (speaker-tuned
     /// AEC) beat `.voiceChat` in the echo war; Bluetooth stays off for
-    /// determinism. libWebRTC's ADM activates the session itself; this sets
-    /// category/mode before it does.
+    /// determinism. The same values are pushed into WebRTC's OWN session
+    /// configuration — the ADM re-applies that template whenever it starts
+    /// the engine, and its stock template would otherwise clobber ours.
     private func configureAudioSession() {
+        let webRTCConfig = LKRTCAudioSessionConfiguration.webRTC()
+        webRTCConfig.category = AVAudioSession.Category.playAndRecord.rawValue
+        webRTCConfig.mode = AVAudioSession.Mode.videoChat.rawValue
+        webRTCConfig.categoryOptions = [.defaultToSpeaker]
+        LKRTCAudioSessionConfiguration.setWebRTC(webRTCConfig)
+
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker])
         try? session.overrideOutputAudioPort(.speaker)

@@ -1,3 +1,4 @@
+import { isAuthorized } from "../_lib/auth.js";
 // Discover search: keyword -> short, embeddable YouTube cooking videos.
 // Returns the shape the iOS DiscoverService decodes:
 //   { "videos": [ { videoId, title, creator, thumbnailURL, durationSeconds } ], "nextPageToken" }
@@ -33,17 +34,13 @@ export default async function handler(req, res) {
   }
 
   const apiKey = resolveYouTubeKey();
-  const expectedProxyKey = process.env.GLUTT_PROXY_CLIENT_KEY || "";
 
   if (!apiKey) {
     return res.status(500).json({ error: "Server misconfigured: missing YOUTUBE_API_KEY" });
   }
 
-  if (expectedProxyKey) {
-    const incomingKey = req.headers["x-glutt-proxy-key"] || "";
-    if (incomingKey !== expectedProxyKey) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+  if (!isAuthorized(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   const q = (req.query.q || "").toString().trim();

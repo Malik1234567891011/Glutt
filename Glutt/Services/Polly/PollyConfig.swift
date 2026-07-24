@@ -4,8 +4,6 @@ import Foundation
 enum PollyConfig {
     static let realtimeModel = "gpt-realtime-2.1"
     static let voice = "marin"
-    /// Seconds between automatic camera frames while watch mode is on.
-    static let watchFrameInterval: TimeInterval = 10
     /// Mic capture is dropped for this long at the START of each Polly
     /// utterance: the echo canceller needs a beat to adapt to her voice, and
     /// her opening words leak through and trip server VAD (live logs: cuts at

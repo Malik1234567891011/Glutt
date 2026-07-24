@@ -507,6 +507,15 @@ struct RecipeDetailView: View {
                     .shadow(color: Theme.Colors.textPrimary.opacity(0.14), radius: 18, y: 10)
                 }
                 .buttonStyle(.plain)
+                // Warm the cook-plan cache while the cook is still reading the
+                // recipe, so Polly's greeting is instant instead of waiting on
+                // an LLM compile. The dwell delay keeps idle browsing from
+                // spending compile calls; scale changes re-warm.
+                .task(id: scale) {
+                    try? await Task.sleep(for: .seconds(1.5))
+                    guard !Task.isCancelled else { return }
+                    _ = await CookPlanCompiler.compile(recipe: recipe, scale: scale)
+                }
                 Button {
                     Haptics.impact(.light)
                     if pantryMatch.missing.isEmpty { isCooking = true } else { isShowingPreCookChecklist = true }

@@ -385,9 +385,8 @@ struct PollySessionView: View {
             Button {
                 Haptics.impact(.light)
                 if controller.camera.isRunning {
-                    controller.camera.stop(); controller.isWatching = false
+                    controller.camera.stop()
                 } else {
-                    controller.isWatching = true
                     Task { await controller.camera.start() }
                 }
             } label: {

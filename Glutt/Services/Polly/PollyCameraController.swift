@@ -6,27 +6,6 @@ import UIKit
 /// Sliding-gate policy for watch mode: at most one frame per `interval` while
 /// enabled. Pure and synchronous — the session controller drives it with its
 /// injected clock, and tests drive it with fixed dates. No timers in here.
-struct WatchModeScheduler: Equatable {
-    var isEnabled: Bool
-    var interval: TimeInterval
-    private(set) var lastSent: Date?
-
-    init(isEnabled: Bool = false, interval: TimeInterval = PollyConfig.watchFrameInterval) {
-        self.isEnabled = isEnabled
-        self.interval = interval
-    }
-
-    /// True when a frame is due right now; records `now` as the send time on
-    /// true. Toggling `isEnabled` never resets `lastSent` — re-enabling watch
-    /// mode mid-interval must not burst an extra frame (cost control).
-    mutating func shouldSendFrame(now: Date) -> Bool {
-        guard isEnabled else { return false }
-        if let last = lastSent, now.timeIntervalSince(last) < interval { return false }
-        lastSent = now
-        return true
-    }
-}
-
 /// Live camera for Polly sessions: 720p capture, back wide camera by default,
 /// flippable, keeps only the latest frame for on-demand JPEG snapshots.
 /// Every hardware touch is guarded so the simulator (no camera) just leaves

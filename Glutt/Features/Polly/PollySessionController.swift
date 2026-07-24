@@ -65,8 +65,6 @@ final class PollySessionController {
     private(set) var missingIngredients: [String] = []
     /// Set by the `end_session` tool; the session view observes it and calls `end`.
     private(set) var wantsEnd = false
-    /// Watch-mode toggle (the eye button). Read once per watch tick.
-    var isWatching = false
 
     let audio: PollyAudioEngine
     let camera: PollyCameraController
@@ -97,10 +95,6 @@ final class PollySessionController {
     private var pendingAssistantItemId: String?
     private var pendingAssistantLine = ""
 
-    private var watchScheduler = WatchModeScheduler(
-        isEnabled: false, interval: PollyConfig.watchFrameInterval)
-    private var watchFrameCount = 0
-    private var lastWatchFrameItemId: String?
     /// v2 allows two silent reconnects (never-silent contract) — v1 allowed one.
     private var reconnectAttempts = 0
     private var didSendWrapUpWarning = false
@@ -254,7 +248,7 @@ final class PollySessionController {
         phase = .live
         PollyDebugLog.shared.log("session: LIVE")
         consumeEvents(from: transport, context: context)
-        startWatchLoop(context: context)
+        startSessionClock(context: context)
 
         // Wake-word gate: start dormant (Realtime input muted) and listen on-device
         // for "Polly". Her greeting still plays; the cook says "Polly" (or taps the
@@ -673,10 +667,6 @@ final class PollySessionController {
                 liveConfig = config
             }
             self.transport = transport
-            // A reconnect opens a NEW realtime conversation: item ids from the
-            // old one are gone, so forget them — otherwise the next watch tick
-            // would delete a nonexistent item and trigger a server error.
-            lastWatchFrameItemId = nil
             isThinking = false
             consumeEvents(from: transport, context: context)
             phase = .live
@@ -697,12 +687,10 @@ final class PollySessionController {
         }
     }
 
-    // MARK: - Watch mode + session cap
+    // MARK: - Session clock (cap + wrap-up)
 
-    private func startWatchLoop(context: ModelContext) {
+    private func startSessionClock(context: ModelContext) {
         watchTask?.cancel()
-        watchScheduler = WatchModeScheduler(
-            isEnabled: isWatching, interval: PollyConfig.watchFrameInterval)
         watchTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -735,19 +723,5 @@ final class PollySessionController {
             try? await transport?.send(.responseCreate)
             isThinking = true
         }
-
-        watchScheduler.isEnabled = isWatching
-        guard camera.isRunning, watchScheduler.shouldSendFrame(now: deps.now()) else { return }
-        guard let jpeg = await camera.captureFrame() else { return }
-
-        watchFrameCount += 1
-        let itemId = "wf_\(watchFrameCount)"
-        let dataURI = "data:image/jpeg;base64,\(jpeg.base64EncodedString())"
-        try? await transport?.send(.createUserImage(dataURI: dataURI, itemId: itemId))
-        // Drop the previous watch frame — stale frames only burn tokens.
-        if let previous = lastWatchFrameItemId {
-            try? await transport?.send(.deleteItem(itemId: previous))
-        }
-        lastWatchFrameItemId = itemId
     }
 }

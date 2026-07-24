@@ -150,6 +150,12 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         // Recording stays prepared so dormancy can't idle capture out.
         adm.observer = engineTap
         adm.setRecordingAlwaysPreparedMode(true)
+        // THE fix for the zero-data tap (3:25am X-ray): default mute mode
+        // silences at the voice-processing unit — UPSTREAM of the input node
+        // we tap, so track-disable zeroed our wake feed too. .inputMixer
+        // moves the mute point downstream of the tap: server still goes deaf
+        // when the track is off, but the tap keeps hearing the room.
+        adm.setMuteMode(.inputMixer)
 
         let config = LKRTCConfiguration()
         config.sdpSemantics = .unifiedPlan

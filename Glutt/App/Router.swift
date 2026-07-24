@@ -23,6 +23,13 @@ struct PollyLaunch: Identifiable, Equatable {
     let id = UUID()
     let recipe: Recipe
     let scale: Double
+    /// True when the cook already heard the pre-cook trailer briefing, so
+    /// Polly's live opening can stay short instead of re-narrating the dish.
+    var heardBriefing: Bool = false
+    /// True when the trailer finished and handed off automatically — Polly
+    /// opens already listening and waits for a verbal "let's cook" / "I'm ready"
+    /// instead of speaking first.
+    var awaitVerbalGo: Bool = false
 }
 
 /// App-wide navigation state + deep link routing skeleton.

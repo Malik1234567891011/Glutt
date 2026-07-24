@@ -24,6 +24,7 @@ struct RecipeDetailView: View {
     @State private var versionLabel = ""
     @State private var isCooking = false
     @State private var isShowingPreCookChecklist = false
+    @State private var isShowingCookBriefing = false
     @State private var isOptimizing = false
     @State private var isAdjusting = false
     @State private var isShowingDetails = false
@@ -73,6 +74,16 @@ struct RecipeDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .bottom) { cookBar }
         .fullScreenCover(isPresented: $isCooking) { CookModeView(recipe: recipe, scale: scale) }
+        .fullScreenCover(isPresented: $isShowingCookBriefing) {
+            PreCookBriefingView(recipe: recipe, scale: scale) { heard, awaitGo in
+                router.pollyLaunch = PollyLaunch(
+                    recipe: recipe,
+                    scale: scale,
+                    heardBriefing: heard,
+                    awaitVerbalGo: awaitGo
+                )
+            }
+        }
         .sheet(isPresented: $isShowingPreCookChecklist) {
             PreCookChecklistView(recipe: recipe) { isCooking = true }
         }
@@ -494,7 +505,7 @@ struct RecipeDetailView: View {
             if LLMClient.isConfigured {
                 Button {
                     Haptics.impact(.medium)
-                    router.pollyLaunch = PollyLaunch(recipe: recipe, scale: scale)
+                    isShowingCookBriefing = true
                 } label: {
                     HStack(spacing: 10) {
                         MS.graphicEqFill.sized(22).foregroundStyle(Theme.Colors.brightAccent)

@@ -80,6 +80,11 @@ final class PollySessionController {
 
     private let recipe: Recipe
     private let scale: Double
+    private let heardBriefing: Bool
+    private let awaitVerbalGo: Bool
+    /// After a trailer handoff, keep the mic open until the cook speaks once
+    /// (don't snap back to wake-word dormant on the follow-up timer).
+    private var isAwaitingVerbalGo = false
     private let deps: Dependencies
 
     private var transport: RealtimeTransporting?
@@ -129,6 +134,8 @@ final class PollySessionController {
     init(
         recipe: Recipe,
         scale: Double,
+        heardBriefing: Bool = false,
+        awaitVerbalGo: Bool = false,
         deps: Dependencies = .live,
         audio: PollyAudioEngine? = nil,
         camera: PollyCameraController? = nil,
@@ -136,6 +143,9 @@ final class PollySessionController {
     ) {
         self.recipe = recipe
         self.scale = scale
+        self.heardBriefing = heardBriefing
+        self.awaitVerbalGo = awaitVerbalGo
+        self.isAwaitingVerbalGo = awaitVerbalGo
         self.deps = deps
         self.audio = audio ?? PollyAudioEngine()
         self.camera = camera ?? PollyCameraController()
@@ -203,7 +213,9 @@ final class PollySessionController {
             instructions: PollyPromptBuilder.instructions(
                 recipe: recipe, plan: plan, pantryMatch: pantryMatch,
                 prefs: prefs, memories: memories, pastSessions: pastSessions,
-                ownedTools: ownedTools),
+                ownedTools: ownedTools,
+                heardBriefing: heardBriefing,
+                awaitVerbalGo: awaitVerbalGo),
             tools: PollyToolRegistry.toolDefinitions,
             voice: token.voice,
             model: token.model,
@@ -252,14 +264,31 @@ final class PollySessionController {
         consumeEvents(from: transport, context: context)
         startWatchLoop(context: context)
 
-        // Wake-word gate: start dormant (Realtime input muted) and listen on-device
-        // for "Polly". Her greeting still plays; the cook says "Polly" (or taps the
-        // pill) to un-gate. If on-device recognition is unavailable, the pill is a
-        // tap-to-talk fallback and voice waking is simply off.
+        // Wake-word gate: normally start dormant (Realtime input muted) and listen
+        // on-device for "Polly". Trailer handoff is different — open listening so
+        // the cook can say "let's cook" without saying her name first.
         wakeWord.onWake = { [weak self] in self?.wakeUp() }
         wakeWord.onPartialTranscript = { [weak self] text in self?.updateLiveTranscript(text) }
         wakeWordAvailable = wakeWord.isAvailable
         if wakeWordAvailable { wakeWord.start() }
+
+        if awaitVerbalGo {
+            listeningMode = .listening
+            liveTranscript = ""
+            audio.isMuted = false
+            pollyCaption = "I’m listening — say when you’re ready to cook."
+            captionText = pollyCaption
+            PollyDebugLog.shared.log("session: listening for verbal go (no opening speech)")
+            // Warm the audio graph so the first reply after they speak isn't dropped.
+            if audio.isRunning {
+                try? await Task.sleep(for: .seconds(PollyConfig.greetingWarmupSeconds))
+                audio.resetPlaybackForNextUtterance()
+            }
+            guard phase == .live else { return }
+            // No responseCreate — Polly waits for the cook to speak.
+            return
+        }
+
         enterDormant()
         PollyDebugLog.shared.log("session: dormant — wake word \(wakeWordAvailable ? "listening" : "unavailable, tap to talk")")
 
@@ -404,6 +433,9 @@ final class PollySessionController {
     }
 
     private func armDormancyTimer() {
+        // Trailer handoff: stay open until the cook has spoken once. Closing on
+        // the normal follow-up timer would mute them before they say "let's cook".
+        if isAwaitingVerbalGo { return }
         cancelDormancyTimer()
         dormancyTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(PollyConfig.followUpWindowSeconds))
@@ -509,6 +541,11 @@ final class PollySessionController {
             PollyDebugLog.shared.log("heard: \"\(text)\"")
             captionText = text
             transcriptLog.append("USER: \(text)")
+            // First words after the cook trailer — resume normal dormancy rules.
+            if isAwaitingVerbalGo {
+                isAwaitingVerbalGo = false
+                PollyDebugLog.shared.log("session: verbal go received — normal gate resumes after this turn")
+            }
 
         case .outputTranscriptDelta(let itemId, let delta):
             if pendingAssistantItemId != itemId {

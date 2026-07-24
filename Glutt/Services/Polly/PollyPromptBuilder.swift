@@ -16,7 +16,9 @@ enum PollyPromptBuilder {
         prefs: UserPrefs,
         memories: [PollyMemory],
         pastSessions: [CookSession],
-        ownedTools: [KitchenTool]
+        ownedTools: [KitchenTool],
+        heardBriefing: Bool = false,
+        awaitVerbalGo: Bool = false
     ) -> String {
         [
             personaSection(),
@@ -28,7 +30,7 @@ enum PollyPromptBuilder {
             hardRulesSection(prefs),
             memorySection(memories),
             historySection(pastSessions),
-            runPolicySection(),
+            runPolicySection(heardBriefing: heardBriefing, awaitVerbalGo: awaitVerbalGo),
         ].joined(separator: "\n\n")
     }
 
@@ -218,8 +220,48 @@ enum PollyPromptBuilder {
         return lines.joined(separator: "\n")
     }
 
-    private static func runPolicySection() -> String {
-        """
+    private static func runPolicySection(heardBriefing: Bool, awaitVerbalGo: Bool) -> String {
+        let opening: String
+        if awaitVerbalGo {
+            opening = """
+            ## Opening — WAIT for the cook (do NOT speak first)
+            The cook just finished Glutt's cook trailer for this dish. Your mic is already open.
+            Stay SILENT until they clearly say they're ready — e.g. "let's cook", "start cooking",
+            "I'm ready", "okay go", "let's start", or similar. Ambient noise is not a go signal.
+            When they give the go: reply in 1-2 short sentences (no re-narrating the trailer),
+            then handle any missing ingredients the way a real chef would (see below), then STOP
+            and wait. Do not start cooking steps yet.
+            CRITICAL: Do NOT call any tools before or during that first reply — the Pantry section
+            already lists what's missing. After tool results later, continue mid-thought — do not
+            re-greet.
+            """
+        } else if heardBriefing {
+            opening = """
+            ## Your very first words — you speak first (once)
+            The cook already heard a short pre-cook rundown of this dish (the Glutt cook trailer).
+            Do NOT re-narrate the whole recipe or walk through the steps again.
+            Open in 1-2 short sentences: a quick "ready when you are" vibe, then handle any
+            missing ingredients the way a real chef would (see below), then STOP and wait.
+            Do not start cooking yet.
+            CRITICAL: Deliver this opening EXACTLY ONCE. Never restart it. Never say the same
+            first sentence twice. Do NOT call any tools during your opening — the Pantry section
+            above already lists what's missing; speak from that. After tool results later in the
+            session, continue mid-thought — do not re-greet or re-introduce yourself.
+            """
+        } else {
+            opening = """
+            ## Your very first words — you speak first (once)
+            The cook hasn't said anything yet. Open warm but brief (2-3 short sentences): a quick
+            hello, then handle any missing ingredients the way a real chef would (see below), then
+            STOP and wait for their answer. Do not start cooking yet.
+            CRITICAL: Deliver this opening EXACTLY ONCE. Never restart it. Never say the same
+            first sentence twice. Do NOT call any tools during your opening — the Pantry section
+            above already lists what's missing; speak from that. After tool results later in the
+            session, continue mid-thought — do not re-greet or re-introduce yourself.
+            """
+        }
+
+        return """
         # How to run the cook
 
         ## Only answer when you're being talked to
@@ -235,14 +277,7 @@ enum PollyPromptBuilder {
         genuinely unsure whether they're talking to you, prefer silence or a single short "did you
         mean me?" over launching into an answer. Never treat ambient chatter as a command.
 
-        ## Your very first words — you speak first (once)
-        The cook hasn't said anything yet. Open warm but brief (2-3 short sentences): a quick
-        hello, then handle any missing ingredients the way a real chef would (see below), then
-        STOP and wait for their answer. Do not start cooking yet.
-        CRITICAL: Deliver this opening EXACTLY ONCE. Never restart it. Never say the same
-        first sentence twice. Do NOT call any tools during your opening — the Pantry section
-        above already lists what's missing; speak from that. After tool results later in the
-        session, continue mid-thought — do not re-greet or re-introduce yourself.
+        \(opening)
 
         ## Handling missing ingredients (do this in your opening)
         Triage what's missing — don't just list it. Use the Pantry section already in your

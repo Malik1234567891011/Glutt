@@ -506,6 +506,9 @@ final class PollySessionController {
             cancelResponseWatchdog()
             // Her audio counts as activity — the hybrid window stays open.
             cancelDormancyTimer()
+            // The question was consumed — clear it so the Listening UI can't
+            // resurface a stale quote after she finishes answering.
+            liveTranscript = ""
 
         case .outputAudioStopped:
             PollyDebugLog.shared.log("event: assistant audio STOP")
@@ -534,7 +537,9 @@ final class PollySessionController {
 
         case .inputTranscript(let text):
             PollyDebugLog.shared.log("heard: \"\(text)\"")
-            captionText = text
+            // Transcription lands ~0.5s after speech ends — sometimes after
+            // her reply already started streaming. Don't stomp her caption.
+            if !isPollySpeaking { captionText = text }
             transcriptLog.append("USER: \(text)")
 
         case .outputTranscriptDelta(let itemId, let delta):

@@ -74,7 +74,12 @@ struct RootView: View {
             }
         }
         .fullScreenCover(item: $router.pollyLaunch) { launch in
-            PollySessionView(recipe: launch.recipe, scale: launch.scale)
+            PollySessionView(
+                recipe: launch.recipe,
+                scale: launch.scale,
+                heardBriefing: launch.heardBriefing,
+                awaitVerbalGo: launch.awaitVerbalGo
+            )
         }
         .fullScreenCover(isPresented: Binding(
             get: { needsOnboarding },

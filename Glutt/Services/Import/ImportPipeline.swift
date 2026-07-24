@@ -54,6 +54,76 @@ enum ImportPipeline {
         )
     }
 
+    /// Caption/description already has a usable recipe — skip ElevenLabs.
+    ///
+    /// Checks structured parse first, then the raw caption text. Creators often
+    /// paste a full recipe as prose/list that our line parser doesn't fully
+    /// structure until the AI cleanup pass; we must still skip listening then.
+    static func hasCaptionRecipe(_ draft: ImportedRecipeDraft) -> Bool {
+        if hasStructuredCaptionRecipe(draft) { return true }
+        return captionTextLooksLikeRecipe(draft)
+    }
+
+    /// Already-parsed ingredient lines look like a real list.
+    static func hasStructuredCaptionRecipe(_ draft: ImportedRecipeDraft) -> Bool {
+        let ingredients = draft.ingredientLines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard ingredients.count >= 3 else { return false }
+
+        let withQuantity = ingredients
+            .filter { IngredientLineParser.parse($0).quantity != nil }
+            .count
+        if withQuantity >= 2 { return true }
+        if !draft.stepTexts.isEmpty, ingredients.count >= 4 { return true }
+        return false
+    }
+
+    /// Raw caption/description contains enough quantity/unit signals to treat
+    /// as a pasted recipe even when `ingredientLines` is still empty.
+    static func captionTextLooksLikeRecipe(_ draft: ImportedRecipeDraft) -> Bool {
+        let blob = [draft.caption, draft.title]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+        // Thin hooks ("creamiest pasta ever #dinner") never clear this bar.
+        guard blob.count >= 80 else { return false }
+
+        // Amount + unit pairs: "2 cups", "1/2 tsp", "½ lb", "200g", "4 cloves"
+        let unitHits = amountUnitMatchCount(in: blob)
+
+        let lines = blob
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        // Lines that already parse as ingredient rows (even mid-caption).
+        let lineHits = lines.filter { IngredientLineParser.parse($0).quantity != nil }.count
+
+        // Bullet / numbered ingredient-ish lines.
+        let listHits = lines.filter { line in
+            guard line.count >= 4, line.count <= 80 else { return false }
+            if line.hasPrefix("-") || line.hasPrefix("•") || line.hasPrefix("*") { return true }
+            if line.first?.isNumber == true { return true }
+            return false
+        }.count
+
+        if unitHits >= 3 { return true }
+        if lineHits >= 3 { return true }
+        if unitHits >= 2, listHits >= 3 { return true }
+        return false
+    }
+
+    private static let amountUnitRegex: NSRegularExpression = {
+        let pattern = #"(?i)(?:\d+\s+\d/\d|\d+/\d|\d+[.,]\d+|\d+|[¼½¾⅓⅔⅛])\s*(?:cups?|tbsps?|tablespoons?|tsps?|teaspoons?|grams?|g\b|kg|mls?|oz|ounces?|lbs?|pounds?|cloves?|pinches?|cans?|packages?|packs?|slices?|bunches?)"#
+        return try! NSRegularExpression(pattern: pattern)
+    }()
+
+    private static func amountUnitMatchCount(in text: String) -> Int {
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return amountUnitRegex.numberOfMatches(in: text, range: range)
+    }
+
     static func run(
         urlString: String,
         deps: Dependencies = .live,
@@ -62,18 +132,26 @@ enum ImportPipeline {
         await progress("Reading the recipe…")
         var draft = try await deps.fetch(urlString)
 
-        // —— Phase 1 video-first: listen, then compile from caption + speech ——
+        // —— Speech only when caption/description is thin ——
+        // TikTok/YouTube often paste the full recipe in text. Listening is the
+        // expensive path; only use it when the caption didn't already give us one.
         var transcript: VideoTranscript?
-        if draft.platform == .tiktok || draft.platform == .youtube {
+        if (draft.platform == .tiktok || draft.platform == .youtube),
+           !hasCaptionRecipe(draft) {
             await progress("Listening to the video…")
             let listened = await deps.transcribe(urlString, draft)
             transcript = listened.transcript
-            if let failure = listened.failure, !failure.isEmpty {
-                draft.issues.append("Couldn’t listen to the video: \(failure)")
-            } else if listened.transcript == nil {
-                draft.issues.append("Couldn’t hear enough spoken recipe detail in the video")
-            } else if !VideoRecipeCompiler.shouldCompile(transcript: listened.transcript) {
-                draft.issues.append("Video audio was too short or quiet to extract a recipe from")
+            let captionFallback = (draft.caption ?? "").count >= 60
+            // Silent / failed listen is normal when the recipe lives in the caption —
+            // don't spam review issues if we still have caption text to work from.
+            if !captionFallback {
+                if let failure = listened.failure, !failure.isEmpty {
+                    draft.issues.append("Couldn’t listen to the video: \(failure)")
+                } else if listened.transcript == nil {
+                    draft.issues.append("Couldn’t hear enough spoken recipe detail in the video")
+                } else if !VideoRecipeCompiler.shouldCompile(transcript: listened.transcript) {
+                    draft.issues.append("Video audio was too short or quiet to extract a recipe from")
+                }
             }
             if VideoRecipeCompiler.shouldCompile(transcript: transcript),
                let transcript {

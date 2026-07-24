@@ -16,6 +16,10 @@ struct PollySessionView: View {
 
     let recipe: Recipe
     var scale: Double = 1
+    /// True when the cook trailer briefing already covered the dish overview.
+    var heardBriefing: Bool = false
+    /// True when Polly should open already listening for a verbal "let's cook".
+    var awaitVerbalGo: Bool = false
 
     @State private var controller: PollySessionController?
     @State private var startedAt = Date.now
@@ -87,7 +91,12 @@ struct PollySessionView: View {
         let granted = await AVAudioApplication.requestRecordPermission()
         PollyDebugLog.shared.log("session: mic permission \(granted ? "granted" : "DENIED")")
         guard granted else { micDenied = true; return }
-        let session = PollySessionController(recipe: recipe, scale: scale)
+        let session = PollySessionController(
+            recipe: recipe,
+            scale: scale,
+            heardBriefing: heardBriefing,
+            awaitVerbalGo: awaitVerbalGo
+        )
         controller = session
         // On-device wake word ("Polly") needs Speech auth. Requested here so the
         // controller can decide whether to arm voice waking or fall back to

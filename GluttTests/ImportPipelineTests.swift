@@ -11,7 +11,8 @@ final class ImportPipelineTests: XCTestCase {
         inferSteps: @escaping (ImportedRecipeDraft) -> ImportedRecipeDraft = { $0 },
         wouldImprove: @escaping (ImportedRecipeDraft) -> Bool = { _ in true },
         transcript: VideoTranscript? = nil,
-        compileFromSpeech: @escaping (ImportedRecipeDraft, VideoTranscript) -> ImportedRecipeDraft = { d, _ in d }
+        compileFromSpeech: @escaping (ImportedRecipeDraft, VideoTranscript) -> ImportedRecipeDraft = { d, _ in d },
+        onTranscribe: (() -> Void)? = nil
     ) -> ImportPipeline.Dependencies {
         ImportPipeline.Dependencies(
             fetch: { _ in fetched },
@@ -19,7 +20,10 @@ final class ImportPipelineTests: XCTestCase {
             cleanUp: { cleanUp($0) },
             reconstruct: { reconstruct($0) },
             inferSteps: { inferSteps($0) },
-            transcribe: { _, _ in (transcript, nil) },
+            transcribe: { _, _ in
+                onTranscribe?()
+                return (transcript, nil)
+            },
             compileFromSpeech: { d, t in compileFromSpeech(d, t) },
             verifySpeech: { d, _ in d }
         )
@@ -129,5 +133,91 @@ final class ImportPipelineTests: XCTestCase {
         XCTAssertTrue(messages.contains("No method listed — drafting the steps…"))
         XCTAssertEqual(result.stepTexts, ["Cook the rice."])
         XCTAssertTrue(result.stepsAreAISuggested)
+    }
+
+    func testSkipsListeningWhenCaptionAlreadyHasRecipe() async throws {
+        var fetched = ImportedRecipeDraft()
+        fetched.platform = .tiktok
+        fetched.caption = "Full pasta recipe in caption"
+        fetched.ingredientLines = [
+            "1/2 lb rigatoni",
+            "4 cloves garlic",
+            "2 tbsp butter",
+            "1 cup heavy cream",
+        ]
+        fetched.stepTexts = ["Boil pasta.", "Make sauce.", "Combine."]
+
+        var transcribed = false
+        let deps = fakeDeps(
+            fetched: fetched,
+            wouldImprove: { _ in false },
+            transcript: nil,
+            onTranscribe: { transcribed = true }
+        )
+        var messages: [String] = []
+        let result = try await ImportPipeline.run(urlString: "https://tiktok.com/x", deps: deps) {
+            messages.append($0)
+        }
+
+        XCTAssertFalse(transcribed, "should not call ElevenLabs when caption already has the recipe")
+        XCTAssertFalse(messages.contains("Listening to the video…"))
+        XCTAssertEqual(result.ingredientLines.count, 4)
+        XCTAssertTrue(ImportPipeline.hasCaptionRecipe(fetched))
+    }
+
+    func testListensWhenCaptionIsThin() async throws {
+        var fetched = ImportedRecipeDraft()
+        fetched.platform = .tiktok
+        fetched.caption = "Creamiest garlic pasta ever #pasta"
+        fetched.title = "Garlic pasta"
+
+        var transcribed = false
+        let deps = fakeDeps(
+            fetched: fetched,
+            wouldImprove: { _ in false },
+            transcript: nil,
+            onTranscribe: { transcribed = true }
+        )
+        var messages: [String] = []
+        _ = try await ImportPipeline.run(urlString: "https://tiktok.com/x", deps: deps) {
+            messages.append($0)
+        }
+
+        XCTAssertTrue(transcribed)
+        XCTAssertTrue(messages.contains("Listening to the video…"))
+        XCTAssertFalse(ImportPipeline.hasCaptionRecipe(fetched))
+    }
+
+    func testSkipsListeningWhenRecipeIsOnlyInCaptionProse() async throws {
+        // Parser often leaves ingredientLines empty until AI cleanup, but the
+        // caption clearly already contains the recipe — must not listen.
+        var fetched = ImportedRecipeDraft()
+        fetched.platform = .tiktok
+        fetched.title = "Garlic pasta"
+        fetched.caption = """
+        Creamiest garlic pasta
+        1/2 lb rigatoni
+        4 cloves garlic
+        2 tbsp butter
+        1 cup heavy cream
+        3/4 cup parmesan
+        Boil pasta, make the sauce, toss and serve. #pasta #dinner
+        """
+        XCTAssertTrue(fetched.ingredientLines.isEmpty)
+        XCTAssertTrue(ImportPipeline.captionTextLooksLikeRecipe(fetched))
+        XCTAssertTrue(ImportPipeline.hasCaptionRecipe(fetched))
+
+        var transcribed = false
+        let deps = fakeDeps(
+            fetched: fetched,
+            wouldImprove: { _ in false },
+            onTranscribe: { transcribed = true }
+        )
+        var messages: [String] = []
+        _ = try await ImportPipeline.run(urlString: "https://tiktok.com/x", deps: deps) {
+            messages.append($0)
+        }
+        XCTAssertFalse(transcribed)
+        XCTAssertFalse(messages.contains("Listening to the video…"))
     }
 }

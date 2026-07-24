@@ -87,6 +87,10 @@ targets:
       - path: Glutt/Services/Import/PendingImportStore.swift
       - path: Glutt/Services/AI/LLMClient.swift
       - path: Glutt/Services/AI/Secrets.swift
+      # Gitignored; created from Secrets.local.example.plist. Optional so a
+      # fresh clone still generates + builds (AI features off until created).
+      - path: Glutt/Services/AI/Secrets.local.plist
+        optional: true
       - path: Glutt/Services/AI/DraftCleanup.swift
       - path: Glutt/DesignSystem/Theme.swift
       - path: Glutt/DesignSystem/Typography.swift

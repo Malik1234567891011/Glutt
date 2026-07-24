@@ -225,7 +225,7 @@ final class PollySessionController {
             voice: token.voice,
             model: token.model,
             transcribeInput: true,
-            omitAudioFormats: true)
+            audioPinnedAtMint: true)
         liveConfig = config
 
         let transport = deps.makeTransport()

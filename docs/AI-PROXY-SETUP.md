@@ -78,3 +78,26 @@ curl -s -H "x-glutt-proxy-key: <key>" "https://api.glutt.org/api/discover/search
   once an accounts backend exists.
 - Add per-user quotas and abuse controls.
 - Add structured audit logs for AI actions (feature, model, latency, status, cost estimate).
+
+## 2026-07-24 — Polly v2 hardening (Phase 4)
+
+**Audio plane pinned at mint.** `api/polly/session.js` now pins turn detection
+(`semantic_vad`, eagerness from `POLLY_VAD_EAGERNESS`, default `low`), far-field
+noise reduction, transcription, and voice into the client secret. v2 clients send
+only instructions + tools in `session.update`. Tuning Polly's turn-taking feel =
+change the env var in Vercel → redeploy. No app release.
+
+**Dual-key rotation.** All endpoints authorize via `api/_lib/auth.js`, which
+accepts `GLUTT_PROXY_CLIENT_KEY` (key baked into shipped builds) **and**
+`GLUTT_PROXY_CLIENT_KEY_NEXT` (rotation target, already set in Vercel prod).
+The client key now lives in the gitignored `Glutt/Services/AI/Secrets.local.plist`
+(copy `Secrets.local.example.plist`, fill in, `xcodegen generate`). Once the App
+Store build carrying the NEXT key is broadly adopted: set `GLUTT_PROXY_CLIENT_KEY`
+to the NEXT value, clear `_NEXT`, and the old leaked-in-git key is fully retired.
+
+**Per-device session cap (dormant until provisioned).** `polly/session` counts
+mints per device per month when `UPSTASH_REDIS_REST_URL`/`_TOKEN` exist
+(`POLLY_MONTHLY_SESSION_CAP`, default 200 sessions ≈ hard bound of 200×52 min);
+returns 429 → the app shows "monthly limit reached". Cap infra failures fail
+OPEN — a broken counter never blocks a cook. The app sends a random per-install
+UUID as `x-glutt-device-id` (no personal data).

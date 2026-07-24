@@ -1,3 +1,4 @@
+import { isAuthorized } from "../_lib/auth.js";
 function resolveOpenAIKey() {
   return (
     process.env.OPENAI_API_KEY ||
@@ -18,17 +19,13 @@ export default async function handler(req, res) {
 
   const openAIKey = resolveOpenAIKey();
   const openAIBaseURL = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-  const expectedProxyKey = process.env.GLUTT_PROXY_CLIENT_KEY || "";
 
   if (!openAIKey) {
     return res.status(500).json({ error: "Server misconfigured: missing OPENAI_API_KEY" });
   }
 
-  if (expectedProxyKey) {
-    const incomingKey = req.headers["x-glutt-proxy-key"] || "";
-    if (incomingKey !== expectedProxyKey) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+  if (!isAuthorized(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   try {

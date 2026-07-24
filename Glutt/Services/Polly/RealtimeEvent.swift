@@ -77,11 +77,13 @@ struct RealtimeSessionConfig: Equatable {
     var voice: String              // PollyConfig.voice
     var model: String              // PollyConfig.realtimeModel
     var transcribeInput: Bool      // true -> audio.input.transcription = {model: "gpt-4o-transcribe"}
-    /// WebRTC transport: audio formats belong to the peer connection, voice is
-    /// pinned at token mint, and `retention_ratio` truncation would bust the
-    /// prompt cache — so the session.update omits all three. WS keeps the
-    /// full GA shape (default) for the legacy transport and its tests.
-    var omitAudioFormats: Bool = false
+    /// v2/WebRTC: the ENTIRE audio plane — formats, voice, turn detection,
+    /// noise reduction, transcription, truncation — is pinned server-side at
+    /// token mint (vercel-ai-proxy/api/polly/session.js), so VAD tuning is a
+    /// Vercel env flip, never an App Store release. The session.update then
+    /// carries only the brain plane (instructions + tools). WS keeps the full
+    /// GA shape (default false) for the legacy transport and its tests.
+    var audioPinnedAtMint: Bool = false
 }
 
 /// A function call the model asked us to run, lifted out of `response.done`.
@@ -160,6 +162,22 @@ enum RealtimeClientEvent: Equatable {
     }
 
     private static func sessionPayload(_ config: RealtimeSessionConfig) -> [String: Any] {
+        let tools: [[String: Any]] = config.tools.map {
+            ["type": $0.type, "name": $0.name, "description": $0.description,
+             "parameters": $0.parameters.jsonObject]
+        }
+        var payload: [String: Any] = [
+            "type": "realtime",
+            "output_modalities": ["audio"],
+            "instructions": config.instructions,
+            "tools": tools,
+            "tool_choice": "auto"
+        ]
+        // v2: the audio plane is mint-pinned — sending any of it here would
+        // OVERRIDE the server's tunable config and re-couple VAD tuning to
+        // app releases. Brain plane only.
+        guard !config.audioPinnedAtMint else { return payload }
+
         var input: [String: Any] = [
             // eagerness low: at kitchen speaker volume, residual echo of
             // Polly's own voice ("I'm here.") and noise ("akademik", "Οξάνα")
@@ -168,47 +186,27 @@ enum RealtimeClientEvent: Equatable {
             "turn_detection": ["type": "semantic_vad", "eagerness": "low"],
             // The phone sits on a counter an arm's length away — far-field
             // noise reduction cleans sizzle/fan noise before VAD sees it.
-            "noise_reduction": ["type": "far_field"]
+            "noise_reduction": ["type": "far_field"],
+            // rate is REQUIRED: omitting it makes the server reject the whole
+            // session.update (missing_required_parameter) and the session
+            // silently runs as a default assistant — no Polly.
+            "format": ["type": "audio/pcm", "rate": 24000]
         ]
-        if !config.omitAudioFormats {
-            input["format"] = ["type": "audio/pcm", "rate": 24000]
-        }
         if config.transcribeInput {
             input["transcription"] = ["model": "gpt-4o-transcribe", "language": "en"]
         }
-        let tools: [[String: Any]] = config.tools.map {
-            ["type": $0.type, "name": $0.name, "description": $0.description,
-             "parameters": $0.parameters.jsonObject]
-        }
-        var audio: [String: Any] = ["input": input]
-        if !config.omitAudioFormats {
-            // rate is REQUIRED here: omitting it makes the server reject
-            // the whole session.update (missing_required_parameter) and
-            // the session silently runs as a default assistant — no
-            // instructions, no tools, no Polly. (WS only; over WebRTC the
-            // formats are the peer connection's and voice is pinned at mint.)
-            audio["output"] = ["format": ["type": "audio/pcm", "rate": 24000], "voice": config.voice]
-        }
-        var payload: [String: Any] = [
-            "type": "realtime",
-            "output_modalities": ["audio"],
-            "instructions": config.instructions,
-            "tools": tools,
-            "tool_choice": "auto",
-            "audio": audio
+        payload["audio"] = [
+            "input": input,
+            "output": ["format": ["type": "audio/pcm", "rate": 24000], "voice": config.voice]
         ]
-        if !config.omitAudioFormats {
-            // NSDecimalNumber, not a Double literal: 0.8 has no exact binary
-            // representation, so JSONSerialization emits 0.80000000000000004
-            // (17 decimal places) and the server rejects the WHOLE
-            // session.update (decimal_max_decimal_places_exceeded) — the
-            // session then runs as a default assistant with no Polly persona.
-            // Omitted over WebRTC: retention truncation busts the prompt cache
-            // (98.75%-discounted cached audio) — see the research doc.
-            payload["truncation"] = ["type": "retention_ratio",
-                                     "retention_ratio": NSDecimalNumber(string: "0.8"),
-                                     "token_limits": ["post_instructions": 16000]]
-        }
+        // NSDecimalNumber, not a Double literal: 0.8 has no exact binary
+        // representation, so JSONSerialization emits 0.80000000000000004
+        // (17 decimal places) and the server rejects the WHOLE session.update
+        // (decimal_max_decimal_places_exceeded) — the session then runs as a
+        // default assistant with no Polly persona.
+        payload["truncation"] = ["type": "retention_ratio",
+                                 "retention_ratio": NSDecimalNumber(string: "0.8"),
+                                 "token_limits": ["post_instructions": 16000]]
         return payload
     }
 }

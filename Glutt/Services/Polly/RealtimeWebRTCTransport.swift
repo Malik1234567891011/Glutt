@@ -66,7 +66,8 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     }
 
     private let continuation: AsyncStream<RealtimeServerEvent>.Continuation
-    private let hook = PollyCaptureHook()
+    private let hook: PollyCaptureHook
+    private let renderMonitor: PollyRenderMonitor
     private let lock = NSLock()
 
     private var factory: LKRTCPeerConnectionFactory?
@@ -83,6 +84,9 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         let (stream, continuation) = AsyncStream.makeStream(of: RealtimeServerEvent.self)
         self.events = stream
         self.continuation = continuation
+        let hook = PollyCaptureHook()
+        self.hook = hook
+        self.renderMonitor = PollyRenderMonitor(hook: hook)
         super.init()
     }
 
@@ -91,10 +95,14 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     func connect(token: String, model: String) async throws {
         configureAudioSession()
 
+        // Render-side monitor gives the anti-echo gates a sample-accurate
+        // "her audio is physically playing" signal — event-driven gating left
+        // a 200-500ms unprotected crack at each utterance onset (device log:
+        // phantom speech_started 0.5s into her turn).
         let apm = LKRTCDefaultAudioProcessingModule(
             config: nil,
             capturePostProcessingDelegate: hook,
-            renderPreProcessingDelegate: nil
+            renderPreProcessingDelegate: renderMonitor
         )
         // .audioEngine is LiveKit's AVAudioEngine-based ADM — the one their SDK
         // ships on and the one proven with capture hooks + muted-speech
@@ -170,18 +178,15 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         try sendData(Data(json.utf8))
     }
 
-    /// Dormant gate: disables the outbound mic track (audio stops reaching the
-    /// server) WITHOUT stopping capture — `onCaptureBuffer` keeps firing so the
-    /// wake listener still hears the room. Spike must assert that invariant.
+    /// Dormant gate. Device-proven finding (2026-07-24): disabling the mic
+    /// TRACK kills the whole capture path — including the wake-word feed. So
+    /// dormancy is enforced INSIDE the capture hook instead: the track stays
+    /// enabled, capture keeps running (AEC stays converged, wake feed stays
+    /// hot), and the hook zeroes every frame bound for the server. What
+    /// leaves the device while dormant is literal silence.
     func setMicEnabled(_ enabled: Bool) {
-        lock.withLock { micTrack?.isEnabled = enabled }
+        hook.setServerMuted(!enabled)
     }
-
-    /// Call when assistant audio playback starts/stops (output_audio_buffer
-    /// events). Drives the hook's anti-echo gates — v1's proven onset gate +
-    /// RMS floor, rebuilt inside the capture chain.
-    func noteAssistantAudioStarted() { hook.noteOutputStarted() }
-    func noteAssistantAudioStopped() { hook.noteOutputStopped() }
 
     func close() async {
         lock.withLock { isClosing = true }
@@ -401,29 +406,32 @@ final class PollyCaptureHook: NSObject, LKRTCAudioCustomProcessingDelegate, @unc
     private let lock = NSLock()
     private var _latestRMS: Float = 0
     private var format: AVAudioFormat?
-    private var outputPlaying = false
+    private var serverMuted = false
+    private var lastRenderActiveAt: Date = .distantPast
     private var onsetGateDeadline: Date?
 
-    /// v1's two battle-proven anti-echo gates, rebuilt inside the WebRTC
-    /// capture chain, applied ONLY to what the server hears (frames are
-    /// forwarded raw to the wake-word feed first):
-    /// - onset gate: server gets silence for the first beat of each Polly
-    ///   utterance, while the adaptive AEC re-converges on her voice (v1 saw
-    ///   her opening words transcribed as user speech at ~450-750ms).
-    /// - RMS floor: while she's speaking, capture quieter than a close human
-    ///   voice is zeroed so residual echo can't trip server VAD. A clear
-    ///   deliberate barge-in sails over the floor.
-    func noteOutputStarted() {
-        lock.withLock {
-            outputPlaying = true
-            onsetGateDeadline = Date().addingTimeInterval(PollyConfig.onsetCaptureGateSeconds)
-        }
+    /// Dormant/greeting gate: zero everything bound for the server while the
+    /// wake feed keeps the raw frames. Replaces track disabling, which was
+    /// device-proven to kill capture (and the wake feed) entirely.
+    func setServerMuted(_ muted: Bool) {
+        lock.withLock { serverMuted = muted }
     }
 
-    func noteOutputStopped() {
+    /// Fed by `PollyRenderMonitor` from the render (playback) side of the
+    /// processing chain — sample-accurate truth about whether Polly's voice
+    /// is physically coming out of the speaker. Arms v1's two proven gates:
+    /// - onset gate: server hears silence for the first beat of each
+    ///   utterance while the adaptive AEC re-converges on her voice.
+    /// - RMS floor (applied in capture): while she's audibly speaking,
+    ///   capture quieter than a close human voice is zeroed. A deliberate
+    ///   barge-in sails over the floor.
+    func noteRenderActive() {
+        let now = Date()
         lock.withLock {
-            outputPlaying = false
-            onsetGateDeadline = nil
+            if now.timeIntervalSince(lastRenderActiveAt) > 0.5 {
+                onsetGateDeadline = now.addingTimeInterval(PollyConfig.onsetCaptureGateSeconds)
+            }
+            lastRenderActiveAt = now
         }
     }
 
@@ -459,11 +467,15 @@ final class PollyCaptureHook: NSObject, LKRTCAudioCustomProcessingDelegate, @unc
             onBuffer(pcm)
         }
 
-        // Anti-echo gates (server-bound path only).
-        let (gateOnset, playing) = lock.withLock {
-            ((onsetGateDeadline.map { Date() < $0 } ?? false), outputPlaying)
+        // Server-bound gates: dormant mute, onset gate, RMS floor while her
+        // voice is audibly playing (render seen within the last 350ms).
+        let now = Date()
+        let (muted, gateOnset, playing) = lock.withLock {
+            (serverMuted,
+             onsetGateDeadline.map { now < $0 } ?? false,
+             now.timeIntervalSince(lastRenderActiveAt) < 0.35)
         }
-        if gateOnset || (playing && rms < PollyConfig.bargeInRMSFloor) {
+        if muted || gateOnset || (playing && rms < PollyConfig.bargeInRMSFloor) {
             for channel in 0..<audioBuffer.channels {
                 audioBuffer.rawBuffer(forChannel: channel).update(repeating: 0, count: frames)
             }
@@ -474,8 +486,36 @@ final class PollyCaptureHook: NSObject, LKRTCAudioCustomProcessingDelegate, @unc
         lock.withLock {
             format = nil
             _latestRMS = 0
-            outputPlaying = false
+            serverMuted = false
+            lastRenderActiveAt = .distantPast
             onsetGateDeadline = nil
         }
     }
+}
+
+/// Render-side (playback) observer: tells the capture hook, sample-accurately,
+/// when Polly's voice is actually being played — no event-loop lag. Observe
+/// only; frames pass through untouched.
+final class PollyRenderMonitor: NSObject, LKRTCAudioCustomProcessingDelegate, @unchecked Sendable {
+    private unowned let hook: PollyCaptureHook
+
+    init(hook: PollyCaptureHook) {
+        self.hook = hook
+        super.init()
+    }
+
+    func audioProcessingInitialize(sampleRate sampleRateHz: Int, channels: Int) {}
+
+    func audioProcessingProcess(audioBuffer: LKRTCAudioBuffer) {
+        let frames = audioBuffer.frames
+        guard frames > 0, audioBuffer.channels > 0 else { return }
+        let source = audioBuffer.rawBuffer(forChannel: 0)
+        var sum: Float = 0
+        for i in 0..<frames { sum += source[i] * source[i] }
+        if (sum / Float(frames)).squareRoot() > 0.0005 {
+            hook.noteRenderActive()
+        }
+    }
+
+    func audioProcessingRelease() {}
 }

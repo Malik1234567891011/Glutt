@@ -215,8 +215,8 @@ final class PollyV2SpikeModel {
         isDormant = dormant
         hookAliveWhileDormant = false
         transport?.setMicEnabled(!dormant)
-        append(dormant ? "mic track DISABLED (dormant) — speak to test the hook"
-                       : "mic track enabled")
+        append(dormant ? "server-muted (dormant) — hook stays hot; speak to test"
+                       : "server unmuted — she can hear again")
     }
 
     private func releaseGreetingMicHold(reason: String) {
@@ -279,14 +279,6 @@ final class PollyV2SpikeModel {
         if name == "output_audio_buffer.started", let t0 = speechStoppedAt {
             speechStoppedAt = nil
             append(String(format: "⏱ voice-to-voice %.0f ms", Date().timeIntervalSince(t0) * 1000))
-        }
-
-        // Drive the capture hook's anti-echo gates from playback state.
-        if name == "output_audio_buffer.started" {
-            transport?.noteAssistantAudioStarted()
-        }
-        if name == "output_audio_buffer.stopped" || name == "output_audio_buffer.cleared" {
-            transport?.noteAssistantAudioStopped()
         }
 
         // Greeting done playing → the AEC has real reference audio behind it;

@@ -13,7 +13,7 @@ function resolveOpenAIKey() {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("x-glutt-proxy-version", "polly-2026-07-02-1");
+  res.setHeader("x-glutt-proxy-version", "polly-2026-07-23-1");
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     }
   }
 
-  const model = (process.env.POLLY_REALTIME_MODEL || "").trim() || "gpt-realtime-2";
+  const model = (process.env.POLLY_REALTIME_MODEL || "").trim() || "gpt-realtime-2.1";
   const voice = (process.env.POLLY_VOICE || "").trim() || "marin";
 
   try {

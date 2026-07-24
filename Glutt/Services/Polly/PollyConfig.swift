@@ -2,7 +2,7 @@ import Foundation
 
 /// Tuning knobs for Polly live sessions. Change these constants, not call sites.
 enum PollyConfig {
-    static let realtimeModel = "gpt-realtime-2"
+    static let realtimeModel = "gpt-realtime-2.1"
     static let voice = "marin"
     /// Seconds between automatic camera frames while watch mode is on.
     static let watchFrameInterval: TimeInterval = 10

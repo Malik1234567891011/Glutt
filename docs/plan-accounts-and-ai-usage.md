@@ -1,0 +1,362 @@
+# Accounts + AI usage tracking
+
+Status: spec, not yet built. Written 2026-07-29.
+
+Adds Sign in with Apple accounts (Supabase) after the paywall, and per-user AI
+cost tracking logged server-side from the Vercel proxy.
+
+## Why
+
+Two questions we currently cannot answer:
+
+1. **Who is paying us?** Superwall knows an entitlement is active; we have no
+   durable record of a person.
+2. **What does each user cost in AI?** Every Polly session, import, Plates deck
+   and Discover call goes through `vercel-ai-proxy`, which forwards and forgets.
+   Polly (OpenAI Realtime, audio-billed) is by far the most expensive feature
+   and has zero visibility.
+
+## Scope guard — what this does NOT do
+
+**Recipes, Kitchen and cook history stay in local SwiftData.** Nothing syncs to
+Supabase. A user who reinstalls or switches phones still loses their data.
+
+This is deliberate: moving the SwiftData store to Postgres touches nearly every
+screen and is weeks of work. Having an account is a prerequisite for that, not
+the same job. If durability is wanted before then, SwiftData + CloudKit solves
+it separately with no server (needs the iCloud entitlement, all `@Model`
+properties optional/defaulted, no `@Attribute(.unique)`).
+
+**Signing in does not unlock the app.** The subscription lives on the Apple ID
+and is restored by StoreKit/Superwall regardless of account state. The account
+is identity, not entitlement. Worth keeping straight — it drives the flow below.
+
+## Flow
+
+### New user
+
+```
+Onboarding 0–9  →  hasCompletedOnboarding = true
+                →  gate.access == .locked, PaywallGateOverlay bounces to paywall
+                →  ┌── pressed X / no purchase → stays locked, bounce loop. NO sign-in.
+                   └── purchased → gate.access == .unlocked
+                                 → SignInView (Apple, not dismissible)
+                                 → home
+```
+
+Non-payers are never asked to sign up. They cannot use the app either way, so a
+signup screen would lead nowhere. Consequence: **every row in `profiles` is a
+paying customer.** Bounced users are still visible in PostHog as anonymous
+events — analytics covers non-payers, the database holds payers.
+
+### Returning user (new phone)
+
+`WelcomeScreen` (onboarding screen 0) gets a small secondary action under the
+primary CTA: *Already have an account? Log in.*
+
+Presents `SignInView` as a sheet above the onboarding cover. On success:
+
+- Set `hasCompletedOnboarding = true` and dismiss onboarding.
+- Call `Superwall.shared.identify(userId:)` with the Supabase user id.
+- StoreKit restores the entitlement from their Apple ID independently. If it
+  resolves active → app. If not → the normal locked/bounce state.
+
+Its real job is skipping onboarding and re-linking the account. The subscription
+would restore without it.
+
+### Launch state machine
+
+`RootView`'s existing overlay switch extends from one axis to two:
+
+| `gate.access` | `session.state` | Shown |
+|---|---|---|
+| `.resolving` | any | `GateSplashView` |
+| `.locked` | any | `PaywallGateOverlay` (unchanged) |
+| `.unlocked` | `.resolving` | `GateSplashView` |
+| `.unlocked` | `.signedOut` | `SignInView` |
+| `.unlocked` | `.signedIn` | `EmptyView` — full app |
+
+The `.unlocked` + `.signedOut` cell is the edge case that will otherwise bite:
+someone pays, then kills the app before signing in. Next launch they are
+entitled with no account, and this rule catches them.
+
+`SubscriptionGate` stays exactly as-is. Account state is a separate
+`@Observable` so the two gates remain independently testable.
+
+## iOS changes
+
+### New files
+
+| Path | Purpose |
+|---|---|
+| `Glutt/Services/Auth/Supabase.swift` | Configured `SupabaseClient` singleton |
+| `Glutt/Services/Auth/AccountSession.swift` | `@Observable`; `.resolving/.signedOut/.signedIn(User)`; restores session at launch |
+| `Glutt/Features/Auth/SignInView.swift` | Full-screen Apple sign-in |
+| `Glutt/Features/Auth/AppleSignIn.swift` | Nonce generation + `ASAuthorizationController` wrapper |
+| `Glutt/Services/Analytics/InstallID.swift` | Keychain-persisted UUID (see below) |
+
+### Edits
+
+- **`project.yml`** — add `supabase-swift` (`https://github.com/supabase/supabase-swift`, from 2.0.0) to `packages` and to the `Glutt` target. Run `xcodegen generate` after.
+- **`Glutt/Glutt.entitlements`** — add `com.apple.developer.applesignin` = `[Default]`. Currently only carries the app group.
+- **`Glutt/App/RootView.swift`** — extend the overlay switch per the table above; add `@State private var session = AccountSession()` and `.task { await session.restore() }`.
+- **`Glutt/Features/Onboarding/Screens/WelcomeScreen.swift`** — add the "Log in" secondary action.
+- **`Glutt/Services/AI/Secrets.swift`** — add `supabaseURL` and `supabaseAnonKey` (anon key is publishable; the service-role key must never ship in the app).
+- **`LLMClient.swift`, `DiscoverService.swift`, `PlatesService.swift`, `PollyTokenService.swift`** — attach `Authorization: Bearer <supabase access token>` alongside the existing `x-glutt-proxy-key`.
+
+### Install ID
+
+**One already exists.** `GluttDeviceID` in `PollyTokenService.swift:6` is a
+UserDefaults UUID sent as `x-glutt-device-id`, minted for the Polly abuse cap.
+Step 2 reuses it as `ai_usage.install_id`, so Polly attribution works today.
+
+`InstallID.swift` should therefore be a *migration* of that value into the
+Keychain, not a fresh mint — **read the existing `glutt.device.id` default first
+and promote it**. Minting a new UUID would make every existing install look
+brand new and orphan its accumulated cost history. The other services
+(`LLMClient`, `DiscoverService`, `PlatesService`) need the header added; only
+`PollyTokenService` sends it today.
+
+The Keychain is the right home (not `UserDefaults`, which dies with the app; not
+`identifierForVendor`, which resets when all our apps are deleted). Two jobs:
+
+- PostHog `distinct_id` before an account exists.
+- `ai_usage.install_id`, so proxy calls made before sign-in still attribute, and
+  can be back-filled to a `user_id` at sign-in.
+
+### Sign in with Apple gotchas
+
+- **Apple returns name and email only on the very first authorization.** Persist
+  them to `profiles` immediately — they are unrecoverable afterwards without the
+  user revoking access in their Apple ID settings.
+- Nonce: generate a random string, pass its **SHA256** to
+  `ASAuthorizationAppleIDRequest.nonce`, pass the **raw** value to
+  `supabase.auth.signInWithIdToken(credentials: .init(provider: .apple, idToken:, nonce:))`.
+- The Supabase dashboard's Apple provider needs the bundle ID
+  `com.omarlahmimi.glutt` registered as a client id. Native and web flows use
+  different client ids — only the native one matters here.
+- Apple requires an account **deletion** path in-app once accounts exist. This
+  is a review-rejection risk. Add a "Delete account" row in Settings calling a
+  Supabase Edge Function that removes the auth user (the `profiles` cascade
+  handles the rest).
+
+## Supabase schema
+
+```sql
+-- One row per paying customer.
+create table public.profiles (
+  id           uuid primary key references auth.users on delete cascade,
+  created_at   timestamptz not null default now(),
+  display_name text,
+  email        text,
+  install_id   text,
+  goals        text[],
+  dietary_rules text[]
+);
+
+-- Auto-create the profile row on signup.
+create function public.handle_new_user() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  insert into public.profiles (id, email, display_name)
+  values (
+    new.id,
+    new.email,
+    new.raw_user_meta_data ->> 'full_name'
+  );
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- One row per AI call. Written ONLY by the proxy (service role).
+create table public.ai_usage (
+  id                   bigint generated always as identity primary key,
+  user_id              uuid references auth.users on delete set null,
+  install_id           text,
+  feature              text not null,   -- polly_session | polly_speak | chat |
+                                        -- import_reddit | transcribe |
+                                        -- plates_deck | plates_search |
+                                        -- discover_search | discover_suggested
+  model                text,
+  input_tokens         integer,
+  output_tokens        integer,
+  audio_input_seconds  numeric,
+  audio_output_seconds numeric,
+  duration_ms          integer,
+  ok                   boolean not null default true,
+  created_at           timestamptz not null default now()
+);
+
+create index ai_usage_user_created_idx    on public.ai_usage (user_id, created_at desc);
+create index ai_usage_feature_created_idx on public.ai_usage (feature, created_at desc);
+create index ai_usage_install_idx         on public.ai_usage (install_id) where user_id is null;
+```
+
+Costs live in a rates table, not in the rows — so price changes do not require
+rewriting history:
+
+```sql
+create table public.ai_rates (
+  model                 text primary key,
+  input_per_1k          numeric default 0,
+  output_per_1k         numeric default 0,
+  audio_input_per_min   numeric default 0,
+  audio_output_per_min  numeric default 0
+);
+
+create view public.ai_usage_costed as
+select
+  u.*,
+  coalesce(u.input_tokens, 0)         / 1000.0 * coalesce(r.input_per_1k, 0)
++ coalesce(u.output_tokens, 0)        / 1000.0 * coalesce(r.output_per_1k, 0)
++ coalesce(u.audio_input_seconds, 0)  / 60.0   * coalesce(r.audio_input_per_min, 0)
++ coalesce(u.audio_output_seconds, 0) / 60.0   * coalesce(r.audio_output_per_min, 0)
+  as cost_usd
+from public.ai_usage u
+left join public.ai_rates r on r.model = u.model;
+```
+
+The two queries worth having on day one:
+
+```sql
+-- Cost per user, last 30 days
+select p.email, sum(c.cost_usd) as usd, count(*) as calls
+from ai_usage_costed c join profiles p on p.id = c.user_id
+where c.created_at > now() - interval '30 days'
+group by p.email order by usd desc;
+
+-- Cost per feature
+select feature, sum(cost_usd) as usd, count(*) as calls
+from ai_usage_costed
+where created_at > now() - interval '30 days'
+group by feature order by usd desc;
+```
+
+### Row Level Security
+
+```sql
+alter table public.profiles enable row level security;
+create policy "read own profile"   on public.profiles for select using (auth.uid() = id);
+create policy "update own profile" on public.profiles for update using (auth.uid() = id);
+
+-- RLS on, zero policies: no client can read or write. Only the service role
+-- (the proxy) touches this table, and service role bypasses RLS.
+alter table public.ai_usage enable row level security;
+alter table public.ai_rates enable row level security;
+```
+
+## Proxy changes (`vercel-ai-proxy`)
+
+### New
+
+- **`api/_lib/supabase.js`** — service-role client. `SUPABASE_URL` +
+  `SUPABASE_SERVICE_ROLE_KEY` as Vercel env vars. Server-only, never shipped.
+- **`api/_lib/user.js`** — read `Authorization: Bearer <jwt>`, verify it, return
+  `{ userId, installId }` or `{ userId: null }`. Verify the JWT **locally**
+  against the project JWKS (`jose`) rather than calling
+  `auth.getUser()` per request — a network round trip on every Polly turn is not
+  acceptable latency.
+- **`api/_lib/usage.js`** — `logUsage({...})`. Two hard rules:
+  1. **It must never fail the AI request.** Wrap in try/catch, swallow errors.
+  2. **Do not fire-and-forget on Vercel** — the function can freeze before the
+     insert lands. Use `waitUntil` from `@vercel/functions`.
+
+### Edits
+
+Keep the existing `x-glutt-proxy-key` check in `_lib/auth.js` as the first-line
+filter; the JWT is additive, and identifies rather than authorizes.
+
+**Built 2026-07-29.** Reading every endpoint corrected a wrong assumption in the
+original draft — that all ten are token-billed AI calls against one vendor.
+The actual map:
+
+| Endpoint | Vendor | Billed in | Edge-cached |
+|---|---|---|---|
+| `polly/session` | OpenAI Realtime | audio min | no |
+| `polly/speak` | OpenAI TTS | tokens | no |
+| `chat/completions` | OpenAI | tokens | no |
+| `import/transcribe` | **ElevenLabs** Scribe v2 | audio min | no |
+| `plates/deck`, `plates/search` | Spoonacular | points quota | 12h / 24h |
+| `discover/search`, `discover/suggested` | YouTube Data | quota units | 24h / 6h |
+| `import/reddit` | Reddit + PullPush | free | no |
+| `discover/player` | none — static HTML | — | 24h |
+
+Three consequences. Only four endpoints can carry a dollar cost, and they span
+**two** vendors, not one. The quota APIs are edge-cached, so the function does
+not run on a hit — their rows count cache *misses*, i.e. quota spend, and must
+never be read as user activity; PostHog answers that. And `discover/player` is
+not instrumented at all: it makes no upstream call and has no proxy-key gate to
+attribute by.
+
+Quota vendors are logged with a `vendor:endpoint` model string that deliberately
+matches no `ai_rates` row, so they cost $0 by construction rather than by
+oversight.
+
+Polly needed the most care — cost is audio-seconds and the WebRTC session runs
+device-to-OpenAI where the proxy sees nothing. `polly/session` logs the token
+**mint** (`feature = polly_session`); the app reports duration on teardown via
+`POST /api/polly/usage` (`feature = polly_realtime`). A `polly_session` row with
+no matching `polly_realtime` row is a crash, force-quit, or lost network. Note
+the mid-session token re-mint path, which makes `polly_session` rows outnumber
+`polly_realtime` rows even when everything works.
+
+`waitUntil` was specified but not used: the proxy has no `package.json`, and
+adding one would make Vercel start running an install step on every deploy of a
+currently dependency-free service. `logUsage` is awaited instead, bounded by a
+1.2s timeout with all errors swallowed. Against upstream calls that already take
+seconds, the added latency is noise.
+
+### Share extension caveat
+
+`RedditImport.swift` is compiled into the `GluttShare` target and calls
+`/api/import/reddit`. The extension has no Supabase session, so those calls log
+with `install_id` and a null `user_id`.
+
+Two options: accept it (a nightly job back-fills `user_id` by `install_id`), or
+give the Supabase client a shared keychain access group so both targets read the
+same session. **Start with option 1** — it is free, and Reddit-share imports are
+a minor path.
+
+## Where PostHog fits
+
+Unchanged from the earlier plan and independent of this work. PostHog answers
+*are people using the app* (including the anonymous non-payers this spec
+deliberately excludes from the database); Supabase answers *what does each payer
+cost me*. Use the install ID as `distinct_id`, then call
+`PostHog.shared.identify(_:)` with the Supabase user id at sign-in so the
+pre-account and post-account events join up.
+
+## Build order
+
+1. ~~**Supabase schema + RLS.**~~ **DONE 2026-07-29.** Applied to project
+   `mlgdtksukpifkmhqulnc`; SQL recorded in `supabase/migrations/`. Two hardening
+   changes on top of the spec above: the `ai_usage_costed` view is created
+   `security_invoker = on` (without it the view runs as its owner and leaks the
+   RLS-locked `ai_usage` to any client), and `EXECUTE` on `handle_new_user()` is
+   revoked from `anon`/`authenticated` (SECURITY DEFINER functions in `public`
+   are exposed at `/rest/v1/rpc/<name>`).
+2. ~~**Proxy usage logging, `user_id` null.**~~ **DONE 2026-07-29.** Nine
+   endpoints wired plus the new `polly/usage`. Attribution rides the existing
+   `x-glutt-device-id` header, which today only `PollyTokenService` sends — so
+   Polly rows carry an `install_id` immediately and the rest are null until
+   step 3 adds the header to the other services.
+3. **Install ID + PostHog.** Half a day, unblocks the usage questions.
+4. **Sign in with Apple + `AccountSession` + `SignInView` + `RootView` wiring.**
+5. **Settings: sign out + delete account.** Required before App Store submission.
+
+Steps 1–3 deliver most of the value and touch no user-facing flow. Step 4 is the
+only one that changes what a user sees.
+
+## Open decisions
+
+- **Supabase free plan pauses projects after 1 week of inactivity.** Fine while
+  building; a paused project is a broken app in production. Budget the $25/mo
+  Pro plan before this ships.
+- Should a signed-in user who lets their subscription lapse keep their account?
+  (Recommend: yes — keeps the win-back path open.)
+- Region: pick EU or US at project creation, it cannot be changed later. EU is
+  the safer GDPR default given the App Store audience.

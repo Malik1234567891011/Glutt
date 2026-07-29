@@ -221,6 +221,46 @@ enum RealtimeClientEvent: Equatable {
 // MARK: - Server -> client events
 
 /// The subset of OpenAI Realtime GA server events Polly reacts to.
+/// Exact billed token counts lifted from `response.done`.
+///
+/// The server tells us precisely what it charged for, so Polly's cost is
+/// measured rather than estimated. The text/audio split is not cosmetic:
+/// gpt-realtime-2.1 bills audio input at $32/1M against text input at $4/1M,
+/// an 8x gap, so collapsing them would skew the number badly.
+struct RealtimeUsage: Equatable {
+    var textInputTokens = 0
+    var audioInputTokens = 0
+    var textOutputTokens = 0
+    var audioOutputTokens = 0
+
+    var isEmpty: Bool {
+        textInputTokens == 0 && audioInputTokens == 0
+            && textOutputTokens == 0 && audioOutputTokens == 0
+    }
+
+    /// Accumulates across the many responses in one session.
+    static func += (lhs: inout Self, rhs: Self) {
+        lhs.textInputTokens += rhs.textInputTokens
+        lhs.audioInputTokens += rhs.audioInputTokens
+        lhs.textOutputTokens += rhs.textOutputTokens
+        lhs.audioOutputTokens += rhs.audioOutputTokens
+    }
+
+    init() {}
+
+    /// Parses the `usage` object. Absent or malformed details yield zeros
+    /// rather than nil — a missing count must never break a live session.
+    init?(_ usage: [String: Any]?) {
+        guard let usage else { return nil }
+        let input = usage["input_token_details"] as? [String: Any] ?? [:]
+        let output = usage["output_token_details"] as? [String: Any] ?? [:]
+        textInputTokens = input["text_tokens"] as? Int ?? 0
+        audioInputTokens = input["audio_tokens"] as? Int ?? 0
+        textOutputTokens = output["text_tokens"] as? Int ?? 0
+        audioOutputTokens = output["audio_tokens"] as? Int ?? 0
+    }
+}
+
 enum RealtimeServerEvent: Equatable {
     case sessionCreated
     case sessionUpdated
@@ -229,7 +269,7 @@ enum RealtimeServerEvent: Equatable {
     case inputTranscript(itemId: String?, text: String)  // …transcription.completed
     case outputAudioDelta(itemId: String, base64: String)
     case outputTranscriptDelta(itemId: String, delta: String)
-    case responseDone(status: String, calls: [RealtimeFunctionCall])
+    case responseDone(status: String, calls: [RealtimeFunctionCall], usage: RealtimeUsage? = nil)
     case responseCancelled
     /// A response began generating (server-initiated after VAD turns too) —
     /// drives the Thinking indicator for voice turns, which the client never
@@ -282,7 +322,10 @@ enum RealtimeServerEvent: Equatable {
                 return RealtimeFunctionCall(name: name, callId: callId,
                                             argumentsJSON: item["arguments"] as? String ?? "{}")
             }
-            return .responseDone(status: response["status"] as? String ?? "unknown", calls: calls)
+            return .responseDone(
+                status: response["status"] as? String ?? "unknown",
+                calls: calls,
+                usage: RealtimeUsage(response["usage"] as? [String: Any]))
         case "response.cancelled":
             return .responseCancelled
         case "response.created":

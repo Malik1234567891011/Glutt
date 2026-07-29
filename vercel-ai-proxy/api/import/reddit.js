@@ -18,6 +18,7 @@
  *   GLUTT_PROXY_CLIENT_KEY / GLUTT_PROXY_CLIENT_KEY_NEXT — dual-key auth
  */
 import { isAuthorized } from "../_lib/auth.js";
+import { logUsage, installIdFrom } from "../_lib/usage.js";
 
 const USER_AGENT = "web:com.omarlahmimi.glutt:v1.1 (by /u/GluttApp)";
 
@@ -227,6 +228,11 @@ export default async function handler(req, res) {
     });
   }
 
+  // Reddit OAuth and PullPush are both free, so these rows always cost $0. They
+  // are logged for volume only -- and this is the one path the GluttShare
+  // extension hits, which has no Supabase session and (today) sends no device
+  // header, so expect a null install_id on most of them.
+  const startedAt = Date.now();
   try {
     const payload =
       (await fetchViaOAuth(postID)) ||
@@ -234,13 +240,31 @@ export default async function handler(req, res) {
       (await fetchViaPullPush(postID));
 
     if (!payload || !payload.title) {
+      await logUsage({
+        feature: "import_reddit",
+        install_id: installIdFrom(req),
+        duration_ms: Date.now() - startedAt,
+        ok: false,
+      });
       return res.status(502).json({ error: "Could not load Reddit post" });
     }
+
+    await logUsage({
+      feature: "import_reddit",
+      install_id: installIdFrom(req),
+      duration_ms: Date.now() - startedAt,
+    });
 
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).json(payload);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
+    await logUsage({
+      feature: "import_reddit",
+      install_id: installIdFrom(req),
+      duration_ms: Date.now() - startedAt,
+      ok: false,
+    });
     return res.status(502).json({ error: "Reddit fetch failed", detail });
   }
 }

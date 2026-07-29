@@ -7,6 +7,7 @@
  * → audio/mpeg bytes
  */
 import { isAuthorized } from "../_lib/auth.js";
+import { logUsage, installIdFrom } from "../_lib/usage.js";
 
 function resolveOpenAIKey() {
   return (
@@ -56,6 +57,12 @@ export default async function handler(req, res) {
   if (!Number.isFinite(speed)) speed = 1.2;
   speed = Math.min(4, Math.max(0.25, speed));
 
+  const startedAt = Date.now();
+  // gpt-4o-mini-tts bills by input token, and the response is raw mp3 bytes with
+  // no usage object, so character count is the only signal available here.
+  // ai_rates prices this model per 1k input tokens; ~4 chars/token.
+  const estimatedInputTokens = Math.ceil((text.length + instructions.length) / 4);
+
   try {
     const upstream = await fetch(`${openAIBaseURL}/audio/speech`, {
       method: "POST",
@@ -76,6 +83,14 @@ export default async function handler(req, res) {
 
     if (!upstream.ok) {
       const detail = (await upstream.text()).slice(0, 240);
+      await logUsage({
+        feature: "polly_speak",
+        model,
+        install_id: installIdFrom(req),
+        input_tokens: estimatedInputTokens,
+        duration_ms: Date.now() - startedAt,
+        ok: false,
+      });
       return res.status(502).json({
         error: `upstream ${upstream.status}`,
         detail,
@@ -83,6 +98,14 @@ export default async function handler(req, res) {
     }
 
     const audio = Buffer.from(await upstream.arrayBuffer());
+
+    await logUsage({
+      feature: "polly_speak",
+      model,
+      install_id: installIdFrom(req),
+      input_tokens: estimatedInputTokens,
+      duration_ms: Date.now() - startedAt,
+    });
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("x-glutt-polly-voice", voice);

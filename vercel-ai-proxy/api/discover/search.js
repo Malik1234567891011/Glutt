@@ -1,4 +1,5 @@
 import { isAuthorized } from "../_lib/auth.js";
+import { logUsage, installIdFrom } from "../_lib/usage.js";
 // Discover search: keyword -> short, embeddable YouTube cooking videos.
 // Returns the shape the iOS DiscoverService decodes:
 //   { "videos": [ { videoId, title, creator, thumbnailURL, durationSeconds } ], "nextPageToken" }
@@ -61,14 +62,32 @@ export default async function handler(req, res) {
   url.searchParams.set("relevanceLanguage", "en");
   if (pageToken) url.searchParams.set("pageToken", pageToken);
 
+  // Edge-cached for 24h, so these rows are cache MISSES -- and each one is 100
+  // YouTube quota units against a default daily budget of ~10,000. This is the
+  // endpoint where the row count is worth watching most closely.
+  const startedAt = Date.now();
   try {
     const upstream = await fetch(url);
     if (!upstream.ok) {
       const detail = await upstream.text();
+      await logUsage({
+        feature: "discover_search",
+        model: "youtube:search.list",
+        install_id: installIdFrom(req),
+        duration_ms: Date.now() - startedAt,
+        ok: false,
+      });
       return res.status(502).json({ error: "YouTube request failed", detail: detail.slice(0, 300) });
     }
     const data = await upstream.json();
     const videos = mapItems(data.items);
+
+    await logUsage({
+      feature: "discover_search",
+      model: "youtube:search.list",
+      install_id: installIdFrom(req),
+      duration_ms: Date.now() - startedAt,
+    });
 
     // Cache at the Vercel edge to protect the daily YouTube quota
     // (search.list costs 100 units/call; default quota ~= 100 calls/day).

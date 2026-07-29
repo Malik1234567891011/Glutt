@@ -111,6 +111,7 @@
 		5950C23F8D7257EDEAE07A4D /* WakeWordMatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53EECA663831A359D8B5CE92 /* WakeWordMatcherTests.swift */; };
 		5BA89C22F52D91DB800A99F8 /* ImportInboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7786E74A2821C2BB89B69EE /* ImportInboxTests.swift */; };
 		5C440A167E3C257BF73984C5 /* PlatesDeckFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6771313CA6041A5D72F28AD /* PlatesDeckFilterTests.swift */; };
+		5C9512824DC7B7EADC8DB9C0 /* InstallID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E591614E90A52DE6F70CD28 /* InstallID.swift */; };
 		5D8679AA456EAD7B6590B239 /* PollyToolRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27E1FC5F02528DF1B978776 /* PollyToolRegistryTests.swift */; };
 		5EB1F08012A657B4416FFE6B /* ConversationalGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686B936DCDB29F97AD25509A /* ConversationalGate.swift */; };
 		5EB80A0613D1F492F62C686F /* PlatesSeedDeck.json in Resources */ = {isa = PBXBuildFile; fileRef = 42276F384744F17772916181 /* PlatesSeedDeck.json */; };
@@ -136,6 +137,7 @@
 		716AF2E22D1A594CE6B5B10B /* OnboardingTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81270C62F3A5D5904CEB2FEF /* OnboardingTheme.swift */; };
 		738A99A458262EE8C0A0ED45 /* PollyMemoryExtractorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08F4B7E10CB0E41F45391550 /* PollyMemoryExtractorTests.swift */; };
 		75229BB601F27BE25B6AD342 /* MaterialSymbol.swift in Sources */ = {isa = PBXBuildFile; fileRef = F967DB74C4E6CF025B01AD72 /* MaterialSymbol.swift */; };
+		754A0B56ACE3D19667FA0FCD /* InstallID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E591614E90A52DE6F70CD28 /* InstallID.swift */; };
 		7578E86DAC97748DD73B1531 /* OnboardingState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4365A28A0C4D406680BB297B /* OnboardingState.swift */; };
 		764F571D46B977FCF6A4A77C /* RecipeNutritionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44FEF1F94355B43A8CB3E9D /* RecipeNutritionBanner.swift */; };
 		7777F3711AC484396FFE12EC /* PlatesSeedDeckTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8296947DC249D8E0D2A9A3B6 /* PlatesSeedDeckTests.swift */; };
@@ -432,6 +434,7 @@
 		5D234009EBE5F02D9ABE8E69 /* LICENSE-MaterialSymbols.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LICENSE-MaterialSymbols.txt"; sourceTree = "<group>"; };
 		5D2FD38523A3A307658A2E6B /* CookBriefingBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookBriefingBuilder.swift; sourceTree = "<group>"; };
 		5E04BD50411091A43725DB53 /* RecipeImageBackfillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImageBackfillTests.swift; sourceTree = "<group>"; };
+		5E591614E90A52DE6F70CD28 /* InstallID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallID.swift; sourceTree = "<group>"; };
 		5EFB5FAA0EF9CA829EE21DFA /* GluttTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GluttTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F53E9D323C8F67248EAD82D /* OptionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionRow.swift; sourceTree = "<group>"; };
 		61DC78ADF8EA5883A89DD07D /* TutorialFrames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialFrames.swift; sourceTree = "<group>"; };
@@ -848,6 +851,14 @@
 			path = Support;
 			sourceTree = "<group>";
 		};
+		7727DDAAC3CE10CD7856EE60 /* Analytics */ = {
+			isa = PBXGroup;
+			children = (
+				5E591614E90A52DE6F70CD28 /* InstallID.swift */,
+			);
+			path = Analytics;
+			sourceTree = "<group>";
+		};
 		7B80985633402668F454165D /* Discover */ = {
 			isa = PBXGroup;
 			children = (
@@ -906,6 +917,7 @@
 				98053B3FFC4BD7D0C20C75CB /* TimerManager.swift */,
 				1E76DBE2577BBC32D76A29AB /* UnitConverter.swift */,
 				006BBD89C922604BC44581EE /* AI */,
+				7727DDAAC3CE10CD7856EE60 /* Analytics */,
 				8320D558B9C38A5154C681E6 /* Cook */,
 				153684F9C372E09B7BEF6E01 /* Discover */,
 				9D8742D0954484537BE1910A /* Import */,
@@ -1422,6 +1434,7 @@
 				98021F5F7768574981318E58 /* IngredientCategoryStyle.swift in Sources */,
 				0962ABDAA0B5C83097E4E2A1 /* IngredientLineParser.swift in Sources */,
 				286F4562602EC114FA947F53 /* IngredientTile.swift in Sources */,
+				5C9512824DC7B7EADC8DB9C0 /* InstallID.swift in Sources */,
 				824EB4D87CD519ACEBECDD6F /* IntroVideoScreen.swift in Sources */,
 				B4C80197E9CC89D57B82C71A /* InventDishView.swift in Sources */,
 				CC9B2AD7644D261A33C6C0D6 /* InventoryView.swift in Sources */,
@@ -1556,6 +1569,7 @@
 				2DEF284227B22932F4575048 /* ImportPipeline.swift in Sources */,
 				0D6C17E69A8DCBE97A90ADC7 /* ImportedRecipeDraft.swift in Sources */,
 				45454CC6069E42834813518B /* IngredientLineParser.swift in Sources */,
+				754A0B56ACE3D19667FA0FCD /* InstallID.swift in Sources */,
 				C6D504A3B9714073A502451A /* LLMClient.swift in Sources */,
 				67F0FC035B3A8B43F5A22E01 /* PendingImportStore.swift in Sources */,
 				6BF2F279EDBA70BACD78AC36 /* RecipeHTMLParser.swift in Sources */,

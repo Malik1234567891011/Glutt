@@ -13,6 +13,12 @@ export default function handler(_req, res) {
       has_ELEVENLABS_API_KEY: Boolean((process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_LABS_API_KEY || "").trim()),
       has_POLLY_REALTIME_MODEL: Boolean((process.env.POLLY_REALTIME_MODEL || "").trim()),
       has_POLLY_VOICE: Boolean((process.env.POLLY_VOICE || "").trim()),
+      // Usage logging is deliberately silent: logUsage swallows every error so a
+      // sick Supabase can never break a cook. That makes "0 rows in ai_usage"
+      // ambiguous between no-traffic and misconfigured, so surface the config
+      // here. Presence only — never the values.
+      has_SUPABASE_URL: Boolean((process.env.SUPABASE_URL || "").trim()),
+      has_SUPABASE_SERVICE_ROLE_KEY: Boolean((process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim()),
       node_env: process.env.NODE_ENV || "unknown",
       vercel_env: process.env.VERCEL_ENV || "unknown"
     },

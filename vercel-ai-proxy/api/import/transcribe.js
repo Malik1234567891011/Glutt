@@ -9,6 +9,7 @@
  *   GLUTT_PROXY_CLIENT_KEY / GLUTT_PROXY_CLIENT_KEY_NEXT — dual-key rotation
  */
 import { isAuthorized } from "../_lib/auth.js";
+import { logUsage, installIdFrom } from "../_lib/usage.js";
 
 function resolveElevenLabsKey() {
   return (
@@ -41,6 +42,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "source_url must be an http(s) URL" });
   }
 
+  const startedAt = Date.now();
   try {
     const form = new FormData();
     form.append("model_id", "scribe_v2");
@@ -72,12 +74,43 @@ export default async function handler(req, res) {
 
     const raw = await upstream.text();
     const contentType = upstream.headers.get("content-type") || "application/json";
+
+    // Scribe bills per minute of AUDIO, not per token. The response carries word
+    // timestamps, so the end of the last word is the transcribed duration --
+    // closer to the billed quantity than our wall-clock request time.
+    let audioSeconds = null;
+    try {
+      const words = JSON.parse(raw).words;
+      if (Array.isArray(words) && words.length > 0) {
+        const end = words[words.length - 1].end;
+        if (Number.isFinite(end)) audioSeconds = end;
+      }
+    } catch {
+      // Not JSON, or an error body. Log the call without a duration.
+    }
+
+    await logUsage({
+      feature: "transcribe",
+      model: "scribe_v2",
+      install_id: installIdFrom(req),
+      audio_input_seconds: audioSeconds,
+      duration_ms: Date.now() - startedAt,
+      ok: upstream.ok,
+    });
+
     res.status(upstream.status);
     res.setHeader("Content-Type", contentType);
     return res.send(raw);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     const timedOut = /aborted|timeout/i.test(detail);
+    await logUsage({
+      feature: "transcribe",
+      model: "scribe_v2",
+      install_id: installIdFrom(req),
+      duration_ms: Date.now() - startedAt,
+      ok: false,
+    });
     return res.status(timedOut ? 504 : 502).json({
       error: timedOut ? "Transcription timed out" : "Upstream transcription failed",
       detail,

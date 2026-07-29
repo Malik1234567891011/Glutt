@@ -142,6 +142,7 @@ final class PollySessionControllerTests: XCTestCase {
             makeTransport: { transport },
             compilePlan: { _, _ in Self.fixturePlan },
             extractMemories: { _, _ in Self.fixtureExtraction },
+            reportSessionUsage: { _, _, _ in },
             now: now ?? { Date(timeIntervalSince1970: 1_751_400_000) }
         )
         return PollySessionController(recipe: recipe, scale: 1.0, deps: deps)

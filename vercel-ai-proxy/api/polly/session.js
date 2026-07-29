@@ -8,6 +8,7 @@
 // only the brain plane (instructions + tools). That makes VAD/persona-voice
 // tuning a Vercel env flip + redeploy, never an App Store release.
 import { isAuthorized } from "../_lib/auth.js";
+import { logUsage, installIdFrom } from "../_lib/usage.js";
 
 function resolveOpenAIKey() {
   return (
@@ -72,6 +73,7 @@ export default async function handler(req, res) {
   // session.update, so pinning here cannot affect them.
   const eagerness = (process.env.POLLY_VAD_EAGERNESS || "").trim() || "low";
 
+  const startedAt = Date.now();
   try {
     const upstream = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
@@ -97,11 +99,32 @@ export default async function handler(req, res) {
     });
 
     if (!upstream.ok) {
+      await logUsage({
+        feature: "polly_session",
+        model,
+        install_id: deviceId || null,
+        duration_ms: Date.now() - startedAt,
+        ok: false,
+      });
       // Never forward the upstream body: it can echo key/request details.
       return res.status(502).json({ error: `upstream ${upstream.status}` });
     }
 
     const data = await upstream.json();
+
+    // Session START only. This endpoint just mints a 10-minute client secret;
+    // the WebRTC session it unlocks runs for up to 52 minutes afterwards and
+    // this function is long gone by then. Audio seconds -- the thing Realtime
+    // actually bills -- arrive later via POST /api/polly/usage, which the app
+    // calls on session end. A polly_session row with no matching polly_realtime
+    // row means the app never reported: crash, force-quit, or lost network.
+    await logUsage({
+      feature: "polly_session",
+      model,
+      install_id: deviceId || null,
+      duration_ms: Date.now() - startedAt,
+    });
+
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).json({
       value: data.value,
@@ -110,6 +133,13 @@ export default async function handler(req, res) {
       voice,
     });
   } catch {
+    await logUsage({
+      feature: "polly_session",
+      model,
+      install_id: deviceId || null,
+      duration_ms: Date.now() - startedAt,
+      ok: false,
+    });
     return res.status(502).json({ error: "upstream unreachable" });
   }
 }

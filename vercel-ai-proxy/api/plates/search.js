@@ -1,4 +1,5 @@
 import { isAuthorized } from "../_lib/auth.js";
+import { logUsage, installIdFrom } from "../_lib/usage.js";
 // Explore/search: live Spoonacular complexSearch by query, paginated via
 // offset. Cached per (query) for a day. Same PlateCard contract as deck.js.
 
@@ -98,14 +99,30 @@ export default async function handler(req, res) {
   url.searchParams.set("fillIngredients", "true");
   url.searchParams.set("instructionsRequired", "true");
 
+  // Edge-cached for 24h -- rows below are cache MISSES (quota spend), not opens.
+  const startedAt = Date.now();
   try {
     const upstream = await fetch(url);
     if (!upstream.ok) {
       const detail = await upstream.text();
+      await logUsage({
+        feature: "plates_search",
+        model: "spoonacular:complexSearch",
+        install_id: installIdFrom(req),
+        duration_ms: Date.now() - startedAt,
+        ok: false,
+      });
       return res.status(502).json({ error: "Spoonacular request failed", detail: detail.slice(0, 300) });
     }
     const data = await upstream.json();
     const recipes = (data.results || []).map(normalizeRecipe).filter((c) => c.imageURL);
+
+    await logUsage({
+      feature: "plates_search",
+      model: "spoonacular:complexSearch",
+      install_id: installIdFrom(req),
+      duration_ms: Date.now() - startedAt,
+    });
     const total = typeof data.totalResults === "number" ? data.totalResults : 0;
     const nextOffset = offset + PAGE_SIZE;
     const nextPageToken = nextOffset < total ? String(nextOffset) : null;

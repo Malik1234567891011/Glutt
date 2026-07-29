@@ -89,6 +89,9 @@ struct LLMClient {
         if !clientKey.isEmpty {
             request.setValue(clientKey, forHTTPHeaderField: "x-glutt-proxy-key")
         }
+        // Attributes the proxy's ai_usage row to this install. Identifies a
+        // device for cost accounting, never a person.
+        request.setValue(InstallID.current, forHTTPHeaderField: "x-glutt-device-id")
 
         let userContent: Any
         if let imageData {

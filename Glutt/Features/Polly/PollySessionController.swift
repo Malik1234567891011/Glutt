@@ -23,6 +23,8 @@ final class PollySessionController {
         var makeTransport: () -> RealtimeTransporting
         var compilePlan: (Recipe, Double) async -> CookPlan
         var extractMemories: (String, String) async throws -> PollyMemoryExtractor.Extraction
+        /// Reports finished-session duration for AI cost accounting. Best-effort.
+        var reportSessionUsage: (TimeInterval, String?, RealtimeUsage?) async -> Void
         var now: () -> Date
 
         static let live = Dependencies(
@@ -30,6 +32,9 @@ final class PollySessionController {
             makeTransport: { RealtimeWebRTCTransport() },
             compilePlan: { await CookPlanCompiler.compile(recipe: $0, scale: $1) },
             extractMemories: { try await PollyMemoryExtractor.extract(transcript: $0, recipeTitle: $1) },
+            reportSessionUsage: {
+                await PollyTokenService.live.reportSessionEnd(duration: $0, model: $1, usage: $2)
+            },
             now: { .now }
         )
     }
@@ -160,6 +165,9 @@ final class PollySessionController {
     private var eventTask: Task<Void, Never>?
     private var watchTask: Task<Void, Never>?
     private var startedAt: Date?
+    /// Billed tokens accumulated across every response.done this session,
+    /// reported to the proxy on teardown for AI cost accounting.
+    private var sessionUsage = RealtimeUsage()
     /// Config sent at session start; re-sent verbatim (new token's voice/model)
     /// on the single silent reconnect. Instructions/tools never mutate mid-cook
     /// so the realtime prompt cache stays warm.
@@ -404,6 +412,14 @@ final class PollySessionController {
         timers.cancelAll()
         await transport?.close()
         transport = nil
+
+        // Report the billed span now that the socket is closed, before the
+        // memory-extraction network call below — that one can be slow, and a
+        // teardown interrupted midway would otherwise lose the usage row.
+        if let startedAt {
+            await deps.reportSessionUsage(
+                deps.now().timeIntervalSince(startedAt), liveConfig?.model, sessionUsage)
+        }
 
         flushPendingAssistantLine()
         let transcript = transcriptLog.joined(separator: "\n")
@@ -974,7 +990,10 @@ final class PollySessionController {
             captionText = pendingAssistantLine
             pollyCaption = pendingAssistantLine
 
-        case .responseDone(let status, let calls):
+        case .responseDone(let status, let calls, let usage):
+            // The server reports exactly what it billed for this response.
+            // Accumulating it is what makes Polly's cost measured, not guessed.
+            if let usage { sessionUsage += usage }
             PollyDebugLog.shared.log(
                 "event: response DONE status=\(status) tools=[\(calls.map(\.name).joined(separator: ","))]"
                 + (pendingAssistantLine.isEmpty ? "" : " said=\"\(pendingAssistantLine.prefix(120))\""))

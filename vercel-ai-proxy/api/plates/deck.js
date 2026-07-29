@@ -1,4 +1,5 @@
 import { isAuthorized } from "../_lib/auth.js";
+import { logUsage, installIdFrom } from "../_lib/usage.js";
 // Discover feed: an endless, paginated stream of photo recipes from
 // Spoonacular. Each page is one complexSearch call (photo + macros +
 // ingredients + steps + servings) normalized into Glutt's PlateCard contract.
@@ -125,14 +126,33 @@ export default async function handler(req, res) {
   url.searchParams.set("instructionsRequired", "true");
   url.searchParams.set("sort", "popularity");
 
+  // NOTE: this response is edge-cached for 12h, so the function does not run on
+  // a cache hit. Every row logged below is therefore a cache MISS -- i.e. real
+  // Spoonacular quota spend, not user traffic. Do not read these counts as
+  // "how many people opened the deck"; PostHog answers that.
+  const startedAt = Date.now();
   try {
     const upstream = await fetch(url);
     if (!upstream.ok) {
       const detail = await upstream.text();
+      await logUsage({
+        feature: "plates_deck",
+        model: "spoonacular:complexSearch",
+        install_id: installIdFrom(req),
+        duration_ms: Date.now() - startedAt,
+        ok: false,
+      });
       return res.status(502).json({ error: "Spoonacular request failed", detail: detail.slice(0, 300) });
     }
     const data = await upstream.json();
     const recipes = (data.results || []).map(normalizeRecipe).filter(imageWorthy);
+
+    await logUsage({
+      feature: "plates_deck",
+      model: "spoonacular:complexSearch",
+      install_id: installIdFrom(req),
+      duration_ms: Date.now() - startedAt,
+    });
 
     // Endless: always hand back the next cursor. Spoonacular has thousands of
     // hits per query, and we rotate queries, so the feed effectively never ends.

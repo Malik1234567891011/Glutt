@@ -280,6 +280,43 @@ final class RealtimeEventCodecTests: XCTestCase {
         XCTAssertEqual(decode(fixture), .outputTranscriptDelta(itemId: "item_3", delta: "Nice sear"))
     }
 
+    /// Cost accounting depends on the audio/text split: gpt-realtime-2.1 bills
+    /// audio input at $32/1M against text input at $4/1M, so collapsing them
+    /// would skew Polly's cost by ~8x on the dominant term.
+    func testDecodesResponseDoneExtractsBilledTokenSplit() throws {
+        let fixture = #"""
+        {"type": "response.done", "event_id": "event_9",
+         "response": {
+           "id": "resp_3", "status": "completed", "output": [],
+           "usage": {
+             "total_tokens": 3000,
+             "input_tokens": 2000, "output_tokens": 1000,
+             "input_token_details": {"text_tokens": 150, "audio_tokens": 1850, "cached_tokens": 900},
+             "output_token_details": {"text_tokens": 40, "audio_tokens": 960}}}}
+        """#
+        guard case .responseDone(_, _, let usage) = decode(fixture) else {
+            return XCTFail("expected .responseDone")
+        }
+        XCTAssertEqual(usage?.textInputTokens, 150)
+        XCTAssertEqual(usage?.audioInputTokens, 1850)
+        XCTAssertEqual(usage?.textOutputTokens, 40)
+        XCTAssertEqual(usage?.audioOutputTokens, 960)
+    }
+
+    /// A response.done with no usage object must not break the session.
+    func testDecodesResponseDoneWithoutUsage() throws {
+        let fixture = #"""
+        {"type": "response.done", "event_id": "event_10",
+         "response": {"id": "resp_4", "status": "completed", "output": []}}
+        """#
+        guard case .responseDone(let status, let calls, let usage) = decode(fixture) else {
+            return XCTFail("expected .responseDone")
+        }
+        XCTAssertEqual(status, "completed")
+        XCTAssertTrue(calls.isEmpty)
+        XCTAssertNil(usage, "no usage object -> nil, not a zeroed row")
+    }
+
     func testDecodesResponseDoneExtractsFunctionCalls() throws {
         let fixture = #"""
         {"type": "response.done", "event_id": "event_7",
@@ -296,7 +333,7 @@ final class RealtimeEventCodecTests: XCTestCase {
            ],
            "usage": {"total_tokens": 900}}}
         """#
-        guard case .responseDone(let status, let calls) = decode(fixture) else {
+        guard case .responseDone(let status, let calls, _) = decode(fixture) else {
             return XCTFail("expected .responseDone")
         }
         XCTAssertEqual(status, "completed")

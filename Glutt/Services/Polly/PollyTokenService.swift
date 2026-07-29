@@ -1,17 +1,13 @@
 import Foundation
 
-/// Stable per-install identifier for the proxy's abuse cap. Not personal
-/// data — a random UUID minted once and kept in UserDefaults; it never
-/// identifies the user, only rate-limits a device.
+/// Stable per-install identifier for the proxy's abuse cap.
+///
+/// Now a thin alias over `InstallID`, which promotes this value out of
+/// UserDefaults into the Keychain so it survives a reinstall. Kept as a name
+/// because the abuse cap and the cost attribution want the same identity —
+/// splitting them would double-count a device.
 enum GluttDeviceID {
-    private static let defaultsKey = "glutt.device.id"
-    static var current: String {
-        let defaults = UserDefaults.standard
-        if let existing = defaults.string(forKey: defaultsKey) { return existing }
-        let fresh = UUID().uuidString
-        defaults.set(fresh, forKey: defaultsKey)
-        return fresh
-    }
+    static var current: String { InstallID.current }
 }
 
 /// The short-lived OpenAI Realtime credential minted by the Glutt proxy.
@@ -77,5 +73,39 @@ struct PollyTokenService {
         } catch {
             throw PollyTokenError.badResponse("Unexpected response shape")
         }
+    }
+
+    /// Reports how long a finished Realtime session ran, so the proxy can cost
+    /// it. `/polly/session` only mints a token — the WebRTC session runs device
+    /// to OpenAI and the proxy never sees a byte of it, so the app is the only
+    /// party that knows the duration. OpenAI Realtime bills by audio second,
+    /// which makes this the difference between Polly being measurable and not.
+    ///
+    /// Best-effort by design: never throws, never blocks a teardown. A dropped
+    /// report shows up as a `polly_session` row with no matching
+    /// `polly_realtime` row — i.e. a crash, force-quit, or lost network.
+    func reportSessionEnd(duration: TimeInterval, model: String?, usage: RealtimeUsage?) async {
+        guard !baseURL.isEmpty, duration > 0 else { return }
+        guard let url = URL(string: "\(baseURL)/polly/usage") else { return }
+
+        var request = URLRequest(url: url, timeoutInterval: 5)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !clientKey.isEmpty {
+            request.setValue(clientKey, forHTTPHeaderField: "x-glutt-proxy-key")
+        }
+        request.setValue(GluttDeviceID.current, forHTTPHeaderField: "x-glutt-device-id")
+
+        var payload: [String: Any] = ["durationMs": Int(duration * 1000)]
+        if let model, !model.isEmpty { payload["model"] = model }
+        if let usage, !usage.isEmpty {
+            payload["textInputTokens"] = usage.textInputTokens
+            payload["audioInputTokens"] = usage.audioInputTokens
+            payload["textOutputTokens"] = usage.textOutputTokens
+            payload["audioOutputTokens"] = usage.audioOutputTokens
+        }
+        request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+
+        _ = try? await transport(request)
     }
 }

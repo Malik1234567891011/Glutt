@@ -332,6 +332,10 @@ enum RedditImport {
         if !key.isEmpty {
             request.setValue(key, forHTTPHeaderField: "x-glutt-proxy-key")
         }
+        // Runs in the share extension as well as the app; InstallID resolves to
+        // the same value in both via the app group, so a shared import is not
+        // counted as a separate device.
+        request.setValue(InstallID.current, forHTTPHeaderField: "x-glutt-device-id")
         request.httpBody = try JSONSerialization.data(
             withJSONObject: ["source_url": postURL.absoluteString]
         )

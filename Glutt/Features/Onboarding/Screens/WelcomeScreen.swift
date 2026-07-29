@@ -4,6 +4,11 @@ import SwiftUI
 /// wordmark + H1 + social-proof pill + Start. Values from the design HTML.
 struct WelcomeScreen: View {
     let onStart: () -> Void
+    /// "Already have an account?" — the reinstall / new-phone path. Nil in
+    /// previews and anywhere the coordinator doesn't offer it.
+    var onLogIn: (() -> Void)?
+    /// True while the coordinator is looking for a subscription to restore.
+    var isCheckingLogIn = false
 
     /// Zoom-through exit: Start scales the whole screen up while fading it, then
     /// hands off to the coordinator's screen swap. Self-animated (a SwiftUI
@@ -200,6 +205,24 @@ struct WelcomeScreen: View {
             .padding(.bottom, 64)
 
             OnboardingPrimaryButton(title: "Start", action: startTapped)
+
+            // Secondary, quiet by design: this is the reinstall path, not the
+            // one we want first-time visitors taking.
+            if let onLogIn {
+                Group {
+                    if isCheckingLogIn {
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.small)
+                            Text("Looking for your subscription")
+                                .font(OnboardingFonts.nunito(14.5, 700))
+                        }
+                        .foregroundStyle(OnboardingTheme.mutedWarm)
+                    } else {
+                        OnboardingTextLink(title: "Already have an account? Log in", action: onLogIn)
+                    }
+                }
+                .padding(.top, 14)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 28)

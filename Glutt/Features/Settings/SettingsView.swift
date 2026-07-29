@@ -19,11 +19,19 @@ struct SettingsView: View {
     @State private var isRestoring = false
     @State private var didRestorePurchases = false
 
+    /// Optional so previews (and any host that doesn't inject it) still build.
+    @Environment(AccountSession.self) private var session: AccountSession?
+    @State private var isConfirmingDelete = false
+    @State private var isDeleting = false
+    @State private var didDeleteAccount = false
+    @State private var deleteErrorMessage: String?
+
     var body: some View {
         NavigationStack {
             Form {
                 helpSection
                 subscriptionSection
+                accountSection
                 nutritionSection
                 tasteProfileSection
                 dietarySection
@@ -36,6 +44,38 @@ struct SettingsView: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text("Your Glutt Premium subscription is active.")
+            }
+            .alert("Delete your account?", isPresented: $isConfirmingDelete) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete account", role: .destructive) {
+                    Task { await deleteAccount() }
+                }
+            } message: {
+                // Says plainly what survives. The subscription line matters
+                // most: someone deleting an account does not expect to keep
+                // being charged, and only the App Store can stop that.
+                Text("""
+                Your name and email are removed from Glutt's servers for good.
+
+                Your recipes stay on this iPhone. This does not cancel your \
+                subscription. Manage that in the App Store.
+                """)
+            }
+            .alert("Account deleted", isPresented: $didDeleteAccount) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Your Glutt account is gone. Your recipes are still here on this iPhone.")
+            }
+            .alert(
+                "Couldn't delete your account",
+                isPresented: Binding(
+                    get: { deleteErrorMessage != nil },
+                    set: { if !$0 { deleteErrorMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(deleteErrorMessage ?? "")
             }
             .scrollContentBackground(.hidden)
             .background(Theme.Colors.background)
@@ -170,6 +210,79 @@ struct SettingsView: View {
         if Superwall.shared.subscriptionStatus.isActive {
             didRestorePurchases = true
         }
+    }
+
+    // MARK: - Account
+
+    /// Sign out and delete. The delete path is not optional: Apple requires an
+    /// in-app way to remove an account from any app that lets you create one
+    /// (App Review 5.1.1(v)), and hiding it is a rejection.
+    ///
+    /// Signing out does not lock the app — entitlement comes from the Apple ID,
+    /// not from having an account.
+    @ViewBuilder private var accountSection: some View {
+        if let session {
+            Section {
+                switch session.state {
+                case let .signedIn(_, email):
+                    HStack {
+                        // No person glyph in the vendored Phosphor subset, and
+                        // the chef hat is more Glutt anyway.
+                        Ph.chefHat.regular
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 16, height: 16)
+                            .foregroundStyle(Theme.Colors.accent)
+                        Text(email ?? "Signed in")
+                            .foregroundStyle(Theme.Colors.textPrimary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+
+                    Button {
+                        Haptics.impact(.light)
+                        Task { await session.signOut() }
+                    } label: {
+                        Text("Sign out")
+                            .foregroundStyle(Theme.Colors.textPrimary)
+                    }
+
+                    Button(role: .destructive) {
+                        Haptics.impact(.medium)
+                        isConfirmingDelete = true
+                    } label: {
+                        HStack {
+                            Text("Delete account")
+                            Spacer()
+                            if isDeleting { ProgressView() }
+                        }
+                    }
+                    .disabled(isDeleting)
+
+                default:
+                    Text("Not signed in")
+                        .font(.gluttCaption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+            } header: {
+                Text("Account")
+            } footer: {
+                Text("Your account is how Glutt recognizes you on a new phone. Recipes live on this device either way.")
+            }
+        }
+    }
+
+    private func deleteAccount() async {
+        guard let session else { return }
+        isDeleting = true
+        do {
+            try await session.deleteAccount()
+            didDeleteAccount = true
+        } catch {
+            deleteErrorMessage = "Something went wrong on our end. Please try again, or contact support if it keeps happening."
+            Analytics.capture(.accountDeleteFailed, ["detail": error.localizedDescription])
+        }
+        isDeleting = false
     }
 
     // MARK: - Nutrition

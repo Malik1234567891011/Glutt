@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..700,0..1,0&display=swap" rel="stylesheet">
+<style>
+  * { -webkit-font-smoothing: antialiased; box-sizing: border-box; }
+  body { margin: 0; }
+  a { color: #2E5339; text-decoration: none; }
+  a:hover { color: #3d6d4b; }
+  .ms { font-family: 'Material Symbols Rounded'; font-weight: 400; font-style: normal; line-height: 1; display: inline-block; font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  .glutt-scroll::-webkit-scrollbar { display: none; }
+  .glutt-scroll { scrollbar-width: none; }
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+    <div style="height:100%;position:relative;overflow:hidden;background:#FAF3E7;color:#241E19;font-family:Nunito;">
+
+      <!-- ==================== DIRECTION A — THE COOKBOOK (grid) ==================== -->
+      <sc-if value="{{ isA }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;background:#FAF3E7;">
+
+          <!-- header -->
+          <div style="padding:56px 20px 10px;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;">
+            <div>
+              <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;">Your cookbook</div>
+              <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:31px;letter-spacing:-0.9px;color:#241E19;margin-top:2px;">Recipes</div>
+            </div>
+            <div style="display:flex;gap:9px;padding-top:8px;">
+              <div style="width:42px;height:42px;border-radius:50%;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.07);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(42,36,32,0.05);">
+                <span class="ms" style="font-size:22px;color:#3A342C;font-variation-settings:'FILL' 0;">settings</span>
+              </div>
+              <div style="width:42px;height:42px;border-radius:50%;background:#2E5339;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(42,36,32,0.12);">
+                <span class="ms" style="font-size:24px;color:#FBF5E9;">add</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="glutt-scroll" style="flex:1;overflow:auto;">
+
+            <!-- search / ask pill -->
+            <div style="margin:6px 20px 16px;display:flex;align-items:center;gap:11px;height:50px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.07);padding:0 17px;box-shadow:0 5px 16px rgba(42,36,32,0.05);">
+              <span class="ms" style="font-size:22px;color:#9A9082;font-variation-settings:'FILL' 0;">search</span>
+              <span style="font-family:Nunito;font-weight:600;font-size:15px;color:#9A9082;flex:1;">that creamy chicken thing…</span>
+              <span class="ms" style="font-size:21px;color:#2E5339;">auto_awesome</span>
+            </div>
+
+            <!-- category circles -->
+            <div class="glutt-scroll" style="display:flex;gap:15px;overflow:auto;padding:2px 20px 16px;">
+              <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px;width:64px;">
+                <div style="width:64px;height:64px;border-radius:50%;background:#2E5339;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(42,36,32,0.12);"><span class="ms" style="font-size:28px;color:#FBF5E9;">grid_view</span></div>
+                <div style="font-family:Nunito;font-weight:800;font-size:12px;color:#241E19;">All</div>
+              </div>
+              <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px;width:64px;">
+                <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:2.5px solid #FFFDF7;box-shadow:0 5px 13px rgba(42,36,32,0.1);"><img src="assets/food-hot-honey-rice.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+                <div style="font-family:Nunito;font-weight:700;font-size:12px;color:#3A342C;">Chicken</div>
+              </div>
+              <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px;width:64px;">
+                <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:2.5px solid #FFFDF7;box-shadow:0 5px 13px rgba(42,36,32,0.1);"><img src="assets/food-korean-beef.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+                <div style="font-family:Nunito;font-weight:700;font-size:12px;color:#3A342C;">Beef</div>
+              </div>
+              <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px;width:64px;">
+                <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:2.5px solid #FFFDF7;box-shadow:0 5px 13px rgba(42,36,32,0.1);"><img src="assets/food-salmon-bowl.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+                <div style="font-family:Nunito;font-weight:700;font-size:12px;color:#3A342C;">Seafood</div>
+              </div>
+              <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px;width:64px;">
+                <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:2.5px solid #FFFDF7;box-shadow:0 5px 13px rgba(42,36,32,0.1);"><img src="assets/food-pesto-gnocchi.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+                <div style="font-family:Nunito;font-weight:700;font-size:12px;color:#3A342C;">Veggie</div>
+              </div>
+              <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px;width:64px;">
+                <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:2.5px solid #FFFDF7;box-shadow:0 5px 13px rgba(42,36,32,0.1);"><img src="assets/food-greek-yogurt.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+                <div style="font-family:Nunito;font-weight:700;font-size:12px;color:#3A342C;">Breakfast</div>
+              </div>
+            </div>
+
+            <!-- filter chips -->
+            <div class="glutt-scroll" style="display:flex;gap:8px;overflow:auto;padding:0 20px 4px;">
+              <div style="flex:0 0 auto;padding:9px 16px;border-radius:100px;background:#2E5339;font-family:Nunito;font-weight:800;font-size:13px;color:#FBF5E9;">All 12</div>
+              <div style="flex:0 0 auto;padding:9px 16px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);font-family:Nunito;font-weight:700;font-size:13px;color:#3A342C;">Ready now</div>
+              <div style="flex:0 0 auto;padding:9px 16px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);font-family:Nunito;font-weight:700;font-size:13px;color:#3A342C;">Under 30 min</div>
+              <div style="flex:0 0 auto;padding:9px 16px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);font-family:Nunito;font-weight:700;font-size:13px;color:#3A342C;">High protein</div>
+              <div style="flex:0 0 auto;padding:9px 16px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);font-family:Nunito;font-weight:700;font-size:13px;color:#3A342C;">Cooked before</div>
+            </div>
+
+            <!-- count header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;">
+              <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:#241E19;">12 recipes</div>
+              <div style="display:flex;gap:6px;">
+                <div style="width:34px;height:34px;border-radius:10px;background:#2E5339;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:18px;color:#FBF5E9;">grid_view</span></div>
+                <div style="width:34px;height:34px;border-radius:10px;background:#FFFDF7;border:1px solid rgba(42,36,32,0.08);display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:18px;color:#9A9082;font-variation-settings:'FILL' 0;">view_agenda</span></div>
+              </div>
+            </div>
+
+            <!-- recipe grid -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:0 20px 120px;">
+
+              <!-- card 1 -->
+              <div style="background:#FFFDF7;border-radius:22px;overflow:hidden;border:1px solid rgba(42,36,32,0.05);box-shadow:0 8px 20px rgba(42,36,32,0.05);">
+                <div style="position:relative;height:122px;">
+                  <img src="assets/food-hot-honey-rice.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:4px;background:#FFFDF7;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#D9483B;">local_fire_department</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#241E19;">Spicy</span></div>
+                  <div style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:16px;color:#D9483B;">favorite</span></div>
+                </div>
+                <div style="padding:10px 11px 12px;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:15px;line-height:1.15;color:#241E19;min-height:34px;">Hot Honey Chicken &amp; Rice</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:7px;"><span class="ms" style="font-size:14px;color:#9A9082;font-variation-settings:'FILL' 0;">schedule</span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">25 min</span><span style="width:3px;height:3px;border-radius:50%;background:#C9BEAD;"></span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">Easy</span></div>
+                  <div style="display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:#EAF1E7;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#2E5339;">shopping_basket</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#2E5339;">9/11 in pantry</span></div>
+                </div>
+              </div>
+
+              <!-- card 2 -->
+              <div style="background:#FFFDF7;border-radius:22px;overflow:hidden;border:1px solid rgba(42,36,32,0.05);box-shadow:0 8px 20px rgba(42,36,32,0.05);">
+                <div style="position:relative;height:122px;">
+                  <img src="assets/food-green-goddess.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:4px;background:#FFFDF7;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#2E5339;">bolt</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#241E19;">High protein</span></div>
+                  <div style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:16px;color:#B9AEA0;font-variation-settings:'FILL' 0;">favorite</span></div>
+                </div>
+                <div style="padding:10px 11px 12px;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:15px;line-height:1.15;color:#241E19;min-height:34px;">Green Goddess Steak Plate</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:7px;"><span class="ms" style="font-size:14px;color:#9A9082;font-variation-settings:'FILL' 0;">schedule</span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">35 min</span><span style="width:3px;height:3px;border-radius:50%;background:#C9BEAD;"></span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">Medium</span></div>
+                  <div style="display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:#FCF0D6;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#C28C21;">shopping_basket</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#C28C21;">8/12 · need 4</span></div>
+                </div>
+              </div>
+
+              <!-- card 3 -->
+              <div style="background:#FFFDF7;border-radius:22px;overflow:hidden;border:1px solid rgba(42,36,32,0.05);box-shadow:0 8px 20px rgba(42,36,32,0.05);">
+                <div style="position:relative;height:122px;">
+                  <img src="assets/food-salmon-bowl.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:4px;background:#FFFDF7;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#2E5339;">restaurant</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#241E19;">Omega-3</span></div>
+                  <div style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:16px;color:#D9483B;">favorite</span></div>
+                </div>
+                <div style="padding:10px 11px 12px;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:15px;line-height:1.15;color:#241E19;min-height:34px;">Lemon Dill Salmon Bowl</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:7px;"><span class="ms" style="font-size:14px;color:#9A9082;font-variation-settings:'FILL' 0;">schedule</span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">20 min</span><span style="width:3px;height:3px;border-radius:50%;background:#C9BEAD;"></span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">Easy</span></div>
+                  <div style="display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:#EAF1E7;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#2E5339;">check_circle</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#2E5339;">You have it all</span></div>
+                </div>
+              </div>
+
+              <!-- card 4 -->
+              <div style="background:#FFFDF7;border-radius:22px;overflow:hidden;border:1px solid rgba(42,36,32,0.05);box-shadow:0 8px 20px rgba(42,36,32,0.05);">
+                <div style="position:relative;height:122px;">
+                  <img src="assets/food-garlic-steak-bowl.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:4px;background:#FFFDF7;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#2E5339;">restaurant</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#241E19;">Comfort</span></div>
+                  <div style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:16px;color:#B9AEA0;font-variation-settings:'FILL' 0;">favorite</span></div>
+                </div>
+                <div style="padding:10px 11px 12px;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:15px;line-height:1.15;color:#241E19;min-height:34px;">Garlic Butter Steak Bowl</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:7px;"><span class="ms" style="font-size:14px;color:#9A9082;font-variation-settings:'FILL' 0;">schedule</span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">30 min</span><span style="width:3px;height:3px;border-radius:50%;background:#C9BEAD;"></span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">Medium</span></div>
+                  <div style="display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:#FCF0D6;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#C28C21;">shopping_basket</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#C28C21;">7/11 · need 4</span></div>
+                </div>
+              </div>
+
+              <!-- card 5 -->
+              <div style="background:#FFFDF7;border-radius:22px;overflow:hidden;border:1px solid rgba(42,36,32,0.05);box-shadow:0 8px 20px rgba(42,36,32,0.05);">
+                <div style="position:relative;height:122px;">
+                  <img src="assets/food-korean-beef.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:4px;background:#FFFDF7;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#2E5339;">lunch_dining</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#241E19;">Meal prep</span></div>
+                  <div style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:16px;color:#D9483B;">favorite</span></div>
+                </div>
+                <div style="padding:10px 11px 12px;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:15px;line-height:1.15;color:#241E19;min-height:34px;">Korean Beef Meal Prep</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:7px;"><span class="ms" style="font-size:14px;color:#9A9082;font-variation-settings:'FILL' 0;">schedule</span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">40 min</span><span style="width:3px;height:3px;border-radius:50%;background:#C9BEAD;"></span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">Easy</span></div>
+                  <div style="display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:#FCF0D6;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#C28C21;">shopping_basket</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#C28C21;">9/13 · need 4</span></div>
+                </div>
+              </div>
+
+              <!-- card 6 -->
+              <div style="background:#FFFDF7;border-radius:22px;overflow:hidden;border:1px solid rgba(42,36,32,0.05);box-shadow:0 8px 20px rgba(42,36,32,0.05);">
+                <div style="position:relative;height:122px;">
+                  <img src="assets/food-pesto-gnocchi.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:4px;background:#FFFDF7;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#2E5339;">eco</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#241E19;">Veggie</span></div>
+                  <div style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:16px;color:#B9AEA0;font-variation-settings:'FILL' 0;">favorite</span></div>
+                </div>
+                <div style="padding:10px 11px 12px;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:15px;line-height:1.15;color:#241E19;min-height:34px;">Pesto Gnocchi</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:7px;"><span class="ms" style="font-size:14px;color:#9A9082;font-variation-settings:'FILL' 0;">schedule</span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">15 min</span><span style="width:3px;height:3px;border-radius:50%;background:#C9BEAD;"></span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">Easy</span></div>
+                  <div style="display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:#EAF1E7;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#2E5339;">shopping_basket</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#2E5339;">8/9 in pantry</span></div>
+                </div>
+              </div>
+
+              <!-- card 7 -->
+              <div style="background:#FFFDF7;border-radius:22px;overflow:hidden;border:1px solid rgba(42,36,32,0.05);box-shadow:0 8px 20px rgba(42,36,32,0.05);">
+                <div style="position:relative;height:122px;">
+                  <img src="assets/food-chicken-rice-bowl.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:4px;background:#FFFDF7;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#2E5339;">restaurant</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#241E19;">Bowl</span></div>
+                  <div style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:16px;color:#B9AEA0;font-variation-settings:'FILL' 0;">favorite</span></div>
+                </div>
+                <div style="padding:10px 11px 12px;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:15px;line-height:1.15;color:#241E19;min-height:34px;">Chicken Rice Bowl</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:7px;"><span class="ms" style="font-size:14px;color:#9A9082;font-variation-settings:'FILL' 0;">schedule</span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">25 min</span><span style="width:3px;height:3px;border-radius:50%;background:#C9BEAD;"></span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">Easy</span></div>
+                  <div style="display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:#EAF1E7;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#2E5339;">check_circle</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#2E5339;">You have it all</span></div>
+                </div>
+              </div>
+
+              <!-- card 8 -->
+              <div style="background:#FFFDF7;border-radius:22px;overflow:hidden;border:1px solid rgba(42,36,32,0.05);box-shadow:0 8px 20px rgba(42,36,32,0.05);">
+                <div style="position:relative;height:122px;">
+                  <img src="assets/food-shawarma-bowl.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:4px;background:#FFFDF7;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#2E5339;">restaurant</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#241E19;">Shawarma</span></div>
+                  <div style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:16px;color:#D9483B;">favorite</span></div>
+                </div>
+                <div style="padding:10px 11px 12px;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:15px;line-height:1.15;color:#241E19;min-height:34px;">Saffron Chicken Shawarma</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:7px;"><span class="ms" style="font-size:14px;color:#9A9082;font-variation-settings:'FILL' 0;">schedule</span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">45 min</span><span style="width:3px;height:3px;border-radius:50%;background:#C9BEAD;"></span><span style="font-family:Nunito;font-weight:700;font-size:12px;color:#6E6456;">Medium</span></div>
+                  <div style="display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:#FCF0D6;padding:4px 9px;border-radius:100px;"><span class="ms" style="font-size:13px;color:#C28C21;">shopping_basket</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#C28C21;">6/14 · need 8</span></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ==================== DIRECTION B — THE FEED (immersive) ==================== -->
+      <sc-if value="{{ isB }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;background:#FAF3E7;">
+
+          <!-- header -->
+          <div style="padding:56px 20px 10px;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;">
+            <div>
+              <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;">132 saved · 18 cooked</div>
+              <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:31px;letter-spacing:-0.9px;color:#241E19;margin-top:2px;">Your recipes</div>
+            </div>
+            <div style="display:flex;gap:9px;padding-top:8px;">
+              <div style="width:42px;height:42px;border-radius:50%;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.07);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(42,36,32,0.05);">
+                <span class="ms" style="font-size:22px;color:#3A342C;font-variation-settings:'FILL' 0;">settings</span>
+              </div>
+              <div style="width:42px;height:42px;border-radius:50%;background:#2E5339;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(42,36,32,0.12);">
+                <span class="ms" style="font-size:24px;color:#FBF5E9;">add</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="glutt-scroll" style="flex:1;overflow:auto;">
+
+            <!-- search / ask pill -->
+            <div style="margin:6px 20px 16px;display:flex;align-items:center;gap:11px;height:50px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.07);padding:0 17px;box-shadow:0 5px 16px rgba(42,36,32,0.05);">
+              <span class="ms" style="font-size:22px;color:#9A9082;font-variation-settings:'FILL' 0;">search</span>
+              <span style="font-family:Nunito;font-weight:600;font-size:15px;color:#9A9082;flex:1;">that creamy chicken thing…</span>
+              <span class="ms" style="font-size:21px;color:#2E5339;">auto_awesome</span>
+            </div>
+
+            <!-- hero: ready to cook now -->
+            <div style="margin:0 20px 6px;">
+              <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;margin-bottom:10px;">Ready to cook tonight</div>
+              <div style="position:relative;border-radius:26px;overflow:hidden;height:230px;box-shadow:0 16px 34px rgba(42,36,32,0.16);">
+                <img src="assets/food-green-goddess.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(20,15,10,0.86) 0%, rgba(20,15,10,0.30) 48%, rgba(20,15,10,0) 82%);"></div>
+                <div style="position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:19px;color:#D9483B;">favorite</span></div>
+                <div style="position:absolute;left:16px;right:16px;bottom:15px;">
+                  <div style="display:inline-flex;align-items:center;gap:5px;background:#2E5339;padding:5px 11px;border-radius:100px;margin-bottom:9px;"><span class="ms" style="font-size:14px;color:#8FE3A3;">check_circle</span><span style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:0.3px;color:#EAF1E7;">You have all 12 ingredients</span></div>
+                  <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:24px;line-height:1.08;letter-spacing:-0.5px;color:#FBF5E9;max-width:260px;">Green Goddess Steak Plate</div>
+                  <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+                    <div style="display:flex;align-items:center;gap:6px;background:#2E5339;padding:11px 20px;border-radius:100px;box-shadow:0 8px 18px rgba(0,0,0,0.28);"><span class="ms" style="font-size:18px;color:#FBF5E9;">skillet</span><span style="font-family:Nunito;font-weight:800;font-size:15px;color:#FBF5E9;">Cook</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;"><span class="ms" style="font-size:16px;color:#EAE0D2;font-variation-settings:'FILL' 0;">schedule</span><span style="font-family:Nunito;font-weight:700;font-size:13px;color:#EAE0D2;">35 min · Medium</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- filter chips -->
+            <div class="glutt-scroll" style="display:flex;gap:8px;overflow:auto;padding:16px 20px 4px;">
+              <div style="flex:0 0 auto;padding:9px 16px;border-radius:100px;background:#2E5339;font-family:Nunito;font-weight:800;font-size:13px;color:#FBF5E9;">All</div>
+              <div style="flex:0 0 auto;padding:9px 16px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);font-family:Nunito;font-weight:700;font-size:13px;color:#3A342C;">Ready now</div>
+              <div style="flex:0 0 auto;padding:9px 16px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);font-family:Nunito;font-weight:700;font-size:13px;color:#3A342C;">Under 30 min</div>
+              <div style="flex:0 0 auto;padding:9px 16px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);font-family:Nunito;font-weight:700;font-size:13px;color:#3A342C;">High protein</div>
+              <div style="flex:0 0 auto;padding:9px 16px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);font-family:Nunito;font-weight:700;font-size:13px;color:#3A342C;">Recent</div>
+            </div>
+
+            <!-- section label -->
+            <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;padding:16px 20px 12px;">Saved this week</div>
+
+            <!-- feed cards -->
+            <div style="display:flex;flex-direction:column;gap:16px;padding:0 20px 120px;">
+
+              <!-- feed card 1 -->
+              <div style="background:#FFFDF7;border-radius:26px;overflow:hidden;border:1px solid rgba(42,36,32,0.05);box-shadow:0 10px 26px rgba(42,36,32,0.06);">
+                <div style="position:relative;height:180px;">
+                  <img src="assets/food-hot-honey-rice.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:11px;left:11px;display:flex;align-items:center;gap:5px;background:#FFFDF7;padding:6px 11px;border-radius:100px;"><span class="ms" style="font-size:14px;color:#D9483B;">local_fire_department</span><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#241E19;">Spicy</span></div>
+                  <div style="position:absolute;top:11px;right:11px;width:32px;height:32px;border-radius:50%;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:18px;color:#D9483B;">favorite</span></div>
+                </div>
+                <div style="padding:13px 15px 15px;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:20px;line-height:1.1;color:#241E19;">Hot Honey Chicken &amp; Rice</div>
+                  <div style="font-family:Nunito;font-weight:600;font-size:13px;color:#9A9082;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Crispy chicken, hot honey glaze, over fluffy rice</div>
+                  <div style="display:flex;align-items:center;gap:7px;margin-top:12px;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:5px;background:#F4EDDC;padding:6px 11px;border-radius:100px;"><span class="ms" style="font-size:14px;color:#6E6456;font-variation-settings:'FILL' 0;">schedule</span><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#4A4238;">25 min</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;background:#F4EDDC;padding:6px 11px;border-radius:100px;"><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#4A4238;">Easy</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;background:#FCF0D6;padding:6px 11px;border-radius:100px;"><span class="ms" style="font-size:14px;color:#C28C21;">star</span><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#C28C21;">4.8</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;background:#EAF1E7;padding:6px 11px;border-radius:100px;"><span class="ms" style="font-size:14px;color:#2E5339;">shopping_basket</span><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#2E5339;">9/11</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- feed card 2 -->
+              <div style="background:#FFFDF7;border-radius:26px;overflow:hidden;border:1px solid rgba(42,36,32,0.05);box-shadow:0 10px 26px rgba(42,36,32,0.06);">
+                <div style="position:relative;height:180px;">
+                  <img src="assets/food-salmon-bowl.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:11px;left:11px;display:flex;align-items:center;gap:5px;background:#FFFDF7;padding:6px 11px;border-radius:100px;"><span class="ms" style="font-size:14px;color:#2E5339;">restaurant</span><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#241E19;">Omega-3</span></div>
+                  <div style="position:absolute;top:11px;right:11px;width:32px;height:32px;border-radius:50%;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:18px;color:#D9483B;">favorite</span></div>
+                </div>
+                <div style="padding:13px 15px 15px;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:20px;line-height:1.1;color:#241E19;">Lemon Dill Salmon Bowl</div>
+                  <div style="font-family:Nunito;font-weight:600;font-size:13px;color:#9A9082;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Flaky salmon, cucumber, lemon-dill yogurt</div>
+                  <div style="display:flex;align-items:center;gap:7px;margin-top:12px;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:5px;background:#F4EDDC;padding:6px 11px;border-radius:100px;"><span class="ms" style="font-size:14px;color:#6E6456;font-variation-settings:'FILL' 0;">schedule</span><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#4A4238;">20 min</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;background:#F4EDDC;padding:6px 11px;border-radius:100px;"><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#4A4238;">Easy</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;background:#FCF0D6;padding:6px 11px;border-radius:100px;"><span class="ms" style="font-size:14px;color:#C28C21;">star</span><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#C28C21;">4.7</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;background:#EAF1E7;padding:6px 11px;border-radius:100px;"><span class="ms" style="font-size:14px;color:#2E5339;">check_circle</span><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#2E5339;">Have it all</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- feed card 3 -->
+              <div style="background:#FFFDF7;border-radius:26px;overflow:hidden;border:1px solid rgba(42,36,32,0.05);box-shadow:0 10px 26px rgba(42,36,32,0.06);">
+                <div style="position:relative;height:180px;">
+                  <img src="assets/food-korean-beef.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <div style="position:absolute;top:11px;left:11px;display:flex;align-items:center;gap:5px;background:#FFFDF7;padding:6px 11px;border-radius:100px;"><span class="ms" style="font-size:14px;color:#2E5339;">lunch_dining</span><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#241E19;">Meal prep</span></div>
+                  <div style="position:absolute;top:11px;right:11px;width:32px;height:32px;border-radius:50%;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:18px;color:#B9AEA0;font-variation-settings:'FILL' 0;">favorite</span></div>
+                </div>
+                <div style="padding:13px 15px 15px;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:20px;line-height:1.1;color:#241E19;">Korean Beef Meal Prep</div>
+                  <div style="font-family:Nunito;font-weight:600;font-size:13px;color:#9A9082;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Savory beef, rice, quick pickled veg for the week</div>
+                  <div style="display:flex;align-items:center;gap:7px;margin-top:12px;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:5px;background:#F4EDDC;padding:6px 11px;border-radius:100px;"><span class="ms" style="font-size:14px;color:#6E6456;font-variation-settings:'FILL' 0;">schedule</span><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#4A4238;">40 min</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;background:#F4EDDC;padding:6px 11px;border-radius:100px;"><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#4A4238;">Easy</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;background:#FCF0D6;padding:6px 11px;border-radius:100px;"><span class="ms" style="font-size:14px;color:#C28C21;">star</span><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#C28C21;">4.6</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;background:#FCF0D6;padding:6px 11px;border-radius:100px;"><span class="ms" style="font-size:14px;color:#C28C21;">shopping_basket</span><span style="font-family:Nunito;font-weight:800;font-size:12px;color:#C28C21;">9/13</span></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ==================== SHARED DARK TAB BAR ==================== -->
+      <div style="position:absolute;left:0;right:0;bottom:0;z-index:40;background:#241F1A;border-radius:30px 30px 0 0;padding:13px 8px 27px;display:flex;box-shadow:0 -6px 24px rgba(42,36,32,0.16);">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <span class="ms" style="font-size:26px;color:#CFE6CC;">menu_book</span>
+          <span style="font-family:Nunito;font-weight:800;font-size:11px;color:#F4ECDF;">Recipes</span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <span class="ms" style="font-size:26px;color:#928377;font-variation-settings:'FILL' 0;">auto_awesome</span>
+          <span style="font-family:Nunito;font-weight:600;font-size:11px;color:#928377;">Discover</span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <span class="ms" style="font-size:26px;color:#928377;font-variation-settings:'FILL' 0;">skillet</span>
+          <span style="font-family:Nunito;font-weight:600;font-size:11px;color:#928377;">Kitchen</span>
+        </div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: &quot;402px&quot;, &quot;height&quot;: &quot;874px&quot; },
+  &quot;direction&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;A&quot;, &quot;B&quot;], &quot;default&quot;: &quot;A&quot;, &quot;tsType&quot;: &quot;'A' | 'B'&quot;, &quot;section&quot;: &quot;Board&quot; },
+  &quot;board&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Board&quot; }
+}">
+class Component extends DCLogic {
+  renderVals() {
+    const dir = this.props.direction || 'A';
+    const board = this.props.board === true || this.props.board === 'true';
+    const rootStyle = board
+      ? 'display:inline-flex;font-family:Nunito;'
+      : 'min-height:100vh;display:flex;align-items:center;justify-content:center;padding:36px;background:radial-gradient(130% 120% at 50% -10%, #F1EAD9 0%, #E7DFCC 55%, #E0D7C2 100%);font-family:Nunito;';
+    return { isA: dir === 'A', isB: dir === 'B', rootStyle };
+  }
+}
+</script>
+</body>
+</html>

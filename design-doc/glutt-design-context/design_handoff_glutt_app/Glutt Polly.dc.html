@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..700,0..1,0&display=swap" rel="stylesheet">
+<style>
+  * { -webkit-font-smoothing: antialiased; box-sizing: border-box; }
+  body { margin: 0; }
+  a { color: #2E5339; text-decoration: none; }
+  a:hover { color: #3d6d4b; }
+  .ms { font-family: 'Material Symbols Rounded'; font-weight: 400; font-style: normal; line-height: 1; display: inline-block; font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  @keyframes pollyEdge { 0%,100%{opacity:.88} 50%{opacity:1} }
+  @keyframes micBar { 0%,100%{transform:scaleY(.3)} 50%{transform:scaleY(1)} }
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="true" hint-size="402px,874px">
+    <div style="height:100%;position:relative;overflow:hidden;background:#141310;color:#F4ECDF;font-family:Nunito;">
+
+      <!-- camera feed -->
+      <img src="assets/food-hot-honey-rice.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
+      <div style="position:absolute;inset:0;background:linear-gradient(to bottom, rgba(20,15,10,0.5) 0%, rgba(20,15,10,0.04) 22%, rgba(20,15,10,0.1) 48%, rgba(20,15,10,0.7) 80%, rgba(20,15,10,0.94) 100%);"></div>
+
+      <!-- listening edge: crisp solid color border -->
+      <sc-if value="{{ isListening }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;inset:0;z-index:40;pointer-events:none;border-radius:44px;padding:6px;background:linear-gradient(135deg,#8FE3A3 0%,#2E5339 36%,#C28C21 70%,#E1523D 100%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:pollyEdge 2.4s ease-in-out infinite;"></div>
+      </sc-if>
+
+      <!-- content -->
+      <div style="position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;">
+
+        <!-- top bar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:56px 18px 0;">
+          <div style="width:42px;height:42px;border-radius:50%;background:#241F1A;border:1px solid rgba(244,236,223,0.16);display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:21px;color:#F4ECDF;">menu_book</span></div>
+          <div style="text-align:center;">
+            <div style="font-family:Nunito;font-weight:800;font-size:14px;color:#FBF5E9;line-height:1.15;">Hot Honey Chicken &amp; Rice</div>
+            <div style="font-family:Nunito;font-weight:700;font-size:12px;color:rgba(251,245,233,0.72);margin-top:2px;font-variant-numeric:tabular-nums;">04:12</div>
+          </div>
+          <div style="width:42px;height:42px;border-radius:50%;background:#241F1A;border:1px solid rgba(244,236,223,0.16);display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:21px;color:#F4ECDF;">more_horiz</span></div>
+        </div>
+
+        <!-- state indicator -->
+        <div style="display:flex;justify-content:center;margin-top:14px;">
+          <sc-if value="{{ isLive }}" hint-placeholder-val="{{ true }}">
+            <div style="display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:100px;background:rgba(36,31,26,0.62);border:1px solid rgba(244,236,223,0.14);">
+              <span class="ms" style="font-size:15px;color:#8FE3A3;">graphic_eq</span>
+              <span style="font-family:Nunito;font-weight:700;font-size:12.5px;color:rgba(244,236,223,0.85);">Say &ldquo;Polly&rdquo; to talk</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isListening }}" hint-placeholder-val="{{ false }}">
+            <div style="display:inline-flex;align-items:center;gap:9px;padding:9px 18px;border-radius:100px;background:#2E5339;border:1px solid #2E5339;">
+              <div style="display:flex;align-items:flex-end;gap:2.5px;height:14px;">
+                <span style="width:3px;height:14px;border-radius:2px;background:#8FE3A3;transform-origin:bottom;animation:micBar .9s ease-in-out infinite;"></span>
+                <span style="width:3px;height:14px;border-radius:2px;background:#8FE3A3;transform-origin:bottom;animation:micBar .9s ease-in-out infinite;animation-delay:.15s;"></span>
+                <span style="width:3px;height:14px;border-radius:2px;background:#8FE3A3;transform-origin:bottom;animation:micBar .9s ease-in-out infinite;animation-delay:.3s;"></span>
+                <span style="width:3px;height:14px;border-radius:2px;background:#8FE3A3;transform-origin:bottom;animation:micBar .9s ease-in-out infinite;animation-delay:.45s;"></span>
+              </div>
+              <span style="font-family:Nunito;font-weight:800;font-size:13px;color:#DFF3DC;letter-spacing:.2px;">Listening</span>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="flex:1;"></div>
+
+        <!-- speech line -->
+        <div style="padding:0 22px;display:flex;justify-content:center;">
+          <sc-if value="{{ isLive }}" hint-placeholder-val="{{ true }}">
+            <div style="max-width:330px;text-align:center;font-family:Nunito;font-weight:600;font-size:15px;line-height:1.36;color:rgba(244,236,223,0.94);">Nice sear starting. Give it one more minute, then flip and we glaze.</div>
+          </sc-if>
+          <sc-if value="{{ isListening }}" hint-placeholder-val="{{ false }}">
+            <div style="max-width:340px;text-align:center;font-family:Nunito;font-weight:700;font-size:18px;line-height:1.3;color:#FBF5E9;">&ldquo;Polly, is the chicken cooked through yet<span style="opacity:.5;">&hellip;</span>&rdquo;</div>
+          </sc-if>
+        </div>
+
+        <!-- bottom cluster -->
+        <div style="padding:16px 18px 40px;display:flex;flex-direction:column;gap:16px;">
+
+          <!-- current step -->
+          <div style="width:100%;background:#FFFDF7;border-radius:22px;padding:16px;box-shadow:0 12px 32px rgba(42,36,32,0.3);">
+            <div style="display:flex;gap:4px;">
+              <span style="flex:1;height:4px;border-radius:2px;background:#2E5339;"></span>
+              <span style="flex:1;height:4px;border-radius:2px;background:#2E5339;"></span>
+              <span style="flex:1;height:4px;border-radius:2px;background:#2E5339;"></span>
+              <span style="flex:1;height:4px;border-radius:2px;background:#E4DAC6;"></span>
+              <span style="flex:1;height:4px;border-radius:2px;background:#E4DAC6;"></span>
+              <span style="flex:1;height:4px;border-radius:2px;background:#E4DAC6;"></span>
+            </div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:12px;">
+              <div style="font-family:Nunito;font-weight:800;font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;color:#2E5339;">Step 3 of 6</div>
+              <div style="font-family:Nunito;font-weight:700;font-size:11.5px;color:#9A9082;">Up next, glaze</div>
+            </div>
+            <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:22px;letter-spacing:-0.4px;color:#241E19;margin-top:4px;">Sear the chicken</div>
+            <div style="font-family:Nunito;font-weight:600;font-size:13.5px;line-height:1.42;color:#6E6456;margin-top:5px;">Lay the thighs into the hot pan and leave them be until the edges turn deep golden, about three minutes.</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:13px;width:max-content;background:#C28C21;padding:8px 14px;border-radius:100px;"><span class="ms" style="font-size:16px;color:#FBF5E9;">timer</span><span style="font-family:Nunito;font-weight:800;font-size:13px;color:#FBF5E9;">Start 3:00 timer</span></div>
+          </div>
+
+          <!-- controls: mute, hang up, camera -->
+          <div style="display:flex;align-items:center;justify-content:center;gap:20px;">
+            <div style="width:52px;height:52px;border-radius:50%;background:#241F1A;border:1px solid rgba(244,236,223,0.18);display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:23px;color:#F4ECDF;">mic</span></div>
+            <div style="width:64px;height:64px;border-radius:50%;background:#D9483B;box-shadow:0 10px 24px rgba(42,36,32,0.28);display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:29px;color:#FBF5E9;">call_end</span></div>
+            <div style="width:52px;height:52px;border-radius:50%;background:#241F1A;border:1px solid rgba(244,236,223,0.18);display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:22px;color:#8FE3A3;">videocam</span></div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: &quot;402px&quot;, &quot;height&quot;: &quot;874px&quot; },
+  &quot;state&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;Live&quot;, &quot;Listening&quot;], &quot;default&quot;: &quot;Live&quot;, &quot;tsType&quot;: &quot;'Live' | 'Listening'&quot;, &quot;section&quot;: &quot;Board&quot; },
+  &quot;board&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Board&quot; }
+}">
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.props.state || 'Live';
+    const board = this.props.board === true || this.props.board === 'true';
+    const rootStyle = board
+      ? 'display:inline-flex;font-family:Nunito;'
+      : 'min-height:100vh;display:flex;align-items:center;justify-content:center;padding:36px;background:radial-gradient(130% 120% at 50% -10%, #F1EAD9 0%, #E7DFCC 55%, #E0D7C2 100%);font-family:Nunito;';
+    return { isLive: st === 'Live', isListening: st === 'Listening', rootStyle };
+  }
+}
+</script>
+</body>
+</html>

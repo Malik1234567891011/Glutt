@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100" height="100" rx="22" fill="#2E5339"/>
+  <text x="50" y="50" font-family="'Bricolage Grotesque', sans-serif" font-weight="700" font-size="52" fill="#FBF5E9" text-anchor="middle" dominant-baseline="central">G</text>
+  <circle cx="72" cy="34" r="6" fill="#D9483B"/>
+</svg>
+</template>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta name="design_doc_mode" content="canvas">
+<style>
+  * { -webkit-font-smoothing: antialiased; box-sizing: border-box; }
+  body { margin: 0; }
+</style>
+</helmet>
+<div style="min-height:100vh;background:#E7DFCC;padding:60px 72px 90px;font-family:Nunito;">
+
+  <div style="margin-bottom:56px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-family:'Bricolage Grotesque';font-weight:700;font-size:42px;letter-spacing:-.9px;color:#241E19;">Glutt, the app</span>
+      <span style="width:13px;height:13px;border-radius:4px;background:#D9483B;"></span>
+    </div>
+    <div style="font-family:Nunito;font-weight:600;font-size:16px;color:#7C7367;margin-top:8px;max-width:760px;text-wrap:pretty;">The daily loop, plus the live Cook with Polly session it opens into. Every phone is live, so scroll inside any of them.</div>
+  </div>
+
+  <section>
+    <div style="margin-bottom:36px;">
+      <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;">Daily loop</div>
+      <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:30px;letter-spacing:-.6px;color:#241E19;margin-top:8px;">The app</div>
+      <div style="font-family:Nunito;font-weight:600;font-size:15px;color:#7C7367;margin-top:6px;text-wrap:pretty;">The Feed direction carried across the tabs, then the live cooking session. Open the app, open a recipe, discover something new, check the kitchen, then cook with Polly.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,402px);gap:64px 60px;width:max-content;">
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div style="display:inline-flex;align-items:center;gap:11px;"><span style="width:28px;height:28px;border-radius:9px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">01</span><div><div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:18px;color:#241E19;">Recipes (home)</div><div style="font-family:Nunito;font-weight:600;font-size:13px;color:#7C7367;">The Feed · ready-to-cook hero + cards</div></div></div>
+        <div style="width:402px;height:874px;border-radius:48px;box-shadow:0 30px 70px rgba(42,36,32,0.16);"><dc-import name="Glutt Main Page" board="true" direction="B" hint-size="402px,874px"></dc-import></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div style="display:inline-flex;align-items:center;gap:11px;"><span style="width:28px;height:28px;border-radius:9px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">02</span><div><div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:18px;color:#241E19;">Recipe detail</div><div style="font-family:Nunito;font-weight:600;font-size:13px;color:#7C7367;">Hero, ingredients + pantry match, Cook with Polly</div></div></div>
+        <div style="width:402px;height:874px;border-radius:48px;box-shadow:0 30px 70px rgba(42,36,32,0.16);"><dc-import name="Glutt Screens" board="true" screen="Recipe detail" hint-size="402px,874px"></dc-import></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div style="display:inline-flex;align-items:center;gap:11px;"><span style="width:28px;height:28px;border-radius:9px;background:#D9483B;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">03</span><div><div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:18px;color:#241E19;">Discover</div><div style="font-family:Nunito;font-weight:600;font-size:13px;color:#7C7367;">Recipe cards · swipe to save or skip</div></div></div>
+        <div style="width:402px;height:874px;border-radius:48px;box-shadow:0 30px 70px rgba(42,36,32,0.16);"><dc-import name="Glutt Screens" board="true" screen="Discover" hint-size="402px,874px"></dc-import></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div style="display:inline-flex;align-items:center;gap:11px;"><span style="width:28px;height:28px;border-radius:9px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">04</span><div><div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:18px;color:#241E19;">Kitchen</div><div style="font-family:Nunito;font-weight:600;font-size:13px;color:#7C7367;">Ingredients │ Tools │ Groceries · with use-soon flags</div></div></div>
+        <div style="width:402px;height:874px;border-radius:48px;box-shadow:0 30px 70px rgba(42,36,32,0.16);"><dc-import name="Glutt Screens" board="true" screen="Kitchen" hint-size="402px,874px"></dc-import></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div style="display:inline-flex;align-items:center;gap:11px;"><span style="width:28px;height:28px;border-radius:9px;background:#2E5339;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">05</span><div><div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:18px;color:#241E19;">Cook with Polly</div><div style="font-family:Nunito;font-weight:600;font-size:13px;color:#7C7367;">Live session · camera on, hands-free</div></div></div>
+        <div style="width:402px;height:874px;border-radius:48px;box-shadow:0 30px 70px rgba(42,36,32,0.16);"><dc-import name="Glutt Polly" board="true" state="Live" hint-size="402px,874px"></dc-import></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div style="display:inline-flex;align-items:center;gap:11px;"><span style="width:28px;height:28px;border-radius:9px;background:#D9483B;color:#FBF5E9;font-family:'Bricolage Grotesque';font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">06</span><div><div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:18px;color:#241E19;">You said &ldquo;Polly&rdquo;</div><div style="font-family:Nunito;font-weight:600;font-size:13px;color:#7C7367;">Wake word heard · edges glow while it listens</div></div></div>
+        <div style="width:402px;height:874px;border-radius:48px;box-shadow:0 30px 70px rgba(42,36,32,0.16);"><dc-import name="Glutt Polly" board="true" state="Listening" hint-size="402px,874px"></dc-import></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</x-dc>
+</body>
+</html>

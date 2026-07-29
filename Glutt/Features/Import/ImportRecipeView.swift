@@ -199,6 +199,10 @@ struct ImportRecipeView: View {
     private func startLinkImport() {
         phase = .loading("Reading the recipe…")
         let urlString = urlText
+        // Success has no event of its own: a start with no `recipe_created`
+        // behind it is the drop-off, and reaching review is not the same as
+        // keeping the recipe.
+        Analytics.capture(.importStarted, ["source": "link"])
         Task {
             do {
                 let draft = try await ImportPipeline.run(urlString: urlString) { message in
@@ -208,6 +212,7 @@ struct ImportRecipeView: View {
                 phase = .review(draft)
             } catch {
                 Haptics.notify(.error)
+                Analytics.capture(.importFailed, ["source": "link", "reason": error.localizedDescription])
                 phase = .failed(error.localizedDescription)
             }
         }
@@ -215,6 +220,7 @@ struct ImportRecipeView: View {
 
     private func startPhotoImport() {
         phase = .loading("Reading the screenshot…")
+        Analytics.capture(.importStarted, ["source": "screenshot"])
         Task {
             do {
                 guard let data = try await photoItem?.loadTransferable(type: Data.self) else {
@@ -233,6 +239,7 @@ struct ImportRecipeView: View {
                 phase = .review(draft)
             } catch {
                 Haptics.notify(.error)
+                Analytics.capture(.importFailed, ["source": "screenshot", "reason": error.localizedDescription])
                 phase = .failed(error.localizedDescription)
             }
             photoItem = nil

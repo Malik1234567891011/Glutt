@@ -15,6 +15,11 @@ struct CookModeView: View {
     @State private var isShowingFinish = false
     @State private var isConfirmingExit = false
 
+    /// Analytics only. `reachedFinish` is what separates a cook from an
+    /// abandonment: leaving any other way means they walked off mid-recipe.
+    @State private var startedCookingAt = Date()
+    @State private var reachedFinish = false
+
     private var steps: [RecipeStep] { recipe.sortedSteps }
     private var isLastStep: Bool { stepIndex >= steps.count - 1 }
 
@@ -39,10 +44,30 @@ struct CookModeView: View {
             bottomBar
         }
         .background(Theme.Colors.background)
-        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+        .onAppear {
+            UIApplication.shared.isIdleTimerDisabled = true
+            startedCookingAt = .now
+            Analytics.capture(.cookStarted, [
+                "with_polly": false,
+                "steps_total": steps.count,
+            ])
+        }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
             timerManager.cancelAll()
+            Analytics.capture(.cookFinished, [
+                "with_polly": false,
+                "duration_s": Int(Date.now.timeIntervalSince(startedCookingAt).rounded()),
+                "ended_early": !reachedFinish,
+                "steps_done": reachedFinish ? steps.count : stepIndex,
+                "steps_total": steps.count,
+            ])
+        }
+        // Catches both ways in: the last-step button and "Finish & log it" in
+        // the exit dialog. Sheets do not disappear their presenter, so this
+        // stays true through the finish sheet and into `onDisappear`.
+        .onChange(of: isShowingFinish) { _, showing in
+            if showing { reachedFinish = true }
         }
         .sheet(isPresented: $isShowingIngredients) {
             ingredientsSheet

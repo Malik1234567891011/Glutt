@@ -1,0 +1,5 @@
+A single photoreal food photograph, studio food photography, soft even lighting, richly appetizing, high detail, sharp focus.
+SUBJECT: a wooden board with two sliced grilled chicken breasts, char marks visible, juicy.
+The subject is centred and fills about 85% of the frame, seen from directly above.
+CRITICAL BACKGROUND RULE: the entire background is pure flat magenta, hex #FF00FF, one single uniform colour. No gradient, no shadow, no texture, no vignette, no reflection. Do NOT cast any shadow onto the magenta. Nothing else is in the frame at all — no table, no linen, no cutlery, no napkin, no props, no second dish, no hands. The magenta colour must not appear anywhere on the food or the dish itself.
+Square 1:1 framing. No text, no watermark, no border.

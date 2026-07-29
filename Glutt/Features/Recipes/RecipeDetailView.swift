@@ -93,14 +93,21 @@ struct RecipeDetailView: View {
                 .presentationDetents([.medium, .large])
         }
         .confirmationDialog("Delete this recipe?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) { context.delete(recipe); dismiss() }
+            Button("Delete", role: .destructive) {
+                Analytics.capture(.recipeDeleted)
+                context.delete(recipe)
+                dismiss()
+            }
         }
         .alert("Name this version", isPresented: $isNamingVersion) {
             TextField("e.g. High-protein version", text: $versionLabel)
             Button("Create") { createVersion() }
             Button("Cancel", role: .cancel) { versionLabel = "" }
         }
-        .onAppear { RecipeNutrition.backfillIfNeeded(recipe: recipe) }
+        .onAppear {
+            RecipeNutrition.backfillIfNeeded(recipe: recipe)
+            Analytics.capture(.recipeViewed)
+        }
     }
 
     // MARK: - Hero

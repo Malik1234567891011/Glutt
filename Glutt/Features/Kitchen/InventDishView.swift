@@ -196,6 +196,7 @@ struct InventDishView: View {
             if !inventedTitles.contains(current) { inventedTitles.append(current) }
         }
         isInventing = true
+        Analytics.capture(.aiToolUsed, ["tool": "invent", "reroll": excludingCurrent])
         let prefs = UserPrefs.current(in: context)
         let hint = inventHint.trimmingCharacters(in: .whitespacesAndNewlines)
         let avoid = Array(inventedTitles.suffix(6))

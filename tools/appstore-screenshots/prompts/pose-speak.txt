@@ -1,0 +1,13 @@
+The attached image shows a mascot character named "Polly". Reproduce this EXACT character in a new pose: identical face, identical head, identical eye shapes, identical beak, identical crest, identical body shape, identical colours, identical flat-vector style. Do not restyle her. Do not redesign her face.
+
+CRITICAL — her face must remain exactly as in the attached image:
+- Two SEPARATE white eye circles with a clear band of mint-green body colour between them. Never a single merged cream mask stretching across the face.
+- A short curved hooked amber #C28C21 parrot beak, tapering to a downward point, sitting BELOW the eye line and centred. It must not overlap or touch either eye.
+- Two separated leaf-shaped deep herb green #2E5339 crest feathers with a mint gap between them.
+- Small soft pink blush ovals placed low and out to the sides, below and outside the eyes.
+
+Body: chubby rounded jellybean body in mint green #8FE3A3, warm cream #FFFDF7 belly, oversized head, small foot nubs.
+
+RENDER: one single character, centred, full body, pure flat white background. Flat vector illustration with no gradients, no outlines, no bevels, no glow, no 3D, no texture. No text, no labels, no numbers, no frame, no border, no shadows cast on the background.
+
+NEW POSE:  standing and leaning very slightly forward, one wing raised and angled outward as if mid-explanation, the other wing resting at her side. Her beak is only very slightly parted as if speaking — no tongue visible, no red interior visible. Bright alert eyes.

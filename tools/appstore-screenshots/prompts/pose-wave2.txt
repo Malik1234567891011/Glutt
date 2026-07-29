@@ -1,0 +1,7 @@
+The attached image shows a mascot character named "Polly". Reproduce this EXACT character in a new pose: identical face, identical head, identical eyes, identical beak, identical crest, identical body shape, identical colours, identical flat-vector style. Do not restyle her, do not redesign her face.
+
+NEW POSE: standing upright, facing forward. Her LEFT wing is raised high above her shoulder in a clear friendly wave, fully visible against the white background. Her RIGHT wing is extended down and out to the side, away from her body, and its tip clearly grips the handle of a small wooden spoon. The spoon hangs at her side, well clear of her face and well clear of her cream belly — it must not overlap her body or her face at any point. The spoon is small, simple, warm wood brown, with a rounded bowl at the top and a straight handle. Happy expression, closed beak.
+
+Both wings must be clearly visible and clearly separate from the body silhouette. Do not tuck either wing behind her. Do not place the spoon in front of her chest.
+
+RENDER: one single character, centred, full body, pure flat white background. Flat vector illustration, no gradients, no outlines, no bevels, no glow, no 3D, no texture. No text, no labels, no frame, no shadows cast on the background.

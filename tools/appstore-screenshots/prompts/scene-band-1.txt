@@ -1,0 +1,16 @@
+Create a single WIDE HORIZONTAL SCENE STRIP that will be composited along the bottom of a poster. Flat vector illustration throughout.
+
+THE CHARACTER — the attached image shows my mascot, a chubby brown bear cook in a short green bib apron. Reproduce him EXACTLY: identical face, identical two SEPARATE white oval eyes with a clear band of brown fur between them that never merge into a mask, identical pale cream muzzle with the dark brown nose above a curved smile and a small pink tongue tip, identical ears, identical warm brown fur, identical short deep-green #2E5339 bib apron with pale cream straps, identical flat vector style. Do not restyle him, do not redesign his face, do not lengthen the apron.
+
+THE GROUND: a low rolling hill in flat soft sage green #E3EEDC filling the bottom 55% of the strip, its top edge sitting a little under halfway down the image. Its top edge is one gentle organic curve — a little higher on the left, dipping softly toward the right. Flat colour, no texture, no outline, no gradient.
+
+THE COMPOSITION — arrange this like a charming little scene, not a cut-out standing to attention:
+- SIZE AND POSITION OF THE BEAR — this is strict. The bear must sit entirely within the LEFT 20% of the image width, tucked close to the left edge. His total height must be no more than 42% of the image height. He is a small character in a wide scene, not the subject of it. Do not centre him and do not let him extend past one fifth of the way across the strip.
+- He sits relaxed on top of the hill, his body turned very slightly toward the viewer at a lively three-quarter angle rather than perfectly straight-on. One arm raised in a happy wave, the other resting on the hill beside him. He should look settled INTO the hill, with the hill's curve passing behind his lower body so he is genuinely sitting on it, not floating above it.
+- Scatter a few simple flat-vector items resting on the hill around him, at different sizes and distances: a small round tomato, a little sprig of green herbs, a wooden spoon lying down, and one small pot. Spread them across the middle and right of the strip so the whole strip feels populated but uncrowded.
+- Add two or three small rounded shrub shapes in a slightly deeper sage green sitting on the hill along the right side.
+- Add a small curl of steam rising from the pot, and two or three tiny loose herb leaves floating just above the hill, for a little life.
+
+BACKGROUND — critical: every part of the image that is not the hill, the bear, or the scattered props must be pure flat magenta #FF00FF. One uniform colour, no gradient, no shadow, no vignette. Do NOT cast any shadow onto the magenta. The magenta must not appear anywhere on the hill, the bear or the props. The bear's head and raised arm will extend up above the hill's top edge into the magenta area — that is correct and expected.
+
+RENDER: flat vector, no gradients, no fur texture, no outlines, no bevels, no glow, no 3D shading. No text, no labels, no numbers, no frame, no border.

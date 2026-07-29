@@ -1,0 +1,14 @@
+Create a character sheet on a plain white background: four poses of one cute mascot character, evenly spaced in a 2x2 grid, each full-body. No text, no labels, no numbers anywhere in the image.
+
+THE CHARACTER — "Polly", a small chubby parrot chef:
+Flat vector illustration. No gradients, no bevels, no glow, no 3D, no outlines or only very subtle darker-tone outlines. At most one flat shadow tone per shape. Rounded jellybean body, short stubby wings, tiny rounded tail. Body in mint green #8FE3A3. Belly and cheeks in warm cream #FFFDF7. Small soft rounded beak in amber #C28C21. A short crest of exactly two rounded feathers on top of her head in deep herb green #2E5339. Oversized friendly eyes: large white ovals with big near-black #241E19 pupils and a single small white highlight dot in each. Simple happy expression. No eyebrows, no teeth, no tongue. Head slightly oversized relative to the body — appealing, toy-like, plush.
+
+Match the CHARM REGISTER of the attached reference image (its mascot's proportions, flat-vector simplicity, big-eyed friendliness, thick rounded shapes) but this is a completely different animal and a completely different colour palette. Do not copy the reference's mascot, its colours, or its background.
+
+THE FOUR POSES:
+1. Top-left: waving one wing, standing, holding a small wooden spoon in the other wing.
+2. Top-right: beak open mid-speech, one wing raised as if explaining, eyes bright.
+3. Bottom-left: peeking up from behind a horizontal edge — only her head and two wings visible over the edge, curious expression.
+4. Bottom-right: holding a small woven basket in front of her with both wings, proud.
+
+Keep style, proportions, colours and line weight perfectly consistent across all four poses — this is a reference sheet for a single character. Pure flat white background, no cast shadows on the background, no frame, no border, no grid lines.

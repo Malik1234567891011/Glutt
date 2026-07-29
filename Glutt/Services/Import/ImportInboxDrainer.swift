@@ -19,6 +19,12 @@ enum ImportInboxDrainer {
             inserted.append((draft.id, recipe))
         }
         try? context.save()   // make persistentModelIDs permanent before correlating
+        // Imports that came from the share sheet. The extension cannot report
+        // them itself — no PostHog SDK there, and it is dead before the recipe
+        // exists — so the app reports them when it drains the inbox.
+        for _ in inserted {
+            Analytics.capture(.recipeCreated, ["source": "import_share"])
+        }
         var map: [UUID: PersistentIdentifier] = [:]
         for (id, recipe) in inserted {
             map[id] = recipe.persistentModelID

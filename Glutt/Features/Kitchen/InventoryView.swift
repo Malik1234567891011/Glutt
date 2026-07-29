@@ -389,6 +389,7 @@ struct PantryItemEditorView: View {
                 : exactQuantity.trimmingCharacters(in: .whitespaces)
         )
         context.insert(item)
+        Analytics.capture(.pantryItemAdded, ["method": "manual", "count": 1])
         name = ""
         exactQuantity = ""
         flagUseSoon = false
@@ -405,6 +406,9 @@ struct PantryItemEditorView: View {
                 ? .fridge
                 : .pantry
             context.insert(PantryItem(name: itemName, category: category, location: location))
+        }
+        if !names.isEmpty {
+            Analytics.capture(.pantryItemAdded, ["method": "bulk", "count": names.count])
         }
         bulkText = ""
     }

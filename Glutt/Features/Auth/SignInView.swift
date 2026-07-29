@@ -16,9 +16,22 @@ struct SignInView: View {
     var canDismiss = false
     var onDismiss: (() -> Void)?
 
+    @Environment(\.modelContext) private var context
+
     @State private var rawNonce = AppleSignIn.makeNonce()
     @State private var isWorking = false
     @State private var errorMessage: String?
+
+    /// The onboarding answers, sent to the profile and to PostHog once there is
+    /// an account to attach them to. Read here rather than in `AccountSession`
+    /// because they live in SwiftData and the session has no model context.
+    private func syncTraits() async {
+        let prefs = UserPrefs.current(in: context)
+        await session.syncTraits(
+            goals: prefs.goals,
+            dietaryRules: prefs.dietaryRules.map(\.rawValue)
+        )
+    }
 
     var body: some View {
         ZStack {
@@ -131,6 +144,7 @@ struct SignInView: View {
                     fullName: credential.fullName
                 )
                 Analytics.capture(.signInSucceeded, ["provider": "apple"])
+                await syncTraits()
                 if canDismiss { onDismiss?() }
             } catch {
                 // Tapping Cancel is a choice, not an error. Say nothing and let
@@ -175,6 +189,7 @@ struct SignInView: View {
                     rawNonce: rawNonce
                 )
                 Analytics.capture(.signInSucceeded, ["provider": "google"])
+                await syncTraits()
                 if canDismiss { onDismiss?() }
             } catch {
                 // Backing out of Google's sheet says nothing; let them press

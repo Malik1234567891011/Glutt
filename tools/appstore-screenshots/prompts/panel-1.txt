@@ -1,0 +1,30 @@
+You are designing ONE panel of a 6-panel App Store screenshot set for an iOS cooking app called Glutt. This is PANEL 1 of 6.
+
+ATTACHED IMAGES, by role:
+- Image 1 = STYLE reference ONLY. Copy its energy: full-bleed flat colour panel, huge ultra-bold headline at the top, a phone mockup cropped by the bottom edge, a cute flat-vector mascot peeking in at the bottom, cut-out photoreal food floating with pill-shaped labels. Do NOT copy its colours, its mascot, its fonts, or any of its words.
+- Image 2 = the mascot "Polly". Reproduce this character EXACTLY as drawn — same face, same eyes, same beak, same crest, same body, same colours, same wooden spoon, same waving pose. Do not restyle or redraw her.
+- Image 3 = a real screenshot of the Glutt app. Reproduce this UI inside the phone exactly and pixel-faithfully. Do not redesign it, do not rearrange it, do not invent labels or numbers, do not change its colours.
+
+CANVAS: vertical 9:16, full-bleed. No outer frame, no rounded corners on the canvas, no border, no shadow around the canvas edge.
+
+BACKGROUND: flat cream #FAF3E7, edge to edge. Behind the phone sits one large soft organic blob shape in peach #F7E2D4 — a simple rounded amoeba silhouette, flat colour, no outline.
+
+PALETTE — use only these: cream #FAF3E7, warm white #FFFDF7, deep herb green #2E5339, mint #8FE3A3, honey #FCF0D6, amber #C28C21, tomato #D9483B, peach #F7E2D4, near-black #241E19.
+
+HEADLINE — top 22% of the canvas, tightly set with no large empty gap beneath it, centred, in near-black #241E19, set in one heavy geometric grotesque at extra-bold to black weight with very tight tracking and tight leading:
+First, a small line reading "Glutt" at roughly 30% of the headline size.
+Then two large lines below it:
+"Cook what"
+"you save"
+Spell all three exactly as written. No other text anywhere in the image except the pill labels specified below.
+
+PHONE: one iPhone mockup, straight-on, no perspective tilt, centred horizontally, with a thin even near-black #241E19 bezel. Render its status bar clean and idealised: "9:41" at the top left, and full signal bars, full wifi and a full battery at the top right. Do NOT show a silent-mode bell icon, a partial signal, or a low battery. It occupies the middle 55% of the canvas width, starts just below the headline, and is cropped off by the bottom edge of the canvas so its lower portion runs out of frame. Its screen shows the app UI from Image 3, reproduced faithfully.
+
+MASCOT: Polly from Image 2, in the bottom-left corner. She must be SMALL — no more than 15% of the canvas height. She must be COMPLETELY inside the frame and fully visible: her whole body, both feet, her raised wing and the entire wooden spoon are all within the canvas. Do NOT crop her at the bottom or left edge. Her feet rest on the bottom edge of the canvas. She sits entirely to the LEFT of the phone, in the cream margin — she may overlap the phone's outer left edge by a few pixels at most. The wooden spoon must stay entirely over the cream background and must NEVER overlap the phone or its screen.
+
+FLOATING PROPS: two cut-out photoreal food photographs with soft contact shadows, positioned high and pushed OUTWARD toward the left and right edges of the canvas, sitting immediately below the headline. Each one overlaps only the outer vertical edge of the phone — they must NOT cover the phone's status bar, the app header, the "Your recipes" title, or the search bar. Keep the phone's own top area completely clear and readable. On the left, a bowl of creamy pasta seen from above. On the right, a plate of roast chicken with green vegetables seen from above. Each is a clean cut-out with no background behind it.
+Attached to each food photo, one small pill-shaped label in warm white #FFFDF7 with near-black #241E19 text in the same grotesque at semi-bold: the left one reads "40 min", the right one reads "Ready now". Spell both exactly.
+
+RENDERING: flat vector graphics for the background, blob, mascot, pills and type — no gradients, no bevels, no glow, no 3D. Photoreal only for the two cut-out food photos. Crisp edges, print quality, no grain, no paper texture.
+
+DO NOT INCLUDE: any third-party logo or app icon, Apple logos or hardware branding, watermarks, human hands or faces, emoji, lens flare, extra UI chrome, or any decorative gibberish text.

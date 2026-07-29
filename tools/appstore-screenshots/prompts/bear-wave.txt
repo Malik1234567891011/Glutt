@@ -1,0 +1,21 @@
+Design a brand mascot character: a cute chubby brown bear cook, standing upright, full body, front-facing.
+
+ATTACHED IMAGES, by role:
+- Image 1 = our app icon. Take from it ONLY: the flat geometric construction, the shape of the pale cream muzzle patch, the simple small nose with the little curved smile beneath it, the rounded ear shapes, and the brand palette. Do NOT copy the cooking pot, the pot lid, the side handles, or the steam. Do NOT make the bear green.
+- Image 2 = our existing brown bear artwork. Take from it ONLY: the warm brown fur colour and the friendly hungry personality. Do NOT copy its painterly three-dimensional rendering, its fur texture, its soft shading, its four-legged side-profile pose, or its background.
+- Image 3 = a style reference for charm register only: flat vector mascot, oversized friendly eyes, thick rounded shapes, toy-like appeal. Do NOT copy its animal, its colours, or its background.
+
+THE CHARACTER:
+Flat vector illustration. No gradients, no fur texture, no bevels, no glow, no 3D shading, no outlines — at most one flat darker tone for a shadow shape. Chubby rounded teddy-bear proportions with a noticeably oversized head, short stubby arms and short legs with small rounded feet.
+
+Colours:
+- Fur: warm medium brown #A9703C, flat and even.
+- Muzzle patch, inner ears and a soft chest patch: pale cream #FBF0DC.
+- Nose: dark brown #4A2E1A, a small rounded triangle, with a simple thin curved smile line directly beneath it, exactly like the icon's muzzle.
+- Apron: a simple flat deep herb green #2E5339 bib apron across his front with two thin pale cream straps over his shoulders. No pockets, no pattern, no text on the apron.
+
+EYES — follow this exactly: two SEPARATE large white oval eyes, each with a big near-black #241E19 pupil and one small white highlight dot. There must be a clear band of brown fur between the two eyes. The eyes must NOT touch each other and must NOT merge into a single mask or goggle shape across the face. The nose sits BELOW the eye line and must not overlap either eye. Two small soft warm-pink blush ovals sit low on the cheeks, out to the sides and below the eyes.
+
+POSE: standing upright and facing forward. His LEFT arm is raised high above his shoulder in a clear friendly wave, fully visible. His RIGHT arm is extended down and out to the side, away from his body, its paw gripping the handle of a small wooden spoon. The spoon hangs at his side, clear of his body and clear of his face — it must not overlap either. Happy open-mouthed smile with just the very tip of a small pink tongue showing, a nod to a hungry bear. Both arms clearly visible and clearly separate from the body silhouette.
+
+RENDER: one single character, centred, full body, on a pure flat white background. Crisp clean edges, print quality. No text, no labels, no numbers, no frame, no border, no shadow cast on the background.

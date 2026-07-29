@@ -63,6 +63,9 @@ final class PlatesFeedViewModel {
     func loadDaily(rules: [DietaryRule], allergies: [String], savedSourceURLs: Set<String>) async {
         isExplore = false
         deckTitle = "Discover"
+        // Before the cache check below, so an offline open still counts as an
+        // open — this measures the feature being used, not the network.
+        Analytics.capture(.platesDeckViewed)
         filterRules = rules
         filterAllergies = allergies
         filterSavedURLs = savedSourceURLs
@@ -187,6 +190,9 @@ final class PlatesFeedViewModel {
     func skip(_ card: PlateCard) {
         skippedIDs.insert(card.id)
         if index < recipes.count - 1 { index += 1 }
+        // The save side is `recipe_created` with `source: plates`, so the two
+        // together give the deck's save rate without a second save event.
+        Analytics.capture(.platesSwiped, ["direction": "skip"])
     }
 
     /// Rewinds to the previous card and clears its saved/skipped mark, backing the

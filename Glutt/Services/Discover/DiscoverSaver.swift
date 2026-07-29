@@ -35,6 +35,7 @@ enum DiscoverSaver {
         let recipe = RecipeFactory.make(from: draft)
         context.insert(recipe)
         try context.save()
+        Analytics.capture(.recipeCreated, ["source": "discover"])
         return recipe
     }
 }

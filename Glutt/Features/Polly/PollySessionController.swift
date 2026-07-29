@@ -248,6 +248,11 @@ final class PollySessionController {
         sessionContext = context
         sessionStartedAt = startedAt
 
+        // The PostHog half of `ai_usage.polly_session`. That row says what the
+        // minutes cost; this says who spent them and how often, which is the
+        // half a cost table cannot answer.
+        Analytics.capture(.cookStarted, ["with_polly": true])
+
         // 1. Execution plan (compiler never fails — it falls back to linear).
         phase = .compiling
         PollyDebugLog.shared.log("session: compiling plan for \"\(recipe.title)\"")
@@ -350,6 +355,7 @@ final class PollySessionController {
         // the cook can say "let's cook" without saying her name first.
         wakeWord.onWake = { [weak self] in
             PollyDebugLog.shared.event(.wakeDetected)
+            Analytics.capture(.pollyWakeWord)
             self?.wakeUp()
         }
         wakeWord.onPartialTranscript = { [weak self] text in self?.updateLiveTranscript(text) }
@@ -417,8 +423,19 @@ final class PollySessionController {
         // memory-extraction network call below — that one can be slow, and a
         // teardown interrupted midway would otherwise lose the usage row.
         if let startedAt {
-            await deps.reportSessionUsage(
-                deps.now().timeIntervalSince(startedAt), liveConfig?.model, sessionUsage)
+            let duration = deps.now().timeIntervalSince(startedAt)
+            await deps.reportSessionUsage(duration, liveConfig?.model, sessionUsage)
+            // Same span the proxy bills, reported to PostHog rounded: a
+            // `polly_session_started` with no matching end is a crash, a force
+            // quit or a lost network, and the gap between the two counts is
+            // worth watching on its own.
+            Analytics.capture(.cookFinished, [
+                "with_polly": true,
+                "duration_s": Int(duration.rounded()),
+                "ended_early": endedEarly,
+                "steps_done": registry?.state.completedStepIDs.count ?? 0,
+                "steps_total": plan?.steps.count ?? 0,
+            ])
         }
 
         flushPendingAssistantLine()

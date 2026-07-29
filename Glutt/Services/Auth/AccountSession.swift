@@ -90,6 +90,31 @@ final class AccountSession {
         await linkProfile(userID: session.user.id, fullName: nil)
     }
 
+    /// Pushes the two onboarding answers that describe the *person* rather than
+    /// a recipe: what they want from cooking, and what they will not eat.
+    ///
+    /// Two destinations because they answer two different questions.
+    /// `profiles` gets them because otherwise a paying customer is a row
+    /// holding an email and nothing else. PostHog gets them as person
+    /// properties because "do people cooking for macros come back more" is a
+    /// cohort question, and a PostHog cohort cannot join to Postgres.
+    ///
+    /// Best-effort, like `linkProfile` — this must never turn a good sign-in
+    /// into a visible error.
+    func syncTraits(goals: [String], dietaryRules: [String]) async {
+        guard let userID else { return }
+        Analytics.setPerson(["goals": goals, "dietary_rules": dietaryRules])
+        do {
+            try await Backend.client
+                .from("profiles")
+                .update(["goals": goals, "dietary_rules": dietaryRules])
+                .eq("id", value: userID.uuidString)
+                .execute()
+        } catch {
+            Analytics.capture(.profileLinkFailed, ["message": error.localizedDescription])
+        }
+    }
+
     /// Lets a signed-out user through after a failed attempt. See
     /// `deferredThisLaunch`.
     func deferSignIn() {
@@ -112,6 +137,9 @@ final class AccountSession {
     /// leaving the account alive.
     func deleteAccount() async throws {
         try await Backend.client.functions.invoke("delete-account")
+        // Stop filing this device's events under a person we just promised to
+        // delete. Only here, never on sign out.
+        Analytics.resetPerson()
         // The stored session now points at a user that no longer exists.
         try? await Backend.client.auth.signOut()
         apply(nil)
@@ -139,7 +167,15 @@ final class AccountSession {
         // The Supabase user id — NEVER the email. PostHog is a US installation
         // holding nothing but random UUIDs, and that is what keeps it a
         // non-issue; emails live in Supabase only.
-        Analytics.identify(userID: user.id.uuidString)
+        // The email is a person *property*, not the id — see `Analytics`. It is
+        // what PostHog displays in place of the UUID, so the persons list reads
+        // as customers rather than as hex.
+        Analytics.identify(
+            userID: user.id.uuidString,
+            email: user.email,
+            // Google puts a name in the token; Apple never does on a restore.
+            name: user.userMetadata["full_name"]?.stringValue
+        )
         // `-uiPreview` skips `Superwall.configure`, and touching `shared`
         // before that trips an assertionFailure in debug builds.
         if Superwall.isInitialized {

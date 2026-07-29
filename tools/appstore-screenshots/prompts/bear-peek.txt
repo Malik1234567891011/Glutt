@@ -1,0 +1,10 @@
+The attached image shows my mascot: a chubby brown bear cook in a short green bib apron. Reproduce this EXACT character in a new pose. Identical face, identical eyes, identical cream muzzle, identical dark nose with the curved smile and small pink tongue tip, identical ears, identical brown fur colour, identical short green bib apron with pale cream straps, identical flat vector style, identical chubby proportions. Do not restyle him. Do not redesign his face. Do not lengthen the apron.
+
+CRITICAL — his face must stay exactly as in the attached image:
+- Two SEPARATE white oval eyes, each with a big near-black pupil and one small white highlight dot, with a clear band of brown fur between them. They must NEVER touch or merge into a single mask across the face.
+- The pale cream muzzle patch with a dark brown rounded nose ABOVE a thin curved smile, and just the tip of a small pink tongue showing.
+- Two soft pink blush ovals low on the cheeks, out to the sides.
+
+RENDER: one single character, centred, full body, pure flat white background. Flat vector illustration, no gradients, no fur texture, no outlines, no bevels, no glow, no 3D shading. No text, no labels, no numbers, no frame, no shadow cast on the background.
+
+NEW POSE:  peeking up from behind a horizontal edge. Only his head, the tops of his shoulders and both front paws are visible above the edge; the rest of his body and the apron are hidden below it. Both paws rest on top of the edge, one on each side of his head. Curious, slightly cheeky expression. The edge itself is a single simple straight horizontal line spanning the full width of the image in warm medium brown.

@@ -124,6 +124,12 @@ final class SubscriptionGate {
         let settled = access
         guard !didReportAccess, settled != .resolving else { return }
         didReportAccess = true
+        // Payer status as a super property, before the event that reports it —
+        // otherwise `gate_resolved` is the one event of the launch that cannot
+        // be split by the thing it measures. Every product event after this
+        // carries it, so "do subscribers cook more" is a breakdown rather than
+        // a cohort join on every insight.
+        Analytics.setEntitled(settled == .unlocked)
         Analytics.capture(.gateResolved, [
             "access": settled == .unlocked ? "unlocked" : "locked",
             "timed_out": resolveTimedOut,

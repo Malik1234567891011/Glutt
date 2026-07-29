@@ -21,6 +21,20 @@ final class AccountSession {
         case signedIn(userID: UUID, email: String?)
     }
 
+    /// Thrown when "Log in" is used by someone who has never signed up.
+    ///
+    /// There is no sign-in-only mode for OIDC: exchanging an Apple or Google
+    /// token *creates* the Supabase user when none exists. So the account is
+    /// created, recognised as brand new, and deleted again before this is
+    /// thrown — see `signIn(requireExisting:)`.
+    enum AccountError: LocalizedError {
+        case noAccountYet
+
+        var errorDescription: String? {
+            "You don't have an account yet. Go through setup to create one."
+        }
+    }
+
     private(set) var state: State = .resolving
 
     /// Set when someone dismisses the sign-in screen after it failed on them.
@@ -64,10 +78,18 @@ final class AccountSession {
     /// `fullName` is only ever non-nil on a user's **first** authorization —
     /// Apple never returns it again — so it is written to the profile
     /// immediately.
-    func signIn(idToken: String, rawNonce: String, fullName: String?) async throws {
+    /// `requireExisting` is the "Already have an account? Log in" path: someone
+    /// who has never signed up must be turned away rather than quietly enrolled.
+    func signIn(
+        idToken: String,
+        rawNonce: String,
+        fullName: String?,
+        requireExisting: Bool = false
+    ) async throws {
         let session = try await Backend.client.auth.signInWithIdToken(
             credentials: .init(provider: .apple, idToken: idToken, nonce: rawNonce)
         )
+        if requireExisting { try await rejectIfJustCreated(session.user) }
         apply(session)
         await linkProfile(userID: session.user.id, fullName: fullName)
     }
@@ -77,17 +99,53 @@ final class AccountSession {
     /// `rawNonce` is the same unhashed value handed to Google, which embeds it
     /// in the token verbatim. Google gives no display name separately, so
     /// whatever the token carries is what the signup trigger stores.
-    func signInWithGoogle(idToken: String, accessToken: String, rawNonce: String) async throws {
+    func signInWithGoogle(
+        idToken: String,
+        accessToken: String,
+        requireExisting: Bool = false
+    ) async throws {
         let session = try await Backend.client.auth.signInWithIdToken(
             credentials: .init(
                 provider: .google,
                 idToken: idToken,
-                accessToken: accessToken,
-                nonce: rawNonce
+                accessToken: accessToken
             )
         )
+        if requireExisting { try await rejectIfJustCreated(session.user) }
         apply(session)
         await linkProfile(userID: session.user.id, fullName: nil)
+    }
+
+    /// Undoes an account that only exists because someone pressed "Log in".
+    ///
+    /// OIDC has no sign-in-only mode, so the only way to tell a returning user
+    /// from a new one is to look at the row that just came back: a user created
+    /// within seconds of this call had no account a moment ago.
+    ///
+    /// The window is deliberately generous. Being slightly too eager here costs
+    /// a returning user one confusing message; being too strict enrolls a
+    /// non-payer permanently and breaks the invariant that every row in
+    /// `profiles` is a paying customer.
+    ///
+    /// Deleting needs the service-role key, so it goes through the same
+    /// `delete-account` function as the Settings button, while the just-issued
+    /// session is still valid. If that fails the account survives as an orphan,
+    /// which is worth an alert — hence the event.
+    private func rejectIfJustCreated(_ user: User) async throws {
+        guard Date.now.timeIntervalSince(user.createdAt) < 30 else { return }
+
+        do {
+            try await Backend.client.functions.invoke("delete-account")
+        } catch {
+            Analytics.capture(.accountDeleteFailed, [
+                "context": "login_without_account",
+                "message": error.localizedDescription,
+            ])
+        }
+        try? await Backend.client.auth.signOut()
+        apply(nil)
+        Analytics.capture(.loginWithoutAccount)
+        throw AccountError.noAccountYet
     }
 
     /// Pushes the two onboarding answers that describe the *person* rather than

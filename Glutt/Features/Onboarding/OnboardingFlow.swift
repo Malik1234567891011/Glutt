@@ -107,7 +107,10 @@ struct OnboardingFlow: View {
         .animation(screenAnimation, value: flow.screen)
         .sheet(isPresented: $showLogIn) {
             if let session {
-                SignInView(session: session, canDismiss: true) {
+                // `requiresExistingAccount`: this is "Log in", not "sign up".
+                // Someone with no account is turned away and lands back here to
+                // go through setup properly.
+                SignInView(session: session, canDismiss: true, requiresExistingAccount: true) {
                     showLogIn = false
                     // Signed in on a new phone: skip the remaining screens.
                     // They've answered these questions before, and their

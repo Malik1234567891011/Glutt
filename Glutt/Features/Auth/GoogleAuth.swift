@@ -6,9 +6,17 @@ import UIKit
 /// Named `GoogleAuth` rather than `GoogleSignIn` so the type does not collide
 /// with the module it imports.
 ///
-/// Unlike Apple, Google embeds the nonce in the identity token **verbatim**, so
-/// the same raw string goes to Google and to Supabase. Hashing one side (the
-/// Apple pattern) makes the comparison fail.
+/// **No nonce, on either side.** This flow shipped passing the same raw nonce
+/// to Google and to Supabase, on the reasoning that Google embeds it verbatim.
+/// It cannot work: GoogleSignIn does forward the nonce unchanged into the
+/// token's `nonce` claim, but GoTrue compares that claim against the *SHA256*
+/// of the nonce it was given, which is Apple's convention. Raw on one side,
+/// hashed on the other, so every attempt returned `Nonces mismatch`.
+///
+/// Supabase's own native-Google example passes no nonce at all, and their iOS
+/// guide says to enable "Skip nonce check" on the provider. Sending nothing
+/// matches both and needs no dashboard switch. Apple keeps its nonce dance,
+/// where hashing is exactly what is required.
 enum GoogleAuth {
     /// False when no client id is configured, which is the signal to hide the
     /// button instead of offering a flow that cannot complete.
@@ -32,18 +40,13 @@ enum GoogleAuth {
     /// Throws `GIDSignInError.canceled` when the user backs out, which callers
     /// should treat as a choice rather than an error.
     @MainActor
-    static func tokens(rawNonce: String) async throws -> (idToken: String, accessToken: String) {
+    static func tokens() async throws -> (idToken: String, accessToken: String) {
         guard isConfigured else { throw Failure.notConfigured }
         guard let presenter else { throw Failure.noPresenter }
 
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: Secrets.googleClientID)
 
-        let result = try await GIDSignIn.sharedInstance.signIn(
-            withPresenting: presenter,
-            hint: nil,
-            additionalScopes: nil,
-            nonce: rawNonce
-        )
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter)
 
         guard let idToken = result.user.idToken?.tokenString else {
             throw Failure.noIdentityToken

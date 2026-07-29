@@ -14,6 +14,10 @@ struct SignInView: View {
     let session: AccountSession
     /// True for the Welcome sheet, false for the post-purchase presentation.
     var canDismiss = false
+    /// The "Already have an account? Log in" path. Someone with no account is
+    /// turned away and sent back to setup instead of being enrolled silently —
+    /// otherwise `profiles` stops being exactly the paying customers.
+    var requiresExistingAccount = false
     var onDismiss: (() -> Void)?
 
     @Environment(\.modelContext) private var context
@@ -21,6 +25,8 @@ struct SignInView: View {
     @State private var rawNonce = AppleSignIn.makeNonce()
     @State private var isWorking = false
     @State private var errorMessage: String?
+    /// Set when the attempt failed because there is no account to log in to.
+    @State private var needsSignUp = false
 
     /// The onboarding answers, sent to the profile and to PostHog once there is
     /// an account to attach them to. Read here rather than in `AccountSession`
@@ -98,10 +104,18 @@ struct SignInView: View {
                     .padding(.top, 12)
                 }
 
+                // They pressed "Log in" and have never signed up. Nothing here
+                // is retryable, so the only useful action is the way back to
+                // setup — the error text above already says why.
+                if needsSignUp {
+                    OnboardingTextLink(title: "Go to setup") { onDismiss?() }
+                        .padding(.top, 18)
+                }
+
                 // Only offered once something has actually gone wrong. A paying
                 // customer must never be trapped behind our backend being down —
                 // they keep the app, and the next cold launch asks again.
-                if errorMessage != nil, !canDismiss {
+                if errorMessage != nil, !needsSignUp, !canDismiss {
                     OnboardingTextLink(title: "Continue without an account") {
                         Analytics.capture(.signInDeferred)
                         session.deferSignIn()
@@ -141,7 +155,8 @@ struct SignInView: View {
                 try await session.signIn(
                     idToken: credential.idToken,
                     rawNonce: rawNonce,
-                    fullName: credential.fullName
+                    fullName: credential.fullName,
+                    requireExisting: requiresExistingAccount
                 )
                 Analytics.capture(.signInSucceeded, ["provider": "apple"])
                 await syncTraits()
@@ -153,7 +168,7 @@ struct SignInView: View {
                     isWorking = false
                     return
                 }
-                fail(Self.message(for: error), detail: error.localizedDescription)
+                failed(error, fallback: Self.message(for: error))
             }
             isWorking = false
         }
@@ -182,11 +197,11 @@ struct SignInView: View {
         errorMessage = nil
         Task {
             do {
-                let tokens = try await GoogleAuth.tokens(rawNonce: rawNonce)
+                let tokens = try await GoogleAuth.tokens()
                 try await session.signInWithGoogle(
                     idToken: tokens.idToken,
                     accessToken: tokens.accessToken,
-                    rawNonce: rawNonce
+                    requireExisting: requiresExistingAccount
                 )
                 Analytics.capture(.signInSucceeded, ["provider": "google"])
                 await syncTraits()
@@ -198,13 +213,23 @@ struct SignInView: View {
                     isWorking = false
                     return
                 }
-                fail(
-                    "Couldn't finish signing in with Google. Please try again.",
-                    detail: error.localizedDescription
-                )
+                failed(error, fallback: "Couldn't finish signing in with Google. Please try again.")
             }
             isWorking = false
         }
+    }
+
+    /// "No account yet" is not a failure to retry — it is an answer. It gets the
+    /// real message and a way back to setup rather than the generic try-again
+    /// text, which would send someone round the same loop forever.
+    private func failed(_ error: Error, fallback: String) {
+        if case AccountSession.AccountError.noAccountYet = error {
+            needsSignUp = true
+            errorMessage = error.localizedDescription
+            isWorking = false
+            return
+        }
+        fail(fallback, detail: error.localizedDescription)
     }
 
     private func fail(_ message: String, detail: String) {

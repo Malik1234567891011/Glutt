@@ -55,6 +55,10 @@ enum Analytics {
         /// Tapped "Already have an account? Log in" with no subscription to
         /// restore. These are people who believe they are customers and aren't.
         case loginNoSubscription = "login_no_subscription"
+        /// Logged in, was entitled, and had no account — so one was created by
+        /// the OIDC exchange and immediately deleted again. They get sent back
+        /// to onboarding to sign up properly.
+        case loginWithoutAccount = "login_without_account"
         case signInSucceeded = "sign_in_succeeded"
         case signInFailed = "sign_in_failed"
         /// Someone let through after a failed sign-in — see `SignInView`. A

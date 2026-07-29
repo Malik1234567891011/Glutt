@@ -8,6 +8,10 @@ struct CookState: Equatable {
     var completedStepIDs: Set<String> = []
     var substitutions: [String] = []
     var servings: Int
+    /// Moments Polly prevented or recovered a kitchen mishap this session.
+    var pollySaves: [String] = []
+    /// Checklist action ids the cook (or Polly) has marked done on-screen.
+    var checkedActionIDs: Set<String> = []
 }
 
 /// Polly's hands: maps Realtime function calls onto Glutt's existing pure
@@ -43,7 +47,7 @@ final class PollyToolRegistry {
         self.state = CookState(servings: plan.servings > 0 ? plan.servings : max(1, recipe.servings))
     }
 
-    // MARK: - Tool definitions (13, names locked)
+    // MARK: - Tool definitions (15, names locked)
 
     static let toolDefinitions: [RealtimeToolDefinition] = [
         RealtimeToolDefinition(
@@ -55,6 +59,29 @@ final class PollyToolRegistry {
             name: "mark_step_done",
             description: "Mark the current step complete and move to the next one. Returns the next step, or {\"done\":true} after the final step.",
             parameters: emptySchema
+        ),
+        RealtimeToolDefinition(
+            name: "check_step_actions",
+            description: "Check off on-screen checklist actions when the cook says they finished something (e.g. cut the tomatoes and cucumbers). Prefer item ids from get_current_step.actions; you may also pass short match words like \"tomato\". Call this BEFORE marking the whole step done when only some actions are finished.",
+            parameters: schema(
+                properties: [
+                    "item_ids": .object([
+                        "type": .string("array"),
+                        "items": .object(["type": .string("string")]),
+                        "description": .string("Exact action ids from get_current_step.actions"),
+                    ]),
+                    "matches": .object([
+                        "type": .string("array"),
+                        "items": .object(["type": .string("string")]),
+                        "description": .string("Short words/phrases to match action text, e.g. tomato, cucumber"),
+                    ]),
+                    "checked": .object([
+                        "type": .string("boolean"),
+                        "description": .string("true (default) to check off, false to uncheck"),
+                    ]),
+                ],
+                required: []
+            )
         ),
         RealtimeToolDefinition(
             name: "go_to_step",
@@ -154,6 +181,19 @@ final class PollyToolRegistry {
             )
         ),
         RealtimeToolDefinition(
+            name: "record_polly_save",
+            description: "Record a moment you prevented or recovered a cooking problem (burning, splitting sauce, undercooked protein, bad timing, missing ingredient workaround). Short past-tense phrase for the end-of-cook recap. Call when you actually change the outcome — not for routine tips.",
+            parameters: schema(
+                properties: [
+                    "moment": .object([
+                        "type": .string("string"),
+                        "description": .string("Short phrase, e.g. 'Stopped garlic from burning' or 'Recovered a split sauce'"),
+                    ]),
+                ],
+                required: ["moment"]
+            )
+        ),
+        RealtimeToolDefinition(
             name: "request_camera_frame",
             description: "Request a fresh photo from the cook's camera when you need to see the food before answering.",
             parameters: emptySchema
@@ -188,6 +228,7 @@ final class PollyToolRegistry {
         switch name {
         case "get_current_step": return getCurrentStep()
         case "mark_step_done": return markStepDone()
+        case "check_step_actions": return checkStepActions(args)
         case "go_to_step": return goToStep(args)
         case "start_timer": return startTimer(args)
         case "check_timers": return checkTimers()
@@ -197,6 +238,7 @@ final class PollyToolRegistry {
         case "get_nutrition": return getNutrition()
         case "adjust_servings": return adjustServings(args)
         case "remember_fact": return rememberFact(args)
+        case "record_polly_save": return recordPollySave(args)
         case "request_camera_frame": return await requestCameraFrame()
         case "end_session": return endSession()
         default: return Self.json(["error": "unknown tool"])
@@ -211,6 +253,15 @@ final class PollyToolRegistry {
 
     private func stepPayload(at index: Int) -> [String: Any] {
         let step = plan.steps[index]
+        let actions = StepActionChecklist.items(for: step, plan: plan)
+        let actionPayload: [[String: Any]] = actions.map { item in
+            [
+                "id": item.id,
+                "text": item.text,
+                "checked": state.checkedActionIDs.contains(item.id),
+                "isVisualCheck": item.isVisualCheck,
+            ]
+        }
         var payload: [String: Any] = [
             "index": index,
             "total": plan.steps.count,
@@ -218,6 +269,8 @@ final class PollyToolRegistry {
             "instruction": step.instruction,
             "kind": step.kind.rawValue,
             "ingredients": step.ingredientNames,
+            "actions": actionPayload,
+            "actionsRemaining": actions.filter { !state.checkedActionIDs.contains($0.id) }.count,
         ]
         if let timerSeconds = step.timerSeconds { payload["timerSeconds"] = timerSeconds }
         if let visualCheck = step.visualCheck { payload["visualCheck"] = visualCheck }
@@ -232,13 +285,60 @@ final class PollyToolRegistry {
     private func markStepDone() -> String {
         guard !plan.steps.isEmpty else { return Self.json(["done": true]) }
         let current = clampedIndex(state.stepIndex)
-        state.completedStepIDs.insert(plan.steps[current].id)
+        let step = plan.steps[current]
+        // Checking the whole step off also clears its checklist rows.
+        for item in StepActionChecklist.items(for: step, plan: plan) {
+            state.checkedActionIDs.insert(item.id)
+        }
+        state.completedStepIDs.insert(step.id)
         guard current + 1 < plan.steps.count else {
             state.stepIndex = current
             return Self.json(["done": true])
         }
         state.stepIndex = current + 1
         return Self.json(stepPayload(at: state.stepIndex))
+    }
+
+    private func checkStepActions(_ args: [String: Any]) -> String {
+        guard !plan.steps.isEmpty else { return Self.json(["error": "no plan"]) }
+        let checked = (args["checked"] as? Bool) ?? true
+        var ids = (args["item_ids"] as? [String]) ?? []
+        let matches = (args["matches"] as? [String]) ?? []
+
+        let step = plan.steps[clampedIndex(state.stepIndex)]
+        let items = StepActionChecklist.items(for: step, plan: plan)
+        let known = Set(items.map(\.id))
+
+        ids = ids.filter { known.contains($0) }
+        ids.append(contentsOf: StepActionChecklist.matchingIDs(matches: matches, in: items))
+
+        // Dedupe while preserving order.
+        var seen = Set<String>()
+        ids = ids.filter { seen.insert($0).inserted }
+
+        guard !ids.isEmpty else {
+            return Self.json([
+                "error": "no matching actions",
+                "hint": "Use ids or match words from get_current_step.actions",
+                "actions": items.map { ["id": $0.id, "text": $0.text] },
+            ])
+        }
+
+        for id in ids {
+            if checked {
+                state.checkedActionIDs.insert(id)
+            } else {
+                state.checkedActionIDs.remove(id)
+            }
+        }
+
+        let remaining = items.filter { !state.checkedActionIDs.contains($0.id) }.count
+        return Self.json([
+            "updated": ids,
+            "checked": checked,
+            "actionsRemaining": remaining,
+            "allDone": remaining == 0,
+        ])
     }
 
     private func goToStep(_ args: [String: Any]) -> String {
@@ -248,6 +348,20 @@ final class PollyToolRegistry {
         }
         state.stepIndex = clampedIndex(index)
         return Self.json(stepPayload(at: state.stepIndex))
+    }
+
+    /// Touch / swipe navigation from the session UI (same clamp as the tool).
+    func jumpToStep(_ index: Int) {
+        guard !plan.steps.isEmpty else { return }
+        state.stepIndex = clampedIndex(index)
+    }
+
+    func toggleActionChecked(_ id: String) {
+        if state.checkedActionIDs.contains(id) {
+            state.checkedActionIDs.remove(id)
+        } else {
+            state.checkedActionIDs.insert(id)
+        }
     }
 
     // MARK: - Timers
@@ -358,8 +472,27 @@ final class PollyToolRegistry {
         )
         if text.lowercased().hasPrefix("substituted") {
             state.substitutions.append(text)
+            appendSave("Worked around a missing ingredient")
         }
         return Self.json(["remembered": true])
+    }
+
+    private func recordPollySave(_ args: [String: Any]) -> String {
+        guard let moment = (args["moment"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              moment.count >= 6 else {
+            return Self.json(["error": "bad arguments"])
+        }
+        appendSave(moment)
+        return Self.json(["saved": true, "count": state.pollySaves.count])
+    }
+
+    private func appendSave(_ moment: String) {
+        let cleaned = moment.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard cleaned.count >= 6 else { return }
+        let key = cleaned.lowercased()
+        if state.pollySaves.contains(where: { $0.lowercased() == key }) { return }
+        state.pollySaves.append(cleaned)
     }
 
     // MARK: - Camera + session

@@ -108,12 +108,12 @@ final class PollyToolRegistryTests: XCTestCase {
     func testToolDefinitionsMatchLockedNames() {
         let names = PollyToolRegistry.toolDefinitions.map(\.name)
         XCTAssertEqual(names, [
-            "get_current_step", "mark_step_done", "go_to_step", "start_timer",
-            "check_timers", "cancel_timer", "check_pantry", "find_substitutes",
-            "get_nutrition", "adjust_servings", "remember_fact",
-            "request_camera_frame", "end_session",
+            "get_current_step", "mark_step_done", "check_step_actions", "go_to_step",
+            "start_timer", "check_timers", "cancel_timer", "check_pantry",
+            "find_substitutes", "get_nutrition", "adjust_servings", "remember_fact",
+            "record_polly_save", "request_camera_frame", "end_session",
         ])
-        XCTAssertEqual(PollyToolRegistry.toolDefinitions.count, 13)
+        XCTAssertEqual(PollyToolRegistry.toolDefinitions.count, 15)
 
         for definition in PollyToolRegistry.toolDefinitions {
             XCTAssertFalse(definition.description.isEmpty, definition.name)
@@ -164,6 +164,36 @@ final class PollyToolRegistryTests: XCTestCase {
 
         let doneAgain = try result(of: await registry.handle(name: "mark_step_done", argumentsJSON: "{}"))
         XCTAssertEqual(doneAgain["done"] as? Bool, true, "marking done at the end is idempotent")
+    }
+
+    func testCheckStepActionsMatchesCookSpeech() async throws {
+        let registry = makeRegistry()
+        let current = try result(of: await registry.handle(name: "get_current_step", argumentsJSON: "{}"))
+        let actions = try XCTUnwrap(current["actions"] as? [[String: Any]])
+        XCTAssertFalse(actions.isEmpty, "get_current_step must expose on-screen checklist actions")
+
+        let updated = try result(of: await registry.handle(
+            name: "check_step_actions",
+            argumentsJSON: #"{"matches":["chicken","butter"]}"#))
+        let ids = try XCTUnwrap(updated["updated"] as? [String])
+        XCTAssertFalse(ids.isEmpty)
+        XCTAssertEqual(updated["checked"] as? Bool, true)
+        for id in ids {
+            XCTAssertTrue(registry.state.checkedActionIDs.contains(id))
+        }
+
+        // Exact id path + uncheck
+        let firstID = try XCTUnwrap(actions.first?["id"] as? String)
+        _ = await registry.handle(
+            name: "check_step_actions",
+            argumentsJSON: "{\"item_ids\":[\"\(firstID)\"],\"checked\":false}")
+        XCTAssertFalse(registry.state.checkedActionIDs.contains(firstID))
+
+        let byID = try result(of: await registry.handle(
+            name: "check_step_actions",
+            argumentsJSON: "{\"item_ids\":[\"\(firstID)\"]}"))
+        XCTAssertEqual(byID["updated"] as? [String], [firstID])
+        XCTAssertTrue(registry.state.checkedActionIDs.contains(firstID))
     }
 
     // MARK: - (b) Timers
@@ -262,6 +292,14 @@ final class PollyToolRegistryTests: XCTestCase {
         XCTAssertEqual(registry.state.substitutions,
                        ["Substituted olive oil for butter in Lemon Garlic Chicken"],
                        "text starting with 'Substituted' lands in state.substitutions")
+        XCTAssertEqual(registry.state.pollySaves.count, 1, "substitutions also count as a Polly Save")
+
+        let save = try result(of: await registry.handle(
+            name: "record_polly_save",
+            argumentsJSON: #"{"moment": "Stopped garlic from burning"}"#))
+        XCTAssertEqual(save["saved"] as? Bool, true)
+        XCTAssertEqual(save["count"] as? Int, 2)
+        XCTAssertEqual(registry.state.pollySaves.last, "Stopped garlic from burning")
 
         // Unknown kind degrades to .outcome; missing confidence defaults to 0.7.
         _ = await registry.handle(

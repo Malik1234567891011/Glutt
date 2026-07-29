@@ -188,7 +188,7 @@ final class PollySessionControllerTests: XCTestCase {
         }
         XCTAssertTrue(config.instructions.contains("Creamy Lemon Chicken"),
                       "instructions must embed the recipe")
-        XCTAssertEqual(config.tools.count, 13, "all 13 locked tools advertised")
+        XCTAssertEqual(config.tools.count, 15, "all locked tools advertised")
         XCTAssertEqual(config.voice, "marin")
         XCTAssertEqual(config.model, "gpt-realtime-2")
         XCTAssertTrue(config.transcribeInput)
@@ -465,16 +465,95 @@ final class PollySessionControllerTests: XCTestCase {
 
         controller.wakeUp()
         XCTAssertEqual(controller.listeningMode, .listening)
+        XCTAssertTrue(controller.isEngaged)
         XCTAssertFalse(controller.audio.isMuted, "listening opens the mic to Polly")
 
         controller.returnToDormant()
         XCTAssertEqual(controller.listeningMode, .dormant)
+        XCTAssertFalse(controller.isEngaged)
         XCTAssertTrue(controller.audio.isMuted, "the follow-up window closing re-gates the input")
 
         // She must wake AGAIN after the window closed — not just the first time.
         controller.wakeUp()
         XCTAssertEqual(controller.listeningMode, .listening, "a second \"Polly\" re-opens the mic")
         XCTAssertFalse(controller.audio.isMuted)
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    // MARK: (12b) gated follow-up commits response.create; ack does not
+
+    func testDirectFollowUpRequestsResponseAndAckDoesNot() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+        controller.wakeUp()
+        let before = transport.sentNonAudio.count
+
+        transport.push(.inputTranscript(itemId: "u1", text: "Should I flip the chicken?"))
+        await waitUntil({
+            transport.sentNonAudio.dropFirst(before).contains { $0 == .responseCreate }
+        }, "direct follow-up must response.create")
+
+        let afterAsk = transport.sentNonAudio.count
+        transport.push(.inputTranscript(itemId: "u2", text: "Okay"))
+        // Give the event loop a beat — ack must NOT add response.create.
+        try? await Task.sleep(nanoseconds: 80_000_000)
+        let newSends = Array(transport.sentNonAudio.dropFirst(afterAsk))
+        XCTAssertFalse(newSends.contains { $0 == .responseCreate },
+                       "acknowledgment must not trigger a spoken reply")
+        XCTAssertTrue(
+            newSends.contains {
+                if case .deleteItem(let id) = $0 { return id == "u2" }
+                return false
+            },
+            "ack should drop the user item so it doesn't pollute history")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    func testExplicitEndReturnsToDormant() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+        controller.wakeUp()
+        XCTAssertTrue(controller.isEngaged)
+
+        transport.push(.inputTranscript(itemId: "u3", text: "that's all"))
+        await waitUntil({ controller.listeningMode == .dormant }, "explicit end closes session")
+        XCTAssertTrue(controller.audio.isMuted)
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    func testAcknowledgmentDoesNotRequestResponse() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+        controller.wakeUp()
+        let before = transport.sentNonAudio.count
+
+        transport.push(.inputTranscript(itemId: "u4", text: "Okay, thank you."))
+        try? await Task.sleep(nanoseconds: 80_000_000)
+        let newSends = Array(transport.sentNonAudio.dropFirst(before))
+        XCTAssertFalse(newSends.contains { $0 == .responseCreate },
+                       "acknowledgment must not trigger a spoken reply")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    func testLeaveCookScreenClosesFollowUp() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+        controller.wakeUp()
+        controller.leaveCookScreen()
+        XCTAssertEqual(controller.listeningMode, .dormant)
+        XCTAssertTrue(controller.audio.isMuted)
 
         await controller.end(context: context, endedEarly: true)
     }

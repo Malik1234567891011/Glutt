@@ -50,6 +50,9 @@ final class PollyCookLog {
     var stepsTotal: Int
     var substitutions: [String]
     var endedEarly: Bool
+    /// Short phrases Polly logged via `record_polly_save` (or inferred).
+    /// Default empty so older stores migrate lightly.
+    var pollySaves: [String] = []
 
     init(startedAt: Date, recipe: Recipe?) {
         self.startedAt = startedAt
@@ -59,5 +62,6 @@ final class PollyCookLog {
         self.stepsTotal = 0
         self.substitutions = []
         self.endedEarly = false
+        self.pollySaves = []
     }
 }

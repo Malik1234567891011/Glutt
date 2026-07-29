@@ -114,7 +114,9 @@ final class CookPlanCompilerTests: XCTestCase {
         }
         XCTAssertEqual(llmCalls, 1)
         XCTAssertFalse(first.isFallback)
-        XCTAssertEqual(first, fixture)
+        let expected = fixture.ensuringLeadingPrep()
+        XCTAssertEqual(first, expected, "compile must guarantee a leading Prep step")
+        XCTAssertTrue(first.hasLeadingPrep)
         XCTAssertTrue(capturedUser.contains("Shakshuka"), "user prompt must carry the recipe")
 
         // Second compile: the llm throws, so only a cache hit can return this plan.

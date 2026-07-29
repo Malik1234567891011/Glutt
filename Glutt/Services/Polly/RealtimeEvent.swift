@@ -183,7 +183,14 @@ enum RealtimeClientEvent: Equatable {
             // Polly's own voice ("I'm here.") and noise ("akademik", "Οξάνα")
             // tripped default VAD and cut her off mid-sentence on every turn.
             // Low waits for clearer evidence of real speech before barging in.
-            "turn_detection": ["type": "semantic_vad", "eagerness": "low"],
+            // create_response/interrupt_response off: client owns when Polly
+            // answers and when barge-in cancels her audio (conversational gate).
+            "turn_detection": [
+                "type": "semantic_vad",
+                "eagerness": "low",
+                "create_response": false,
+                "interrupt_response": false,
+            ],
             // The phone sits on a counter an arm's length away — far-field
             // noise reduction cleans sizzle/fan noise before VAD sees it.
             "noise_reduction": ["type": "far_field"],
@@ -219,7 +226,7 @@ enum RealtimeServerEvent: Equatable {
     case sessionUpdated
     case speechStarted                       // input_audio_buffer.speech_started
     case speechStopped
-    case inputTranscript(String)             // conversation.item.input_audio_transcription.completed
+    case inputTranscript(itemId: String?, text: String)  // …transcription.completed
     case outputAudioDelta(itemId: String, base64: String)
     case outputTranscriptDelta(itemId: String, delta: String)
     case responseDone(status: String, calls: [RealtimeFunctionCall])
@@ -254,7 +261,9 @@ enum RealtimeServerEvent: Equatable {
         case "input_audio_buffer.speech_stopped":
             return .speechStopped
         case "conversation.item.input_audio_transcription.completed":
-            return .inputTranscript(object["transcript"] as? String ?? "")
+            return .inputTranscript(
+                itemId: object["item_id"] as? String,
+                text: object["transcript"] as? String ?? "")
         case "response.output_audio.delta":
             guard let itemId = object["item_id"] as? String,
                   let delta = object["delta"] as? String else { return .unhandled(type: type) }

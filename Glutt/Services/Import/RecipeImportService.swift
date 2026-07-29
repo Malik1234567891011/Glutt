@@ -6,6 +6,7 @@ enum ImportError: LocalizedError {
     case unreadableImage
     case nothingFound
     case instagramBlocked
+    case redditNeedsPost
 
     var errorDescription: String? {
         switch self {
@@ -15,6 +16,8 @@ enum ImportError: LocalizedError {
         case .nothingFound: "Couldn't find a recipe there."
         case .instagramBlocked:
             "Instagram doesn't let apps read captions. Screenshot the caption (or the recipe) and use the screenshot import instead — it works great."
+        case .redditNeedsPost:
+            "Open a specific Reddit recipe post (not the whole subreddit), then share that link into Glutt."
         }
     }
 }
@@ -36,6 +39,11 @@ enum RecipeImportService {
     }
 
     static func importFrom(url: URL) async throws -> ImportedRecipeDraft {
+        // Reddit's SPA HTML is empty of recipe text — use the JSON/post path.
+        if RedditImport.canHandle(url) {
+            return try await RedditImport.importFrom(url: url)
+        }
+
         // Video platforms: the recipe is in the caption/description, which
         // oEmbed serves cleanly. Scraping their HTML gets a JS shell instead.
         if SocialMediaImport.canHandle(url) {

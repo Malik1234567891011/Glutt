@@ -24,6 +24,7 @@ enum SourcePlatform: String, Codable, CaseIterable {
     case instagram
     case tiktok
     case youtube
+    case reddit
     case screenshot
 
     var label: String {
@@ -33,6 +34,7 @@ enum SourcePlatform: String, Codable, CaseIterable {
         case .instagram: "Instagram"
         case .tiktok: "TikTok"
         case .youtube: "YouTube"
+        case .reddit: "Reddit"
         case .screenshot: "Screenshot"
         }
     }

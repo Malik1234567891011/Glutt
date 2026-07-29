@@ -2,7 +2,7 @@ import PhotosUI
 import SwiftData
 import SwiftUI
 
-/// Photo → AI candidate list → user confirms → inventory updates.
+/// Photo *or* spoken/typed list → AI candidates → user confirms → inventory.
 /// Nothing is committed without a tap; wrong guesses cost one untoggle.
 struct PantryScanView: View {
     @Environment(\.modelContext) private var context
@@ -11,6 +11,7 @@ struct PantryScanView: View {
 
     enum Phase {
         case pick
+        case dictate
         case scanning
         case review
         case failed(String)
@@ -21,6 +22,8 @@ struct PantryScanView: View {
     @State private var isShowingCamera = false
     @State private var items: [PantryScan.ScannedItem] = []
     @State private var didAddCount: Int?
+    @State private var descriptionText = ""
+    @State private var dictation = PantryDictationSession()
 
     var body: some View {
         NavigationStack {
@@ -29,6 +32,8 @@ struct PantryScanView: View {
                     switch phase {
                     case .pick:
                         pickView
+                    case .dictate:
+                        dictateView
                     case .scanning:
                         loadingView
                     case .review:
@@ -36,9 +41,9 @@ struct PantryScanView: View {
                     case .failed(let message):
                         EmptyStateView(
                             icon: "exclamationmark.triangle",
-                            title: "Scan didn't work",
+                            title: "That didn’t work",
                             message: message,
-                            actionLabel: "Try another photo",
+                            actionLabel: "Try again",
                             action: { phase = .pick }
                         )
                     }
@@ -46,11 +51,14 @@ struct PantryScanView: View {
                 .padding(Theme.Spacing.md)
             }
             .background(Theme.Colors.background)
-            .navigationTitle("Scan your kitchen")
+            .navigationTitle(navTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("Close") {
+                        dictation.stop()
+                        dismiss()
+                    }
                 }
             }
             .onChange(of: photoItem) {
@@ -62,6 +70,10 @@ struct PantryScanView: View {
                     photoItem = nil
                 }
             }
+            .onChange(of: dictation.transcript) { _, newValue in
+                if !newValue.isEmpty { descriptionText = newValue }
+            }
+            .onDisappear { dictation.stop() }
             .fullScreenCover(isPresented: $isShowingCamera) {
                 CameraPicker { data in
                     Task { await scan(data) }
@@ -71,11 +83,19 @@ struct PantryScanView: View {
         }
     }
 
+    private var navTitle: String {
+        switch phase {
+        case .dictate: "Tell us what you have"
+        case .review: "Confirm items"
+        default: "Add to kitchen"
+        }
+    }
+
     // MARK: - Phases
 
     private var pickView: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            Text("Take one photo of your fridge, pantry, or counter. Glutt lists what it sees — you confirm before anything is added.")
+            Text("Scan a fridge photo, or just say what’s there — Glutt lists candidates and you confirm before anything is added.")
                 .font(.gluttBody)
                 .foregroundStyle(Theme.Colors.textSecondary)
 
@@ -89,7 +109,7 @@ struct PantryScanView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 20, height: 20)
-                        Text("Open camera")
+                        Text("Scan with a photo")
                             .font(.gluttHeadline)
                     }
                     .frame(maxWidth: .infinity)
@@ -98,7 +118,7 @@ struct PantryScanView: View {
             }
 
             PhotosPicker(selection: $photoItem, matching: .images) {
-                HStack(spacing: Theme.Spacing.sm) {
+                outlinedRow {
                     Ph.images.regular
                         .resizable()
                         .scaledToFit()
@@ -108,17 +128,93 @@ struct PantryScanView: View {
                         .font(.gluttHeadline)
                         .foregroundStyle(Theme.Colors.accent)
                 }
+            }
+
+            Button {
+                Haptics.impact(.light)
+                descriptionText = dictation.transcript
+                phase = .dictate
+            } label: {
+                outlinedRow {
+                    MS.micFill.sized(20).foregroundStyle(Theme.Colors.accent)
+                    Text("Tell us what you have")
+                        .font(.gluttHeadline)
+                        .foregroundStyle(Theme.Colors.accent)
+                }
+            }
+            .buttonStyle(.plain)
+
+            Text("Tip: open the fridge door wide and step back — or rattle off everything casually if you’re not home.")
+                .font(.gluttCaption)
+                .foregroundStyle(Theme.Colors.textSecondary)
+        }
+    }
+
+    private var dictateView: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            Text("Say or type what’s in your kitchen. “Eggs, leftover rice, half an onion, soy sauce…” is perfect.")
+                .font(.gluttBody)
+                .foregroundStyle(Theme.Colors.textSecondary)
+
+            TextField("What’s in your kitchen?", text: $descriptionText, axis: .vertical)
+                .font(.gluttBody)
+                .lineLimit(4...10)
+                .padding(Theme.Spacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.Colors.card)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        .strokeBorder(Theme.Colors.textPrimary.opacity(0.08), lineWidth: 1)
+                )
+
+            Button {
+                Haptics.impact(.medium)
+                Task { await toggleDictation() }
+            } label: {
+                HStack(spacing: Theme.Spacing.sm) {
+                    MS.micFill.sized(20)
+                        .foregroundStyle(dictation.isListening ? Theme.Colors.creamText : Theme.Colors.accent)
+                    Text(dictation.isListening ? "Listening… tap to stop" : "Tap to talk")
+                        .font(.gluttHeadline)
+                        .foregroundStyle(dictation.isListening ? Theme.Colors.creamText : Theme.Colors.accent)
+                }
                 .padding(.vertical, 14)
                 .frame(maxWidth: .infinity)
                 .background(
                     RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
-                        .strokeBorder(Theme.Colors.accent, lineWidth: 1.5)
+                        .fill(dictation.isListening ? Theme.Colors.accent : Theme.Colors.card)
+                )
+                .overlay(
+                    dictation.isListening
+                        ? nil
+                        : RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+                            .strokeBorder(Theme.Colors.accent, lineWidth: 1.5)
                 )
             }
+            .buttonStyle(.plain)
 
-            Text("Tip: open the fridge door wide and step back a little — more visible labels, better guesses.")
-                .font(.gluttCaption)
-                .foregroundStyle(Theme.Colors.textSecondary)
+            if let error = dictation.errorMessage {
+                Text(error)
+                    .font(.gluttCaption)
+                    .foregroundStyle(Theme.Colors.tomato)
+            }
+
+            Button {
+                Haptics.impact(.medium)
+                Task { await parseDescription() }
+            } label: {
+                Text("Find ingredients")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.gluttPrimary)
+            .disabled(descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+            Button("Back") {
+                dictation.stop()
+                phase = .pick
+            }
+            .buttonStyle(.gluttSecondary)
         }
     }
 
@@ -126,7 +222,7 @@ struct PantryScanView: View {
         VStack(spacing: Theme.Spacing.md) {
             ProgressView()
                 .controlSize(.large)
-            Text("Looking at what you've got…")
+            Text("Looking at what you’ve got…")
                 .font(.gluttBody)
                 .foregroundStyle(Theme.Colors.textSecondary)
         }
@@ -155,7 +251,7 @@ struct PantryScanView: View {
                 EmptyStateView(
                     icon: "camera.metering.unknown",
                     title: "Nothing recognizable",
-                    message: "Couldn't make out any food in that photo. Try better lighting or a closer shot.",
+                    message: "Couldn’t make out any food there. Try a clearer photo, or say the items more plainly.",
                     actionLabel: "Try again",
                     action: { phase = .pick }
                 )
@@ -167,7 +263,7 @@ struct PantryScanView: View {
                 VStack(spacing: 0) {
                     ForEach($items) { $item in
                         itemRow($item)
-                        if item != items.last {
+                        if item.id != items.last?.id {
                             Divider().overlay(Theme.Colors.border)
                         }
                     }
@@ -182,9 +278,11 @@ struct PantryScanView: View {
                 .buttonStyle(.gluttPrimary)
                 .disabled(includedCount == 0)
 
-                Button("Scan another photo") {
+                Button("Add more") {
                     Haptics.impact(.light)
                     items = []
+                    descriptionText = ""
+                    dictation.resetTranscript()
                     phase = .pick
                 }
                 .buttonStyle(.gluttSecondary)
@@ -243,7 +341,28 @@ struct PantryScanView: View {
         items.filter(\.include).count
     }
 
+    // MARK: - Shared chrome
+
+    private func outlinedRow<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        HStack(spacing: Theme.Spacing.sm, content: content)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+                    .strokeBorder(Theme.Colors.accent, lineWidth: 1.5)
+            )
+    }
+
     // MARK: - Actions
+
+    private func toggleDictation() async {
+        if dictation.isListening {
+            dictation.stop()
+            return
+        }
+        guard await dictation.requestAccess() else { return }
+        dictation.start()
+    }
 
     private func scan(_ rawData: Data) async {
         phase = .scanning
@@ -254,6 +373,20 @@ struct PantryScanView: View {
         }
         do {
             items = try await PantryScan.scan(imageData: prepared, existingPantry: pantryItems)
+            phase = .review
+        } catch {
+            phase = .failed(error.localizedDescription)
+        }
+    }
+
+    private func parseDescription() async {
+        dictation.stop()
+        let text = descriptionText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        phase = .scanning
+        didAddCount = nil
+        do {
+            items = try await PantryScan.fromDescription(text, existingPantry: pantryItems)
             phase = .review
         } catch {
             phase = .failed(error.localizedDescription)

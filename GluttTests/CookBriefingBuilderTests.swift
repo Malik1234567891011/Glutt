@@ -110,6 +110,50 @@ final class CookBriefingBuilderTests: XCTestCase {
         XCTAssertLessThan(wordCount, 120, "briefing should stay shallow, got \(wordCount) words")
     }
 
+    func testPrepBeatSpokenFirst() {
+        let plan = CookPlan(
+            title: "Onion Pasta",
+            servings: 2,
+            mise: [CookPlan.MiseItem(name: "onion", prep: "dice")],
+            steps: [
+                CookPlan.PlanStep(
+                    id: CookPlan.prepStepID, index: 0, title: "Prep",
+                    instruction: "Before any heat: dice the onion. Tell me when the board is ready.",
+                    kind: .prep
+                ),
+                CookPlan.PlanStep(
+                    id: "s1", index: 1, title: "Heat oil",
+                    instruction: "Heat oil in a pan.", kind: .active,
+                    dependsOn: [CookPlan.prepStepID]
+                ),
+            ]
+        )
+        let recipe = Recipe(title: "Onion Pasta", servings: 2)
+        let briefing = CookBriefingBuilder.build(recipe: recipe, plan: plan)
+        XCTAssertEqual(briefing.beats.first?.id, CookPlan.prepStepID)
+        XCTAssertTrue(
+            briefing.beats.first?.spokenLine.localizedCaseInsensitiveContains("prep") == true
+        )
+    }
+
+    func testPollyPromptRequiresPrepBeforeHeat() {
+        let recipe = Recipe(title: "Soup", servings: 2)
+        context.insert(recipe)
+        recipe.ingredients = [RecipeIngredient(name: "onion", sortIndex: 0)]
+        recipe.steps = [RecipeStep(index: 0, text: "Sauté the onion.")]
+        let prompt = PollyPromptBuilder.instructions(
+            recipe: recipe,
+            plan: CookPlan.linear(from: recipe, scale: 1),
+            pantryMatch: .init(owned: [], missing: [], missingOptional: []),
+            prefs: UserPrefs.current(in: context),
+            memories: [],
+            pastSessions: [],
+            ownedTools: []
+        )
+        XCTAssertTrue(prompt.contains("Setup first") || prompt.contains("Tools, then Prep"))
+        XCTAssertTrue(prompt.contains("knife/board") || prompt.contains("Do NOT ask them to pre-measure"))
+    }
+
     func testHeardBriefingShortensPollyOpeningPolicy() {
         let recipe = Recipe(title: "Soup", servings: 2)
         context.insert(recipe)

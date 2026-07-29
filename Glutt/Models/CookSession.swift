@@ -14,6 +14,18 @@ final class CookSession {
     var worthTheEffort: Bool?
     var wouldMakeAgain: Bool?
 
+    /// Soft Cook Recap fields (Polly runs). All optional for older sessions.
+    var durationSeconds: Int?
+    var overallScore: Double?
+    var visualScore: Double?
+    var timingScore: Double?
+    var techniqueScore: Double?
+    var pollySaveCount: Int?
+    var improvementNote: String?
+    var badge: String?
+    /// JPEG of the plated dish — kept for history / future share.
+    @Attribute(.externalStorage) var plateImageData: Data?
+
     var recipe: Recipe?
 
     init(

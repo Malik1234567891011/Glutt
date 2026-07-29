@@ -88,6 +88,18 @@ enum CookBriefingBuilder {
         position: Int,
         total: Int
     ) -> String {
+        if step.kind == .prep || step.id == CookPlan.prepStepID || step.id == CookPlan.toolsStepID {
+            if step.id == CookPlan.toolsStepID {
+                return "First, grab your tools."
+            }
+            // Lead with mise so the trailer sets the "board first" expectation.
+            let focus = cleanDetail(step.instruction)
+            if focus.count <= 64 {
+                return "First, prep — \(shortClause(step.instruction))."
+            }
+            return "First, get your prep done before any heat."
+        }
+
         let verb: String
         switch (position, total) {
         case (0, _): verb = "Start by"

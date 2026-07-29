@@ -129,13 +129,19 @@ final class PollyAudioEngine {
     private(set) var isPlaying = false
     /// Smoothed mic RMS in 0...1, for the session orb.
     private(set) var inputLevel: Float = 0
+    /// Fired on main when the audio session is interrupted (`true` = began)
+    /// or when mic permission / capture is lost.
+    var onSessionInterrupted: ((Bool) -> Void)?
 
     @ObservationIgnored private let engine = AVAudioEngine()
     @ObservationIgnored private let playerNode = AVAudioPlayerNode()
     @ObservationIgnored private var isPlayerAttached = false
     @ObservationIgnored private var voiceProcessingActive = false
     @ObservationIgnored private var routeObserver: NSObjectProtocol?
+    @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
     @ObservationIgnored private var configObserver: NSObjectProtocol?
+    /// CFAbsoluteTime when mic first cleared the speaking barge-in floor; 0 = none.
+    @ObservationIgnored private let sustainedSpeechSince = OSAllocatedUnfairLock(initialState: 0.0)
     @ObservationIgnored private var enqueueCount = 0
     @ObservationIgnored private var outstandingBuffers = 0
     @ObservationIgnored private let mutedFlag = OSAllocatedUnfairLock(initialState: false)
@@ -206,6 +212,16 @@ final class PollyAudioEngine {
                 "audio: ROUTE CHANGE reason=\(reason) out=[\(route.outputs.map(\.portName).joined(separator: ","))] "
                 + "in=[\(route.inputs.map(\.portName).joined(separator: ","))]")
         }
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification, object: session, queue: .main
+        ) { [weak self] note in
+            let typeVal = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+            let began = typeVal == AVAudioSession.InterruptionType.began.rawValue
+            PollyDebugLog.shared.log("audio: INTERRUPTION began=\(began)")
+            Task { @MainActor [weak self] in
+                self?.onSessionInterrupted?(began)
+            }
+        }
 
         let input = engine.inputNode
         // REAL echo cancellation. The session's .voiceChat mode alone does NOT
@@ -241,6 +257,7 @@ final class PollyAudioEngine {
         let muted = mutedFlag
         let gate = captureGateDeadline
         let speaking = speakingFlag
+        let sustained = sustainedSpeechSince
         let accumulator = self.accumulator
         let forwardBuffer = onBuffer
         let firstTapLogged = OSAllocatedUnfairLock(initialState: false)
@@ -268,11 +285,29 @@ final class PollyAudioEngine {
             // Utterance-onset gate: drop chunks while the echo canceller is
             // still adapting to Polly's voice (see PollyConfig).
             guard gate.withLock({ CFAbsoluteTimeGetCurrent() >= $0 }) else { return }
-            // Barge-in noise floor: while Polly is speaking, drop quiet input
-            // (echo of her own voice / room noise) so it can't trip server VAD
-            // and cut her off. A clear, close voice clears the floor and still
-            // interrupts. (See PollyConfig.bargeInRMSFloor.)
-            if speaking.withLock({ $0 }), level < PollyConfig.bargeInRMSFloor { return }
+            // Two-stage barge-in while Polly speaks: stricter RMS floor + must
+            // stay above it for bargeInSustainedMs (pan clank / sizzle die out).
+            if speaking.withLock({ $0 }) {
+                let floor = PollyConfig.bargeInSpeakingRMSFloor > 0
+                    ? PollyConfig.bargeInSpeakingRMSFloor
+                    : PollyConfig.bargeInRMSFloor
+                if level < floor {
+                    sustained.withLock { $0 = 0 }
+                    return
+                }
+                let now = CFAbsoluteTimeGetCurrent()
+                let since = sustained.withLock { (start: inout CFAbsoluteTime) -> CFAbsoluteTime in
+                    if start == 0 {
+                        start = now
+                        return now
+                    }
+                    return start
+                }
+                let needed = Double(PollyConfig.bargeInSustainedMs) / 1_000
+                if now - since < needed { return }
+            } else {
+                sustained.withLock { $0 = 0 }
+            }
             guard let converted = PCM.resample(buffer, to: wire) else { return }
             accumulator.append(PCM.pcm16Data(from: converted), emit: onChunk)
         }
@@ -327,10 +362,15 @@ final class PollyAudioEngine {
             NotificationCenter.default.removeObserver(routeObserver)
             self.routeObserver = nil
         }
+        if let interruptionObserver {
+            NotificationCenter.default.removeObserver(interruptionObserver)
+            self.interruptionObserver = nil
+        }
         if let configObserver {
             NotificationCenter.default.removeObserver(configObserver)
             self.configObserver = nil
         }
+        onSessionInterrupted = nil
         engine.inputNode.removeTap(onBus: 0)
         if isPlayerAttached { playerNode.stop() }
         engine.stop()

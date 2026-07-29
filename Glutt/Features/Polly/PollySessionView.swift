@@ -49,6 +49,10 @@ struct PollySessionView: View {
         .onDisappear {
             router.isPollySessionActive = false
             UIApplication.shared.isIdleTimerDisabled = false
+            controller?.leaveCookScreen()
+            if let controller, controller.phase == .live || controller.phase == .reconnecting {
+                Task { await controller.end(context: context, endedEarly: true) }
+            }
         }
         .onChange(of: controller?.phase) { _, phase in
             guard phase == .ended, !isShowingFinish, !isEndingWithoutSaving, !isCookingWithoutPolly else { return }
@@ -62,9 +66,11 @@ struct PollySessionView: View {
         .onChange(of: controller?.listeningMode) { old, new in
             // A crisp "I'm hearing you" tap the moment she wakes (voice or pill tap).
             if new == .listening, old != .listening { Haptics.impact(.medium) }
+            // Soft close cue when the follow-up session ends (no beep).
+            if new == .dormant, old != .dormant, old != nil { Haptics.impact(.light) }
         }
         .sheet(isPresented: $isShowingFinish) {
-            CookFinishView(recipe: recipe, scale: scale) { dismiss() }
+            cookRecapSheet
                 .interactiveDismissDisabled()
         }
         .confirmationDialog("End cooking with Polly?", isPresented: $isConfirmingExit, titleVisibility: .visible) {
@@ -80,6 +86,35 @@ struct PollySessionView: View {
                     dismiss()
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var cookRecapSheet: some View {
+        let controller = controller
+        let started = controller?.sessionStartedAt ?? startedAt
+        let ended = Date.now
+        let duration = max(0, Int(ended.timeIntervalSince(started)))
+        let log = controller?.lastCookLog
+        let previousBest = recipe.cookSessions(in: context)
+            .compactMap(\.overallScore)
+            .max()
+
+        CookRecapView(
+            recipe: recipe,
+            scale: scale,
+            durationSeconds: duration,
+            stepsCompleted: log?.stepsCompleted ?? controller?.registry?.state.completedStepIDs.count ?? 0,
+            stepsTotal: log?.stepsTotal ?? controller?.plan?.steps.count ?? recipe.sortedSteps.count,
+            endedEarly: log?.endedEarly ?? false,
+            pollySaves: log?.pollySaves ?? controller?.sessionSaves ?? [],
+            substitutions: log?.substitutions ?? controller?.registry?.state.substitutions ?? [],
+            summary: log?.summary,
+            initialPlateJPEG: controller?.plateJPEG,
+            previousBestOverall: previousBest,
+            cookName: nil
+        ) {
+            dismiss()
         }
     }
 
@@ -122,11 +157,10 @@ struct PollySessionView: View {
         }
     }
 
-    /// The "Listening" visual (edge glow, waveform, live transcript) shows only
-    /// while Polly is actually waiting to hear you — not while she's thinking or
-    /// talking, even though the mic gate stays open through the follow-up window.
+    /// Engaged mic visuals while Polly is waiting on you (initial listen or
+    /// follow-up window) — not while she's thinking or talking.
     private func isActivelyListening(_ controller: PollySessionController) -> Bool {
-        controller.listeningMode == .listening && !controller.isPollySpeaking && !controller.isThinking
+        controller.isEngaged && !controller.isPollySpeaking && !controller.isThinking
     }
 
     @ViewBuilder
@@ -156,10 +190,30 @@ struct PollySessionView: View {
         VStack(spacing: 0) {
             topBar(for: controller)
             statePill(for: controller).padding(.top, 14)
-            Spacer(minLength: 0)
-            speechLine(for: controller).padding(.horizontal, 22)
+            if let plan = controller.plan, !plan.steps.isEmpty, !controller.camera.isRunning {
+                // Camera off: the guide IS the step UI (cream card is hidden).
+                PollyStepGuidePanel(
+                    plan: plan,
+                    stepIndex: controller.stepIndex,
+                    checkedActionIDs: controller.checkedActionIDs,
+                    isPollySpeaking: controller.isPollySpeaking,
+                    onSelectStep: { controller.goToStep($0) },
+                    onToggleItem: { controller.toggleChecklistItem($0) },
+                    onStartTimer: { step, seconds in
+                        startTimer(for: step, seconds: seconds, controller: controller)
+                    }
+                )
+                .id(controller.sessionUIEpoch)
+                .padding(.top, 14)
+                .frame(maxHeight: .infinity)
+                Spacer(minLength: 8)
+            } else {
+                Spacer(minLength: 0)
+            }
+            speechLine(for: controller).padding(.horizontal, 22).padding(.top, 10)
             bottomCluster(for: controller)
         }
+        .animation(.easeInOut(duration: 0.25), value: controller.camera.isRunning)
     }
 
     // MARK: - Top bar
@@ -227,12 +281,16 @@ struct PollySessionView: View {
             if isActivelyListening(controller) {
                 HStack(spacing: 9) {
                     WaveformBars()
-                    Text("Listening")
+                    Text(engagedPillLabel(for: controller))
                         .font(BrandFont.nunito(13, 800)).tracking(0.2)
                         .foregroundStyle(Color(hex: 0xDFF3DC))
                 }
                 .padding(.horizontal, 18).padding(.vertical, 9)
-                .background(Capsule().fill(Theme.Colors.accent))
+                .background(Capsule().fill(
+                    controller.listeningMode == .followUp
+                        ? Theme.Colors.accent.opacity(0.82)
+                        : Theme.Colors.accent
+                ))
                 .transition(.scale(scale: 0.9).combined(with: .opacity))
             } else {
                 Button {
@@ -260,6 +318,16 @@ struct PollySessionView: View {
         if controller.isThinking { return "Thinking…" }
         if controller.isPollySpeaking { return "Polly is talking" }
         return controller.wakeWordAvailable ? "Say \u{201C}Polly\u{201D} to talk" : "Tap to talk"
+    }
+
+    private func engagedPillLabel(for controller: PollySessionController) -> String {
+        if controller.expectsAnswer { return "Your turn…" }
+        if controller.listeningMode == .followUp { return "Still with you…" }
+        if let ack = controller.lastAcknowledgedAt,
+           Date().timeIntervalSince(ack) < 1.5 {
+            return "Got it"
+        }
+        return "Listening"
     }
 
     // MARK: - Speech line
@@ -297,7 +365,10 @@ struct PollySessionView: View {
             if !controller.timers.timers.isEmpty {
                 PollyTimersRow(manager: controller.timers)
             }
-            if let step = currentStep(of: controller) {
+            // Cream step card only when the camera is on (feed is the hero and
+            // the guide panel is hidden). With camera off the dark checklist
+            // owns step UI — a second cream card was just dead weight.
+            if controller.camera.isRunning, let step = currentStep(of: controller) {
                 stepCard(step: step, controller: controller)
             }
             controlsRow(for: controller)
@@ -307,23 +378,43 @@ struct PollySessionView: View {
         .padding(.bottom, 40)
     }
 
+    /// Cream step card for camera-on mode (guide panel is hidden so the feed
+    /// stays hero). Mirrors the original Polly mock bottom card.
     private func stepCard(step: CookPlan.PlanStep, controller: PollySessionController) -> some View {
         let total = controller.plan?.steps.count ?? 0
+        let isSetup = CookPlan.isSetupStep(step)
+        let setupCount = controller.plan?.leadingSetupCount ?? 0
+        let cookTotal = max(0, total - setupCount)
+        let cookNumber = isSetup ? 0 : max(1, step.index + 1 - setupCount)
+        let phaseLabel: String = {
+            if step.id == CookPlan.toolsStepID { return "Tools" }
+            if step.id == CookPlan.prepStepID || step.kind == .prep { return "Prep" }
+            return "Step \(cookNumber) of \(cookTotal)"
+        }()
+        let headline: String = {
+            if step.id == CookPlan.toolsStepID {
+                return step.title.isEmpty ? "Grab your tools" : step.title
+            }
+            if step.id == CookPlan.prepStepID || step.kind == .prep {
+                return step.title.isEmpty ? "Mise en place" : step.title
+            }
+            return step.title
+        }()
         return VStack(alignment: .leading, spacing: 0) {
             progressBar(done: step.index + 1, total: total)
             HStack(alignment: .firstTextBaseline) {
-                Text("Step \(step.index + 1) of \(total)")
+                Text(phaseLabel)
                     .font(BrandFont.nunito(11.5, 800)).tracking(1.5).textCase(.uppercase)
                     .foregroundStyle(Theme.Colors.accent)
                 Spacer()
                 if let next = nextStepTitle(of: controller) {
-                    Text("Up next, \(next)")
+                    Text(isSetup ? "Then, \(next)" : "Up next, \(next)")
                         .font(BrandFont.nunito(11.5, 700)).foregroundStyle(Theme.Colors.muted)
                         .lineLimit(1)
                 }
             }
             .padding(.top, 12)
-            Text(step.title)
+            Text(headline)
                 .font(BrandFont.bricolage(22, 600))
                 .foregroundStyle(Theme.Colors.heading)
                 .padding(.top, 4)

@@ -822,6 +822,8 @@ final class SocialMediaImportTests: XCTestCase {
         // Instagram has no public oEmbed — it stays on the HTML path.
         XCTAssertFalse(SocialMediaImport.canHandle(URL(string: "https://www.instagram.com/reel/abc/")!))
         XCTAssertFalse(SocialMediaImport.canHandle(URL(string: "https://www.allrecipes.com/recipe/1234")!))
+        XCTAssertFalse(SocialMediaImport.canHandle(URL(string: "https://www.reddit.com/r/recipes/comments/abc/")!))
+        XCTAssertTrue(RedditImport.canHandle(URL(string: "https://www.reddit.com/r/recipes/comments/abc/")!))
     }
 
     func testExtractsYouTubeDescriptionFromPlayerJSON() {

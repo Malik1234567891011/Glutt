@@ -101,6 +101,10 @@ final class RealtimeEventCodecTests: XCTestCase {
         XCTAssertEqual(turnDetection["type"] as? String, "semantic_vad")
         XCTAssertEqual(turnDetection["eagerness"] as? String, "low",
                        "default eagerness let speaker echo/noise interrupt Polly mid-sentence")
+        XCTAssertEqual(turnDetection["create_response"] as? Bool, false,
+                       "client conversational gate owns when Polly answers")
+        XCTAssertEqual(turnDetection["interrupt_response"] as? Bool, false,
+                       "client owns barge-in — raw VAD must not cancel Polly")
         let noiseReduction = try XCTUnwrap(input["noise_reduction"] as? [String: Any])
         XCTAssertEqual(noiseReduction["type"] as? String, "far_field")
         let transcription = try XCTUnwrap(input["transcription"] as? [String: Any])
@@ -253,7 +257,9 @@ final class RealtimeEventCodecTests: XCTestCase {
          "event_id": "event_3", "item_id": "item_2", "content_index": 0,
          "transcript": "Should I flip the salmon now?"}
         """#
-        XCTAssertEqual(decode(fixture), .inputTranscript("Should I flip the salmon now?"))
+        XCTAssertEqual(
+            decode(fixture),
+            .inputTranscript(itemId: "item_2", text: "Should I flip the salmon now?"))
     }
 
     func testDecodesOutputAudioDelta() {

@@ -76,6 +76,7 @@ targets:
       - path: Glutt/Models/Enums.swift
       - path: Glutt/Services/Import/ImportedRecipeDraft.swift
       - path: Glutt/Services/Import/RecipeImportService.swift
+      - path: Glutt/Services/Import/RedditImport.swift
       - path: Glutt/Services/Import/RecipeHTMLParser.swift
       - path: Glutt/Services/Import/SocialMediaImport.swift
       - path: Glutt/Services/Import/TextRecipeParser.swift

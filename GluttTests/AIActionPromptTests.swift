@@ -65,6 +65,21 @@ final class AIActionPromptTests: XCTestCase {
         XCTAssertTrue(fake.system.contains("Read any visible text"))
     }
 
+    func testFromDescriptionParsesSpokenList() async throws {
+        let fake = FakeLLMTransport(replyJSON:
+            #"{"items":[{"name":"eggs","quantity":"full","category":"dairy"},{"name":"rice","quantity":"half","category":"pantry"}]}"#)
+        let items = try await PantryScan.fromDescription(
+            "I've got eggs and some leftover rice",
+            existingPantry: [],
+            client: fake.client()
+        )
+        XCTAssertEqual(items.map(\.name), ["eggs", "rice"])
+        XCTAssertEqual(items[1].quantity, .half)
+        XCTAssertFalse(fake.hasImage)
+        XCTAssertTrue(fake.user.contains("leftover rice"))
+        XCTAssertTrue(fake.system.contains("spoken or typed"))
+    }
+
     // MARK: - MealPhotoEstimator (vision)
 
     func testEstimateAttachesImage() async throws {

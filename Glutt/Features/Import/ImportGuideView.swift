@@ -21,7 +21,7 @@ struct ImportGuideView: View {
                         number: 1,
                         icon: Ph.export.regular.resizable().scaledToFit().frame(width: 22, height: 22),
                         title: "Share from any app",
-                        body: "Watching a recipe on TikTok, Instagram, or YouTube? Tap the share button, pick Glutt, and it imports itself. The best way to save.",
+                        body: "Watching a recipe on TikTok, Instagram, YouTube, or Reddit? Tap the share button, pick Glutt, and it imports itself. The best way to save.",
                         actionLabel: "Show me how",
                         action: {
                             Haptics.impact(.medium)
@@ -140,7 +140,7 @@ struct ShareSheetSetupView: View {
     private let steps: [Step] = [
         Step(
             title: "Tap Share on any recipe",
-            detail: "In TikTok, Instagram, YouTube, or Safari, hit the share button — the square with the arrow.",
+            detail: "In TikTok, Instagram, YouTube, Reddit, or Safari, hit the share button — the square with the arrow.",
             illustration: .shareButton
         ),
         Step(

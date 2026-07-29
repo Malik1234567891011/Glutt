@@ -1,6 +1,6 @@
 import Foundation
 
-/// Photo pantry scan: one photo of the fridge or pantry → candidate items
+/// Pantry intake: photo *or* a spoken/typed description → candidate items
 /// the user confirms before anything touches the inventory. Deliberately
 /// humble for beta — no video, no exact quantities, no auto-commit.
 enum PantryScan {
@@ -59,9 +59,52 @@ enum PantryScan {
             imageData: imageData,
             timeout: 45
         )
+        return mapItems(response.items, existingPantry: existingPantry)
+    }
 
+    /// Turn a casual spoken/typed list ("I've got eggs, some leftover rice,
+    /// half a lemon…") into the same confirmable candidate rows as a photo scan.
+    static func fromDescription(
+        _ description: String,
+        existingPantry: [PantryItem],
+        client: LLMClient = .live
+    ) async throws -> [ScannedItem] {
+        let trimmed = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+
+        let system = """
+        You extract food, drinks, and cooking ingredients from a casual spoken or typed
+        description of someone's kitchen inventory.
+
+        Return JSON: {"items": [{"name": str, "quantity": "full"|"half"|"low", "category": str}]}
+
+        Rules:
+        - name: a useful generic grocery name. Keep type/flavor when it matters for cooking
+          ("basmati rice", "greek yogurt"). Drop brand names and filler words.
+        - Include every edible item or cooking ingredient they mention. Skip non-food
+          (utensils, appliances) and vague non-items ("stuff", "things").
+        - quantity: map phrases like "almost out" / "a little" → "low", "half a …" / "some" → "half",
+          otherwise "full". Default "full" when amount isn't clear.
+        - category: one of produce, meat, dairy, pantry, frozen, spices, other.
+        - Max 40 items. Deduplicate obvious repeats. Only return {"items": []} if nothing edible
+          was mentioned.
+        """
+
+        let response = try await client.chatJSON(
+            Response.self,
+            system: system,
+            user: "Inventory description:\n\(trimmed)",
+            timeout: 25
+        )
+        return mapItems(response.items, existingPantry: existingPantry)
+    }
+
+    private static func mapItems(
+        _ items: [Response.Item],
+        existingPantry: [PantryItem]
+    ) -> [ScannedItem] {
         var seen = Set<String>()
-        return response.items.compactMap { item in
+        return items.compactMap { item in
             let name = item.name.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !name.isEmpty else { return nil }
             let canonical = IngredientCanonicalizer.canonicalize(name)

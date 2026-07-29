@@ -73,9 +73,14 @@ struct NotificationsFooter: View {
     var body: some View {
         VStack(spacing: 0) {
             OnboardingPrimaryButton(title: "Turn on notifications", action: requestPermission)
-            OnboardingTextLink(title: "Maybe later", action: onDone).padding(.top, 16)
+            OnboardingTextLink(title: "Maybe later", action: skip).padding(.top, 16)
         }
         .padding(.horizontal, 24).padding(.bottom, 10)
+    }
+
+    private func skip() {
+        Analytics.capture(.onboardingNotifications, ["outcome": "skipped"])
+        onDone()
     }
 
     private func requestPermission() {
@@ -83,6 +88,7 @@ struct NotificationsFooter: View {
         requesting = true
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
             DispatchQueue.main.async {
+                Analytics.capture(.onboardingNotifications, ["outcome": granted ? "granted" : "denied"])
                 if granted { ReminderScheduler.schedulePlatesDailyReminder() }
                 onDone()
             }

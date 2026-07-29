@@ -11,11 +11,20 @@ struct InventoryView: View {
     @State private var searchText = ""
     @State private var editingQuantityItem: PantryItem?
     @State private var exactQuantityText = ""
+    @State private var isInventing = false
 
     private var visibleItems: [PantryItem] {
         guard !searchText.isEmpty else { return items }
         let query = searchText.lowercased()
         return items.filter { $0.name.lowercased().contains(query) }
+    }
+
+    private var onHandCount: Int {
+        items.filter { $0.roughQuantity != .out }.count
+    }
+
+    private var canInvent: Bool {
+        LLMClient.isConfigured && onHandCount >= 2
     }
 
     /// A use-soon item still worth flagging: not fully out of stock.
@@ -38,8 +47,8 @@ struct InventoryView: View {
                     EmptyStateView(
                         icon: "refrigerator",
                         title: "Your kitchen is a mystery",
-                        message: "Add what you have and recipes will show what you can already cook.",
-                        actionLabel: LLMClient.isConfigured ? "Scan it with a photo" : "Add items",
+                        message: "Add what you have — photo or just tell Glutt — and recipes will show what you can already cook.",
+                        actionLabel: LLMClient.isConfigured ? "Add what you have" : "Add items",
                         action: {
                             if LLMClient.isConfigured {
                                 isScanning = true
@@ -49,6 +58,9 @@ struct InventoryView: View {
                         }
                     )
                 } else {
+                    if canInvent, searchText.isEmpty {
+                        inventPrompt
+                    }
                     // Use-soon items surface inline (via per-row badge) inside their
                     // category sections rather than in a separate pinned section.
                     ForEach(GroceryCategory.allCases) { category in
@@ -74,6 +86,9 @@ struct InventoryView: View {
         .sheet(isPresented: $isScanning) {
             PantryScanView()
         }
+        .sheet(isPresented: $isInventing) {
+            InventDishView()
+        }
         .alert("Exact amount", isPresented: Binding(
             get: { editingQuantityItem != nil },
             set: { if !$0 { editingQuantityItem = nil } }
@@ -91,6 +106,40 @@ struct InventoryView: View {
         } message: {
             Text("Optional. Add a precise amount if the rough level isn't enough.")
         }
+    }
+
+    /// One quiet line under search — invent lives here, not on a home dashboard.
+    private var inventPrompt: some View {
+        Button {
+            Haptics.impact(.light)
+            isInventing = true
+        } label: {
+            HStack(spacing: 12) {
+                MS.autoAwesomeFill.sized(20)
+                    .foregroundStyle(Theme.Colors.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Invent a dish")
+                        .font(BrandFont.nunito(15, 800))
+                        .foregroundStyle(Theme.Colors.heading)
+                    Text("Glutt cooks up something from what you have")
+                        .font(BrandFont.nunito(12.5, 600))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.Colors.muted)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .background(Theme.Colors.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.group, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.group, style: .continuous)
+                    .strokeBorder(Theme.Colors.textPrimary.opacity(0.06), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Assumed staples

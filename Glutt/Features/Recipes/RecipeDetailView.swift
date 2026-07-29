@@ -2,11 +2,10 @@ import SwiftData
 import SwiftUI
 
 /// Recipe detail, redesigned to `Glutt Screens.dc.html` (screen "Recipe detail"):
-/// a tall hero, a rounded cream content sheet with title/kcal, stats, tags, an
-/// adapt row, an Ingredients/Steps segmented control, grouped food-icon ingredient
-/// rows with pantry match, an "add missing to groceries" button, and a pinned
-/// "Cook with Polly" bar. Extras (tools, macros, notes, rating, versions, history)
-/// move into the more_horiz overflow's "More details" sheet — kept, off the surface.
+/// a tall hero, a rounded cream content sheet with title, stats, nutrition for
+/// the current serving count, tags, an adapt row, Ingredients/Steps, versions of
+/// this recipe, and a pinned "Cook with Polly" bar. Extras (tools, notes, rating,
+/// history) live in the more_horiz "More details" sheet.
 struct RecipeDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -52,10 +51,8 @@ struct RecipeDetailView: View {
         return KitchenToolCatalog.requiredTools(inText: text)
     }
 
-    private var headerNutrition: (calories: Int, protein: Int)? {
-        if let c = recipe.calories, let p = recipe.proteinGrams { return (c, p) }
-        if let est = NutritionEstimator.estimate(for: recipe) { return (est.calories, est.proteinGrams) }
-        return nil
+    private var displayNutrition: RecipeNutrition? {
+        RecipeNutrition.resolve(for: recipe, servings: displayServings)
     }
 
     private var sortedIngredients: [RecipeIngredient] {
@@ -103,6 +100,7 @@ struct RecipeDetailView: View {
             Button("Create") { createVersion() }
             Button("Cancel", role: .cancel) { versionLabel = "" }
         }
+        .onAppear { RecipeNutrition.backfillIfNeeded(recipe: recipe) }
     }
 
     // MARK: - Hero
@@ -176,6 +174,8 @@ struct RecipeDetailView: View {
             SegmentedTabs(titles: ["Ingredients", "Steps"], selection: $selectedTab)
                 .padding(.top, 22)
             if selectedTab == 0 { ingredientsTab.padding(.top, 20) } else { stepsTab.padding(.top, 20) }
+            versionPicker
+                .padding(.top, 28)
         }
         .padding(.horizontal, 20)
         .padding(.top, 24)
@@ -188,11 +188,10 @@ struct RecipeDetailView: View {
     }
 
     private var titleBlock: some View {
-        let showNutrition = UserPrefs.current(in: context).nutritionMode.showsNutrition
-        return VStack(alignment: .leading, spacing: 8) {
-            (Text(recipe.title).foregroundColor(Theme.Colors.heading)
-             + kcalSuffix(show: showNutrition))
+        VStack(alignment: .leading, spacing: 8) {
+            Text(recipe.title)
                 .font(BrandFont.bricolage(27, 700))
+                .foregroundStyle(Theme.Colors.heading)
                 .lineLimit(3)
             if let summary = recipe.summary, !summary.isEmpty {
                 Text(summary)
@@ -205,7 +204,11 @@ struct RecipeDetailView: View {
                     .font(BrandFont.nunito(13, 700)).foregroundStyle(Theme.Colors.muted)
             }
             .padding(.top, 1)
-            statPills(showNutrition: showNutrition).padding(.top, 6)
+            statPills.padding(.top, 6)
+            if let nutrition = displayNutrition {
+                RecipeNutritionBanner(nutrition: nutrition)
+                    .padding(.top, 10)
+            }
             if !recipe.tags.isEmpty { tagRow.padding(.top, 4) }
             if let confidence = recipe.importConfidence, confidence < 0.85 {
                 ConfidenceBadge(confidence: confidence)
@@ -213,20 +216,11 @@ struct RecipeDetailView: View {
         }
     }
 
-    private func kcalSuffix(show: Bool) -> Text {
-        guard show, let cal = headerNutrition?.calories else { return Text("") }
-        return Text(", \(cal) Kcal").foregroundColor(Theme.Colors.muted)
-    }
-
-    private func statPills(showNutrition: Bool) -> some View {
+    private var statPills: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 detailPill(MS.schedule, recipe.timeLabel, fg: Color(hex: 0x4A4238), bg: Theme.Colors.surface2, icon: Theme.Colors.textSecondary)
                 detailPill(MS.signalCellularAlt, recipe.difficulty.label, fg: Color(hex: 0x4A4238), bg: Theme.Colors.surface2, icon: Theme.Colors.textSecondary)
-                if showNutrition, let n = headerNutrition {
-                    detailPill(MS.fireFill, "\(n.calories) cal", fg: Theme.Colors.tomato, bg: Theme.Colors.tomatoTint, icon: Theme.Colors.tomato)
-                    detailPill(MS.boltFill, "\(n.protein)g", fg: Theme.Colors.accent, bg: Theme.Colors.greenTint, icon: Theme.Colors.accent)
-                }
                 if let rating = recipe.rating {
                     detailPill(MS.starFill, "\(rating)", fg: Theme.Colors.amber, bg: Theme.Colors.amberChip, icon: Theme.Colors.amber)
                 }
@@ -558,10 +552,8 @@ struct RecipeDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     gearWarning
-                    nutritionLine
                     notesSection
                     ratingSection
-                    versionPicker
                     if !sessions.isEmpty { historySection }
                 }
                 .padding(Theme.Spacing.lg)
@@ -604,32 +596,54 @@ struct RecipeDetailView: View {
     }
 
     @ViewBuilder
-    private var nutritionLine: some View {
-        let prefs = UserPrefs.current(in: context)
-        if prefs.nutritionMode.showsNutrition {
-            if recipe.carbGrams != nil, recipe.fatGrams != nil {
-                MacroStrip(recipe: recipe).cardStyle()
-            } else if let estimate = NutritionEstimator.estimate(for: recipe) {
-                HStack(spacing: Theme.Spacing.md) {
-                    Image(systemName: "chart.bar").foregroundStyle(Theme.Colors.accent)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("~\(estimate.calories) cal · \(estimate.proteinGrams)g protein per serving")
-                            .font(.gluttHeadline).foregroundStyle(Theme.Colors.textPrimary)
-                        Text("Estimated from \(estimate.matchedCount)/\(estimate.totalCount) ingredients, likely \(estimate.caloriesRange.lowerBound) to \(estimate.caloriesRange.upperBound) cal")
-                            .font(.caption2).foregroundStyle(Theme.Colors.textSecondary)
-                    }
-                    Spacer()
-                }
-                .cardStyle()
-                .onAppear {
-                    if recipe.calories == nil {
-                        recipe.calories = estimate.calories
-                        recipe.proteinGrams = estimate.proteinGrams
+    private var versionPicker: some View {
+        let original = recipe.parentRecipe ?? recipe
+        let allVersions = ([original] + original.versions)
+            .sorted { a, b in
+                // Original first, then by label.
+                if a === original { return true }
+                if b === original { return false }
+                return (a.versionLabel ?? a.title) < (b.versionLabel ?? b.title)
+            }
+        if allVersions.count > 1 {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Versions of this recipe")
+                    .font(BrandFont.nunito(12, 800))
+                    .tracking(1.2)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.Colors.muted)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(allVersions) { version in
+                            let label = version === original
+                                ? "Original"
+                                : (version.versionLabel ?? "My version")
+                            let selected = version === recipe
+                            if selected {
+                                Text(label)
+                                    .font(BrandFont.nunito(13, 800))
+                                    .foregroundStyle(Theme.Colors.creamText)
+                                    .padding(.horizontal, 16).padding(.vertical, 9)
+                                    .background(Capsule().fill(Theme.Colors.accent))
+                            } else {
+                                NavigationLink(value: version) {
+                                    Text(label)
+                                        .font(BrandFont.nunito(13, 700))
+                                        .foregroundStyle(Color(hex: 0x3A342C))
+                                        .padding(.horizontal, 16).padding(.vertical, 9)
+                                        .background(Capsule().fill(Theme.Colors.card))
+                                        .overlay(Capsule().strokeBorder(Theme.Colors.textPrimary.opacity(0.08), lineWidth: 1.5))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
                     }
                 }
             }
         }
     }
+
+    // nutritionLine removed — macros live on the main card via RecipeNutritionBanner.
 
     private var notesSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
@@ -655,29 +669,6 @@ struct RecipeDetailView: View {
                 Spacer()
             }
             .cardStyle()
-        }
-    }
-
-    @ViewBuilder
-    private var versionPicker: some View {
-        let original = recipe.parentRecipe ?? recipe
-        let allVersions = [original] + original.versions
-        if allVersions.count > 1 {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Text("MY VERSIONS OF THIS RECIPE")
-                    .font(.caption2.weight(.semibold)).foregroundStyle(Theme.Colors.textSecondary)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Spacing.sm) {
-                        ForEach(allVersions) { version in
-                            NavigationLink(value: version) {
-                                Chip(label: version === original ? "Original" : (version.versionLabel ?? "My version"),
-                                     isSelected: version === recipe)
-                            }
-                            .buttonStyle(.plain).disabled(version === recipe)
-                        }
-                    }
-                }
-            }
         }
     }
 

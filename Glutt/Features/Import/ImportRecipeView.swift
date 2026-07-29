@@ -69,7 +69,7 @@ struct ImportRecipeView: View {
                     Text("Paste a link")
                         .font(.gluttHeadline)
                         .foregroundStyle(Theme.Colors.textPrimary)
-                    Text("TikTok, Instagram, YouTube, or any recipe website.")
+                    Text("TikTok, Instagram, YouTube, Reddit, or any recipe website.")
                         .font(.gluttCaption)
                         .foregroundStyle(Theme.Colors.textSecondary)
 

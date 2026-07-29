@@ -148,32 +148,83 @@ final class CookPlanTests: XCTestCase {
         XCTAssertEqual(plan.title, "Weeknight Ragu")
         XCTAssertEqual(plan.servings, 3, "2 servings x 1.5 scale, rounded")
         XCTAssertTrue(plan.isFallback)
-        XCTAssertTrue(plan.mise.isEmpty)
+        XCTAssertFalse(plan.mise.isEmpty, "linear synthesizes mise for board work")
+        XCTAssertTrue(plan.hasLeadingPrep)
         XCTAssertTrue(plan.equipment.isEmpty)
-        XCTAssertEqual(plan.steps.count, 2)
+        // No equipment → Prep only (no Tools step).
+        XCTAssertEqual(plan.steps.count, 3, "Prep + 2 cook steps")
+        XCTAssertEqual(plan.leadingSetupCount, 1)
 
-        let first = plan.steps[0]
+        let prep = plan.steps[0]
+        XCTAssertEqual(prep.id, CookPlan.prepStepID)
+        XCTAssertEqual(prep.index, 0)
+        XCTAssertEqual(prep.title, "Prep")
+        XCTAssertEqual(prep.kind, .prep)
+        XCTAssertTrue(prep.instruction.localizedCaseInsensitiveContains("before any heat"))
+        XCTAssertFalse(prep.instruction.localizedCaseInsensitiveContains("measure"),
+                       "prep must not ask to pre-measure spices")
+
+        let first = plan.steps[1]
         XCTAssertEqual(first.id, "s1")
-        XCTAssertEqual(first.index, 0)
+        XCTAssertEqual(first.index, 1)
         XCTAssertEqual(first.title, "Brown the ground beef with the…", "first 6 words + ellipsis")
         XCTAssertEqual(first.instruction, "Brown the ground beef with the onion until no pink remains.")
         XCTAssertEqual(first.kind, .active, "no durationSeconds -> active")
         XCTAssertNil(first.estimatedSeconds)
         XCTAssertNil(first.timerSeconds)
-        XCTAssertEqual(first.dependsOn, [])
+        XCTAssertEqual(first.dependsOn, [CookPlan.prepStepID])
         XCTAssertNil(first.visualCheck)
         XCTAssertNil(first.recovery)
         XCTAssertEqual(first.ingredientNames, ["ground beef", "onion"])
 
-        let second = plan.steps[1]
+        let second = plan.steps[2]
         XCTAssertEqual(second.id, "s2")
-        XCTAssertEqual(second.index, 1)
+        XCTAssertEqual(second.index, 2)
         XCTAssertEqual(second.title, "Simmer the sauce gently, stirring occasionally.", "6 words or fewer -> untruncated")
         XCTAssertEqual(second.kind, .passive, "durationSeconds -> passive")
         XCTAssertEqual(second.estimatedSeconds, 300)
         XCTAssertEqual(second.timerSeconds, 300)
         XCTAssertEqual(second.dependsOn, ["s1"])
         XCTAssertTrue(second.ingredientNames.isEmpty, "step text mentions no ingredient")
+    }
+
+    func testEnsuringLeadingPrepSplitsToolsAndPrep() throws {
+        let json = """
+        {"title":"Pasta","servings":2,
+         "mise":[{"name":"onion","prep":"dice"},{"name":"garlic","prep":"mince"},{"name":"cumin","prep":"measure"}],
+         "equipment":["skillet"],
+         "steps":[{"id":"s1","index":0,"title":"Heat oil","instruction":"Heat oil in a skillet.","kind":"active","dependsOn":[]}]}
+        """
+        let raw = try JSONDecoder().decode(CookPlan.self, from: Data(json.utf8))
+        let plan = raw.ensuringLeadingPrep()
+
+        XCTAssertEqual(plan.leadingSetupCount, 2)
+        XCTAssertEqual(plan.steps.count, 3)
+        XCTAssertEqual(plan.steps[0].id, CookPlan.toolsStepID)
+        XCTAssertEqual(plan.steps[0].title, "Tools")
+        XCTAssertEqual(plan.steps[1].id, CookPlan.prepStepID)
+        XCTAssertEqual(plan.steps[1].title, "Prep")
+        XCTAssertEqual(plan.steps[1].dependsOn, [CookPlan.toolsStepID])
+        XCTAssertEqual(plan.mise.map(\.name), ["onion", "garlic"], "cumin measure dropped")
+        XCTAssertTrue(plan.steps[1].instruction.localizedCaseInsensitiveContains("dice the onion"))
+        XCTAssertFalse(plan.steps[1].instruction.localizedCaseInsensitiveContains("cumin"))
+        XCTAssertEqual(plan.steps[2].id, "s1")
+        XCTAssertEqual(plan.steps[2].index, 2)
+        XCTAssertEqual(plan.steps[2].dependsOn, [CookPlan.prepStepID])
+    }
+
+    func testEnsuringLeadingPrepIsIdempotent() throws {
+        let json = """
+        {"title":"Pasta","servings":2,
+         "mise":[{"name":"onion","prep":"dice"}],
+         "equipment":["skillet"],
+         "steps":[
+           {"id":"s1","index":0,"title":"Heat oil","instruction":"Heat oil.","kind":"active","dependsOn":[]}
+         ]}
+        """
+        let once = try JSONDecoder().decode(CookPlan.self, from: Data(json.utf8)).ensuringLeadingPrep()
+        let twice = once.ensuringLeadingPrep()
+        XCTAssertEqual(once, twice)
     }
 
     func testLinearFallbackClampsServingsToAtLeastOne() throws {

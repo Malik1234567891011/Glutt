@@ -48,8 +48,9 @@ enum DraftCleanup {
         guard LLMClient.isConfigured else { return false }
         if draft.ingredientLines.isEmpty || draft.stepTexts.isEmpty { return true }
         if draft.confidence < 0.85 { return true }
-        // Captions are prose, not structure — always worth a pass.
-        if draft.platform == .tiktok || draft.platform == .instagram || draft.platform == .screenshot {
+        // Captions / Reddit prose aren't structured — always worth a pass.
+        if draft.platform == .tiktok || draft.platform == .instagram
+            || draft.platform == .screenshot || draft.platform == .reddit {
             return true
         }
         return false

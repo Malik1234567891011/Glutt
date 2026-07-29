@@ -1,9 +1,9 @@
 import SwiftData
 import SwiftUI
 
-/// The recipe library, "Feed" design: a cream home with a stat header, an
-/// ask/search pill, a "ready to cook tonight" hero, quick filter chips, and big
-/// single-column recipe cards. Source: `Glutt Main Page.dc.html`, direction B.
+/// The recipe library, "Feed" design: a cream home with a stat header, sort
+/// menu (protein ratio, pantry coverage, …), ask/search pill, filter chips,
+/// a "ready to cook tonight" hero, and big single-column recipe cards.
 struct RecipesView: View {
     @Environment(\.modelContext) private var context
     @Environment(Router.self) private var router
@@ -15,6 +15,7 @@ struct RecipesView: View {
     @State private var searchText = ""
     @FocusState private var searchFocused: Bool
     @State private var filter: HomeFilter = .all
+    @State private var sort: HomeSort = .newest
     @State private var isShowingEditor = false
     @State private var isShowingImport = false
     @State private var isShowingSettings = false
@@ -28,14 +29,38 @@ struct RecipesView: View {
     @State private var aiQuery = ""
     @State private var isRanking = false
 
-    /// The five fixed quick filters from the mock.
+    /// Quick filters — narrow the list. Sorting lives in the header menu.
     enum HomeFilter: String, CaseIterable, Identifiable {
         case all = "All"
         case ready = "Ready now"
         case quick = "Under 30 min"
-        case protein = "High protein"
-        case recent = "Recent"
+        case favorites = "Favorites"
         var id: String { rawValue }
+    }
+
+    /// Library sort. Nutrition sorts use per-serving cal/protein (stored, caption, or estimate).
+    enum HomeSort: String, CaseIterable, Identifiable {
+        case newest = "Newest"
+        case ready = "Ready to cook"
+        case proteinRatio = "Best protein ratio"
+        case mostProtein = "Most protein"
+        case fewestCalories = "Fewest calories"
+        case quickest = "Quickest"
+        case alphabetical = "A–Z"
+
+        var id: String { rawValue }
+
+        var systemImage: String {
+            switch self {
+            case .newest: "clock"
+            case .ready: "refrigerator"
+            case .proteinRatio: "chart.bar.fill"
+            case .mostProtein: "bolt.fill"
+            case .fewestCalories: "flame"
+            case .quickest: "timer"
+            case .alphabetical: "textformat"
+            }
+        }
     }
 
     // MARK: - Derived data
@@ -74,19 +99,76 @@ struct RecipesView: View {
         case .all:
             break
         case .ready:
-            recipes = recipes.sorted { match($0).coverage > match($1).coverage }
+            // Keep dishes you can mostly cook tonight (≥70% pantry coverage).
+            recipes = recipes.filter { match($0).coverage >= 0.7 || match($0).totalCount == 0 }
         case .quick:
             recipes = recipes.filter { $0.estimatedMinutes <= 30 }
-        case .protein:
-            recipes = recipes.sorted { proteinPerServing($0) > proteinPerServing($1) }
-        case .recent:
-            break // already sorted by createdAt desc
+        case .favorites:
+            recipes = recipes.filter(\.isFavorite)
         }
-        return recipes
+        return sorted(recipes)
+    }
+
+    private func sorted(_ recipes: [Recipe]) -> [Recipe] {
+        switch sort {
+        case .newest:
+            return recipes.sorted { $0.createdAt > $1.createdAt }
+        case .ready:
+            return recipes.sorted {
+                let a = match($0).coverage, b = match($1).coverage
+                if a != b { return a > b }
+                return $0.createdAt > $1.createdAt
+            }
+        case .proteinRatio:
+            return recipes.sorted {
+                let a = proteinPerCalorie($0), b = proteinPerCalorie($1)
+                if a != b { return a > b }
+                return proteinPerServing($0) > proteinPerServing($1)
+            }
+        case .mostProtein:
+            return recipes.sorted { proteinPerServing($0) > proteinPerServing($1) }
+        case .fewestCalories:
+            return recipes.sorted {
+                let a = caloriesPerServing($0), b = caloriesPerServing($1)
+                // Unknown nutrition sinks to the bottom.
+                switch (a, b) {
+                case (nil, nil): return $0.createdAt > $1.createdAt
+                case (nil, _): return false
+                case (_, nil): return true
+                case let (x?, y?): return x < y
+                }
+            }
+        case .quickest:
+            return recipes.sorted {
+                let a = $0.estimatedMinutes, b = $1.estimatedMinutes
+                if a == 0 && b == 0 { return $0.createdAt > $1.createdAt }
+                if a == 0 { return false }
+                if b == 0 { return true }
+                return a < b
+            }
+        case .alphabetical:
+            return recipes.sorted {
+                $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+            }
+        }
+    }
+
+    private func nutrition(for recipe: Recipe) -> RecipeNutrition? {
+        RecipeNutrition.resolve(for: recipe, servings: 1)
     }
 
     private func proteinPerServing(_ recipe: Recipe) -> Int {
-        recipe.proteinGrams ?? NutritionEstimator.estimate(for: recipe)?.proteinGrams ?? 0
+        nutrition(for: recipe)?.perServingProtein ?? 0
+    }
+
+    private func caloriesPerServing(_ recipe: Recipe) -> Int? {
+        nutrition(for: recipe)?.perServingCalories
+    }
+
+    /// Grams of protein per calorie — higher is leaner / better ratio. Missing → -1.
+    private func proteinPerCalorie(_ recipe: Recipe) -> Double {
+        guard let n = nutrition(for: recipe), n.perServingCalories > 0 else { return -1 }
+        return Double(n.perServingProtein) / Double(n.perServingCalories)
     }
 
     private var searchResults: [RecipeSearchEngine.SearchResult] {
@@ -181,6 +263,30 @@ struct RecipesView: View {
             }
             Spacer()
             HStack(spacing: 9) {
+                Menu {
+                    ForEach(HomeSort.allCases) { option in
+                        Button {
+                            Haptics.selection()
+                            sort = option
+                        } label: {
+                            if sort == option {
+                                Label(option.rawValue, systemImage: "checkmark")
+                            } else {
+                                Label(option.rawValue, systemImage: option.systemImage)
+                            }
+                        }
+                    }
+                } label: {
+                    circleButton(
+                        fill: sort == .newest ? Theme.Colors.card : Theme.Colors.accent.opacity(0.12),
+                        bordered: true
+                    ) {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(sort == .newest ? Color(hex: 0x3A342C) : Theme.Colors.accent)
+                    }
+                }
+
                 Button {
                     Haptics.impact(.light); isShowingSettings = true
                 } label: {
@@ -260,14 +366,17 @@ struct RecipesView: View {
             )
             .padding(.top, 40)
         } else {
+            // Chips sit under search — above the hero — so filter/sort isn't
+            // buried below a tall "ready tonight" card.
+            filterChips
+                .padding(.top, 4)
+                .padding(.bottom, 14)
             if let hero = heroRecipe {
                 heroCard(hero)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 6)
             }
-            filterChips
-                .padding(.top, 16)
-            SectionLabel(text: "Saved this week")
+            SectionLabel(text: listSectionTitle)
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 12)
@@ -365,6 +474,16 @@ struct RecipesView: View {
     }
 
     // MARK: - Filter chips
+
+    private var listSectionTitle: String {
+        if sort != .newest { return sort.rawValue }
+        switch filter {
+        case .all: return "Your recipes"
+        case .ready: return "Ready now"
+        case .quick: return "Under 30 min"
+        case .favorites: return "Favorites"
+        }
+    }
 
     private var filterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {

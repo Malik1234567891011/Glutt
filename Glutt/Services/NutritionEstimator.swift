@@ -16,6 +16,15 @@ enum NutritionEstimator {
         let protein: Double
         let carbs: Double
         let fat: Double
+        let fiber: Double
+
+        init(calories: Double, protein: Double, carbs: Double, fat: Double, fiber: Double = 0) {
+            self.calories = calories
+            self.protein = protein
+            self.carbs = carbs
+            self.fat = fat
+            self.fiber = fiber
+        }
     }
 
     struct Estimate {
@@ -24,6 +33,7 @@ enum NutritionEstimator {
         var proteinGrams: Int
         var carbGrams: Int
         var fatGrams: Int
+        var fiberGrams: Int
         /// 0...1 — fraction of ingredients we could identify.
         var confidence: Double
         var matchedCount: Int
@@ -61,21 +71,21 @@ enum NutritionEstimator {
         ("egg", Entry(calories: 155, protein: 13, carbs: 1.1, fat: 11)),
         // Plant proteins / legumes
         ("tofu", Entry(calories: 76, protein: 8, carbs: 1.9, fat: 4.8)),
-        ("chickpea", Entry(calories: 164, protein: 9, carbs: 27, fat: 2.6)),
-        ("lentil", Entry(calories: 116, protein: 9, carbs: 20, fat: 0.4)),
-        ("black bean", Entry(calories: 132, protein: 9, carbs: 24, fat: 0.5)),
-        ("bean", Entry(calories: 127, protein: 9, carbs: 23, fat: 0.5)),
+        ("chickpea", Entry(calories: 164, protein: 9, carbs: 27, fat: 2.6, fiber: 8)),
+        ("lentil", Entry(calories: 116, protein: 9, carbs: 20, fat: 0.4, fiber: 8)),
+        ("black bean", Entry(calories: 132, protein: 9, carbs: 24, fat: 0.5, fiber: 9)),
+        ("bean", Entry(calories: 127, protein: 9, carbs: 23, fat: 0.5, fiber: 7)),
         // Grains / starches
-        ("rice", Entry(calories: 130, protein: 2.7, carbs: 28, fat: 0.3)),
-        ("pasta", Entry(calories: 158, protein: 6, carbs: 31, fat: 0.9)),
-        ("noodle", Entry(calories: 138, protein: 5, carbs: 25, fat: 2)),
-        ("sweet potato", Entry(calories: 86, protein: 1.6, carbs: 20, fat: 0.1)),
-        ("potato", Entry(calories: 77, protein: 2, carbs: 17, fat: 0.1)),
-        ("bread", Entry(calories: 265, protein: 9, carbs: 49, fat: 3.2)),
-        ("tortilla", Entry(calories: 312, protein: 8, carbs: 50, fat: 8)),
-        ("flour", Entry(calories: 364, protein: 10, carbs: 76, fat: 1)),
-        ("oat", Entry(calories: 389, protein: 17, carbs: 66, fat: 7)),
-        ("quinoa", Entry(calories: 120, protein: 4.4, carbs: 21, fat: 1.9)),
+        ("rice", Entry(calories: 130, protein: 2.7, carbs: 28, fat: 0.3, fiber: 0.4)),
+        ("pasta", Entry(calories: 158, protein: 6, carbs: 31, fat: 0.9, fiber: 2)),
+        ("noodle", Entry(calories: 138, protein: 5, carbs: 25, fat: 2, fiber: 1)),
+        ("sweet potato", Entry(calories: 86, protein: 1.6, carbs: 20, fat: 0.1, fiber: 3)),
+        ("potato", Entry(calories: 77, protein: 2, carbs: 17, fat: 0.1, fiber: 2)),
+        ("bread", Entry(calories: 265, protein: 9, carbs: 49, fat: 3.2, fiber: 3)),
+        ("tortilla", Entry(calories: 312, protein: 8, carbs: 50, fat: 8, fiber: 2)),
+        ("flour", Entry(calories: 364, protein: 10, carbs: 76, fat: 1, fiber: 3)),
+        ("oat", Entry(calories: 389, protein: 17, carbs: 66, fat: 7, fiber: 11)),
+        ("quinoa", Entry(calories: 120, protein: 4.4, carbs: 21, fat: 1.9, fiber: 3)),
         // Dairy / fats
         ("butter", Entry(calories: 717, protein: 0.9, carbs: 0.1, fat: 81)),
         ("olive oil", Entry(calories: 884, protein: 0, carbs: 0, fat: 100)),
@@ -93,41 +103,43 @@ enum NutritionEstimator {
         ("yogurt", Entry(calories: 61, protein: 3.5, carbs: 4.7, fat: 3.3)),
         ("milk", Entry(calories: 61, protein: 3.2, carbs: 4.8, fat: 3.3)),
         // Produce
-        ("avocado", Entry(calories: 160, protein: 2, carbs: 9, fat: 15)),
-        ("banana", Entry(calories: 89, protein: 1.1, carbs: 23, fat: 0.3)),
-        ("apple", Entry(calories: 52, protein: 0.3, carbs: 14, fat: 0.2)),
-        ("berry", Entry(calories: 50, protein: 0.7, carbs: 12, fat: 0.3)),
-        ("onion", Entry(calories: 40, protein: 1.1, carbs: 9, fat: 0.1)),
-        ("garlic", Entry(calories: 149, protein: 6.4, carbs: 33, fat: 0.5)),
-        ("tomato", Entry(calories: 18, protein: 0.9, carbs: 3.9, fat: 0.2)),
-        ("spinach", Entry(calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4)),
-        ("broccoli", Entry(calories: 34, protein: 2.8, carbs: 7, fat: 0.4)),
-        ("carrot", Entry(calories: 41, protein: 0.9, carbs: 10, fat: 0.2)),
-        ("pepper", Entry(calories: 31, protein: 1, carbs: 6, fat: 0.3)),
-        ("cucumber", Entry(calories: 15, protein: 0.7, carbs: 3.6, fat: 0.1)),
-        ("lettuce", Entry(calories: 15, protein: 1.4, carbs: 2.9, fat: 0.2)),
-        ("cabbage", Entry(calories: 25, protein: 1.3, carbs: 6, fat: 0.1)),
-        ("zucchini", Entry(calories: 17, protein: 1.2, carbs: 3.1, fat: 0.3)),
-        ("mushroom", Entry(calories: 22, protein: 3.1, carbs: 3.3, fat: 0.3)),
-        ("corn", Entry(calories: 86, protein: 3.3, carbs: 19, fat: 1.4)),
-        ("pea", Entry(calories: 81, protein: 5.4, carbs: 14, fat: 0.4)),
-        ("lemon", Entry(calories: 29, protein: 1.1, carbs: 9, fat: 0.3)),
-        ("lime", Entry(calories: 30, protein: 0.7, carbs: 11, fat: 0.2)),
+        ("avocado", Entry(calories: 160, protein: 2, carbs: 9, fat: 15, fiber: 7)),
+        ("banana", Entry(calories: 89, protein: 1.1, carbs: 23, fat: 0.3, fiber: 3)),
+        ("apple", Entry(calories: 52, protein: 0.3, carbs: 14, fat: 0.2, fiber: 2)),
+        ("berry", Entry(calories: 50, protein: 0.7, carbs: 12, fat: 0.3, fiber: 4)),
+        ("onion", Entry(calories: 40, protein: 1.1, carbs: 9, fat: 0.1, fiber: 2)),
+        ("garlic", Entry(calories: 149, protein: 6.4, carbs: 33, fat: 0.5, fiber: 2)),
+        ("tomato", Entry(calories: 18, protein: 0.9, carbs: 3.9, fat: 0.2, fiber: 1)),
+        ("spinach", Entry(calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fiber: 2)),
+        ("broccoli", Entry(calories: 34, protein: 2.8, carbs: 7, fat: 0.4, fiber: 3)),
+        ("carrot", Entry(calories: 41, protein: 0.9, carbs: 10, fat: 0.2, fiber: 3)),
+        ("pepper", Entry(calories: 31, protein: 1, carbs: 6, fat: 0.3, fiber: 2)),
+        ("cucumber", Entry(calories: 15, protein: 0.7, carbs: 3.6, fat: 0.1, fiber: 0.5)),
+        ("lettuce", Entry(calories: 15, protein: 1.4, carbs: 2.9, fat: 0.2, fiber: 1)),
+        ("cabbage", Entry(calories: 25, protein: 1.3, carbs: 6, fat: 0.1, fiber: 3)),
+        ("zucchini", Entry(calories: 17, protein: 1.2, carbs: 3.1, fat: 0.3, fiber: 1)),
+        ("mushroom", Entry(calories: 22, protein: 3.1, carbs: 3.3, fat: 0.3, fiber: 1)),
+        ("corn", Entry(calories: 86, protein: 3.3, carbs: 19, fat: 1.4, fiber: 2)),
+        ("pea", Entry(calories: 81, protein: 5.4, carbs: 14, fat: 0.4, fiber: 5)),
+        ("lemon", Entry(calories: 29, protein: 1.1, carbs: 9, fat: 0.3, fiber: 3)),
+        ("lime", Entry(calories: 30, protein: 0.7, carbs: 11, fat: 0.2, fiber: 3)),
         // Sweet / pantry
         ("sugar", Entry(calories: 387, protein: 0, carbs: 100, fat: 0)),
         ("honey", Entry(calories: 304, protein: 0.3, carbs: 82, fat: 0)),
         ("maple", Entry(calories: 260, protein: 0, carbs: 67, fat: 0.2)),
-        ("chocolate", Entry(calories: 546, protein: 4.9, carbs: 61, fat: 31)),
-        ("cocoa", Entry(calories: 228, protein: 20, carbs: 58, fat: 14)),
+        ("chocolate", Entry(calories: 546, protein: 4.9, carbs: 61, fat: 31, fiber: 7)),
+        ("cocoa", Entry(calories: 228, protein: 20, carbs: 58, fat: 14, fiber: 33)),
         ("soy sauce", Entry(calories: 53, protein: 8, carbs: 5, fat: 0.6)),
         ("mayo", Entry(calories: 680, protein: 1, carbs: 0.6, fat: 75)),
         ("ketchup", Entry(calories: 112, protein: 1.3, carbs: 26, fat: 0.1)),
-        ("coconut milk", Entry(calories: 230, protein: 2.3, carbs: 6, fat: 24)),
-        ("coconut", Entry(calories: 354, protein: 3, carbs: 15, fat: 33)),
-        ("peanut", Entry(calories: 567, protein: 26, carbs: 16, fat: 49)),
-        ("almond", Entry(calories: 579, protein: 21, carbs: 22, fat: 50)),
-        ("walnut", Entry(calories: 654, protein: 15, carbs: 14, fat: 65)),
-        ("nut", Entry(calories: 600, protein: 20, carbs: 20, fat: 55)),
+        ("coconut milk", Entry(calories: 230, protein: 2.3, carbs: 6, fat: 24, fiber: 2)),
+        ("coconut", Entry(calories: 354, protein: 3, carbs: 15, fat: 33, fiber: 9)),
+        ("peanut", Entry(calories: 567, protein: 26, carbs: 16, fat: 49, fiber: 9)),
+        ("almond", Entry(calories: 579, protein: 21, carbs: 22, fat: 50, fiber: 12)),
+        ("walnut", Entry(calories: 654, protein: 15, carbs: 14, fat: 65, fiber: 7)),
+        ("nut", Entry(calories: 600, protein: 20, carbs: 20, fat: 55, fiber: 8)),
+        ("chia", Entry(calories: 486, protein: 17, carbs: 42, fat: 31, fiber: 34)),
+        ("flax", Entry(calories: 534, protein: 18, carbs: 29, fat: 42, fiber: 27)),
         ("salt", Entry(calories: 0, protein: 0, carbs: 0, fat: 0)),
         ("water", Entry(calories: 0, protein: 0, carbs: 0, fat: 0)),
         ("vinegar", Entry(calories: 18, protein: 0, carbs: 0.9, fat: 0)),
@@ -168,6 +180,7 @@ enum NutritionEstimator {
         var totalProtein = 0.0
         var totalCarbs = 0.0
         var totalFat = 0.0
+        var totalFiber = 0.0
         var matched = 0
 
         for ingredient in ingredients {
@@ -177,6 +190,7 @@ enum NutritionEstimator {
             totalProtein += entry.protein * grams / 100
             totalCarbs += entry.carbs * grams / 100
             totalFat += entry.fat * grams / 100
+            totalFiber += entry.fiber * grams / 100
             matched += 1
         }
 
@@ -191,6 +205,7 @@ enum NutritionEstimator {
             proteinGrams: Int((totalProtein / s).rounded()),
             carbGrams: Int((totalCarbs / s).rounded()),
             fatGrams: Int((totalFat / s).rounded()),
+            fiberGrams: Int((totalFiber / s).rounded()),
             confidence: confidence,
             matchedCount: matched,
             totalCount: ingredients.count

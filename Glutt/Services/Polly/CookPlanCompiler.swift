@@ -66,8 +66,14 @@ enum CookPlanCompiler {
     ) async -> CookPlan {
         let key = cacheKey(recipe: recipe, scale: scale)
         if let cached = cachedPlan(forKey: key) {
-            PollyDebugLog.shared.log("plan: cache HIT (\(key.prefix(8)))")
-            return cached
+            let upgraded = cached.ensuringLeadingPrep()
+            if upgraded != cached {
+                store(upgraded, forKey: key)
+                PollyDebugLog.shared.log("plan: cache HIT, upgraded with Prep (\(key.prefix(8)))")
+            } else {
+                PollyDebugLog.shared.log("plan: cache HIT (\(key.prefix(8)))")
+            }
+            return upgraded
         }
         PollyDebugLog.shared.log("plan: cache MISS (\(key.prefix(8)))")
         guard LLMClient.isConfigured else {
@@ -76,6 +82,7 @@ enum CookPlanCompiler {
         do {
             var plan = try await llm(systemPrompt, userPrompt(recipe: recipe, scale: scale))
             plan.isFallback = false
+            plan = plan.ensuringLeadingPrep()
             store(plan, forKey: key)
             PollyDebugLog.shared.log("plan: compiled via LLM, stored (\(plan.steps.count) steps)")
             return plan
@@ -104,15 +111,15 @@ enum CookPlanCompiler {
     Field docs:
     - title: the dish name, unchanged.
     - servings: the scaled serving count you were given.
-    - mise: the full mise en place — every ingredient that needs washing, chopping, \
-    measuring, or bringing to temperature before any heat goes on. "prep" is the \
-    action, e.g. "diced", "minced", "at room temperature".
-    - equipment: the pans, trays, and tools to stage before starting.
-    - steps: the recipe as an ordered graph. "id" is a short stable slug like "s1", \
-    "s2"; "index" is the 0-based order.
-    - kind: "prep" = knife/board work, "active" = hands-on heat work, "passive" = \
-    unattended waiting (simmer, bake, rest, marinate), "checkpoint" = a judgement \
-    moment (taste, doneness test).
+    - mise: KNIFE / BOARD work only — wash, peel, dice, slice, chop, mince, pat dry, \
+    room-temp proteins. Do NOT put spices, salt, pepper, oils, vinegars, stocks, or \
+    "measure 1 tsp cumin" in mise. Spices are measured in the cook step when added.
+    - equipment: the pans, trays, knives, boards, and tools to pull out before starting.
+    - steps: the recipe as an ordered graph. "id" is a short stable slug like "tools", \
+    "prep", "s1", "s2"; "index" is the 0-based order.
+    - kind: "prep" = Tools or board Prep only (no heat), "active" = hands-on heat work, \
+    "passive" = unattended waiting (simmer, bake, rest, marinate), "checkpoint" = a \
+    judgement moment (taste, doneness test).
     - timerSeconds: REQUIRED on every "passive" step — the unattended wait in seconds. \
     null on other kinds unless a precise timer genuinely helps.
     - estimatedSeconds: your realistic hands-on estimate for the step, null if unknowable.
@@ -125,10 +132,21 @@ enum CookPlanCompiler {
     - ingredientNames: the ingredient names this step touches, matching the given list.
 
     Rules:
+    - ALWAYS start with short setup steps BEFORE heat:
+      1) id "tools", kind "prep", title "Tools" — only if equipment is non-empty. \
+         Instruction: pull those tools onto the counter. dependsOn [].
+      2) id "prep", kind "prep", title "Prep" — only if mise has board work. \
+         Instruction lists knife work ONLY (dice onion; mince garlic; pat chicken dry). \
+         dependsOn ["tools"] when a tools step exists, else [].
+    - First heat step (oil in pan, boil water, etc.) dependsOn the last setup step \
+      ("prep" if present, else "tools").
+    - After Prep is done, cooking steps assume board work is finished: say "add the diced \
+      onion", NOT "dice the onion and add it". Do not bury knife work inside heat steps.
+    - Keep setup checklists SHORT — never dump spices, measuring, and tools into Prep.
     - Preserve the recipe's intent and order; split run-on instructions into single \
     actions; do NOT invent ingredients or steps that aren't implied by the source.
     - Keep instructions short, imperative, and natural to speak aloud.
-    - Keep amounts IN the instruction: "add 1 tbsp salt", not "add the salt". If the \
+    - Keep amounts IN the cook instruction: "add 1 tbsp salt", not "add the salt". If the \
     recipe gives no amount for an ingredient, don't invent a precise number — say "to \
     taste" or "a pinch".
     """

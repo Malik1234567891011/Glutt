@@ -46,11 +46,18 @@ final class PollySessionController {
     /// drives the "thinking" state.
     private(set) var isThinking = false
 
-    /// Wake-word gate. `dormant` = Realtime input muted, waiting for "Polly";
-    /// `listening` = un-gated, capturing the cook's question. Polly only hears you
-    /// while listening, so background chatter/music never reaches her.
-    enum ListeningMode: Equatable { case dormant, listening }
+    /// Wake-word / follow-up gate. Mic is open for `.listening` and `.followUp`.
+    enum ListeningMode: Equatable {
+        /// Realtime input muted — only on-device wake word runs.
+        case dormant
+        /// Engaged: capturing a user turn (after wake or mid-exchange).
+        case listening
+        /// Soft listen after Polly answered — no "Polly" needed until timeout.
+        case followUp
+    }
     private(set) var listeningMode: ListeningMode = .dormant
+    /// Polly asked a question and is waiting for a short answer ("yeah"/"no").
+    private(set) var expectsAnswer = false
     /// The cook's live on-device transcript, shown large while Listening.
     private(set) var liveTranscript = ""
     /// Master mute (the mic button): silences everything, including the wake word.
@@ -58,6 +65,8 @@ final class PollySessionController {
     /// Whether on-device wake-word recognition is running this session. When false
     /// (e.g. simulator, Speech denied), the state pill is a tap-to-talk fallback.
     private(set) var wakeWordAvailable = false
+    /// Soft UI flash after an acknowledgment was heard and suppressed.
+    private(set) var lastAcknowledgedAt: Date?
 
     /// PantryMatcher misses, snapshotted during start() — drives the preflight card.
     private(set) var missingIngredients: [String] = []
@@ -65,6 +74,14 @@ final class PollySessionController {
     private(set) var wantsEnd = false
     /// Watch-mode toggle (the eye button). Read once per watch tick.
     var isWatching = false
+    /// Session start — used by the Cook Recap for elapsed time.
+    private(set) var sessionStartedAt: Date?
+    /// Optional plated-dish JPEG captured just before teardown.
+    private(set) var plateJPEG: Data?
+    /// Last PollyCookLog written in `end` — feeds the Cook Recap sheet.
+    private(set) var lastCookLog: PollyCookLog?
+    /// Polly Saves snapshotted at end (also on the cook log).
+    private(set) var sessionSaves: [String] = []
 
     let audio: PollyAudioEngine
     let camera: PollyCameraController
@@ -72,11 +89,63 @@ final class PollySessionController {
     let timers = TimerManager()
     var registry: PollyToolRegistry?
 
-    /// The follow-up window: after Polly answers (or you say "Polly" then pause),
-    /// listening stays open this long for a natural follow-up before re-muting.
+    /// Activity-based follow-up: deadline moves when the user speaks.
     private var dormancyTask: Task<Void, Never>?
+    private var followUpDeadline: Date?
+    private var lastAssistantSpeechEndedAt: Date?
+    private var lastWakeWordAt: Date?
+    private var lastUserSpeechStartedAt: Date?
+    private var lastUserTurnCommittedAt: Date?
+    private var lastValidInteractionAt: Date?
+    /// Polly's last spoken line asked a question (survives dormant gaps).
+    private var lastAssistantAskedQuestion = false
+    /// True from user-turn commit / tool round-trip until follow-up re-arms —
+    /// keeps the dormancy watcher from closing mid-response.
+    private var isHoldingForAssistant = false
+    /// True between speechStarted and a gate decision while Polly is talking.
+    private var bargeInCandidate = false
+    /// Speech ended; waiting on ASR before we dare close the follow-up window.
+    private var awaitingTranscript = false
+    /// Consecutive uncertain/background rejects — close session if too many.
+    private var consecutiveRejects = 0
+    private var unfinishedHoldTask: Task<Void, Never>?
 
     var stepIndex: Int { registry?.state.stepIndex ?? 0 }
+
+    /// Mic is open to the Realtime session (not dormant / hard-muted).
+    var isEngaged: Bool {
+        listeningMode == .listening || listeningMode == .followUp
+    }
+
+    /// Checklist boxes checked by the cook (tap) or by Polly (`check_step_actions`).
+    /// Mirrored from the registry so SwiftUI Observation refreshes the guide.
+    private(set) var checkedActionIDs: Set<String> = []
+    /// Bumps when step index / checklist changes so the guide panel re-renders.
+    private(set) var sessionUIEpoch: Int = 0
+
+    /// Touch/swipe step navigation — keeps voice tools and UI in sync.
+    func goToStep(_ index: Int) {
+        registry?.jumpToStep(index)
+        publishSessionUI()
+    }
+
+    func goToPreviousStep() {
+        goToStep(stepIndex - 1)
+    }
+
+    func goToNextStep() {
+        goToStep(stepIndex + 1)
+    }
+
+    func toggleChecklistItem(_ id: String) {
+        registry?.toggleActionChecked(id)
+        publishSessionUI()
+    }
+
+    private func publishSessionUI() {
+        checkedActionIDs = registry?.state.checkedActionIDs ?? []
+        sessionUIEpoch += 1
+    }
 
     private let recipe: Recipe
     private let scale: Double
@@ -163,6 +232,7 @@ final class PollySessionController {
     func start(context: ModelContext, requireMic: Bool = true) async {
         guard phase == .idle else { return }
         startedAt = deps.now()
+        sessionStartedAt = startedAt
 
         // 1. Execution plan (compiler never fails — it falls back to linear).
         phase = .compiling
@@ -244,8 +314,14 @@ final class PollySessionController {
             }, onBuffer: { [weak wake] buffer in
                 wake?.append(buffer)
             })
+            audio.onSessionInterrupted = { [weak self] began in
+                guard let self, began, self.phase == .live else { return }
+                PollyDebugLog.shared.event(.audioInterrupted)
+                self.returnToDormant(reason: .audioInterrupted)
+            }
         } catch {
             PollyDebugLog.shared.log("session: mic start FAILED — \(error.localizedDescription)")
+            PollyDebugLog.shared.event(.micLost, ["why": "start_failed"])
             if requireMic {
                 phase = .failed("Polly needs the microphone to cook with you. Enable it in Settings, or cook without Polly.")
                 await transport.close()
@@ -267,7 +343,10 @@ final class PollySessionController {
         // Wake-word gate: normally start dormant (Realtime input muted) and listen
         // on-device for "Polly". Trailer handoff is different — open listening so
         // the cook can say "let's cook" without saying her name first.
-        wakeWord.onWake = { [weak self] in self?.wakeUp() }
+        wakeWord.onWake = { [weak self] in
+            PollyDebugLog.shared.event(.wakeDetected)
+            self?.wakeUp()
+        }
         wakeWord.onPartialTranscript = { [weak self] text in self?.updateLiveTranscript(text) }
         wakeWordAvailable = wakeWord.isAvailable
         if wakeWordAvailable { wakeWord.start() }
@@ -329,6 +408,11 @@ final class PollySessionController {
         guard !isEnding, phase != .ended, phase != .idle else { return }
         isEnding = true
 
+        // Grab a plate frame while the camera is still live (Cook Recap).
+        if camera.isRunning, let jpeg = await camera.captureFrame() {
+            plateJPEG = jpeg
+        }
+
         watchTask?.cancel()
         watchTask = nil
         eventTask?.cancel()
@@ -348,6 +432,10 @@ final class PollySessionController {
             PollyMemoryExtractor.apply(extraction, recipeTitle: recipe.title, in: context)
         }
 
+        let saves = registry?.state.pollySaves ?? []
+        sessionSaves = saves
+        sessionStartedAt = startedAt
+
         let log = PollyCookLog(startedAt: startedAt ?? deps.now(), recipe: recipe)
         log.endedAt = deps.now()
         log.summary = extraction?.summary ?? ""
@@ -355,7 +443,9 @@ final class PollySessionController {
         log.stepsTotal = plan?.steps.count ?? 0
         log.substitutions = registry?.state.substitutions ?? []
         log.endedEarly = endedEarly
+        log.pollySaves = saves
         context.insert(log)
+        lastCookLog = log
         try? context.save()
 
         phase = .ended
@@ -375,34 +465,81 @@ final class PollySessionController {
 
     func toggleMute() { audio.isMuted.toggle() }   // haptic lives in the view
 
-    // MARK: - Wake-word gate
+    // MARK: - Wake-word / follow-up gate
+
+    enum DormantReason: String {
+        case timeout
+        case explicitEnd = "explicit_end"
+        case rejects
+        case audioInterrupted = "audio_interrupted"
+        case leftScreen = "left_screen"
+        case idleMax = "idle_max"
+        case hardMute = "hard_mute"
+        case manual
+    }
 
     /// Un-gate: "Polly" was heard (or the pill tapped). Opens the Realtime input,
-    /// shows the Listening UI, and arms the follow-up window.
+    /// shows the Listening UI, and arms a longer initial listen window.
     func wakeUp() {
         guard phase == .live, !isHardMuted, listeningMode == .dormant else { return }
+        let now = deps.now()
+        lastWakeWordAt = now
+        lastValidInteractionAt = now
+        consecutiveRejects = 0
+        awaitingTranscript = false
         listeningMode = .listening
         liveTranscript = ""
         audio.isMuted = false
         PollyDebugLog.shared.log("gate: LISTENING (woken)")
-        armDormancyTimer()
+        openFollowUpWindow(
+            seconds: PollyConfig.initialListenWindowSeconds,
+            expectingAnswer: false,
+            preferFollowUpUI: false)
     }
 
-    /// Manual wake for the tap-to-talk fallback (tapping the state pill).
+    /// Manual wake / extend for the tap-to-talk fallback (tapping the state pill).
     func forceListen() {
         guard !isHardMuted else { return }
-        wakeUp()
+        PollyDebugLog.shared.event(.manualReopen)
+        if listeningMode == .dormant {
+            wakeUp()
+        } else {
+            consecutiveRejects = 0
+            lastValidInteractionAt = deps.now()
+            listeningMode = .listening
+            audio.isMuted = false
+            openFollowUpWindow(
+                seconds: PollyConfig.followUpWindowSeconds,
+                expectingAnswer: expectsAnswer,
+                preferFollowUpUI: false)
+            PollyDebugLog.shared.log("gate: LISTENING (manual extend)")
+        }
     }
 
     /// Re-gate: mute the Realtime input and return to waiting for "Polly".
-    func returnToDormant() {
+    func returnToDormant(reason: DormantReason = .manual) {
+        unfinishedHoldTask?.cancel()
+        unfinishedHoldTask = nil
         cancelDormancyTimer()
+        followUpDeadline = nil
+        expectsAnswer = false
+        bargeInCandidate = false
+        awaitingTranscript = false
+        isHoldingForAssistant = false
+        consecutiveRejects = 0
         liveTranscript = ""
         enterDormant()
         // Fresh recognition segment so the next "Polly" wakes her — the running
         // transcript still holds the last one, which would otherwise block it.
         wakeWord.restart()
-        PollyDebugLog.shared.log("gate: dormant (window closed)")
+        PollyDebugLog.shared.event(.sessionClosed, ["reason": reason.rawValue])
+        PollyDebugLog.shared.log("gate: dormant (\(reason.rawValue))")
+    }
+
+    /// Cook left the session UI — close the follow-up gate (full `end` is separate).
+    func leaveCookScreen() {
+        guard phase == .live, isEngaged else { return }
+        returnToDormant(reason: .leftScreen)
     }
 
     private func enterDormant() {
@@ -414,12 +551,18 @@ final class PollySessionController {
     /// returns to dormant (wake-word armed), not open — you still say "Polly".
     func toggleHardMute() {
         isHardMuted.toggle()
+        unfinishedHoldTask?.cancel()
+        unfinishedHoldTask = nil
         cancelDormancyTimer()
+        followUpDeadline = nil
+        expectsAnswer = false
+        awaitingTranscript = false
         listeningMode = .dormant
         liveTranscript = ""
         audio.isMuted = true
         if isHardMuted {
             wakeWord.stop()
+            PollyDebugLog.shared.event(.sessionClosed, ["reason": DormantReason.hardMute.rawValue])
             PollyDebugLog.shared.log("gate: HARD MUTED")
         } else {
             if wakeWordAvailable { wakeWord.start() }
@@ -428,20 +571,78 @@ final class PollySessionController {
     }
 
     private func updateLiveTranscript(_ text: String) {
-        guard listeningMode == .listening else { return }
+        guard isEngaged else { return }
         liveTranscript = WakeWordMatcher.strippedQuestion(text)
     }
 
-    private func armDormancyTimer() {
-        // Trailer handoff: stay open until the cook has spoken once. Closing on
-        // the normal follow-up timer would mute them before they say "let's cook".
+    /// Opens / refreshes the activity-based follow-up deadline.
+    private func openFollowUpWindow(
+        seconds: TimeInterval,
+        expectingAnswer: Bool,
+        preferFollowUpUI: Bool = true
+    ) {
         if isAwaitingVerbalGo { return }
+        expectsAnswer = expectingAnswer
+        followUpDeadline = deps.now().addingTimeInterval(seconds)
+        if listeningMode == .dormant { return }
+        // After Polly answers: soft "still with you" UI. After wake / manual
+        // extend / expected-answer: full Listening.
+        if preferFollowUpUI && !expectingAnswer {
+            listeningMode = .followUp
+        } else {
+            listeningMode = .listening
+        }
+        startFollowUpWatcher()
+        PollyDebugLog.shared.event(.followUpArmed, [
+            "seconds": "\(Int(seconds))",
+            "expects": expectingAnswer ? "1" : "0",
+        ])
+        PollyDebugLog.shared.log(
+            "gate: follow-up armed \(Int(seconds))s expectsAnswer=\(expectingAnswer)")
+    }
+
+    /// User started speaking — extend (never shrink) the deadline so a long
+    /// utterance can't expire mid-sentence, and ASR still has time after.
+    private func noteUserActivity() {
+        guard isEngaged else { return }
+        let seconds = expectsAnswer
+            ? PollyConfig.expectedAnswerWindowSeconds
+            : PollyConfig.followUpWindowSeconds
+        let proposed = deps.now().addingTimeInterval(seconds)
+        if let existing = followUpDeadline {
+            followUpDeadline = max(existing, proposed)
+        } else {
+            followUpDeadline = proposed
+        }
+        if listeningMode == .followUp { listeningMode = .listening }
+    }
+
+    private func startFollowUpWatcher() {
         cancelDormancyTimer()
         dormancyTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(PollyConfig.followUpWindowSeconds))
-            guard let self, !Task.isCancelled else { return }
-            if phase == .live, listeningMode == .listening, !isHardMuted {
-                returnToDormant()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(PollyConfig.followUpPollIntervalMs))
+                guard let self else { return }
+                guard phase == .live, isEngaged, !isHardMuted else { return }
+                // Don't close while the cook is mid-utterance, waiting on ASR,
+                // Polly is busy, or a tool/response round-trip is still in flight.
+                if isListening || awaitingTranscript || isPollySpeaking || isThinking
+                    || bargeInCandidate || isHoldingForAssistant {
+                    continue
+                }
+                if let last = lastValidInteractionAt,
+                   deps.now().timeIntervalSince(last) >= PollyConfig.maxEngagedIdleSeconds {
+                    PollyDebugLog.shared.log("gate: idle max → dormant")
+                    returnToDormant(reason: .idleMax)
+                    return
+                }
+                guard let deadline = followUpDeadline else { return }
+                if deps.now() >= deadline {
+                    PollyDebugLog.shared.event(.followUpTimeout)
+                    PollyDebugLog.shared.log("gate: follow-up timeout → dormant")
+                    returnToDormant(reason: .timeout)
+                    return
+                }
             }
         }
     }
@@ -451,12 +652,179 @@ final class PollySessionController {
         dormancyTask = nil
     }
 
+    private func gateContext() -> ConversationalGate.Context {
+        let spokeRecently: Bool = {
+            guard let ended = lastAssistantSpeechEndedAt else { return false }
+            return deps.now().timeIntervalSince(ended) < 12
+        }()
+        var topic: [String] = []
+        var onSetup = false
+        if let plan {
+            if plan.steps.indices.contains(stepIndex) {
+                let step = plan.steps[stepIndex]
+                onSetup = CookPlan.isSetupStep(step)
+                topic.append(contentsOf: step.title.lowercased().split(separator: " ").map(String.init))
+                topic.append(contentsOf: step.ingredientNames.map { $0.lowercased() })
+            }
+            topic.append(contentsOf: plan.title.lowercased().split(separator: " ").map(String.init))
+            topic.append(contentsOf: plan.mise.map { $0.name.lowercased() })
+            topic.append(contentsOf: plan.equipment.map { $0.lowercased() })
+        }
+        return ConversationalGate.Context(
+            expectsAnswer: expectsAnswer || (lastAssistantAskedQuestion && spokeRecently),
+            pollySpokeRecently: spokeRecently || isPollySpeaking,
+            onSetupStep: onSetup,
+            topicWords: Array(Set(topic)).filter { $0.count >= 3 }
+        )
+    }
+
+    private func handleGatedTranscript(itemId: String?, text: String) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        awaitingTranscript = false
+        guard !trimmed.isEmpty else { return }
+        // Late transcript after a race-to-dormant: re-open briefly so we don't
+        // drop "tools are on the counter" that arrived a beat late.
+        if !isEngaged, phase == .live, !isHardMuted {
+            wakeUp()
+        }
+        guard isEngaged else { return }
+        // A newer transcript supersedes any unfinished-hold from the prior fragment.
+        unfinishedHoldTask?.cancel()
+        unfinishedHoldTask = nil
+        PollyDebugLog.shared.event(.followUpSpeech, ["len": "\(trimmed.count)"])
+
+        // Trailer handoff — first words always open a real turn.
+        if isAwaitingVerbalGo {
+            isAwaitingVerbalGo = false
+            PollyDebugLog.shared.log("session: verbal go received — normal gate resumes after this turn")
+            await commitUserTurn(wasSpeaking: isPollySpeaking)
+            return
+        }
+
+        let decision = ConversationalGate.classify(trimmed, context: gateContext())
+        PollyDebugLog.shared.log("gate: decision=\(decision.rawValue) text=\"\(trimmed.prefix(80))\"")
+
+        switch decision {
+        case .explicitEnd:
+            consecutiveRejects = 0
+            PollyDebugLog.shared.event(.explicitEnd)
+            if isPollySpeaking { await cancelAssistantPlayback() }
+            returnToDormant(reason: .explicitEnd)
+
+        case .nameOnly:
+            // Saying her name again while already listening — extend, don't punish.
+            consecutiveRejects = 0
+            noteUserActivity()
+            lastValidInteractionAt = deps.now()
+            if let itemId { try? await transport?.send(.deleteItem(itemId: itemId)) }
+            PollyDebugLog.shared.log("gate: name-only — extend listen, no speak")
+
+        case .acknowledgment:
+            consecutiveRejects = 0
+            lastAcknowledgedAt = deps.now()
+            lastValidInteractionAt = deps.now()
+            PollyDebugLog.shared.event(.acknowledgment)
+            if let itemId { try? await transport?.send(.deleteItem(itemId: itemId)) }
+            // Stay available briefly, then quietly close if nothing else comes.
+            openFollowUpWindow(
+                seconds: PollyConfig.acknowledgmentGraceSeconds,
+                expectingAnswer: false)
+            listeningMode = .followUp
+
+        case .background, .selfTalk, .uncertain:
+            consecutiveRejects += 1
+            if let itemId { try? await transport?.send(.deleteItem(itemId: itemId)) }
+            PollyDebugLog.shared.event(.followUpRejected, [
+                "reason": decision.rawValue,
+                "n": "\(consecutiveRejects)",
+            ])
+            PollyDebugLog.shared.log("gate: rejected (\(decision.rawValue)) rejects=\(consecutiveRejects)")
+            if isPollySpeaking, bargeInCandidate {
+                PollyDebugLog.shared.event(.bargeInIgnored, ["reason": decision.rawValue])
+            }
+            noteUserActivity()
+            if consecutiveRejects >= 4 {
+                PollyDebugLog.shared.log("gate: too many rejects → dormant")
+                returnToDormant(reason: .rejects)
+            }
+
+        case .directFollowUp:
+            consecutiveRejects = 0
+            // Hold briefly on unfinished endings so a continuation can arrive.
+            if ConversationalGate.looksUnfinished(trimmed) {
+                PollyDebugLog.shared.event(.unfinishedHold)
+                unfinishedHoldTask?.cancel()
+                unfinishedHoldTask = Task { [weak self] in
+                    try? await Task.sleep(for: .milliseconds(PollyConfig.unfinishedTurnHoldMs))
+                    guard let self, !Task.isCancelled else { return }
+                    // Still talking — wait for the next committed transcript.
+                    if self.isListening {
+                        PollyDebugLog.shared.log("gate: unfinished hold — user still speaking, defer")
+                        return
+                    }
+                    let shouldBarge = self.isPollySpeaking && (
+                        self.bargeInCandidate || ConversationalGate.isClearInterruption(trimmed))
+                    if shouldBarge {
+                        PollyDebugLog.shared.event(.bargeInAccepted)
+                    }
+                    PollyDebugLog.shared.event(.followUpAccepted, ["reason": "directFollowUp"])
+                    await self.commitUserTurn(wasSpeaking: shouldBarge)
+                    self.bargeInCandidate = false
+                }
+                return
+            }
+            let shouldBarge = isPollySpeaking && (
+                bargeInCandidate || ConversationalGate.isClearInterruption(trimmed))
+            if shouldBarge {
+                PollyDebugLog.shared.event(.bargeInAccepted)
+            }
+            PollyDebugLog.shared.event(.followUpAccepted, ["reason": decision.rawValue])
+            await commitUserTurn(wasSpeaking: shouldBarge)
+        }
+
+        bargeInCandidate = false
+    }
+
+    private func commitUserTurn(wasSpeaking: Bool) async {
+        expectsAnswer = false
+        lastAssistantAskedQuestion = false
+        noteUserActivity()
+        listeningMode = .listening
+        let now = deps.now()
+        lastValidInteractionAt = now
+        lastUserTurnCommittedAt = now
+        isHoldingForAssistant = true
+        if wasSpeaking {
+            await cancelAssistantPlayback()
+        }
+        try? await transport?.send(.responseCreate)
+        isThinking = true
+        PollyDebugLog.shared.event(.turnCommitted, ["barge": wasSpeaking ? "1" : "0"])
+        PollyDebugLog.shared.log("gate: committed user turn → response.create")
+    }
+
+    private func cancelAssistantPlayback() async {
+        let cumulative = audio.interruptPlayback()
+        if let itemId = currentAudioItemId {
+            let itemMs = max(0, cumulative - itemStartPlayedMs)
+            if itemMs < itemEnqueuedMs {
+                try? await transport?.send(.truncateItem(itemId: itemId, audioEndMs: itemMs))
+                PollyDebugLog.shared.log("sent: truncate \(itemId) @ \(itemMs)ms (of \(itemEnqueuedMs)ms)")
+            }
+            currentAudioItemId = nil
+        }
+        try? await transport?.send(.responseCancel)
+        isPollySpeaking = false
+    }
+
     /// Injects a typed/tapped question as a user turn and asks Polly to answer —
     /// backs the suggested-question bubbles for cooks who don't know what to ask.
     func ask(_ text: String) async {
         guard phase == .live else { return }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        if listeningMode == .dormant { wakeUp() }
+        consecutiveRejects = 0
         try? await transport?.send(.createUserText(trimmed))
         try? await transport?.send(.responseCreate)
         isThinking = true
@@ -498,6 +866,7 @@ final class PollySessionController {
             if currentAudioItemId != itemId {
                 itemStartPlayedMs = audio.currentPlayedMs()
                 itemEnqueuedMs = 0
+                PollyDebugLog.shared.event(.assistantSpeechStart)
                 PollyDebugLog.shared.log("event: audio item START \(itemId) (baseline \(itemStartPlayedMs)ms)")
             }
             audio.enqueue(base64: base64)
@@ -508,44 +877,31 @@ final class PollySessionController {
             isThinking = false
 
         case .speechStarted:
-            // Barge-in: stop playback and tell the server how much of THIS item
-            // was heard so the truncated tail never pollutes the conversation
-            // state. interruptPlayback() returns cumulative ms since the player
-            // node started (it never stops between turns), so subtract the item's
-            // start baseline to get ms into the current item.
-            let cumulative = audio.interruptPlayback()
-            PollyDebugLog.shared.log("event: SPEECH STARTED (VAD heard the user) — playback interrupted at \(cumulative)ms")
-            if let itemId = currentAudioItemId {
-                let itemMs = max(0, cumulative - itemStartPlayedMs)
-                if itemMs < itemEnqueuedMs {
-                    try? await transport?.send(.truncateItem(itemId: itemId, audioEndMs: itemMs))
-                    PollyDebugLog.shared.log("sent: truncate \(itemId) @ \(itemMs)ms (of \(itemEnqueuedMs)ms)")
-                } else {
-                    // The item finished playing before the user spoke — there
-                    // is no unheard tail to remove, and the server rejects a
-                    // truncate past the item's real length.
-                    PollyDebugLog.shared.log("skip truncate — item fully played (\(itemEnqueuedMs)ms, clock said \(itemMs)ms)")
-                }
-                currentAudioItemId = nil
-            }
-            isPollySpeaking = false
+            // Two-stage barge-in: do NOT cancel Polly on raw VAD. Mark a
+            // candidate and extend the follow-up window; the conversational
+            // gate decides after we have a transcript.
+            PollyDebugLog.shared.log(
+                "event: SPEECH STARTED (VAD) pollySpeaking=\(isPollySpeaking) — hold barge-in for gate")
             isListening = true
-            // The cook is talking — don't let the follow-up window time out mid-question.
-            cancelDormancyTimer()
+            awaitingTranscript = false
+            lastUserSpeechStartedAt = deps.now()
+            noteUserActivity()
+            if isPollySpeaking {
+                bargeInCandidate = true
+                PollyDebugLog.shared.event(.bargeInCandidate)
+            }
 
         case .speechStopped:
-            PollyDebugLog.shared.log("event: speech stopped")
+            PollyDebugLog.shared.log("event: speech stopped — waiting on transcript + gate")
             isListening = false
+            awaitingTranscript = true
+            noteUserActivity()
 
-        case .inputTranscript(let text):
+        case .inputTranscript(let itemId, let text):
             PollyDebugLog.shared.log("heard: \"\(text)\"")
             captionText = text
             transcriptLog.append("USER: \(text)")
-            // First words after the cook trailer — resume normal dormancy rules.
-            if isAwaitingVerbalGo {
-                isAwaitingVerbalGo = false
-                PollyDebugLog.shared.log("session: verbal go received — normal gate resumes after this turn")
-            }
+            await handleGatedTranscript(itemId: itemId, text: text)
 
         case .outputTranscriptDelta(let itemId, let delta):
             if pendingAssistantItemId != itemId {
@@ -563,33 +919,75 @@ final class PollySessionController {
             // Capture before flush — if she already spoke this turn, the
             // post-tool follow-up must not re-open with the same first line.
             let alreadySpoke = !pendingAssistantLine.isEmpty
+            let askedQuestion = pendingAssistantLine.contains("?")
+                || pendingAssistantLine.lowercased().contains("do you")
+            lastAssistantAskedQuestion = askedQuestion
             isPollySpeaking = false
-            isThinking = false
             flushPendingAssistantLine()
-            // Follow-up window: Polly answered this turn — keep listening a few
-            // seconds for a natural follow-up (no "Polly" needed), else re-gate.
-            if listeningMode == .listening { armDormancyTimer() }
+            // Hold the follow-up watcher open through tool round-trips — clearing
+            // isThinking here used to let the 7s timer fire mid-response (log:
+            // dormant at +38s while get_current_step was still running).
+            if status == "completed" {
+                isHoldingForAssistant = true
+                isThinking = true
+            } else {
+                isThinking = false
+                isHoldingForAssistant = false
+            }
             // Only execute tool calls from COMPLETED responses — a cancelled
             // response (barge-in) can carry partial calls, and answering them
             // talks over the cook who just interrupted.
-            guard status == "completed", !calls.isEmpty, let registry else { break }
-            for call in calls {
-                let output = await registry.handle(name: call.name, argumentsJSON: call.argumentsJSON)
-                try? await transport?.send(.createFunctionOutput(callId: call.callId, output: output))
+            if status == "completed", !calls.isEmpty, let registry {
+                for call in calls {
+                    let output = await registry.handle(name: call.name, argumentsJSON: call.argumentsJSON)
+                    try? await transport?.send(.createFunctionOutput(callId: call.callId, output: output))
+                }
+                // Push step / checklist changes into Observation so the guide updates live.
+                publishSessionUI()
+                // Wait until her current audio finishes draining so a follow-up
+                // doesn't stack on top of the still-playing opening sentence.
+                await audio.waitUntilQuiet(timeoutSeconds: 12)
+                if alreadySpoke {
+                    try? await transport?.send(.createUserText(
+                        "[system note] Tool results are in. You already spoke this turn aloud — "
+                        + "do NOT greet again and do NOT repeat any sentence you just said. "
+                        + "Only speak if the tools require a short correction; otherwise stay silent and wait for the cook."))
+                }
+                // ONE response for the whole batch. A response.create per call
+                // queues N spoken replies back to back — Polly repeating herself.
+                try? await transport?.send(.responseCreate)
+                isThinking = true
+            } else if status == "completed", calls.isEmpty {
+                // Re-open follow-up after her audio drains (clock starts then).
+                let expect = askedQuestion
+                // Greeting while dormant must NOT auto-open listen. A user turn
+                // (or already-open follow-up) should stay / come back open.
+                let shouldReengage = isEngaged
+                    || (isHoldingForAssistant && lastUserTurnCommittedAt != nil)
+                Task { [weak self] in
+                    guard let self else { return }
+                    await audio.waitUntilQuiet(timeoutSeconds: 12)
+                    guard phase == .live, !isHardMuted else { return }
+                    lastAssistantSpeechEndedAt = deps.now()
+                    lastValidInteractionAt = deps.now()
+                    lastAssistantAskedQuestion = expect
+                    isHoldingForAssistant = false
+                    isThinking = false
+                    PollyDebugLog.shared.event(.assistantSpeechEnd)
+                    // Greeting while dormant: remember the question, stay asleep.
+                    guard shouldReengage || isEngaged else { return }
+                    if listeningMode == .dormant {
+                        listeningMode = .followUp
+                        audio.isMuted = false
+                        PollyDebugLog.shared.log("gate: re-engaged after assistant speech")
+                    }
+                    openFollowUpWindow(
+                        seconds: expect
+                            ? PollyConfig.expectedAnswerWindowSeconds
+                            : PollyConfig.followUpWindowSeconds,
+                        expectingAnswer: expect)
+                }
             }
-            // Wait until her current audio finishes draining so a follow-up
-            // doesn't stack on top of the still-playing opening sentence.
-            await audio.waitUntilQuiet(timeoutSeconds: 12)
-            if alreadySpoke {
-                try? await transport?.send(.createUserText(
-                    "[system note] Tool results are in. You already spoke this turn aloud — "
-                    + "do NOT greet again and do NOT repeat any sentence you just said. "
-                    + "Only speak if the tools require a short correction; otherwise stay silent and wait for the cook."))
-            }
-            // ONE response for the whole batch. A response.create per call
-            // queues N spoken replies back to back — Polly repeating herself.
-            try? await transport?.send(.responseCreate)
-            isThinking = true
 
         case .error(let code, let message):
             PollyDebugLog.shared.log("event: ERROR code=\(code ?? "nil") \(message)")

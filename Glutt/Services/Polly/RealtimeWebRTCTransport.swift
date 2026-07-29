@@ -133,6 +133,7 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     private var voiceReopened = false
     private var meterTask: Task<Void, Never>?
     private var greetingFailsafeTask: Task<Void, Never>?
+    private var routeObserver: NSObjectProtocol?
 
     override init() {
         let (stream, continuation) = AsyncStream.makeStream(of: RealtimeServerEvent.self)
@@ -367,6 +368,10 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
 
     func close() async {
         lock.withLock { isClosing = true }
+        if let routeObserver {
+            NotificationCenter.default.removeObserver(routeObserver)
+            self.routeObserver = nil
+        }
         meterTask?.cancel()
         meterTask = nil
         greetingFailsafeTask?.cancel()
@@ -399,21 +404,34 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         dc.sendData(LKRTCDataBuffer(data: data, isBinary: false))
     }
 
-    /// Mirrors v1's proven speakerphone config: `.videoChat` (speaker-tuned
-    /// AEC) beat `.voiceChat` in the echo war; Bluetooth stays off for
-    /// determinism. The same values are pushed into WebRTC's OWN session
-    /// configuration — the ADM re-applies that template whenever it starts
-    /// the engine, and its stock template would otherwise clobber ours.
+    /// Shared with the WebSocket engine path: `.videoChat` (speaker-tuned AEC),
+    /// Bluetooth HFP allowed for AirPods, speaker override only when no headset.
     private func configureAudioSession() {
         let webRTCConfig = LKRTCAudioSessionConfiguration.webRTC()
         webRTCConfig.category = AVAudioSession.Category.playAndRecord.rawValue
         webRTCConfig.mode = AVAudioSession.Mode.videoChat.rawValue
-        webRTCConfig.categoryOptions = [.defaultToSpeaker]
+        webRTCConfig.categoryOptions = PollyAudioSession.categoryOptions
         LKRTCAudioSessionConfiguration.setWebRTC(webRTCConfig)
 
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker])
-        try? session.overrideOutputAudioPort(.speaker)
+        do {
+            try PollyAudioSession.configure(active: true)
+            PollyDebugLog.shared.log("audio: WebRTC session \(PollyAudioSession.routeSummary())")
+        } catch {
+            PollyDebugLog.shared.log("audio: WebRTC session configure FAILED — \(error.localizedDescription)")
+        }
+
+        if routeObserver == nil {
+            routeObserver = NotificationCenter.default.addObserver(
+                forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main
+            ) { note in
+                let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt)
+                    .map(String.init) ?? "?"
+                PollyDebugLog.shared.log(
+                    "audio: ROUTE CHANGE reason=\(reason) \(PollyAudioSession.routeSummary())")
+                // AirPods in/out: clear or restore speaker override so HFP can win.
+                PollyAudioSession.applyPreferredOutputPort()
+            }
+        }
     }
 
     private func createOffer(

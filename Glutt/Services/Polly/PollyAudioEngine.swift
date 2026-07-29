@@ -188,29 +188,25 @@ final class PollyAudioEngine {
         }
 
         let session = AVAudioSession.sharedInstance()
-        // No .allowBluetooth for now: a nearby paired device silently stealing
-        // the route ("no sound" + a far-away mic feeding noise the transcriber
-        // hallucinates words from) is indistinguishable from a code bug in the
-        // field. Deterministic built-in speaker + mic while Polly stabilizes.
-        // .videoChat, not .voiceChat: it tunes the voice-processing chain for
-        // SPEAKERPHONE use (FaceTime-video style) — the phone sits on the
-        // counter at full volume, which is where .voiceChat's handset-oriented
-        // echo cancellation let Polly's own voice leak back into the mic.
-        try session.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker])
-        try session.setActive(true)
-        try? session.overrideOutputAudioPort(.speaker)
+        // Allow Bluetooth HFP so AirPods work for mic + speaker. Prefer the
+        // headset when it's on the route; otherwise force the built-in speaker
+        // (kitchen counter). See PollyAudioSession.
+        try PollyAudioSession.configure(active: true)
         PollyDebugLog.shared.log(
             "audio: session active — sampleRate=\(session.sampleRate) sysVolume=\(session.outputVolume) "
-            + "route out=[\(session.currentRoute.outputs.map { "\($0.portType.rawValue):\($0.portName)" }.joined(separator: ","))] "
-            + "in=[\(session.currentRoute.inputs.map { "\($0.portType.rawValue):\($0.portName)" }.joined(separator: ","))]")
+            + "route \(PollyAudioSession.routeSummary())")
         routeObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main
-        ) { note in
+        ) { [weak self] note in
             let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt).map(String.init) ?? "?"
-            let route = AVAudioSession.sharedInstance().currentRoute
             PollyDebugLog.shared.log(
-                "audio: ROUTE CHANGE reason=\(reason) out=[\(route.outputs.map(\.portName).joined(separator: ","))] "
-                + "in=[\(route.inputs.map(\.portName).joined(separator: ","))]")
+                "audio: ROUTE CHANGE reason=\(reason) \(PollyAudioSession.routeSummary())")
+            // AirPods in/out mid-cook: drop/restore speaker override, then
+            // re-arm the engine if iOS stopped it on the graph change.
+            Task { @MainActor [weak self] in
+                PollyAudioSession.applyPreferredOutputPort()
+                self?.restartEngineIfNeeded()
+            }
         }
         interruptionObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.interruptionNotification, object: session, queue: .main

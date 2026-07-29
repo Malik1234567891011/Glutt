@@ -263,6 +263,19 @@ Read dumps as a timeline: wake → speech → gate decision → commit → her r
 
 ---
 
+## Target environment
+
+Phone on the counter with loudspeaker **or** AirPods / Bluetooth headset.
+
+- Built-in: mic + speaker, AEC on (`.videoChat` + voice processing).
+- Bluetooth: HFP duplex (`.allowBluetooth`) so AirPods own mic and playback.
+  Speaker override is cleared while a BT headset is on the route, and re-applied
+  when it disconnects (`PollyAudioSession`).
+
+Locked-screen / background audio is still not a requirement.
+
+---
+
 ## Product rules to protect
 
 1. **Client gate before model speak** — never re-enable server auto-respond without a new design.
@@ -271,7 +284,7 @@ Read dumps as a timeline: wake → speech → gate decision → commit → her r
 4. **Acks ≠ answers** unless she asked a question.
 5. **Follow-up extends on speech**; don’t shrink the deadline mid-utterance.
 6. **Tools ≠ Prep ≠ cook** — keep setup checklists short.
-7. Tune RMS / windows with a real kitchen corpus (alone, two people, TV, sizzle, speakerphone) before changing defaults casually.
+7. Tune RMS / windows with a real kitchen corpus (alone, two people, TV, sizzle, speakerphone, AirPods) before changing defaults casually.
 
 ---
 

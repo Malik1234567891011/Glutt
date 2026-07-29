@@ -509,10 +509,12 @@ provider's **Client IDs** field.
    uninstall/reinstall cycles. `paywall_dismissed`/`skipped`/`error` are wired
    but were not exercised — the simulator would not register a tap on the
    paywall webview's close button.
-4. **Sign in with Apple + `AccountSession` + `SignInView` + `RootView` wiring.**
-   **BUILT 2026-07-29** — see *Sign-in as built* below. Blocked from working
-   end-to-end on one dashboard switch: the Supabase Apple provider is still
-   `"apple": false` (check with `GET /auth/v1/settings`).
+4. ~~**Sign in with Apple + `AccountSession` + `SignInView` + `RootView`
+   wiring.**~~ **DONE 2026-07-29.** The earlier note here said this was blocked
+   on `"apple": false` in the Supabase dashboard. That switch has since been
+   thrown: `GET /auth/v1/settings` now reports `apple: true` and
+   `google: true`, and a **real Apple sign-in has landed** — one `auth.users`
+   row, its `profiles` row, and its `profile_installs` mapping.
 5. ~~**Settings: sign out + delete account.**~~ **BUILT 2026-07-29.** An
    "Account" section in `SettingsView` (email, sign out, destructive delete
    behind a confirmation), backed by the `delete-account` Edge Function —
@@ -526,6 +528,105 @@ provider's **Client IDs** field.
 
 Steps 1–3 deliver most of the value and touch no user-facing flow. Step 4 is the
 only one that changes what a user sees.
+
+## Audit and completion pass, 2026-07-29 (evening)
+
+An audit of everything above against the live systems. Four things were wrong or
+missing; all four are fixed.
+
+### Chat AI spend was costing $0
+
+`LLMClient` sends `gpt-4o` and `ai_rates` had no row for it, so
+`ai_usage_costed` LEFT JOINed to nothing and **every text AI call priced at
+exactly zero** from the day usage logging shipped. The quota vendors are $0 *by
+construction*; this was $0 by oversight, which is the failure the
+`vendor:endpoint` convention was designed to avoid and it happened anyway, one
+table over.
+
+Migration `0009` seeds `gpt-4o` and `gpt-4o-mini`. Migration `0010` adds
+`ai_usage_unrated`, which lists any model logged with no rate row (excluding the
+deliberate `vendor:endpoint` strings). It should always be empty. **Check it
+whenever a model changes** — that view is the difference between the next
+unpriced model being visible and being invisible.
+
+Verified with real calls through the production proxy: a `chat` row priced at
+$0.000045 for 14 in / 1 out, and a `polly_realtime` row at $0.066000 for
+1000/500 audio tokens plus 200/50 text. Both match the rate table by hand.
+
+### Anyone could create an account
+
+`/auth/v1/settings` had `email: true` with `disable_signup: false`. The
+publishable key ships in the app, so anyone could `POST /auth/v1/signup` and the
+`handle_new_user` trigger would mint them a `profiles` row — breaking the
+invariant this whole design rests on, that every row in `profiles` is a paying
+customer. **The email provider is now disabled**; Apple and Google are the only
+ways in, and both only fire behind the paywall.
+
+### The unit tests were reporting to production analytics
+
+The tests run inside the app, so `@main` runs and every service the suite
+touches reports for real. One `test_sim` put 17 `cook_started`, 6
+`recipe_created` and 7 `plates_deck_viewed` into project 533977. A full suite
+outnumbers a real user by an order of magnitude, which is how a product metric
+quietly becomes a count of how often the tests ran.
+
+`Analytics.start()` now returns early when `XCTestConfigurationFilePath` is
+present. Skipping `setup` is enough — every `capture` after it is a no-op
+against an unconfigured SDK. Verified: a 23-test run that previously emitted 17
+events now emits zero.
+
+Worth keeping in mind for anything added later: **instrumenting a service layer
+instruments the tests too.**
+
+### PostHog stopped at the app's front door
+
+Every event was acquisition — onboarding, paywall, sign-in. The moment someone
+got *into* the app, tracking stopped. Added: `recipe_created` (one event with a
+`source`, not one per path, which would double count), `recipe_viewed`,
+`recipe_deleted`, `cook_started` / `cook_finished` (both flows, separated by
+`with_polly`), `polly_wake_word`, `ai_tool_used`, `pantry_item_added`,
+`discover_searched`, `plates_deck_viewed`, `plates_swiped`, `import_started` /
+`import_failed`, `tab_switched`.
+
+*How often* needed nothing new: the SDK's own `Application Opened` already
+drives DAU, retention and stickiness.
+
+**Identity now carries the email**, as a person property — never as the
+`distinct_id`, which stays the Supabase user id. An email is mutable (Hide My
+Email gets switched off, an Apple ID address changes) and a changed
+`distinct_id` forks one person into two, permanently; it is also the join key to
+`ai_spend_by_user`. With `person_display_name_properties` pinned to
+`["email", "name"]`, the UI shows the address anyway. This reverses the original
+stance in `Analytics.swift` that PostHog would hold nothing but random UUIDs:
+it now holds customer emails in a US installation, which is a privacy-policy
+commitment and not only a technical one.
+
+Payer status rides on every event as the `entitled` super property. Goals and
+dietary rules go to both `profiles` and PostHog at sign-in, which finally gives
+those two `profiles` columns a writer.
+
+Dashboard **"Glutt product"** (id 1926577): DAU, weekly retention, cooks per
+week split by Polly, feature adoption, activation funnel, cooking stickiness.
+
+### Still not verified
+
+Needs a real iPhone, in one sitting:
+
+- **Google sign-in end to end.** The one real sign-in was Apple. Two things are
+  only observable on a real attempt: the Google client id must be of type
+  **iOS** in Google Cloud, and that same id must sit in the Supabase Google
+  provider's Client IDs field.
+- **`profiles.display_name` capture.** It is null on the only real account.
+  Apple returns a name on the *first* authorization and never again. To retest:
+  iPhone Settings → Apple ID → Sign in with Apple → Glutt → **Stop using**,
+  which resets first-authorization, then sign in again.
+- **Account deletion end to end.** The function is deployed and rejects
+  unauthenticated calls, but no delete has run against a real account. Use a
+  throwaway Google account, not the Apple one.
+- **`transcribe`** is the one billable endpoint with no observed row.
+- **`entitled`** never gets registered on a bypassed dev build (`-seed` /
+  `-unlockPremium` return before the gate reports), so it is verified by code
+  path only.
 
 ## Open decisions
 

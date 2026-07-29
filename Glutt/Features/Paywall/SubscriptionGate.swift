@@ -44,6 +44,14 @@ final class SubscriptionGate {
     @ObservationIgnored private var timeoutTask: Task<Void, Never>?
     @ObservationIgnored private var isStarted = false
     @ObservationIgnored private var isPresenting = false
+    /// `gate_resolved` is one event per launch, not one per status change —
+    /// Superwall republishes the status more than once as it settles.
+    @ObservationIgnored private var didReportAccess = false
+    /// The automatic presentation happens once per launch. Without this it
+    /// re-fires every time the host view reappears — which includes the moment
+    /// the paywall itself is dismissed, so closing it reopened it instantly and
+    /// the user could never get out.
+    @ObservationIgnored private var didAutoPresent = false
 
     /// Escape hatches for local dev / screenshots / the seeded demo scheme.
     /// Every flag here is Xcode-scheme-only — launch arguments do NOT survive a
@@ -88,10 +96,12 @@ final class SubscriptionGate {
         isStarted = true
 
         status = Superwall.shared.subscriptionStatus
+        reportAccessIfSettled()
         cancellable = Superwall.shared.$subscriptionStatus
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newStatus in
                 self?.status = newStatus
+                self?.reportAccessIfSettled()
             }
 
         // Safety net: don't trap the user on the splash if entitlement never
@@ -102,7 +112,50 @@ final class SubscriptionGate {
             try? await Task.sleep(nanoseconds: 4_000_000_000)
             guard let self, self.status == .unknown else { return }
             self.resolveTimedOut = true
+            self.reportAccessIfSettled()
         }
+    }
+
+    /// The lock rate — what share of launches land on the paywall rather than
+    /// the app. Fires once, as soon as entitlement stops being `.resolving`
+    /// (including via the fail-closed timeout above). Bypassed dev builds never
+    /// reach here: `start()` returns early for them.
+    private func reportAccessIfSettled() {
+        let settled = access
+        guard !didReportAccess, settled != .resolving else { return }
+        didReportAccess = true
+        Analytics.capture(.gateResolved, [
+            "access": settled == .unlocked ? "unlocked" : "locked",
+            "timed_out": resolveTimedOut,
+        ])
+    }
+
+    /// Asks StoreKit to restore a subscription bought on another device or a
+    /// previous install, and reports whether that left them entitled.
+    ///
+    /// This is what "Already have an account? Log in" actually needs: the
+    /// subscription lives on the Apple ID, so restoring it is the real work.
+    /// The account is looked up afterwards, and only if this succeeds.
+    ///
+    /// In Superwall's automatic mode the SDK raises its own alert when there is
+    /// nothing to restore, so callers should not add a second one.
+    func restorePurchases() async -> Bool {
+        guard !Self.bypassEnabled else { return true }
+        _ = await Superwall.shared.restorePurchases()
+        return Superwall.shared.subscriptionStatus.isActive
+    }
+
+    /// Presents the paywall on its own, the first time a locked user lands past
+    /// onboarding. Pressing Continue at the end of the tutorial should open the
+    /// paywall, not the app.
+    ///
+    /// Once per launch, deliberately: re-presenting on every dismissal would be
+    /// a modal with no way out, which App Review reads as a trap. Closing it
+    /// leaves them on the blurred cover, and a tap there reopens it.
+    func presentPaywallOnce() {
+        guard !didAutoPresent else { return }
+        didAutoPresent = true
+        presentPaywall()
     }
 
     /// Re-presents the paywall (campaign → paywall 243875). Guarded so a flurry
@@ -114,15 +167,40 @@ final class SubscriptionGate {
     func presentPaywall() {
         guard !Self.bypassEnabled, !isPresenting else { return }
         isPresenting = true
+        // One event per presentation *attempt*, not per bounce tap — the
+        // `isPresenting` guard above already swallows a flurry of taps.
+        Analytics.capture(.paywallPresented)
 
         let handler = PaywallPresentationHandler()
-        handler.onDismiss { [weak self] _, _ in self?.isPresenting = false }
-        handler.onError { [weak self] _ in self?.isPresenting = false }
-        handler.onSkip { [weak self] _ in self?.isPresenting = false }
+        handler.onDismiss { [weak self] info, result in
+            self?.isPresenting = false
+            Analytics.capture(.paywallDismissed, [
+                "result": Self.label(for: result),
+                "paywall": info.name,
+            ])
+        }
+        handler.onError { [weak self] error in
+            self?.isPresenting = false
+            Analytics.capture(.paywallError, ["message": error.localizedDescription])
+        }
+        handler.onSkip { [weak self] reason in
+            self?.isPresenting = false
+            Analytics.capture(.paywallSkipped, ["reason": reason.description])
+        }
         Superwall.shared.register(placement: Self.placement, handler: handler) { [weak self] in
             // Runs when the user is entitled (already subscribed or just
             // purchased). Unlocking itself is driven by `subscriptionStatus`.
             self?.isPresenting = false
+        }
+    }
+
+    /// Stable analytics labels — `String(describing:)` on the enum would carry
+    /// the associated product into the property value and fragment the funnel.
+    private static func label(for result: PaywallResult) -> String {
+        switch result {
+        case .purchased: "purchased"
+        case .declined: "declined"
+        case .restored: "restored"
         }
     }
 }

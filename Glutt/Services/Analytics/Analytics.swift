@@ -138,6 +138,17 @@ enum Analytics {
         // Superwall; keep those runs out of the funnel entirely.
         guard !ProcessInfo.processInfo.arguments.contains("-uiPreview") else { return }
 
+        // The unit tests run *inside* this app, so `@main` runs and every
+        // service the suite exercises reports for real. One `test_sim` put 17
+        // `cook_started`, 6 `recipe_created` and 7 `plates_deck_viewed` into
+        // production — a full suite outnumbers a real user by an order of
+        // magnitude, which is how a product metric quietly becomes a count of
+        // how often the tests ran.
+        //
+        // Skipping `setup` is enough: every `capture` after this is a no-op
+        // against an unconfigured SDK.
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
+
         let config = PostHogConfig(projectToken: projectToken, host: host)
 
         // Seeds the install id as the anonymous `distinct_id` *before* setup, so

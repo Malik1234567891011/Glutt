@@ -19,6 +19,10 @@ enum PlatesSaver {
         let recipe = RecipeFactory.make(from: draft)
         context.insert(recipe)
         try context.save()
+        // After the save, not before: a throw here would otherwise report a
+        // recipe that does not exist. The early return above is a dedup, not a
+        // creation, and deliberately does not fire.
+        Analytics.capture(.recipeCreated, ["source": "plates"])
         await RecipeImageBackfill.ensure(for: recipe, in: context, fetch: fetch)
         return recipe
     }

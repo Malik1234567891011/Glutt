@@ -305,6 +305,9 @@ struct ImportReviewView: View {
 
         let recipe = RecipeFactory.make(from: edited)
         context.insert(recipe)
+        // The platform is already on the draft, so the source is as specific as
+        // instagram / reddit / youtube rather than a flat "import".
+        Analytics.capture(.recipeCreated, ["source": "import_\(edited.platform.rawValue)"])
         for collection in collections where selectedCollections.contains(collection.persistentModelID) {
             collection.recipes.append(recipe)
         }

@@ -1,0 +1,17 @@
+The attached image is my current character sheet for a mascot named "Polly". Regenerate this exact character sheet — same 2x2 grid, same four poses, same flat-vector style, same body shape, same colours, same charm — but fix the face. Everything else must stay as it is.
+
+THE FIVE FIXES:
+
+1. EYES — separate them. Right now the two eye whites merge into one continuous cream shape stretching across the whole face, which makes her look like an owl wearing goggles. Instead: two distinctly separate eyes, each its own clean circle of pure white, with a clear band of mint-green body colour running between them and fully surrounding each one. The two eyes must never touch each other and must never merge into a mask. Keep the large near-black #241E19 pupils and the single small white highlight dot in each.
+
+2. BEAK — make it an actual parrot beak. Right now it is a rounded brown blob overlapping the eyes. Instead: a short, curved, hooked parrot beak that tapers to a downward point, like a small macaw or budgie beak. Colour it clean amber #C28C21. Position it BELOW the eye line, centred on the face, so it never overlaps or touches either eye.
+
+3. CREST — make it read as two feathers, not hair. Two clearly separated leaf-shaped feathers standing on top of her head with visible mint-green gap between them, angled slightly back. Colour them deep herb green #2E5339 — a clear mid-tone green, noticeably lighter than near-black. Right now they read as one dark clump of hair.
+
+4. CHEEKS — keep the small soft pink blush ovals, and place them low on the face, out to the sides, below and outside the eyes.
+
+5. MOUTH — in the top-right mid-speech pose, the beak should be only slightly parted, with no tongue and no red interior visible. All three other poses have a fully closed beak.
+
+KEEP UNCHANGED: the 2x2 grid layout on a pure flat white background; the four poses in the same positions (top-left waving with a wooden spoon, top-right mid-speech with one wing raised, bottom-left peeking over a horizontal edge, bottom-right holding a woven basket with both wings); the chubby rounded jellybean body in mint green #8FE3A3; the warm cream #FFFDF7 belly; the oversized head; the flat vector rendering with no gradients, no outlines, no bevels, no glow, no 3D; no text, no labels, no numbers, no frame, no grid lines, no shadows on the background.
+
+Style, proportions, colours and shape language must stay perfectly consistent across all four poses.

@@ -130,6 +130,7 @@ struct RequestHowToSheet: View {
             let recipe = try await HowToGenerator.generate(request: trimmed, prefs: prefs)
             context.insert(recipe)
             try? context.save()
+            Analytics.capture(.recipeCreated, ["source": "ai_howto"])
             Haptics.notify(.success)
             onCreated(recipe)
             dismiss()

@@ -21,6 +21,9 @@ struct PantryScanView: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var isShowingCamera = false
     @State private var items: [PantryScan.ScannedItem] = []
+    /// Which path produced `items` — the camera or the voice description. Read
+    /// by `commit()`, which cannot otherwise tell them apart.
+    @State private var lastInputMethod = "scan"
     @State private var didAddCount: Int?
     @State private var descriptionText = ""
     @State private var dictation = PantryDictationSession()
@@ -367,6 +370,8 @@ struct PantryScanView: View {
     private func scan(_ rawData: Data) async {
         phase = .scanning
         didAddCount = nil
+        lastInputMethod = "scan"
+        Analytics.capture(.aiToolUsed, ["tool": "pantry_scan"])
         guard let prepared = ImagePrep.prepareForVision(rawData) else {
             phase = .failed("Couldn't read that image.")
             return
@@ -385,6 +390,8 @@ struct PantryScanView: View {
         guard !text.isEmpty else { return }
         phase = .scanning
         didAddCount = nil
+        lastInputMethod = "voice"
+        Analytics.capture(.aiToolUsed, ["tool": "pantry_voice"])
         do {
             items = try await PantryScan.fromDescription(text, existingPantry: pantryItems)
             phase = .review
@@ -408,6 +415,9 @@ struct PantryScanView: View {
                 ))
             }
             added += 1
+        }
+        if added > 0 {
+            Analytics.capture(.pantryItemAdded, ["method": lastInputMethod, "count": added])
         }
         withAnimation {
             didAddCount = added

@@ -37,7 +37,17 @@ struct PollyLaunch: Identifiable, Equatable {
 /// The share extension routes imports through here.
 @Observable
 final class Router {
-    var selectedTab: AppTab = .recipes
+    /// Instrumented here rather than in `GluttTabBar` so deep links and the
+    /// share extension's jump to Recipes count too — the question is which
+    /// screens people end up on, not which ones they tapped to get to.
+    /// Observers do not fire during `init`, so the launch-argument hooks below
+    /// stay out of the funnel.
+    var selectedTab: AppTab = .recipes {
+        didSet {
+            guard oldValue != selectedTab else { return }
+            Analytics.capture(.tabSwitched, ["tab": selectedTab.rawValue])
+        }
+    }
     /// URL waiting to be imported (from the share extension or glutt://import?url=...).
     /// When set, the Recipes tab opens the import sheet. This is the single signal
     /// for "start an import" now that the floating capture button is gone.

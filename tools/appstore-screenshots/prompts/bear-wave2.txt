@@ -1,0 +1,11 @@
+The attached image is my mascot character: a chubby brown bear cook. Reproduce him EXACTLY — identical face, identical separated eyes, identical cream muzzle, identical dark nose and curved smile with the small pink tongue tip, identical ears, identical brown fur colour, identical flat vector style, identical waving pose with the wooden spoon. Do not restyle him and do not redesign his face.
+
+MAKE ONLY THESE TWO CHANGES:
+
+1. THE APRON IS TOO LONG — right now it reads as a long green dress or skirt that covers most of his body. Shorten it substantially into a proper short cook's bib apron: the green #2E5339 panel should cover only his chest and upper belly, ending at hip level, well ABOVE his legs. His brown lower belly, both legs and both feet must be fully visible below the apron, with no green touching them. Keep the two thin pale cream shoulder straps. The apron should read as a small tidy bib apron, not a garment covering his whole torso.
+
+2. THE SPOON GRIP — his lowered right paw must clearly and visibly wrap around the wooden spoon's handle, so it reads as being held rather than floating beside him. Keep the spoon entirely clear of his body and face.
+
+KEEP EVERYTHING ELSE IDENTICAL: warm medium brown #A9703C flat fur, pale cream #FBF0DC muzzle and inner ears and chest patch, dark brown #4A2E1A nose, two SEPARATE white oval eyes with a clear band of brown fur between them that never merge into a mask, pink blush ovals low on the cheeks, oversized head, chubby teddy proportions, left arm raised high in a friendly wave.
+
+RENDER: flat vector, no gradients, no fur texture, no outlines, no bevels, no 3D shading. One single character, centred, full body, pure flat white background. No text, no labels, no frame, no shadow cast on the background.

@@ -26,4 +26,29 @@ enum Secrets {
 
     /// Proxy client key; empty (AI features disabled) when the plist is absent.
     static let aiProxyClientKey = local["aiProxyClientKey"] ?? ""
+
+    /// Supabase project (accounts). Committed defaults, not secrets: the URL is
+    /// public and the publishable key is designed to ship in clients — every
+    /// table it can reach is guarded by RLS. The service-role key, which
+    /// bypasses RLS, lives only in the proxy's Vercel env and must never appear
+    /// in this file or the app bundle.
+    private static let defaultSupabaseURL = "https://mlgdtksukpifkmhqulnc.supabase.co"
+
+    static var supabaseURL: URL {
+        // Falls back rather than crashing: a malformed override in the plist
+        // should cost you accounts, not the whole app on launch.
+        if let override = local["supabaseURL"], let url = URL(string: override) { return url }
+        return URL(string: defaultSupabaseURL)!
+    }
+
+    static let supabaseKey = local["supabaseKey"] ?? "sb_publishable_mCsKYQt-qRWbvyIljJIOSw_Rn2cJwPS"
+
+    /// Google **iOS** OAuth client id, for native Google sign-in. Public by
+    /// design (it identifies the app, it does not authorize anything on its
+    /// own), which is why it also appears reversed as a URL scheme in
+    /// `project.yml`. Those two must always match.
+    ///
+    /// Empty hides the Google button rather than shipping one that cannot work.
+    static let googleClientID = local["googleClientID"]
+        ?? "326973383718-tmur4tp76aicsnvih43tkn36u7aj44tk.apps.googleusercontent.com"
 }

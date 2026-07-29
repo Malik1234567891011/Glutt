@@ -46,6 +46,9 @@ struct GluttApp: App {
         if !ProcessInfo.processInfo.arguments.contains("-uiPreview") {
             Superwall.configure(apiKey: Self.superwallPublicAPIKey)
         }
+        // Before any view exists, so the onboarding funnel's first screen and
+        // PostHog's own launch events are captured under the install id.
+        Analytics.start()
         notificationDelegate.router = router
         UNUserNotificationCenter.current().delegate = notificationDelegate
     }

@@ -230,9 +230,14 @@ final class PollySessionControllerTests: XCTestCase {
 
     /// v2 contract: on barge-in the CLIENT sends nothing — the server clears
     /// its own output buffer and truncates the item (device-proven; the v1
-    /// client-side truncate math died with the audio engine). The controller
-    /// just flips the speaking/listening flags.
-    func testBargeInFlipsFlagsAndSendsNoClientTruncate() async throws {
+    /// client-side truncate math died with the audio engine).
+    ///
+    /// Barge-in is two-stage: raw VAD does **not** cancel Polly. `speechStarted`
+    /// marks a candidate and opens listening while she keeps talking; the
+    /// conversational gate decides once there is a transcript. Asserting that
+    /// `isPollySpeaking` went false here would be re-encoding the one-stage
+    /// contract that cut her off on echo and background noise.
+    func testBargeInMarksCandidateAndSendsNoClientTruncate() async throws {
         let recipe = insertRecipe()
         let transport = FakeRealtimeTransport()
         let controller = makeController(recipe: recipe, transport: transport)
@@ -244,7 +249,8 @@ final class PollySessionControllerTests: XCTestCase {
         transport.push(.speechStarted)
         await waitUntil({ controller.isListening }, "speech_started marks listening")
 
-        XCTAssertFalse(controller.isPollySpeaking)
+        XCTAssertTrue(controller.isPollySpeaking,
+                      "raw VAD must not cancel Polly — the gate decides after the transcript")
         let truncates = transport.sent.filter {
             if case .truncateItem = $0 { return true }
             return false

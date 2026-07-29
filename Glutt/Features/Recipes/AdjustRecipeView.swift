@@ -188,6 +188,7 @@ struct AdjustRecipeView: View {
 
     private func run(_ request: RecipeAdjuster.Request) {
         phase = .working(request)
+        Analytics.capture(.aiToolUsed, ["tool": "adjust"])
         let prefs = UserPrefs.current(in: context)
         Task {
             do {

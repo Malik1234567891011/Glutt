@@ -58,6 +58,10 @@ final class DiscoverFeedViewModel {
         isSuggested = false
         self.query = trimmed
         phase = .loading
+        // The query text itself deliberately stays out — a property value is a
+        // filterable dimension, not a search log. Length is enough to tell a
+        // real search from a stray keystroke.
+        Analytics.capture(.discoverSearched, ["query_length": trimmed.count])
         do {
             let page = try await deps.search(trimmed, nil)
             apply(firstPage: page, isSuggested: false)

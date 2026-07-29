@@ -24,6 +24,23 @@ packages:
   LiveKitWebRTC:
     url: https://github.com/livekit/webrtc-xcframework
     exactVersion: "144.7559.11"
+  # Product analytics (US region). App target only — the share extension runs
+  # under a tight memory budget and has nothing to report.
+  PostHog:
+    url: https://github.com/PostHog/posthog-ios
+    from: "3.68.4"
+  # Accounts (Sign in with Apple). App target only: the share extension has no
+  # session and attributes its proxy calls by install id instead.
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: "2.54.0"
+  # Native Google sign-in. The browser flow would need no dependency, but the
+  # Supabase Google provider is configured with a client id and no secret, which
+  # is the native (id_token) setup; /auth/v1/authorize rejects the web flow with
+  # "missing OAuth secret".
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    from: "9.2.0"
 
 targets:
   Glutt:
@@ -55,6 +72,12 @@ targets:
           - CFBundleURLName: com.omarlahmimi.glutt
             CFBundleURLSchemes:
               - glutt
+          # Google sign-in callback. Must be the iOS client id reversed, exactly;
+          # GoogleSignIn hands this scheme to ASWebAuthenticationSession and the
+          # flow dead-ends without it. See Secrets.googleClientID.
+          - CFBundleURLName: com.googleusercontent.apps
+            CFBundleURLSchemes:
+              - com.googleusercontent.apps.326973383718-tmur4tp76aicsnvih43tkn36u7aj44tk
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.omarlahmimi.glutt
@@ -67,6 +90,11 @@ targets:
       - target: GluttShare
       - package: SuperwallKit
       - package: LiveKitWebRTC
+      - package: PostHog
+      - package: Supabase
+        product: Supabase
+      - package: GoogleSignIn
+        product: GoogleSignIn
 
   GluttShare:
     type: app-extension

@@ -47,7 +47,7 @@ back to on-device heuristics where designed.
 | `GET /api/discover/search?q=<dish>&pageToken=<optional>` | Recipes → Discover | YouTube keyword search for embeddable cooking videos |
 | `GET /api/discover/suggested?tags=<optional>` | Discover open-tab feed | Biased by taste tags, else rotating popular query; never paginates |
 | `GET /api/discover/player` | Discover / Polly clips | Embeddable player (`v`, optional `start`/`end`/`mute`) |
-| `POST /api/cook/clips` | Polly step technique clips | Gemini: segment YouTube URL → match CookPlan steps → `(videoId,start,end)` |
+| `POST /api/cook/clips` | Polly step technique clips | Gemini segment+match (rewrites onto `discover/suggested` POST to stay under Hobby’s 12-function cap) |
 | `GET/POST /api/plates/deck` + `/api/plates/search` | Plates photo-recipe feed | Spoonacular-backed, edge-cached per page/UTC day |
 
 All routes that accept a client key check it via the `x-glutt-proxy-key` header

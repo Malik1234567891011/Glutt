@@ -6,14 +6,14 @@
 //   3) Return only recommended matches as (videoId, start, end) for official embed
 //
 // Playback stays YouTube IFrame — we never download or rehost AV content.
-import { isAuthorized } from "../_lib/auth.js";
-import { logUsage, installIdFrom } from "../_lib/usage.js";
+import { isAuthorized } from "./auth.js";
+import { logUsage, installIdFrom } from "./usage.js";
 import {
   resolveGeminiKey,
   resolveGeminiModel,
   geminiGenerate,
   parseJSONText,
-} from "../_lib/gemini.js";
+} from "./gemini.js";
 
 const MIN_SEGMENT_S = 5;
 const MAX_SEGMENT_S = 35;
@@ -163,7 +163,7 @@ Return JSON:
 Include exactly one entry per step. Use recommended:false and match_type no_safe_match when unsure.`;
 }
 
-export default async function handler(req, res) {
+export async function handleCookClips(req, res) {
   res.setHeader("x-glutt-proxy-version", "cook-clips-2026-07-29-1");
 
   if (req.method !== "POST") {

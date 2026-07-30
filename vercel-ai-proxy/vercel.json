@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/cook/clips",
+      "destination": "/api/discover/suggested"
+    }
+  ],
   "functions": {
     "api/**/*.js": {
       "runtime": "@vercel/node@5.3.24",

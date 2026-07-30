@@ -140,6 +140,39 @@ unknown column silently loses the entire row.
 
 ---
 
+## Status as of 2026-07-30
+
+Branch `polly-voice-rebuild`, 7 commits, 380 tests green, nothing merged.
+
+| Step | State |
+|---|---|
+| 1 `reasoning.effort` | **done** — `POLLY_REASONING_EFFORT`, default `high`, 400-fallback, reported via `x-glutt-polly-reasoning` |
+| 2 audio session ownership | **partly done** — the `setActive(false)`-under-live-WebRTC landmine is gone, `BriefingNarrator` releases its session, incoming category logged. The `LKRTCAudioSession.lockForConfiguration` migration is NOT done: it is the riskiest change here and cannot be validated anywhere but a device |
+| 3 transport lifecycle | **done** — old transport closed before the new one connects, `abandon()` for retry, live instance counter in the log |
+| 4 wake word | **done** — no deaf window at the segment seam, availability retried instead of read once, one audio format per session |
+| 5 clip/mic and error routing | **done** — `.idle` releases the hold, 120s failsafe, only `code == "transport"` reaches the reconnect ladder |
+| 6 interruptions | **done** — observed, resumed on `shouldResume`, dormant with an explanation |
+| 7 AEC into production | **done** — applied and verified in `connect()`, AEC3 not AECM, two toggles in the overflow menu |
+| 8 gate | **done** — `create_response`/`interrupt_response` false, `wait_for_user` tool, Unclear Audio and Silence prompt blocks |
+| 9 latency | **done** — voice-to-voice timer in production, p50/p95 on the `cookFinished` PostHog event |
+| 9b usage durability | **not done** — 27 mints produced 10 usage rows. Cost-visibility work, deprioritised |
+| 10 voice spike | **not started** — the decision point for the custom voice |
+
+### What needs a device, not a simulator
+
+Everything acoustic. The simulator validates none of it. On the first real cook,
+copy the debug log (`…` menu, or long-press the session timer) and check:
+
+- `AEC[avail= req= ACTIVE=]` — if `ACTIVE=0`, VPIO is not engaging and the
+  software canceller is all you have. That single line has never been available
+  before.
+- `transport: init/deinit (live=N)` — must settle back to 1 after any reconnect.
+- `⏱ voice-to-voice p50/p95` — if p95 approaches 4000ms, drop
+  `POLLY_REASONING_EFFORT` to `medium`.
+- `wake: listening (on-device)` — should reappear roughly once a minute with no
+  missed wakes around it.
+- `media: mic released after clip` — should follow every unmuted clip.
+
 ## Verification
 
 - **Proxy**: `curl -i` the preview URL and check `x-glutt-polly-reasoning`. If it reads

@@ -104,18 +104,10 @@ struct SignInView: View {
                     .padding(.top, 12)
                 }
 
-                // They pressed "Log in" and have never signed up. Nothing here
-                // is retryable, so the only useful action is the way back to
-                // setup — the error text above already says why.
-                if needsSignUp {
-                    OnboardingTextLink(title: "Go to setup") { onDismiss?() }
-                        .padding(.top, 18)
-                }
-
                 // Only offered once something has actually gone wrong. A paying
                 // customer must never be trapped behind our backend being down —
                 // they keep the app, and the next cold launch asks again.
-                if errorMessage != nil, !needsSignUp, !canDismiss {
+                if errorMessage != nil, !canDismiss {
                     OnboardingTextLink(title: "Continue without an account") {
                         Analytics.capture(.signInDeferred)
                         session.deferSignIn()
@@ -133,6 +125,16 @@ struct SignInView: View {
             .padding(.horizontal, 28)
             .padding(.bottom, 22)
             .animation(.easeInOut(duration: 0.2), value: errorMessage)
+        }
+        // An alert rather than inline text, and only for this one case. Every
+        // other failure here is worth retrying, so its message belongs next to
+        // the buttons you would press again. Having no account is final: there
+        // is nothing on this screen that would change it, so it gets a dialog
+        // whose only button leaves.
+        .alert("No account yet", isPresented: $needsSignUp) {
+            Button("OK") { onDismiss?() }
+        } message: {
+            Text("You don't have a Glutt account yet. Go through setup to create one. Your subscription is already active and will carry over.")
         }
         .overlay(alignment: .topTrailing) {
             if canDismiss {
@@ -225,8 +227,10 @@ struct SignInView: View {
     /// text, which would send someone round the same loop forever.
     private func failed(_ error: Error, fallback: String) {
         if case AccountSession.AccountError.noAccountYet = error {
+            // The alert carries the whole message, so leave `errorMessage` nil:
+            // setting it would leave the same text sitting on the screen
+            // underneath, and still be there after the alert is dismissed.
             needsSignUp = true
-            errorMessage = error.localizedDescription
             isWorking = false
             return
         }

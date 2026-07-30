@@ -26,6 +26,8 @@ enum MS: String, CaseIterable {
     case checkCircleFill = "ms-check-circle-fill"
     case arrowUpwardFill = "ms-arrow-upward-fill"
     case chevronLeft = "ms-chevron-left"
+    case arrowBack = "ms-arrow-back"
+    case verifiedFill = "ms-verified-fill"
     case send = "ms-send"
     case modeComment = "ms-mode-comment"
     case bookmark = "ms-bookmark"

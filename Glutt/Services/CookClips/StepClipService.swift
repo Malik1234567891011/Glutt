@@ -1,7 +1,7 @@
 import Foundation
 
 /// Fetches Gemini-indexed YouTube step clips via the Vercel proxy.
-/// Two-phase (segment → match) so each call fits Hobby's 60s limit.
+/// Prefers a single grounded pass (spoken audio + visible action + duration cap).
 actor StepClipService {
     typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
 
@@ -12,7 +12,7 @@ actor StepClipService {
     static let shared = StepClipService()
 
     private let defaults = UserDefaults.standard
-    private let cachePrefix = "glutt.stepClips.v2."
+    private let cachePrefix = "glutt.stepClips.v3."
 
     func clips(
         youtubeURL: String,
@@ -26,32 +26,19 @@ actor StepClipService {
             return cached
         }
 
-        // Phase 1 — video segmentation (slow; YouTube URL → Gemini).
-        let segmentJSON = try await postJSON([
-            "phase": "segment",
-            "youtube_url": youtubeURL,
-            "recipe_title": recipeTitle,
-            "force": force,
-            "steps": stepPayload(cookSteps),
-        ])
-        let segmentDoc = try JSONSerialization.jsonObject(with: segmentJSON) as? [String: Any]
-        let segments = segmentDoc?["segments"] as? [[String: Any]] ?? []
-
-        // Phase 2 — match segments to CookPlan steps (pass segments explicitly;
-        // Redis handoff is optional and may be unavailable on some deploys).
-        var matchBody: [String: Any] = [
-            "phase": "match",
+        var body: [String: Any] = [
+            "phase": "ground",
             "youtube_url": youtubeURL,
             "recipe_title": recipeTitle,
             "force": force,
             "steps": stepPayload(cookSteps),
         ]
-        if !segments.isEmpty {
-            matchBody["segments"] = segments
+        if let duration = knownDuration(for: youtubeURL) {
+            body["duration_seconds"] = duration
         }
-        let matchData = try await postJSON(matchBody)
 
-        let decoded = try JSONDecoder().decode(StepClipIndexResponse.self, from: matchData)
+        let data = try await postJSON(body)
+        let decoded = try JSONDecoder().decode(StepClipIndexResponse.self, from: data)
         saveDisk(cacheKey, decoded)
         return decoded
     }
@@ -61,6 +48,13 @@ actor StepClipService {
     }
 
     // MARK: - HTTP
+
+    private func knownDuration(for youtubeURL: String) -> Int? {
+        switch YouTubeEmbed.videoId(from: youtubeURL) {
+        case "gBJjRYk0yC0": return 274
+        default: return nil
+        }
+    }
 
     private func stepPayload(_ steps: [CookPlan.PlanStep]) -> [[String: Any]] {
         steps.map { step in

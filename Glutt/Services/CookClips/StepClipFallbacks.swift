@@ -16,24 +16,24 @@ enum StepClipFallbacks {
 
     /// Ordered most-specific first so "poach" wins over generic "egg".
     private static let eggsBenedictRules: [Rule] = [
-        Rule(keywords: ["hollandaise", "emuls"], start: 41, end: 58,
+        Rule(keywords: ["hollandaise", "emuls"], start: 40, end: 58,
              label: "Watch hollandaise emulsion",
              notice: "Notice how he streams the butter in slowly while whisking so it stays glossy."),
-        Rule(keywords: ["poach"], start: 250, end: 275,
-             label: "Watch the egg poach",
-             notice: "Watch the white wrap the yolk — pull it when the white is set but the yolk still jiggles."),
+        Rule(keywords: ["poach"], start: 230, end: 255,
+             label: "Watch the egg poach setup",
+             notice: "Seasoned simmering water, then the egg goes in — pull when the white is set."),
         Rule(keywords: ["muffin", "toast"], start: 214, end: 226,
              label: "Watch muffin toasting",
              notice: "Toast until the cut face is golden so it holds the sauce."),
-        Rule(keywords: ["ham", "bacon", "canadian", "prosciutto", "parma"], start: 147, end: 160,
-             label: "Watch the ham in the pan",
-             notice: "A quick pan fry gives the ham a bit of colour without drying it out."),
-        Rule(keywords: ["plate", "assembl", "serve", "stack"], start: 330, end: 345,
-             label: "Watch the plate-up",
-             notice: "Muffin, ham, egg, then hollandaise — keep the stack tight."),
-        Rule(keywords: ["simmer", "vinegar"], start: 230, end: 248,
+        Rule(keywords: ["ham", "bacon", "canadian", "prosciutto", "parma"], start: 134, end: 155,
+             label: "Watch the Parma ham crisp",
+             notice: "He fries thin Parma ham until crisp, then uses that fat to toast the muffins."),
+        Rule(keywords: ["simmer", "vinegar"], start: 230, end: 245,
              label: "Watch the poaching water",
              notice: "Bring it to a gentle simmer with a splash of vinegar before the eggs go in."),
+        Rule(keywords: ["plate", "assembl", "serve", "stack"], start: 255, end: 274,
+             label: "Watch the plate-up",
+             notice: "Muffin, ham, egg, then hollandaise — keep the stack tight."),
     ]
 
     static func clips(for steps: [CookPlan.PlanStep], youtubeURL: String) -> [StepClip] {
@@ -61,26 +61,23 @@ enum StepClipFallbacks {
         return out
     }
 
-    /// For the pilot video, prefer hand-checked windows over Gemini — Gemini
-    /// often attaches the wrong segment (or a near-intro window) to non-hero steps.
+    /// Prefer grounded Gemini clips when they look valid; fill gaps from
+    /// hand-checked pilot windows. Never let intro junk (0:00–0:05) win.
     static func merge(indexed: [StepClip], steps: [CookPlan.PlanStep], youtubeURL: String) -> [StepClip] {
         let fallbacks = clips(for: steps, youtubeURL: youtubeURL)
-        if YouTubeEmbed.videoId(from: youtubeURL) == eggsBenedictVideoID, !fallbacks.isEmpty {
-            var byStep = Dictionary(uniqueKeysWithValues: fallbacks.map { ($0.stepID, $0) })
-            // Keep any Gemini clip only when we have no fallback for that step
-            // and it isn't an intro junk window.
-            for clip in indexed where !(clip.startSeconds <= 5 && clip.durationSeconds <= 10) {
-                if byStep[clip.stepID] == nil {
-                    byStep[clip.stepID] = clip
-                }
-            }
-            return Array(byStep.values)
-        }
-
         let cleaned = indexed.filter { !($0.startSeconds <= 5 && $0.durationSeconds <= 10) }
-        var byStep = Dictionary(uniqueKeysWithValues: cleaned.map { ($0.stepID, $0) })
-        for fb in fallbacks where byStep[fb.stepID] == nil {
-            byStep[fb.stepID] = fb
+
+        var byStep: [String: StepClip] = [:]
+        for clip in cleaned where clip.confidence >= 0.8 {
+            byStep[clip.stepID] = clip
+        }
+        for fb in fallbacks {
+            if let existing = byStep[fb.stepID] {
+                // Keep grounded/indexed unless it's still an implausible short intro.
+                if existing.startSeconds <= 5 { byStep[fb.stepID] = fb }
+            } else {
+                byStep[fb.stepID] = fb
+            }
         }
         return Array(byStep.values)
     }

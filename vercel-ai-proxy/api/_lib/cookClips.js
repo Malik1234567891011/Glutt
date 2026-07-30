@@ -1,12 +1,10 @@
 // Auto-index short YouTube demonstration windows for CookPlan steps.
 //
-// Layers (video.md Phase 2, no human labeling):
-//   1) Gemini video understanding on a public YouTube URL → candidate segments
-//   2) Separate Gemini text pass → match/reject segments per recipe step
-//   3) Return only recommended matches as (videoId, start, end) for official embed
-//
-// Split into phase=segment | phase=match so each call fits Vercel Hobby's 60s
-// function limit (full video understanding alone often needs most of that).
+// Layers:
+//   A) grounded (preferred): one Gemini video call that uses spoken audio +
+//      visible action, with an explicit video duration ceiling so timestamps
+//      cannot drift past the end of the video.
+//   B) legacy two-pass: free segmentation → text match (kept as fallback).
 //
 // Playback stays YouTube IFrame — we never download or rehost AV content.
 import { isAuthorized } from "./auth.js";
@@ -18,9 +16,14 @@ import {
   parseJSONText,
 } from "./gemini.js";
 
-const MIN_SEGMENT_S = 5;
-const MAX_SEGMENT_S = 35;
+const MIN_SEGMENT_S = 8;
+const MAX_SEGMENT_S = 30;
 const MIN_RECOMMEND_SCORE = 0.72;
+
+/** Known lengths — Gemini often invents times past EOF without this. */
+const KNOWN_DURATIONS = {
+  gBJjRYk0yC0: 274, // How To Cook Eggs Benedict | Gordon Ramsay (4:34)
+};
 
 function youtubeVideoId(url) {
   try {
@@ -41,28 +44,35 @@ function normalizeYoutubeURL(_url, videoId) {
   return `https://www.youtube.com/watch?v=${videoId}`;
 }
 
-function clampSegment(seg) {
-  const start = Math.round(Number(seg.start_seconds));
-  const end = Math.round(Number(seg.end_seconds));
-  // Never invent a 0–5s intro window from missing/broken timestamps.
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) {
-    return null;
-  }
-  let s = start;
-  let e = end;
-  if (e - s < MIN_SEGMENT_S) e = s + MIN_SEGMENT_S;
-  if (e - s > MAX_SEGMENT_S) e = s + MAX_SEGMENT_S;
-  return { ...seg, start_seconds: s, end_seconds: e };
+function videoDuration(videoId, bodyDuration) {
+  const n = Number(bodyDuration);
+  if (Number.isFinite(n) && n > 0) return Math.round(n);
+  return KNOWN_DURATIONS[videoId] || null;
 }
 
-function isProbablyIntroSegment(seg) {
-  if (!seg) return true;
-  const start = Number(seg.start_seconds) || 0;
-  const end = Number(seg.end_seconds) || 0;
-  const action = `${seg.primary_action || ""} ${seg.technique || ""} ${seg.dish_stage || ""}`.toLowerCase();
-  if (end - start <= 10 && start <= 5) return true;
-  if (start <= 8 && /(intro|title|talking|hello|welcome|sponsor)/.test(action)) return true;
-  return false;
+function clampWindow(startIn, endIn, durationSeconds) {
+  let start = Math.round(Number(startIn));
+  let end = Math.round(Number(endIn));
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) return null;
+  if (durationSeconds != null) {
+    if (start >= durationSeconds) return null;
+    end = Math.min(end, durationSeconds);
+  }
+  if (end <= start) return null;
+  if (end - start < MIN_SEGMENT_S) {
+    end = Math.min(start + MIN_SEGMENT_S, durationSeconds ?? start + MIN_SEGMENT_S);
+  }
+  if (end <= start) return null;
+  if (end - start > MAX_SEGMENT_S) end = start + MAX_SEGMENT_S;
+  // Reject classic junk intro window.
+  if (start <= 5 && end - start <= 10) return null;
+  return { start_seconds: start, end_seconds: end };
+}
+
+function clampSegment(seg, durationSeconds = null) {
+  const win = clampWindow(seg.start_seconds, seg.end_seconds, durationSeconds);
+  if (!win) return null;
+  return { ...seg, ...win };
 }
 
 async function redisCommand(command) {
@@ -94,7 +104,7 @@ async function redisSet(key, value, ttlSeconds = 60 * 60 * 24 * 14) {
   try {
     await redisCommand(["SET", key, JSON.stringify(value), "EX", ttlSeconds]);
   } catch {
-    // cache is best-effort
+    // best-effort
   }
 }
 
@@ -102,24 +112,30 @@ function clipsCacheKey(videoId, steps) {
   const payload = steps.map((s) => `${s.id}|${s.title}|${s.instruction}`).join("\n");
   let h = 0;
   for (let i = 0; i < payload.length; i++) h = (Math.imul(31, h) + payload.charCodeAt(i)) | 0;
-  return `cook:clips:v2:${videoId}:${h}`;
+  return `cook:clips:v3:${videoId}:${h}`;
 }
 
 function segmentsCacheKey(videoId) {
-  return `cook:segments:v2:${videoId}`;
+  return `cook:segments:v3:${videoId}`;
 }
 
-const SEGMENT_PROMPT = `Analyse this cooking video. Identify up to 12 short segments that are useful visual demos while someone cooks.
+function segmentPrompt(durationSeconds) {
+  const durLine = durationSeconds
+    ? `This video is EXACTLY ${durationSeconds} seconds long. Every timestamp MUST be between 0 and ${durationSeconds}.`
+    : `Use real timestamps from the video timeline.`;
+  return `${durLine}
 
-Only include segments where the cooking action or food state is clearly visible.
-Skip intros, title cards, talking heads, ingredient lists without action, sponsors, and glamour plating unless needed for doneness.
+Analyse this cooking video using BOTH what is spoken and what is visibly demonstrated.
+Identify up to 12 short segments useful as visual demos while someone cooks.
 
-CRITICAL: start_seconds and end_seconds must be real timestamps from the video timeline (seconds from the beginning). Never use 0–5 unless the cooking action truly happens in the opening seconds.
+Only include segments where the cooking action or food state is clearly visible on camera.
+Skip intros, title cards, talking heads with no food action, sponsors, and plating glamour shots unless needed for doneness.
 
 Return JSON:
 {"segments":[{"start_seconds":0,"end_seconds":0,"primary_action":"","ingredients_visible":[],"tools_visible":[],"starting_state":"","ending_state":"","technique":"","dish_stage":"","visual_cue_taught":"","spoken_instruction_summary":"","is_action_clearly_visible":true,"visual_quality":0.0,"boundary_confidence":0.0}]}
 
-Prefer 8–25 second segments. Do not invent actions that are only mentioned.`;
+Prefer 8–25 second segments. Do not invent actions that are only mentioned off-camera.`;
+}
 
 function matchPrompt(recipeTitle, steps, segments) {
   return `Match recipe cook-steps to video demonstration segments.
@@ -136,22 +152,46 @@ ${JSON.stringify(segments.map((s, i) => ({
     end_seconds: s.end_seconds,
     primary_action: s.primary_action,
     technique: s.technique,
-    dish_stage: s.dish_stage,
+    spoken_instruction_summary: s.spoken_instruction_summary,
     visual_cue_taught: s.visual_cue_taught,
   })))}
 
 Rules:
 - segment_index MUST be the segment that visually shows the step's action.
-- If you mention "segment N" in notice, segment_index must be N.
-- Never recommend intro/title segments (early talking-head with no cooking action).
-- Prefer exact technique+ingredient matches.
-- Return no_safe_match for timer/wait steps or when unsure.
+- Prefer segments whose spoken_instruction_summary also refers to the same action.
+- Never recommend intro/title segments.
 - Wrong clip is worse than none.
 
 Return JSON:
 {"matches":[{"step_id":"","segment_index":0,"match_type":"exact_recipe|technique|target_state|no_safe_match","action_match":0.0,"ingredient_match":0.0,"state_transition_match":0.0,"visual_usefulness":0.0,"conflicts":[],"shows_action_not_just_mentions_it":true,"recommended":true,"watch_label":"short label","notice":"one sentence about what to notice"}]}
 
 One entry per step. recommended:false + no_safe_match when unsure.`;
+}
+
+function groundPrompt(recipeTitle, steps, durationSeconds) {
+  const durLine = durationSeconds
+    ? `This video is EXACTLY ${durationSeconds} seconds long. start_seconds and end_seconds MUST be integers in [0, ${durationSeconds}].`
+    : `Use real timeline seconds from the video.`;
+  return `${durLine}
+
+You are locating short technique clips for a cook-along app.
+Use BOTH:
+1) what the chef SAYS (audio / narration), and
+2) what is VISIBLY happening on screen.
+
+For each recipe step, choose the single best 8–25 second window where the step's action is clearly demonstrated on camera.
+If the chef only talks about it without showing it, do not recommend that step.
+
+Recipe: ${recipeTitle}
+
+Steps:
+${JSON.stringify(steps)}
+
+Return JSON:
+{"clips":[{"step_id":"","start_seconds":0,"end_seconds":0,"spoken_evidence":"short quote or paraphrase of relevant speech","visual_evidence":"what is on screen in this window","confidence":0.0,"watch_label":"short UI label","notice":"one sentence about what to notice","recommended":true}]}
+
+Include one object per step. Set recommended:false when there is no safe visual match.
+Never return a window that starts at 0 unless cooking action truly begins in the opening seconds.`;
 }
 
 function normalizeSteps(stepsIn) {
@@ -163,17 +203,15 @@ function normalizeSteps(stepsIn) {
   }));
 }
 
-function buildClips(matches, segments, videoId) {
+function buildClipsFromMatches(matches, segments, videoId) {
   const clips = [];
   for (const m of matches) {
     if (!m || m.recommended === false || m.match_type === "no_safe_match") continue;
     const idx = Number(m.segment_index);
     if (!Number.isInteger(idx) || idx < 0 || idx >= segments.length) continue;
     if (m.shows_action_not_just_mentions_it === false) continue;
-
     const seg = segments[idx];
-    if (!seg || isProbablyIntroSegment(seg)) continue;
-
+    if (!seg) continue;
     const scores = [
       Number(m.action_match) || 0,
       Number(m.ingredient_match) || 0,
@@ -182,18 +220,12 @@ function buildClips(matches, segments, videoId) {
     ];
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     if (avg < MIN_RECOMMEND_SCORE) continue;
-
-    const start = seg.start_seconds;
-    const end = seg.end_seconds;
-    const duration = Math.max(1, end - start);
-    // Hard reject the classic bad window we were shipping (0:00–0:05).
-    if (start <= 5 && duration <= 10) continue;
-
+    const duration = Math.max(1, seg.end_seconds - seg.start_seconds);
     clips.push({
       step_id: String(m.step_id || ""),
       youtube_video_id: videoId,
-      start_seconds: start,
-      end_seconds: end,
+      start_seconds: seg.start_seconds,
+      end_seconds: seg.end_seconds,
       duration_seconds: duration,
       match_type: String(m.match_type || "technique"),
       confidence: Math.round(avg * 1000) / 1000,
@@ -203,7 +235,6 @@ function buildClips(matches, segments, videoId) {
       visual_cue: seg.visual_cue_taught || "",
     });
   }
-
   const byStep = new Map();
   for (const c of clips) {
     if (!c.step_id) continue;
@@ -213,7 +244,71 @@ function buildClips(matches, segments, videoId) {
   return Array.from(byStep.values());
 }
 
-async function runSegment({ apiKey, model, videoId, canonicalURL, force }) {
+function buildClipsFromGround(rawClips, videoId, durationSeconds) {
+  const clips = [];
+  for (const c of rawClips || []) {
+    if (!c || c.recommended === false) continue;
+    const win = clampWindow(c.start_seconds, c.end_seconds, durationSeconds);
+    if (!win) continue;
+    const confidence = Number(c.confidence) || 0;
+    if (confidence < MIN_RECOMMEND_SCORE) continue;
+    const duration = win.end_seconds - win.start_seconds;
+    clips.push({
+      step_id: String(c.step_id || ""),
+      youtube_video_id: videoId,
+      start_seconds: win.start_seconds,
+      end_seconds: win.end_seconds,
+      duration_seconds: duration,
+      match_type: "grounded",
+      confidence: Math.round(confidence * 1000) / 1000,
+      watch_label: String(c.watch_label || `Watch · ${duration}s`).slice(0, 80),
+      notice: String(c.notice || c.visual_evidence || "").slice(0, 240),
+      primary_action: String(c.visual_evidence || "").slice(0, 120),
+      visual_cue: String(c.spoken_evidence || "").slice(0, 240),
+    });
+  }
+  const byStep = new Map();
+  for (const c of clips) {
+    if (!c.step_id) continue;
+    const prev = byStep.get(c.step_id);
+    if (!prev || c.confidence > prev.confidence) byStep.set(c.step_id, c);
+  }
+  return Array.from(byStep.values());
+}
+
+async function runGround({ apiKey, model, videoId, canonicalURL, recipeTitle, steps, durationSeconds, force }) {
+  const key = clipsCacheKey(videoId, steps) + ":ground";
+  if (!force) {
+    const cached = await redisGet(key);
+    if (cached?.clips) return { ...cached, cached: true };
+  }
+
+  const pass = await geminiGenerate({
+    apiKey,
+    model,
+    parts: [
+      { file_data: { file_uri: canonicalURL } },
+      { text: groundPrompt(recipeTitle, steps, durationSeconds) },
+    ],
+    json: true,
+    temperature: 0.1,
+  });
+  const doc = parseJSONText(pass.text);
+  const clips = buildClipsFromGround(doc.clips, videoId, durationSeconds);
+  const result = {
+    youtube_video_id: videoId,
+    youtube_url: canonicalURL,
+    recipe_title: recipeTitle,
+    clips,
+    model,
+    method: "grounded_av",
+    duration_seconds: durationSeconds,
+  };
+  await redisSet(key, result);
+  return { ...result, cached: false };
+}
+
+async function runSegment({ apiKey, model, videoId, canonicalURL, durationSeconds, force }) {
   const segKey = segmentsCacheKey(videoId);
   if (!force) {
     const cached = await redisGet(segKey);
@@ -225,7 +320,7 @@ async function runSegment({ apiKey, model, videoId, canonicalURL, force }) {
     model,
     parts: [
       { file_data: { file_uri: canonicalURL } },
-      { text: SEGMENT_PROMPT },
+      { text: segmentPrompt(durationSeconds) },
     ],
     json: true,
     temperature: 0.2,
@@ -233,7 +328,7 @@ async function runSegment({ apiKey, model, videoId, canonicalURL, force }) {
   const segDoc = parseJSONText(pass1.text);
   const segments = (Array.isArray(segDoc.segments) ? segDoc.segments : [])
     .filter((s) => s && s.is_action_clearly_visible !== false)
-    .map(clampSegment)
+    .map((s) => clampSegment(s, durationSeconds))
     .filter(Boolean)
     .slice(0, 12);
 
@@ -271,7 +366,7 @@ async function runMatch({ apiKey, model, videoId, canonicalURL, recipeTitle, ste
   });
   const matchDoc = parseJSONText(pass2.text);
   const matches = Array.isArray(matchDoc.matches) ? matchDoc.matches : [];
-  const clips = buildClips(matches, segments, videoId);
+  const clips = buildClipsFromMatches(matches, segments, videoId);
   const result = {
     youtube_video_id: videoId,
     youtube_url: canonicalURL,
@@ -279,13 +374,14 @@ async function runMatch({ apiKey, model, videoId, canonicalURL, recipeTitle, ste
     segments,
     clips,
     model,
+    method: "segment_match",
   };
   await redisSet(key, result);
   return { ...result, cached: false };
 }
 
 export async function handleCookClips(req, res) {
-  res.setHeader("x-glutt-proxy-version", "cook-clips-2026-07-29-2");
+  res.setHeader("x-glutt-proxy-version", "cook-clips-2026-07-29-3");
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -305,7 +401,7 @@ export async function handleCookClips(req, res) {
   const recipeTitle = (body.recipe_title || body.recipeTitle || "Recipe").toString().trim();
   const stepsIn = Array.isArray(body.steps) ? body.steps : [];
   const force = Boolean(body.force);
-  const phase = (body.phase || "auto").toString(); // segment | match | auto
+  const phase = (body.phase || "ground").toString(); // ground | segment | match | auto
 
   const videoId = youtubeVideoId(youtubeURL);
   if (!videoId) {
@@ -316,10 +412,35 @@ export async function handleCookClips(req, res) {
   const model = resolveGeminiModel();
   const startedAt = Date.now();
   const canonicalURL = normalizeYoutubeURL(youtubeURL, videoId);
+  const durationSeconds = videoDuration(videoId, body.duration_seconds);
 
   try {
+    if (phase === "ground") {
+      if (steps.length === 0) {
+        return res.status(400).json({ error: "steps[] required for ground phase" });
+      }
+      const out = await runGround({
+        apiKey,
+        model,
+        videoId,
+        canonicalURL,
+        recipeTitle,
+        steps,
+        durationSeconds,
+        force,
+      });
+      await logUsage({
+        feature: "cook_clips_ground",
+        model,
+        install_id: installIdFrom(req),
+        duration_ms: Date.now() - startedAt,
+        ok: true,
+      });
+      return res.status(200).json({ ...out, phase: "ground" });
+    }
+
     if (phase === "segment") {
-      const out = await runSegment({ apiKey, model, videoId, canonicalURL, force });
+      const out = await runSegment({ apiKey, model, videoId, canonicalURL, durationSeconds, force });
       await logUsage({
         feature: "cook_clips_segment",
         model: out.model || model,
@@ -334,6 +455,7 @@ export async function handleCookClips(req, res) {
         segments: out.segments,
         cached: out.cached,
         model: out.model || model,
+        duration_seconds: durationSeconds,
       });
     }
 
@@ -342,7 +464,7 @@ export async function handleCookClips(req, res) {
         return res.status(400).json({ error: "steps[] required for match phase" });
       }
       let segments = Array.isArray(body.segments)
-        ? body.segments.map(clampSegment).filter(Boolean)
+        ? body.segments.map((s) => clampSegment(s, durationSeconds)).filter(Boolean)
         : null;
       if (!segments) {
         const cachedSeg = await redisGet(segmentsCacheKey(videoId));
@@ -368,29 +490,19 @@ export async function handleCookClips(req, res) {
       return res.status(200).json({ ...out, phase: "match" });
     }
 
-    // auto: final clips cache → else segment then match in ONE invocation when
-    // possible; clients should prefer two-phase to avoid Hobby 60s timeouts.
+    // auto → grounded path
     if (steps.length === 0) {
       return res.status(400).json({ error: "steps[] required" });
     }
-    const key = clipsCacheKey(videoId, steps);
-    if (!force) {
-      const cached = await redisGet(key);
-      if (cached?.clips) {
-        return res.status(200).json({ ...cached, cached: true, phase: "auto" });
-      }
-    }
-
-    const seg = await runSegment({ apiKey, model, videoId, canonicalURL, force });
-    const out = await runMatch({
+    const out = await runGround({
       apiKey,
       model,
       videoId,
       canonicalURL,
       recipeTitle,
       steps,
-      segments: seg.segments,
-      force: true,
+      durationSeconds,
+      force,
     });
     await logUsage({
       feature: "cook_clips",

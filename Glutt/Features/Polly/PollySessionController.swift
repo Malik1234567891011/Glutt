@@ -776,6 +776,39 @@ final class PollySessionController {
         phase = .ended
     }
 
+    /// Release every live resource WITHOUT writing a cook log or extracting
+    /// memories. This is the "Try again" path after a failed connect.
+    ///
+    /// `end()` is the wrong tool there twice over: it would record a zero-step
+    /// cook in the user's history for a session that never started, and it would
+    /// block the retry behind a memory-extraction network call. But the resources
+    /// still have to go — before this existed the view simply nil'd its reference
+    /// to the controller, which left the WebRTC peer connection, its audio device
+    /// module and its claim on the microphone alive while the replacement session
+    /// tried to take the mic for itself.
+    ///
+    /// Deliberately does NOT touch the audio session: the caller is about to start
+    /// a new session that reconfigures it, and a deactivate/reactivate cycle in
+    /// between is exactly the kind of churn that stops VPIO engaging.
+    func abandon() async {
+        guard !isEnding, phase != .ended else { return }
+        isEnding = true
+        watchTask?.cancel()
+        watchTask = nil
+        eventTask?.cancel()
+        eventTask = nil
+        cancelDormancyTimer()
+        cancelResponseWatchdog()
+        wakeInjectionTask?.cancel()
+        wakeWord.stop()
+        camera.stop()
+        timers.cancelAll()
+        await transport?.close()
+        transport = nil
+        phase = .ended
+        PollyDebugLog.shared.log("session: abandoned (retry) — resources released")
+    }
+
     // MARK: - User actions
 
     /// The "Show Polly" shutter: one frame straight into the conversation,
@@ -1383,7 +1416,16 @@ final class PollySessionController {
             // Only the transport's own failure (code "transport", Task 7) means the
             // socket died. Server protocol errors (e.g. deleting an already-gone
             // item) must not kill a live cook — log them and keep going.
-            if code == "transport" || phase != .live {
+            //
+            // The `|| phase != .live` clause that used to live here was a live-fire
+            // hazard: once a reconnect set phase = .reconnecting, ANY server error
+            // routed here, failed handleTransportError's `guard phase == .live`, and
+            // spoke the offline failure line. The gate itself generates such errors
+            // constantly — it sends conversation.item.delete on every rejected turn,
+            // and a delete of an already-gone item comes back as item_not_found. So
+            // one rejected turn during a reconnect ended the cook. Phase is not a
+            // signal about the socket; only `code` is.
+            if code == "transport" {
                 await handleTransportError(message: message, context: context)
             } else {
                 transcriptLog.append("[error] \(message)")
@@ -1447,8 +1489,27 @@ final class PollySessionController {
         }
         reconnectAttempts += 1
         AudioServicesPlaySystemSound(1057)   // audible: the drop is heard, not guessed
-        captionText = "Connection hiccup — getting Polly back…"
+        captionText = "Connection hiccup. Getting Polly back."
         phase = .reconnecting
+
+        // Tear the dead stack DOWN before building a new one. Skipping this was the
+        // single most damaging bug in the voice layer: the old transport was simply
+        // overwritten at `self.transport = transport`, so its peer connection, its
+        // audio device module, its AVAudioEngine and its VPIO claim on the microphone
+        // all stayed alive and fought the new stack for the rest of the cook. Every
+        // hiccup added another one. close() is also the only thing that removes the
+        // route-change observer and cancels the meter task, both of which were
+        // likewise accumulating.
+        //
+        // Order matters: cancel the event consumer first so we stop reading a stream
+        // that is about to finish, then close, and only then mint. Releasing the mic
+        // before the new ADM asks for it is the whole point.
+        eventTask?.cancel()
+        eventTask = nil
+        let dyingTransport = transport
+        transport = nil
+        await dyingTransport?.close()
+
         do {
             let token = try await deps.mintToken()
             let transport = deps.makeTransport()
@@ -1489,7 +1550,7 @@ final class PollySessionController {
     private func speakOfflineFallback() {
         PollyDebugLog.shared.log("offline voice: speaking the failure line")
         let utterance = AVSpeechUtterance(
-            string: "I've lost my connection, chef — your steps stay right here on the screen.")
+            string: "I have lost my connection, chef. Your steps stay right here on the screen.")
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
         offlineVoice.speak(utterance)
     }

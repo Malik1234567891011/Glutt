@@ -45,7 +45,7 @@ async function deviceCapExceeded(deviceId) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("x-glutt-proxy-version", "polly-2026-07-24-2");
+  res.setHeader("x-glutt-proxy-version", "polly-2026-07-30-reasoning");
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -72,31 +72,65 @@ export default async function handler(req, res) {
   // releases — shipped v1 WS clients override this in their own
   // session.update, so pinning here cannot affect them.
   const eagerness = (process.env.POLLY_VAD_EAGERNESS || "").trim() || "low";
+  // Reasoning effort is the single biggest quality knob on gpt-realtime-2.1 and
+  // we were not setting it, so Polly ran at OpenAI's default. Their migration
+  // guide says "set reasoning effort to low instead of the default", which means
+  // the default is HIGHER than low, but they never publish which — so leaving it
+  // unset means we do not know what we are running. Pin it.
+  //
+  // "high" is deliberate: on the Artificial Analysis S2S index, gpt-realtime-2.1
+  // goes 72.5% -> 79.1% overall between minimal and high, and agentic (tau-Voice,
+  // which IS tool calling) goes 38.0% -> 45.7%. Polly calls 15 tools, so that is
+  // the column that matters. Cost is ~+240ms time-to-first-audio, well inside
+  // PollyConfig.responseWatchdogSeconds (4s) — but watch that number, because if
+  // latency ever crosses the watchdog she starts interrupting herself to
+  // apologise. Drop to "medium" if it does.
+  const REASONING_EFFORTS = ["minimal", "low", "medium", "high", "xhigh"];
+  const requestedEffort = (process.env.POLLY_REASONING_EFFORT || "").trim() || "high";
+  // "off" is an escape hatch: omit the field entirely and take the server default.
+  const effort = REASONING_EFFORTS.includes(requestedEffort) ? requestedEffort : null;
+  // What we ACTUALLY minted with, after any fallback. Reported back so a bad
+  // env value or a silent OpenAI rejection shows up in the debug log rather
+  // than as an unexplained drop in answer quality.
+  let appliedEffort = effort;
 
-  const startedAt = Date.now();
-  try {
-    const upstream = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
+  const sessionBody = (withReasoning) => ({
+    expires_after: { anchor: "created_at", seconds: 600 },
+    session: {
+      type: "realtime",
+      model,
+      ...(withReasoning && effort ? { reasoning: { effort } } : {}),
+      audio: {
+        input: {
+          turn_detection: { type: "semantic_vad", eagerness },
+          noise_reduction: { type: "far_field" },
+          transcription: { model: "gpt-4o-transcribe", language: "en" },
+        },
+        output: { voice },
+      },
+    },
+  });
+
+  const mint = (withReasoning) =>
+    fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${openAIKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        expires_after: { anchor: "created_at", seconds: 600 },
-        session: {
-          type: "realtime",
-          model,
-          audio: {
-            input: {
-              turn_detection: { type: "semantic_vad", eagerness },
-              noise_reduction: { type: "far_field" },
-              transcription: { model: "gpt-4o-transcribe", language: "en" },
-            },
-            output: { voice },
-          },
-        },
-      }),
+      body: JSON.stringify(sessionBody(withReasoning)),
     });
+
+  const startedAt = Date.now();
+  try {
+    let upstream = await mint(true);
+    // A rejected mint means no cook at all, so never let a tuning knob be fatal:
+    // if OpenAI refuses the reasoning block (unsupported model, renamed field),
+    // fall back to a plain mint rather than failing the session.
+    if (!upstream.ok && effort && upstream.status === 400) {
+      appliedEffort = null;
+      upstream = await mint(false);
+    }
 
     if (!upstream.ok) {
       await logUsage({
@@ -126,11 +160,13 @@ export default async function handler(req, res) {
     });
 
     res.setHeader("Cache-Control", "no-store");
+    res.setHeader("x-glutt-polly-reasoning", appliedEffort || "default");
     return res.status(200).json({
       value: data.value,
       expiresAt: data.expires_at ?? null,
       model,
       voice,
+      reasoningEffort: appliedEffort,
     });
   } catch {
     await logUsage({

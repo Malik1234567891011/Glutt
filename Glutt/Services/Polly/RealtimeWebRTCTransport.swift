@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import LiveKitWebRTC
+import os
 
 /// What the session wants from the mic. The transport's governor combines
 /// this with live playback state (half-duplex + voice-reopen + greeting
@@ -135,6 +136,13 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     private var greetingFailsafeTask: Task<Void, Never>?
     private var routeObserver: NSObjectProtocol?
 
+    /// How many transports exist right now. A healthy cook is 1; a reconnect
+    /// briefly touches 2 and must settle back to 1. Anything that stays above 1
+    /// means a leaked stack — a second audio device module and a second claim on
+    /// the microphone, which is inaudible in code review and unmistakable in a
+    /// kitchen. Logged on every init and deinit so the debug dump proves it.
+    private static let liveCount = OSAllocatedUnfairLock(initialState: 0)
+
     override init() {
         let (stream, continuation) = AsyncStream.makeStream(of: RealtimeServerEvent.self)
         self.events = stream
@@ -143,6 +151,13 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         self.hook = hook
         self.renderMonitor = PollyRenderMonitor(hook: hook)
         super.init()
+        let n = Self.liveCount.withLock { $0 += 1; return $0 }
+        PollyDebugLog.shared.log("transport: init (live=\(n))")
+    }
+
+    deinit {
+        let n = Self.liveCount.withLock { $0 -= 1; return $0 }
+        PollyDebugLog.shared.log("transport: deinit (live=\(n))")
     }
 
     // MARK: - RealtimeTransporting

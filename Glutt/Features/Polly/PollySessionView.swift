@@ -621,7 +621,14 @@ struct PollySessionView: View {
             Button("Try again") {
                 Haptics.impact(.medium)
                 self.controller = nil
-                Task { await startSession() }
+                // Let the dead session go before standing a new one up. Dropping
+                // the reference alone left its WebRTC stack alive and still holding
+                // the microphone, so the retry fought the corpse of the attempt it
+                // was replacing. abandon() releases without recording a cook.
+                Task {
+                    await controller.abandon()
+                    await startSession()
+                }
             }
             .buttonStyle(.gluttPrimary)
             Button("Cook without Polly") {

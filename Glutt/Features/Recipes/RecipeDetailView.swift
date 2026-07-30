@@ -45,8 +45,6 @@ struct RecipeDetailView: View {
     /// 0 while the photo is in full view, 1 once the top bar has gone solid.
     /// Quantized in `trackScroll` so scrolling doesn't re-run this body per frame.
     @State private var barProgress: Double = 0
-    /// Whether the in-flight back swipe has already earned its tick.
-    @State private var backSwipeCommitted = false
 
     private static let scrollSpace = "recipeDetailScroll"
     /// The photo is 330pt tall; the bar is solid a little before it's fully gone.
@@ -83,24 +81,11 @@ struct RecipeDetailView: View {
         if stepped != barProgress { barProgress = stepped }
     }
 
-    // MARK: - Swipe back
-
-    /// A single tick once a back swipe has gone far enough that letting go will
-    /// close the recipe, the way Airbnb confirms the gesture. The system pop
-    /// exposes no progress, so this reads the same drag alongside it.
-    private var backSwipeTick: some Gesture {
-        DragGesture(minimumDistance: 12, coordinateSpace: .local)
-            .onChanged { value in
-                // Only the edge-swipe zone, and only while it's a sideways drag.
-                guard value.startLocation.x < 44,
-                      value.translation.width > abs(value.translation.height) else { return }
-                let committed = value.translation.width > 130
-                guard committed != backSwipeCommitted else { return }
-                backSwipeCommitted = committed
-                if committed { Haptics.impact(.light) }
-            }
-            .onEnded { _ in backSwipeCommitted = false }
-    }
+    // Deliberately no haptic on the back swipe. Reading the drag alongside the
+    // system pop (a `simultaneousGesture(DragGesture)`) competed with it: the
+    // tick fired but the swipe often failed to leave the screen. Airbnb's
+    // confirm-tick needs the pop gesture's own progress, which SwiftUI and
+    // UIKit both keep private.
 
     private var scale: Double {
         guard recipe.servings > 0 else { return 1 }
@@ -140,7 +125,6 @@ struct RecipeDetailView: View {
         .background(Theme.Colors.background)
         .toolbar(.hidden, for: .navigationBar)
         .overlay(alignment: .top) { topBar }
-        .simultaneousGesture(backSwipeTick)
         .safeAreaInset(edge: .bottom) { cookBar }
         .fullScreenCover(isPresented: $isCooking) { CookModeView(recipe: recipe, scale: scale) }
         .fullScreenCover(isPresented: $isShowingCookBriefing) {

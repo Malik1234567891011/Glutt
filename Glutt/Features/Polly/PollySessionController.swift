@@ -178,9 +178,20 @@ final class PollySessionController {
                     recipeTitle: self.recipe.title,
                     steps: plan.steps
                 )
+                let merged = StepClipFallbacks.merge(
+                    indexed: response.clips,
+                    steps: plan.steps,
+                    youtubeURL: sourceURL
+                )
                 var map: [String: StepClip] = [:]
-                for clip in response.clips {
+                for clip in merged {
                     map[clip.stepID] = clip
+                }
+                // If Gemini timed out / returned nothing, still show pilot fallbacks.
+                if map.isEmpty {
+                    for clip in StepClipFallbacks.clips(for: plan.steps, youtubeURL: sourceURL) {
+                        map[clip.stepID] = clip
+                    }
                 }
                 self.stepClipsByID = map
                 PollyDebugLog.shared.log(
@@ -188,7 +199,14 @@ final class PollySessionController {
                 )
                 self.publishSessionUI()
             } catch {
-                PollyDebugLog.shared.log("clips: index failed — \(error.localizedDescription)")
+                let fallbacks = StepClipFallbacks.clips(for: plan.steps, youtubeURL: sourceURL)
+                var map: [String: StepClip] = [:]
+                for clip in fallbacks { map[clip.stepID] = clip }
+                self.stepClipsByID = map
+                PollyDebugLog.shared.log(
+                    "clips: index failed — \(error.localizedDescription); fallback=\(map.count)"
+                )
+                self.publishSessionUI()
             }
         }
     }

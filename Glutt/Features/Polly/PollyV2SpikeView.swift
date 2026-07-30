@@ -219,14 +219,14 @@ final class PollyV2SpikeModel {
                 append("governor: mic held through greeting (AEC converging)")
                 append(transport.audioDiagnostics())
 
-                // The echo verdict, from the horse's mouth: if Apple's platform
-                // echo canceller isn't ACTIVE shortly after the engine starts,
-                // flip on libWebRTC's software AEC (mobile mode) live.
+                // The echo verdict, from the horse's mouth. Production now applies
+                // the audio-lab settings itself in connect(), so this only reports
+                // what happened rather than being the only place it can happen.
                 try? await Task.sleep(for: .seconds(1.5))
                 append(transport.audioDiagnostics())
                 if !transport.isPlatformAECActive {
-                    transport.enableSoftwareAEC()
-                    append("! platform AEC inactive → software AEC3 (mobile) enabled")
+                    transport.setSoftwareAEC(true)
+                    append("! platform AEC inactive → software AEC3 enabled")
                     try? await Task.sleep(for: .milliseconds(500))
                     append(transport.audioDiagnostics())
                 }

@@ -684,6 +684,13 @@ final class PollySessionController {
         }
         do {
             try await transport.connect(token: token.value, model: token.model)
+            // Echo cancellation, applied and then verified, in the path a real
+            // cook actually takes. Every AEC control used to be reachable only
+            // from the -pollyV2Spike debug screen, so production could neither
+            // enable software AEC nor find out that the platform one had
+            // declined. Silence here is what made "the audio just breaks"
+            // impossible to diagnose.
+            webrtc?.applyAudioLabAndReport()
             try await transport.send(.sessionUpdate(config))
             PollyDebugLog.shared.log("session: WebRTC connected — session.update sent")
         } catch {
@@ -874,6 +881,10 @@ final class PollySessionController {
     }
 
     func toggleMute() { audio.isMuted.toggle() }   // haptic lives in the view
+
+    /// Push a flipped audio-lab setting down to the live transport. Flipping one
+    /// mid-cook is the entire point of shipping them.
+    func refreshAudioLab() { webrtc?.refreshAudioLab() }
 
     // MARK: - Wake-word / follow-up gate
 
@@ -1572,6 +1583,7 @@ final class PollySessionController {
                 webrtc.onCaptureBuffer = { buffer in wake.append(buffer) }
             }
             try await transport.connect(token: token.value, model: token.model)
+            (transport as? RealtimeWebRTCTransport)?.applyAudioLabAndReport()
             if var config = liveConfig {
                 config.voice = token.voice
                 config.model = token.model

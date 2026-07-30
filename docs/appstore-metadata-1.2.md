@@ -25,11 +25,13 @@ Ordered by how likely each one is to cost you the release.
 
 ### 1.1 The three real chefs are the biggest risk in this build
 
-> **Decided 2026-07-30: held back from 1.2.** `ChefContent.isEnabled = false` now gates the
-> rail on the Recipes home, the bundled dish rows in `GluttApp`, and the `-openChef` launch
-> hook. Simulator build passes with no warnings. Flip the one flag in
-> `Glutt/Models/Chefs.swift` to bring the feature back. The rest of this section is the why,
-> and what has to be true before you flip it.
+> **Reversed 2026-07-30: the rail ships.** `ChefContent.isEnabled` was flipped back to
+> `true` at Omar's call, so the rail on the Recipes home, the bundled dish rows in
+> `GluttApp` and the `-openChef` hook are all live again. The exposure below is unchanged
+> and unmitigated: the chefs go out by name, likeness and unlicensed photography. If review
+> comes back on 5.2, the fix is that same one flag in `Glutt/Models/Chefs.swift`, so the
+> turnaround is a build rather than a redesign. Keep the names out of the store metadata
+> either way.
 
 `Glutt/Models/Chefs.swift` ships **Gordon Ramsay, Nick DiGiovanni and Joshua Weissman**
 by name, with credit lines ("Michelin chef, London", "MasterChef finalist"), portraits, and
@@ -363,8 +365,9 @@ accuracy problem as section 1.3 in a different document.
 
 ## 5. Submission checklist
 
-- [x] Chef rail held back for 1.2 via `ChefContent.isEnabled = false`, simulator build clean,
-      and the chef paragraph removed from What's New
+- [x] Chef rail **on** for 1.2 (`ChefContent.isEnabled = true`, reversed 2026-07-30).
+      5.2 likeness exposure accepted; one flag reverts it if review objects. What's New
+      still has no chef paragraph, and no chef name appears in any store metadata
 - [ ] Change the app name to `Glutt: Recipes & AI Chef` in the 1.2 version record
 - [x] Build bumped to 12 and `xcodegen generate` run
 - [ ] Tick **Sign-in required** in App Review Information. Glutt walls the app behind Sign in

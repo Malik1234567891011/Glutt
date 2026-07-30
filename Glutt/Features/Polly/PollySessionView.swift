@@ -260,6 +260,18 @@ struct PollySessionView: View {
                     UIPasteboard.general.string = PollyDebugLog.shared.dump()
                     Haptics.notify(.success)
                 }
+                // Audio lab. Both settings take effect immediately on the live
+                // transport, so one cook can A/B them instead of two installs.
+                // Neither behaviour is reproducible off a real device, which is
+                // why these ship rather than hiding behind a Debug build.
+                Menu("Audio lab", systemImage: "waveform") {
+                    Toggle("Stacked echo cancel", isOn: Binding(
+                        get: { PollyAudioLab.stackedAEC },
+                        set: { PollyAudioLab.stackedAEC = $0; controller.refreshAudioLab() }))
+                    Toggle("Keep mic open while she talks", isOn: Binding(
+                        get: { PollyAudioLab.fullDuplex },
+                        set: { PollyAudioLab.fullDuplex = $0; controller.refreshAudioLab() }))
+                }
                 Button("End without saving", systemImage: "xmark", role: .destructive) {
                     isEndingWithoutSaving = true
                     Task { await controller.end(context: context, endedEarly: true); dismiss() }

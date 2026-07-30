@@ -93,17 +93,54 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
             + " tapB[f=\(engineTap.statsB.frames) rms=\(String(format: "%.3f", engineTap.statsB.rms)) pk=\(String(format: "%.3f", engineTap.statsB.peak))]"
     }
 
-    /// Fallback when the platform (VPIO) echo canceller won't engage: turn on
-    /// libWebRTC's software AEC in mobile mode. Runtime-swappable by design —
-    /// the APM's `config` property applies live.
-    func enableSoftwareAEC() {
+    /// Turn libWebRTC's software echo canceller on or off. Runtime-swappable by
+    /// design — the APM's `config` property applies live, which is what makes an
+    /// in-session A/B possible at all.
+    ///
+    /// `mobileMode` selects AECM, webrtc's legacy mobile canceller, rather than
+    /// AEC3. It defaults to false: AEC3 is the modern one, and the log line that
+    /// used to call the old setting "software AEC3 (mobile)" was simply wrong
+    /// about which canceller it had enabled.
+    func setSoftwareAEC(_ enabled: Bool, mobileMode: Bool = false) {
         guard let apm = lock.withLock({ processingModule }) else { return }
         let config = LKRTCAudioProcessingConfig()
-        config.isEchoCancellationEnabled = true
-        config.isEchoCancellationMobileMode = true
+        config.isEchoCancellationEnabled = enabled
+        config.isEchoCancellationMobileMode = mobileMode
         config.isNoiseSuppressionEnabled = true
         config.isHighpassFilterEnabled = true
         apm.config = config
+        PollyDebugLog.shared.log(
+            "audio: software AEC \(enabled ? (mobileMode ? "ON (AECM)" : "ON (AEC3)") : "OFF")")
+    }
+
+    /// Re-apply the lab toggles mid-session. Shipping them in the overflow menu
+    /// is only useful if flipping one takes effect without a rebuild, which
+    /// means the transport has to be told.
+    func refreshAudioLab() {
+        setSoftwareAEC(PollyAudioLab.stackedAEC)
+        lock.withLock { resolveTrackLocked() }
+        PollyDebugLog.shared.log(PollyAudioLab.summary)
+    }
+
+    /// Apply the audio-lab experiments and then report what the hardware
+    /// actually did. Called from the production connect path, which is the whole
+    /// point: every AEC control in this file used to be reachable only from a
+    /// launch-argument-gated debug screen, so a shipping cook could neither turn
+    /// echo cancellation on nor discover that it was off.
+    func applyAudioLabAndReport() {
+        setSoftwareAEC(PollyAudioLab.stackedAEC)
+        PollyDebugLog.shared.log(PollyAudioLab.summary)
+        // The ADM reports requested-vs-active only once input is configured, so
+        // reading it immediately after connect returns a meaningless NO.
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(1500))
+            guard let self else { return }
+            PollyDebugLog.shared.log(self.audioDiagnostics())
+            if !self.isPlatformAECActive {
+                PollyDebugLog.shared.log(
+                    "audio: WARNING platform AEC (VPIO) is NOT active — software AEC is all that stands between her voice and the mic")
+            }
+        }
     }
 
     private let continuation: AsyncStream<RealtimeServerEvent>.Continuation
@@ -327,7 +364,14 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
 
     /// The one place track state is computed. Caller must hold `lock`.
     private func resolveTrackLocked() {
-        let enabled = micMode == .open && !greetingHold && (!assistantSpeaking || voiceReopened)
+        // Half-duplex: the mic track is closed for Polly's entire utterance, so
+        // echo phantoms are physically impossible — but so is simply talking over
+        // her. Getting back in means clearing an RMS gate, which is why
+        // interrupting her takes a raised voice. Full duplex hands that job to
+        // the echo canceller instead, which is only a good trade if the canceller
+        // is actually running. Hence the toggle, and hence logging AEC state.
+        let duplexAllows = PollyAudioLab.fullDuplex || !assistantSpeaking || voiceReopened
+        let enabled = micMode == .open && !greetingHold && duplexAllows
         micTrack?.isEnabled = enabled
         hook.setServerMuted(!enabled)
     }

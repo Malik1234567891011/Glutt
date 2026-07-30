@@ -92,6 +92,10 @@ final class PollySessionController {
     /// the hold is released — the bug it replaces was invisible from outside.
     private(set) var micHeldForClipAudio = false
     private var clipMicFailsafeTask: Task<Void, Never>?
+    /// When the cook stopped talking, for the voice-to-voice timer.
+    private var speechStoppedAt: Date?
+    /// Every measured speech-end to her-audio-start gap this session, in ms.
+    private var voiceToVoiceMs: [Int] = []
     /// Set by the `end_session` tool; the session view observes it and calls `end`.
     private(set) var wantsEnd = false
     /// Session start — used by the Cook Recap for elapsed time.
@@ -801,13 +805,24 @@ final class PollySessionController {
             // `polly_session_started` with no matching end is a crash, a force
             // quit or a lost network, and the gap between the two counts is
             // worth watching on its own.
-            Analytics.capture(.cookFinished, [
+            var properties: [String: Any] = [
                 "with_polly": true,
                 "duration_s": Int(duration.rounded()),
                 "ended_early": endedEarly,
                 "steps_done": registry?.state.completedStepIDs.count ?? 0,
                 "steps_total": plan?.steps.count ?? 0,
-            ])
+            ]
+            // One event per session, not per turn: the distribution is the
+            // signal and PollyDebugLog cannot hold it (in-memory, capped at 800
+            // lines, and only readable if a human long-presses and pastes).
+            if let p = voiceToVoicePercentiles() {
+                properties["voice_to_voice_p50_ms"] = p.p50
+                properties["voice_to_voice_p95_ms"] = p.p95
+                properties["voice_to_voice_turns"] = voiceToVoiceMs.count
+                PollyDebugLog.shared.log(
+                    "⏱ voice-to-voice p50=\(p.p50)ms p95=\(p.p95)ms over \(voiceToVoiceMs.count) turns")
+            }
+            Analytics.capture(.cookFinished, properties)
         }
 
         flushPendingAssistantLine()
@@ -888,6 +903,41 @@ final class PollySessionController {
     /// Push a flipped audio-lab setting down to the live transport. Flipping one
     /// mid-cook is the entire point of shipping them.
     func refreshAudioLab() { webrtc?.refreshAudioLab() }
+
+    // MARK: - Voice-to-voice latency
+
+    /// The cook stopped talking; how long until her voice came out of the
+    /// speaker? This existed only in PollyV2SpikeView, a screen gated behind a
+    /// launch argument that never runs in a shipping cook, so the number has
+    /// never been measured on the path that matters.
+    ///
+    /// It matters more now than it did: `reasoning.effort` is pinned to high on
+    /// the proxy, which buys a real jump in tool-calling accuracy at the cost of
+    /// roughly 240ms, and `PollyConfig.responseWatchdogSeconds` forces a spoken
+    /// "say that again?" repair at 4 seconds. If latency ever crosses that line
+    /// Polly starts interrupting herself to apologise, and the fix is to drop to
+    /// medium. Without this measurement that failure looks like a mystery.
+    private func noteVoiceToVoiceLatency() {
+        guard let started = speechStoppedAt else { return }
+        speechStoppedAt = nil
+        let ms = Int(deps.now().timeIntervalSince(started) * 1000)
+        // Guard against a stale mark from an earlier turn producing nonsense.
+        guard ms >= 0, ms < 60_000 else { return }
+        voiceToVoiceMs.append(ms)
+        PollyDebugLog.shared.log("⏱ voice-to-voice \(ms) ms")
+    }
+
+    /// p50 / p95 over the session, for the one analytics event at the end.
+    /// Per-turn events would be noise; the distribution is the signal.
+    private func voiceToVoicePercentiles() -> (p50: Int, p95: Int)? {
+        guard !voiceToVoiceMs.isEmpty else { return nil }
+        let sorted = voiceToVoiceMs.sorted()
+        func percentile(_ p: Double) -> Int {
+            let index = Int((Double(sorted.count - 1) * p).rounded())
+            return sorted[min(max(index, 0), sorted.count - 1)]
+        }
+        return (percentile(0.50), percentile(0.95))
+    }
 
     /// A call, alarm, Siri or another app took the microphone and then gave it
     /// back. Previously nothing observed this at all: `DormantReason
@@ -1380,6 +1430,7 @@ final class PollySessionController {
             // event). Playback, interruption, and truncation are all handled
             // server-side + by the transport's governor now.
             PollyDebugLog.shared.log("event: assistant audio START")
+            noteVoiceToVoiceLatency()
             isPollySpeaking = true
             isThinking = false
             watchdogStrikes = 0
@@ -1419,6 +1470,7 @@ final class PollySessionController {
             PollyDebugLog.shared.log("event: speech stopped — waiting on transcript + gate")
             isListening = false
             awaitingTranscript = true
+            speechStoppedAt = deps.now()
             noteUserActivity()
             // Never-silent contract: her audio must start within the watchdog
             // window, or a spoken repair is forced.

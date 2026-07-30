@@ -6,7 +6,21 @@ final class YouTubeEmbedTests: XCTestCase {
         // The WKWebView loads this URL directly so the page has a real https
         // origin (loadHTMLString's opaque origin makes YouTube reject embeds).
         let url = YouTubeEmbed.playerURL(videoId: "abc123", baseURL: "https://example.test/api")
-        XCTAssertEqual(url?.absoluteString, "https://example.test/api/discover/player?v=abc123")
+        XCTAssertEqual(url?.absoluteString, "https://example.test/api/discover/player?v=abc123&mute=1")
+    }
+
+    func testPlayerURLIncludesStartEndWindow() {
+        let url = YouTubeEmbed.playerURL(
+            videoId: "abc123",
+            startSeconds: 42,
+            endSeconds: 58,
+            mute: true,
+            baseURL: "https://example.test/api"
+        )
+        XCTAssertEqual(
+            url?.absoluteString,
+            "https://example.test/api/discover/player?v=abc123&start=42&end=58&mute=1&w=42-58"
+        )
     }
 
     func testPlayerURLIsNilWhenBaseURLEmpty() {

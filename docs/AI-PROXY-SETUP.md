@@ -1,6 +1,6 @@
 # Glutt AI Proxy (production, on Vercel)
 
-Architecture: `iOS app -> Vercel API routes (vercel-ai-proxy/) -> OpenAI / Spoonacular / YouTube`.
+Architecture: `iOS app -> Vercel API routes (vercel-ai-proxy/) -> OpenAI / Gemini / Spoonacular / YouTube`.
 Users never see or manage API keys; Vercel auto-deploys the proxy from `main`.
 
 ## 1) Deploy
@@ -16,6 +16,8 @@ Users never see or manage API keys; Vercel auto-deploys the proxy from `main`.
 - `GLUTT_PROXY_CLIENT_KEY` — shared secret gate; if set, callers must send it
   back as the `x-glutt-proxy-key` header.
 - `YOUTUBE_API_KEY` (or `GLUTT_YOUTUBE_KEY`) — YouTube Data API v3 key, powers Discover.
+- `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) — Gemini video understanding for Polly step-clips (`POST /api/cook/clips`). Free-tier YouTube URL analysis is enough for pilots; billing optional until volume grows.
+- `GEMINI_MODEL` — optional, defaults to `gemini-2.5-flash`.
 - `SPOONACULAR_API_KEY` (or `SPOONACULAR_API`) — powers the Plates photo-recipe feed.
 - `POLLY_REALTIME_MODEL` — optional, defaults to `gpt-realtime-2`.
 - `POLLY_VOICE` — optional, defaults to `marin`.
@@ -44,7 +46,8 @@ back to on-device heuristics where designed.
 | `POST /api/polly/session` | Polly live chef | Mints a short-lived OpenAI Realtime client secret (`ek_...`, ~10 min TTL) so the app opens a Realtime WebSocket without ever holding the long-lived key |
 | `GET /api/discover/search?q=<dish>&pageToken=<optional>` | Recipes → Discover | YouTube keyword search for embeddable cooking videos |
 | `GET /api/discover/suggested?tags=<optional>` | Discover open-tab feed | Biased by taste tags, else rotating popular query; never paginates |
-| `GET /api/discover/player` | Discover | Embeddable player helper |
+| `GET /api/discover/player` | Discover / Polly clips | Embeddable player (`v`, optional `start`/`end`/`mute`) |
+| `POST /api/cook/clips` | Polly step technique clips | Gemini segment+match (rewrites onto `discover/suggested` POST to stay under Hobby’s 12-function cap) |
 | `GET/POST /api/plates/deck` + `/api/plates/search` | Plates photo-recipe feed | Spoonacular-backed, edge-cached per page/UTC day |
 
 All routes that accept a client key check it via the `x-glutt-proxy-key` header

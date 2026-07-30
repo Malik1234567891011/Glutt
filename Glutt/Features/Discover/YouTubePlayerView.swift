@@ -20,10 +20,28 @@ enum YouTubeEmbed {
     /// an opaque origin that YouTube rejects ("This video is unavailable",
     /// errors 150/152/153). Reuses the configured proxy base so it tracks the
     /// same host as the rest of Discover.
-    static func playerURL(videoId: String, baseURL: String = Secrets.aiProxyBaseURL) -> URL? {
+    static func playerURL(
+        videoId: String,
+        startSeconds: Int? = nil,
+        endSeconds: Int? = nil,
+        mute: Bool = true,
+        baseURL: String = Secrets.aiProxyBaseURL
+    ) -> URL? {
         let base = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !base.isEmpty, var comps = URLComponents(string: "\(base)/discover/player") else { return nil }
-        comps.queryItems = [URLQueryItem(name: "v", value: videoId)]
+        var items = [URLQueryItem(name: "v", value: videoId)]
+        if let startSeconds, startSeconds >= 0 {
+            items.append(URLQueryItem(name: "start", value: String(startSeconds)))
+        }
+        if let endSeconds, endSeconds > (startSeconds ?? 0) {
+            items.append(URLQueryItem(name: "end", value: String(endSeconds)))
+        }
+        items.append(URLQueryItem(name: "mute", value: mute ? "1" : "0"))
+        // Bust any intermediary caches when the window changes.
+        if let startSeconds, let endSeconds {
+            items.append(URLQueryItem(name: "w", value: "\(startSeconds)-\(endSeconds)"))
+        }
+        comps.queryItems = items
         return comps.url
     }
 }
@@ -31,6 +49,9 @@ enum YouTubeEmbed {
 /// Plays a YouTube video via the official IFrame player inside a WKWebView.
 struct YouTubePlayerView: UIViewRepresentable {
     let videoId: String
+    var startSeconds: Int? = nil
+    var endSeconds: Int? = nil
+    var mute: Bool = true
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -44,16 +65,26 @@ struct YouTubePlayerView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        // Reload only when the video changes to avoid restarting playback on every redraw.
-        guard context.coordinator.loadedVideoId != videoId else { return }
-        guard let url = YouTubeEmbed.playerURL(videoId: videoId) else { return }
-        context.coordinator.loadedVideoId = videoId
+        let token = loadToken
+        // Reload only when the clip window changes to avoid restarting on redraw.
+        guard context.coordinator.loadedToken != token else { return }
+        guard let url = YouTubeEmbed.playerURL(
+            videoId: videoId,
+            startSeconds: startSeconds,
+            endSeconds: endSeconds,
+            mute: mute
+        ) else { return }
+        context.coordinator.loadedToken = token
         webView.load(URLRequest(url: url))
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
+    private var loadToken: String {
+        "\(videoId)|\(startSeconds ?? -1)|\(endSeconds ?? -1)|\(mute ? 1 : 0)"
+    }
+
     final class Coordinator {
-        var loadedVideoId: String?
+        var loadedToken: String?
     }
 }

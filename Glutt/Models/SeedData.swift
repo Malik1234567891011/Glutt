@@ -7,7 +7,7 @@ import SwiftData
 /// Bump `seedVersion` to wipe and reseed after content changes.
 enum SeedData {
 
-    private static let seedVersion = 2
+    private static let seedVersion = 7
     private static let seedVersionKey = "glutt.seedVersion"
 
     static func seedIfNeeded(context: ModelContext) {
@@ -55,14 +55,18 @@ enum SeedData {
         let protein: Int?
         let ingredients: [(String, Double?, String?, IngredientRole?)]
         let steps: [(String, Int?)]
+        /// When set, overrides the placeholder `example.com` source URL.
+        var sourceURL: String? = nil
     }
 
     private static func build(_ seed: Seed) -> Recipe {
+        let resolvedSourceURL = seed.sourceURL
+            ?? (seed.creator != nil ? "https://example.com/\(seed.asset)" : nil)
         let recipe = Recipe(
             title: seed.title,
             summary: seed.summary,
             sourceCreator: seed.creator,
-            sourceURL: seed.creator != nil ? "https://example.com/\(seed.asset)" : nil,
+            sourceURL: resolvedSourceURL,
             sourcePlatform: seed.platform,
             importedAt: seed.platform == .manual ? nil : .now,
             importConfidence: seed.confidence,

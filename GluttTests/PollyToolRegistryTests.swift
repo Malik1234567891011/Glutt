@@ -111,9 +111,10 @@ final class PollyToolRegistryTests: XCTestCase {
             "get_current_step", "mark_step_done", "check_step_actions", "go_to_step",
             "start_timer", "check_timers", "cancel_timer", "check_pantry",
             "find_substitutes", "get_nutrition", "adjust_servings", "remember_fact",
-            "record_polly_save", "request_camera_frame", "end_session",
+            "record_polly_save", "request_camera_frame", "end_session", "show_step_video",
+            "control_step_video", "dismiss_preflight",
         ])
-        XCTAssertEqual(PollyToolRegistry.toolDefinitions.count, 15)
+        XCTAssertEqual(PollyToolRegistry.toolDefinitions.count, 18)
 
         for definition in PollyToolRegistry.toolDefinitions {
             XCTAssertFalse(definition.description.isEmpty, definition.name)

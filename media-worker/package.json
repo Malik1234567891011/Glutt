@@ -1,0 +1,22 @@
+{
+  "name": "glutt-media-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "ingest": "node src/cli.js ingest",
+    "worker": "node src/cli.js worker",
+    "pilot": "node src/cli.js pilot-eggs-benedict",
+    "pilot:wellington": "node scripts/finishPilot.js Cyskqnp1j64",
+    "evidence": "node src/cli.js evidence",
+    "normalize": "node src/cli.js normalize",
+    "serve-local": "node src/localPlaybackServer.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.850.0",
+    "@aws-sdk/s3-request-presigner": "^3.850.0"
+  }
+}

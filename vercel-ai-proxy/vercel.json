@@ -1,5 +1,15 @@
 {
   "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/cook/clips",
+      "destination": "/api/discover/suggested"
+    },
+    {
+      "source": "/api/media/ingest",
+      "destination": "/api/health"
+    }
+  ],
   "functions": {
     "api/**/*.js": {
       "runtime": "@vercel/node@5.3.24",
@@ -7,4 +17,3 @@
     }
   }
 }
-

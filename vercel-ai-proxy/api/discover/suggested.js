@@ -1,10 +1,14 @@
 import { isAuthorized } from "../_lib/auth.js";
 import { logUsage, installIdFrom } from "../_lib/usage.js";
+import { handleCookClips } from "../_lib/cookClips.js";
 // Discover suggested feed: shown when the user opens Discover with no query.
 // Returns the same shape as /discover/search. Biased by optional taste `tags`
 // (comma-separated, derived from the user's saved-recipe tags); otherwise a
 // rotating popular cooking query. Never paginates (the feed is short by design),
 // so nextPageToken is always null.
+//
+// Also hosts POST cook-clip indexing (Hobby plan is capped at 12 serverless
+// functions). /api/cook/clips rewrites here so the client keeps a clean URL.
 
 function resolveYouTubeKey() {
   return (process.env.YOUTUBE_API_KEY || process.env.GLUTT_YOUTUBE_KEY || "").trim();
@@ -41,10 +45,15 @@ const ROTATING_QUERIES = [
 ];
 
 export default async function handler(req, res) {
+  // POST = Polly step-clip indexing (rewritten from /api/cook/clips).
+  if (req.method === "POST") {
+    return handleCookClips(req, res);
+  }
+
   res.setHeader("x-glutt-proxy-version", "discover-2026-06-20-1");
 
   if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
 

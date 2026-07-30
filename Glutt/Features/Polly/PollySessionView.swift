@@ -27,7 +27,6 @@ struct PollySessionView: View {
     @State private var isShowingFinish = false
     @State private var isEndingWithoutSaving = false
     @State private var micDenied = false
-    @State private var didDismissPreflight = false
     @State private var isCookingWithoutPolly = false
 
     var body: some View {
@@ -144,15 +143,25 @@ struct PollySessionView: View {
 
     private var sessionContent: some View {
         ZStack {
-            background
+            CookCanvasTheme.mainBlack.ignoresSafeArea()
             if micDenied {
                 micDeniedCard
             } else if let controller {
+                PollyAdaptiveCanvasView(
+                    controller: controller,
+                    recipe: recipe,
+                    onMinimize: { isConfirmingExit = true },
+                    onRequestEnd: { isConfirmingExit = true },
+                    onStartTimer: { step, seconds in
+                        startTimer(for: step, seconds: seconds, controller: controller)
+                    }
+                )
                 if isActivelyListening(controller) { ListeningEdge() }
-                overlayChrome(for: controller)
                 phaseOverlay(for: controller)
-                // One-shot glide across the whole screen the moment she wakes.
                 if controller.listeningMode == .listening { ListeningSweep() }
+            } else {
+                ProgressView()
+                    .tint(CookCanvasTheme.green)
             }
         }
     }
@@ -201,7 +210,10 @@ struct PollySessionView: View {
                     onToggleItem: { controller.toggleChecklistItem($0) },
                     onStartTimer: { step, seconds in
                         startTimer(for: step, seconds: seconds, controller: controller)
-                    }
+                    },
+                    currentNativeClip: controller.nativeClipForCurrentStep(),
+                    onNativeMediaState: { controller.updateMediaState($0) },
+                    currentStepClip: controller.clipForCurrentStep()
                 )
                 .id(controller.sessionUIEpoch)
                 .padding(.top, 14)
@@ -359,8 +371,10 @@ struct PollySessionView: View {
 
     private func bottomCluster(for controller: PollySessionController) -> some View {
         VStack(spacing: 16) {
-            if controller.phase == .live, !controller.missingIngredients.isEmpty, !didDismissPreflight {
-                PreflightCard(missing: controller.missingIngredients) { didDismissPreflight = true }
+            if controller.phase == .live, !controller.missingIngredients.isEmpty, !controller.preflightDismissed {
+                PreflightCard(missing: controller.missingIngredients) {
+                    controller.dismissPreflight()
+                }
             }
             if !controller.timers.timers.isEmpty {
                 PollyTimersRow(manager: controller.timers)
@@ -424,6 +438,39 @@ struct PollySessionView: View {
                 .lineSpacing(2)
                 .lineLimit(3)
                 .padding(.top, 5)
+            if let native = controller.nativeClipForCurrentStep() {
+                NativeClipPlayerView(clip: native) { state in
+                    controller.updateMediaState(state)
+                }
+                .frame(maxWidth: .infinity)
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.top, 12)
+                Text("\(native.watchLabel) · \(clipClock(Int(native.startSeconds)))–\(clipClock(Int(native.endSeconds)))")
+                    .font(BrandFont.nunito(11, 700))
+                    .foregroundStyle(Theme.Colors.muted)
+                    .padding(.top, 4)
+            } else if let clip = controller.clipForCurrentStep() {
+                YouTubePlayerView(
+                    videoId: clip.youtubeVideoID,
+                    startSeconds: clip.startSeconds,
+                    endSeconds: clip.endSeconds,
+                    mute: true
+                )
+                .frame(maxWidth: .infinity)
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.top, 12)
+                Text("\(clip.watchLabel) · \(clipClock(clip.startSeconds))–\(clipClock(clip.endSeconds))")
+                    .font(BrandFont.nunito(11, 700))
+                    .foregroundStyle(Theme.Colors.muted)
+                    .padding(.top, 4)
+            } else if controller.isIndexingStepClips {
+                Text("Finding a technique clip…")
+                    .font(BrandFont.nunito(12, 700))
+                    .foregroundStyle(Theme.Colors.muted)
+                    .padding(.top, 10)
+            }
             if let seconds = step.timerSeconds {
                 Button {
                     Haptics.selection()
@@ -447,6 +494,10 @@ struct PollySessionView: View {
         .background(Theme.Colors.card)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .shadow(color: Color.black.opacity(0.3), radius: 20, y: 12)
+    }
+
+    private func clipClock(_ seconds: Int) -> String {
+        String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 
     private func progressBar(done: Int, total: Int) -> some View {

@@ -20,7 +20,7 @@ struct Chef: Identifiable, Hashable {
     }
 }
 
-/// The three chefs and their five most popular recipes each.
+/// The three chefs and their signature dishes (Gordon ships six; others five).
 ///
 /// Chef dishes are real `Recipe` rows (so pantry match, Cook Mode and Polly all
 /// work unchanged) tagged `chef:<slug>` and filtered out of the personal
@@ -93,7 +93,8 @@ enum ChefContent {
 
     /// Bump when dish copy or photography changes so existing installs refresh.
     /// 2: real dish photos replaced the stand-in stock food art.
-    private static let contentVersion = 2
+    /// 3: Eggs Benedict + YouTube source URLs on Gordon clip pilots.
+    private static let contentVersion = 3
     private static let contentVersionKey = "glutt.chefContent.contentVersion"
 
     /// Idempotent: inserts missing chef dishes and refreshes their copy when
@@ -137,6 +138,10 @@ enum ChefContent {
         // human tag if one of these ever surfaces outside a chef page.
         recipe.tags = dish.tags + ["\(tagPrefix)\(chef.id)"]
         recipe.imageAssetName = dish.imageAsset
+        if let sourceURL = dish.sourceURL {
+            recipe.sourceURL = sourceURL
+            recipe.sourcePlatform = .youtube
+        }
         recipe.ingredients = dish.ingredients.enumerated().map { index, line in
             RecipeIngredient(name: line.name, quantity: line.quantity, unit: line.unit, sortIndex: index)
         }
@@ -160,9 +165,37 @@ enum ChefContent {
         let imageAsset: String
         let ingredients: [(name: String, quantity: Double?, unit: String?)]
         let steps: [(text: String, durationSeconds: Int?)]
+        /// Optional YouTube technique video — powers Polly native step clips.
+        let sourceURL: String?
+
+        init(
+            title: String,
+            summary: String,
+            servings: Int,
+            prepMinutes: Int,
+            cookMinutes: Int,
+            difficulty: Difficulty,
+            tags: [String],
+            imageAsset: String,
+            ingredients: [(name: String, quantity: Double?, unit: String?)],
+            steps: [(text: String, durationSeconds: Int?)],
+            sourceURL: String? = nil
+        ) {
+            self.title = title
+            self.summary = summary
+            self.servings = servings
+            self.prepMinutes = prepMinutes
+            self.cookMinutes = cookMinutes
+            self.difficulty = difficulty
+            self.tags = tags
+            self.imageAsset = imageAsset
+            self.ingredients = ingredients
+            self.steps = steps
+            self.sourceURL = sourceURL
+        }
     }
 
-    /// Keyed by chef slug. Each array is that chef's five, most popular first.
+    /// Keyed by chef slug. Pack order is the chef-page rank order.
     private static let pack: [String: [Dish]] = [
         "gordon-ramsay": gordonRamsay,
         "nick-digiovanni": nickDiGiovanni,
@@ -190,12 +223,43 @@ enum ChefContent {
                 ("Olive oil", 2, "tbsp"),
             ],
             steps: [
-                ("Season the fillet hard all over. Sear it in a ripping hot pan with olive oil, about a minute a side, until every face is deep brown. Lift it out, let it cool, then brush the whole thing with mustard.", nil),
+                ("Season the fillet hard all over. Sear it in a ripping hot pan with olive oil, about a minute a side, until every face is deep brown. Lift it out and let it cool.", 300),
+                ("Brush the warm seared fillet all over with English mustard.", 120),
                 ("Blitz the mushrooms to a coarse paste. Dry fry over high heat until all the water has gone and the pan squeaks, 10 to 15 minutes. Add the thyme leaves, season, spread on a tray and cool completely. Wet duxelles is what makes a soggy Wellington.", 900),
                 ("Lay the prosciutto in overlapping rows on cling film. Spread the cool duxelles over it, sit the fillet on top and roll it into a tight cylinder, twisting the ends like a cracker. Chill 20 minutes so it firms up.", 1200),
                 ("Roll the pastry to about 4mm. Unwrap the beef onto it, wrap and seal the seam, trim the ends. Brush all over with egg yolk, score the top lightly and chill another 15 minutes.", 900),
                 ("Bake at 200°C (400°F) for 20 minutes, then drop to 180°C (350°F) for 15 more. That is blushing pink in the middle. Rest it 10 to 15 minutes before you carve, or the juices run out onto the board.", 1200),
-            ]
+            ],
+            sourceURL: "https://www.youtube.com/watch?v=Cyskqnp1j64"
+        ),
+        Dish(
+            title: "Eggs Benedict",
+            summary: "Poached eggs on toasted English muffins with hollandaise",
+            servings: 2, prepMinutes: 15, cookMinutes: 20,
+            difficulty: .intermediate,
+            tags: ["Signature", "Breakfast", "Brunch", "Eggs"],
+            imageAsset: "eggsBenedict",
+            ingredients: [
+                ("Eggs", 4, nil),
+                ("English muffins", 2, nil),
+                ("Butter", 150, "g"),
+                ("Egg yolks", 2, nil),
+                ("Lemon juice", 1, "tbsp"),
+                ("White wine vinegar", 1, "tbsp"),
+                ("Canadian bacon or ham", 4, "slices"),
+                ("Salt", nil, nil),
+                ("Cayenne or white pepper", nil, nil),
+                ("Chives", nil, nil),
+            ],
+            steps: [
+                ("Toast the English muffins cut-side down in a hot pan (with ham fat if you have it) until golden; keep warm.", 180),
+                ("Warm the ham or Canadian bacon in a pan; set aside.", 180),
+                ("Make hollandaise: whisk egg yolks with a splash of water over gentle heat until thickened, then slowly whisk in melted butter and finish with lemon juice, salt, and cayenne.", 480),
+                ("Bring a pot of water to a gentle simmer and add a splash of vinegar.", 300),
+                ("Crack each egg into a cup, swirl the water, and poach 3–4 minutes until whites are set and yolks are soft.", 240),
+                ("Plate: muffin, ham, poached egg, hollandaise; garnish with chives.", nil),
+            ],
+            sourceURL: "https://www.youtube.com/watch?v=gBJjRYk0yC0"
         ),
         Dish(
             title: "Pan Seared Salmon",

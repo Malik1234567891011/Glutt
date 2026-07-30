@@ -77,6 +77,15 @@ final class PollySessionController {
 
     /// PantryMatcher misses, snapshotted during start() — drives the preflight card.
     private(set) var missingIngredients: [String] = []
+    /// True after cook (or Polly via tool) dismisses the missing-ingredients screen.
+    private(set) var preflightDismissed = false
+    /// Desired mute for the technique clip player (UI + voice tools).
+    private(set) var clipMuted = true
+    /// True when the clip should be playing (voice/UI). Adaptive canvas observes this.
+    private(set) var clipPlaybackDesired = false
+    /// Bumps on every play/restart request so the canvas remounts from the start
+    /// even when the clip already finished (AVPlayer won't restart without seek).
+    private(set) var clipRestartToken = 0
     /// Set by the `end_session` tool; the session view observes it and calls `end`.
     private(set) var wantsEnd = false
     /// Session start — used by the Cook Recap for elapsed time.
@@ -128,6 +137,16 @@ final class PollySessionController {
     /// Bumps when step index / checklist changes so the guide panel re-renders.
     private(set) var sessionUIEpoch: Int = 0
 
+    /// Auto-indexed YouTube demo clips for the current CookPlan (step id → clip).
+    private(set) var stepClipsByID: [String: StepClip] = [:]
+    /// Native downloaded clips (preferred over YouTube IFrame when ready).
+    private(set) var nativeClipsByStepID: [String: NativeStepClip] = [:]
+    /// Polly duplex media mode while a native clip plays.
+    private(set) var mediaState: PollyMediaState = .idle
+    /// True while Gemini indexing is in flight (first cook of a linked video).
+    private(set) var isIndexingStepClips = false
+    private var didStartClipIndex = false
+
     /// Touch/swipe step navigation — keeps voice tools and UI in sync.
     func goToStep(_ index: Int) {
         registry?.jumpToStep(index)
@@ -150,6 +169,263 @@ final class PollySessionController {
     private func publishSessionUI() {
         checkedActionIDs = registry?.state.checkedActionIDs ?? []
         sessionUIEpoch += 1
+    }
+
+    func clipForCurrentStep() -> StepClip? {
+        guard let plan, plan.steps.indices.contains(stepIndex) else { return nil }
+        return stepClipsByID[plan.steps[stepIndex].id]
+    }
+
+    func nativeClipForCurrentStep() -> NativeStepClip? {
+        guard let plan, plan.steps.indices.contains(stepIndex) else { return nil }
+        return nativeClipsByStepID[plan.steps[stepIndex].id]
+    }
+
+    func dismissPreflight() {
+        guard !preflightDismissed else { return }
+        preflightDismissed = true
+        PollyDebugLog.shared.log("preflight: dismissed")
+    }
+
+    func setClipMuted(_ muted: Bool) {
+        clipMuted = muted
+        if case .playing(let id, _) = mediaState {
+            updateMediaState(.playing(segmentID: id, muted: muted))
+        }
+    }
+
+    /// Voice/UI: play, pause, mute, unmute the current step's technique clip.
+    @discardableResult
+    func controlStepVideo(action: String) -> [String: Any] {
+        let normalized = action.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard let clip = nativeClipForCurrentStep() else {
+            return ["ok": false, "reason": "no clip for this step"]
+        }
+        switch normalized {
+        case "play", "show":
+            clipPlaybackDesired = true
+            clipRestartToken += 1
+            updateMediaState(.playing(segmentID: clip.segmentID, muted: clipMuted))
+            return clipControlPayload(clip, action: "play")
+        case "pause":
+            clipPlaybackDesired = false
+            updateMediaState(.paused(segmentID: clip.segmentID))
+            return clipControlPayload(clip, action: "pause")
+        case "mute":
+            setClipMuted(true)
+            return clipControlPayload(clip, action: "mute")
+        case "unmute":
+            setClipMuted(false)
+            return clipControlPayload(clip, action: "unmute")
+        default:
+            return ["ok": false, "reason": "unknown action — use play|pause|mute|unmute"]
+        }
+    }
+
+    /// Called when the cook advances steps — autoplay if this step has a clip.
+    func syncClipPlaybackForCurrentStep() {
+        if let clip = nativeClipForCurrentStep() {
+            clipPlaybackDesired = true
+            clipRestartToken += 1
+            updateMediaState(.playing(segmentID: clip.segmentID, muted: clipMuted))
+            Task { await injectClipAutoplayNotice(clip) }
+        } else {
+            clipPlaybackDesired = false
+            if case .playing = mediaState { updateMediaState(.idle) }
+            else if case .paused = mediaState { updateMediaState(.idle) }
+            else if case .finished = mediaState { updateMediaState(.idle) }
+        }
+    }
+
+    /// Silent cue so Polly knows the example is already on / playing — never offers to start it.
+    private func injectClipAutoplayNotice(_ clip: NativeStepClip) async {
+        guard let transport, phase == .live || phase == .connecting else { return }
+        let label = clip.displayLabel
+        let cue = clip.visualCue.trimmingCharacters(in: .whitespacesAndNewlines)
+        var text = "[ui_event — silent, do not acknowledge] Technique clip \"\(label)\" just AUTOPLAYED full-bleed. Do NOT offer to play or show the video — it is already on screen."
+        if !cue.isEmpty {
+            text += " Refer to visual_cue if helpful: \(cue)"
+        }
+        try? await transport.send(.createUserText(text))
+    }
+
+    private func clipControlPayload(_ clip: NativeStepClip, action: String) -> [String: Any] {
+        [
+            "ok": true,
+            "action": action,
+            "playing": clipPlaybackDesired,
+            "muted": clipMuted,
+            "teaching_label": clip.displayLabel,
+            "visual_cue": clip.visualCue,
+            "duration_seconds": Int(clip.durationSeconds),
+        ]
+    }
+
+    private func nativeClipPayload(_ clip: NativeStepClip, available: Bool = true) -> [String: Any] {
+        [
+            "available": available,
+            "watch_label": clip.watchLabel,
+            "teaching_label": clip.displayLabel,
+            "visual_cue": clip.visualCue,
+            "notice": clip.notice,
+            "duration_seconds": Int(clip.durationSeconds),
+            "start_seconds": Int(clip.startSeconds),
+            "end_seconds": Int(clip.endSeconds),
+            "muted_default": clipMuted,
+            "prefer_video_technique": true,
+            "clip_autoplays": true,
+            "do_not_offer_to_play": true,
+            "technique_rule": "Describe what the VIDEO shows (visual_cue / teaching_label). Do not invent a different method (e.g. toaster) if the clip shows a pan. Never offer to play the clip — it autoplays when the step opens; only replay if they ask.",
+        ]
+    }
+
+    func updateMediaState(_ state: PollyMediaState) {
+        let previous = mediaState
+        mediaState = state
+        // Native clip uses AVPlayer (not Realtime). Risk is speaker→mic bleed /
+        // wake-word on source audio saying "Polly". Mute default; if cook unmutes
+        // original audio, hard-mute the mic path until the clip ends or remutes.
+        //
+        // Do NOT call publishSessionUI() here. That bumps sessionUIEpoch, which
+        // recreates PollyStepGuidePanel (.id(epoch)) while the player is mounting
+        // → appear/teardown loop → full simulator freeze.
+        switch state {
+        case .playing(_, let muted):
+            if case .playing(_, let wasMuted) = previous, wasMuted == muted { break }
+            clipMuted = muted
+            clipPlaybackDesired = true
+            if muted {
+                if !isHardMuted { webrtc?.setMicMode(listeningMode == .dormant ? .dormant : .open) }
+            } else if !isHardMuted {
+                webrtc?.setMicMode(.hardMuted)
+            }
+            PollyDebugLog.shared.log("media: playing muted=\(muted)")
+        case .finished:
+            if previous == state { break }
+            clipPlaybackDesired = false
+            if !isHardMuted {
+                webrtc?.setMicMode(listeningMode == .dormant ? .dormant : .open)
+            }
+            PollyDebugLog.shared.log("media: finished")
+        case .paused:
+            if previous == state { break }
+            clipPlaybackDesired = false
+            if !isHardMuted {
+                webrtc?.setMicMode(listeningMode == .dormant ? .dormant : .open)
+            }
+            PollyDebugLog.shared.log("media: paused")
+        case .idle:
+            // Player teardown/remount often reports idle — don't clear a pending play.
+            break
+        case .preparing:
+            break
+        }
+    }
+
+    private func injectTechniqueClipContext(_ clipsByStepID: [String: NativeStepClip]) async {
+        guard !clipsByStepID.isEmpty, let plan else { return }
+        // Clips often finish indexing during connect — wait briefly for transport.
+        for _ in 0..<40 {
+            if transport != nil, phase == .live || phase == .connecting { break }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        guard let transport else {
+            PollyDebugLog.shared.log("clips: technique context skipped — no transport yet")
+            return
+        }
+        var lines = [
+            "[technique_clips — silent context, do not acknowledge out loud]",
+            "For these steps, speak ONLY the video method. Ignore any conflicting plan/recipe wording:",
+        ]
+        for step in plan.steps {
+            guard let clip = clipsByStepID[step.id] else { continue }
+            let cue = clip.visualCue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !cue.isEmpty else { continue }
+            lines.append("- \(step.title): \(cue)")
+        }
+        guard lines.count > 2 else { return }
+        lines.append("Clips AUTOPLAY when the cook opens that step — never offer to play them; refer to what's already on screen. Only replay/pause/mute if they ask.")
+        try? await transport.send(.createUserText(lines.joined(separator: "\n")))
+        PollyDebugLog.shared.log("clips: injected technique context for \(clipsByStepID.count) steps")
+    }
+
+    private func startStepClipIndexingIfNeeded(plan: CookPlan) {
+        guard !didStartClipIndex else { return }
+        guard let sourceURL = recipe.sourceURL,
+              YouTubeEmbed.videoId(from: sourceURL) != nil else { return }
+        didStartClipIndex = true
+        isIndexingStepClips = true
+        Task { [weak self] in
+            guard let self else { return }
+            defer { self.isIndexingStepClips = false }
+
+            // Prefer native downloaded clips (media-worker) when available.
+            if let youtubeID = YouTubeEmbed.videoId(from: sourceURL),
+               NativeClipService.supportsPilot(youtubeID: youtubeID) {
+                do {
+                    let pilot = try await NativeClipService.shared.pilotClips(youtubeID: youtubeID)
+                    var nativeMap: [String: NativeStepClip] = [:]
+                    for step in plan.steps where !CookPlan.isSetupStep(step) {
+                        if let clip = await NativeClipService.shared.clipMatching(
+                            stepTitle: step.title,
+                            instruction: step.instruction,
+                            in: pilot
+                        ) {
+                            nativeMap[step.id] = clip
+                        }
+                    }
+                    self.nativeClipsByStepID = nativeMap
+                    PollyDebugLog.shared.log("clips: native pilot \(youtubeID) matched \(nativeMap.count) steps")
+                    self.publishSessionUI()
+                    // If the cook is already on a clip step when matches arrive, start it.
+                    if self.nativeClipForCurrentStep() != nil {
+                        self.syncClipPlaybackForCurrentStep()
+                    }
+                    await self.injectTechniqueClipContext(nativeMap)
+                    if !nativeMap.isEmpty { return }
+                } catch {
+                    PollyDebugLog.shared.log(
+                        "clips: native pilot unavailable — \(error.localizedDescription); falling back to YouTube index"
+                    )
+                }
+            }
+
+            do {
+                let response = try await StepClipService.shared.clips(
+                    youtubeURL: sourceURL,
+                    recipeTitle: self.recipe.title,
+                    steps: plan.steps
+                )
+                let merged = StepClipFallbacks.merge(
+                    indexed: response.clips,
+                    steps: plan.steps,
+                    youtubeURL: sourceURL
+                )
+                var map: [String: StepClip] = [:]
+                for clip in merged {
+                    map[clip.stepID] = clip
+                }
+                if map.isEmpty {
+                    for clip in StepClipFallbacks.clips(for: plan.steps, youtubeURL: sourceURL) {
+                        map[clip.stepID] = clip
+                    }
+                }
+                self.stepClipsByID = map
+                PollyDebugLog.shared.log(
+                    "clips: indexed \(map.count) step clips (cached=\(response.cached ?? false))"
+                )
+                self.publishSessionUI()
+            } catch {
+                let fallbacks = StepClipFallbacks.clips(for: plan.steps, youtubeURL: sourceURL)
+                var map: [String: StepClip] = [:]
+                for clip in fallbacks { map[clip.stepID] = clip }
+                self.stepClipsByID = map
+                PollyDebugLog.shared.log(
+                    "clips: index failed — \(error.localizedDescription); fallback=\(map.count)"
+                )
+                self.publishSessionUI()
+            }
+        }
     }
 
     private let recipe: Recipe
@@ -259,6 +535,7 @@ final class PollySessionController {
         let plan = await deps.compilePlan(recipe, scale)
         self.plan = plan
         PollyDebugLog.shared.log("session: plan ready — \(plan.steps.count) steps")
+        startStepClipIndexingIfNeeded(plan: plan)
 
         // 2. Session snapshot: pantry, prefs, memories, past cooks of this recipe.
         let pantry = (try? context.fetch(FetchDescriptor<PantryItem>())) ?? []
@@ -284,6 +561,41 @@ final class PollySessionController {
             }
         }
         registry.onEndSession = { [weak self] in self?.wantsEnd = true }
+        registry.onDismissPreflight = { [weak self] in self?.dismissPreflight() }
+        registry.onClipInfoForStep = { [weak self] stepID in
+            guard let self, let clip = self.nativeClipsByStepID[stepID] else {
+                return ["available": false]
+            }
+            return self.nativeClipPayload(clip)
+        }
+        registry.onClipPlaybackStatus = { [weak self] in
+            guard let self else { return [:] }
+            let playing: Bool
+            switch self.mediaState {
+            case .playing: playing = true
+            default: playing = self.clipPlaybackDesired
+            }
+            return [
+                "clipPlaying": playing,
+                "clipMuted": self.clipMuted,
+                "clipPlaybackDesired": self.clipPlaybackDesired,
+            ]
+        }
+        registry.onShowStepVideo = { [weak self] in
+            guard let self, let clip = self.nativeClipForCurrentStep() else {
+                return ["available": false, "reason": "no clip for this step"]
+            }
+            self.clipPlaybackDesired = true
+            self.clipRestartToken += 1
+            self.updateMediaState(.playing(segmentID: clip.segmentID, muted: self.clipMuted))
+            PollyDebugLog.shared.log("media: show_step_video \(clip.displayLabel)")
+            return self.nativeClipPayload(clip)
+        }
+        registry.onControlStepVideo = { [weak self] action in
+            guard let self else { return ["ok": false, "reason": "session gone"] }
+            PollyDebugLog.shared.log("media: control_step_video \(action)")
+            return self.controlStepVideo(action: action)
+        }
         self.registry = registry
 
         // 4. Mic permission FIRST (WebRTC starts capture at connect), then

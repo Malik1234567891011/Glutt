@@ -142,6 +142,12 @@ struct PollyStepGuidePanel: View {
     let onSelectStep: (Int) -> Void
     let onToggleItem: (String) -> Void
     var onStartTimer: ((CookPlan.PlanStep, Int) -> Void)? = nil
+    /// Preferred: native downloaded clip (media-worker / Stream).
+    var currentNativeClip: NativeStepClip? = nil
+    var onNativeMediaState: ((PollyMediaState) -> Void)? = nil
+    /// Fallback: Gemini-indexed YouTube window.
+    var currentStepClip: StepClip? = nil
+    var onWatchClip: ((StepClip) -> Void)? = nil
 
     @State private var appearedStepID: String?
     @State private var revealCount = 0
@@ -164,6 +170,43 @@ struct PollyStepGuidePanel: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut(duration: 0.22), value: stepIndex)
+
+            if let native = currentNativeClip {
+                VStack(alignment: .leading, spacing: 6) {
+                    NativeClipPlayerView(clip: native) { state in
+                        onNativeMediaState?(state)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Color.black)
+                    .padding(.horizontal, 18)
+
+                    Text("\(native.watchLabel) · \(formatClock(Int(native.startSeconds)))–\(formatClock(Int(native.endSeconds)))")
+                        .font(BrandFont.nunito(11, 700))
+                        .foregroundStyle(Theme.Colors.tabLabel.opacity(0.55))
+                        .padding(.horizontal, 22)
+                }
+            } else if let clip = currentStepClip {
+                VStack(alignment: .leading, spacing: 6) {
+                    YouTubePlayerView(
+                        videoId: clip.youtubeVideoID,
+                        startSeconds: clip.startSeconds,
+                        endSeconds: clip.endSeconds,
+                        mute: true
+                    )
+                    .frame(maxWidth: .infinity)
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Color.black)
+                    .padding(.horizontal, 18)
+
+                    Text("\(clip.watchLabel) · \(formatClock(clip.startSeconds))–\(formatClock(clip.endSeconds))")
+                        .font(BrandFont.nunito(11, 700))
+                        .foregroundStyle(Theme.Colors.tabLabel.opacity(0.55))
+                        .padding(.horizontal, 22)
+                }
+            }
 
             if let step = currentStep, let seconds = step.timerSeconds {
                 Button {
@@ -389,5 +432,11 @@ struct PollyStepGuidePanel: View {
                 }
             }
         }
+    }
+
+    private func formatClock(_ seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return String(format: "%d:%02d", m, s)
     }
 }

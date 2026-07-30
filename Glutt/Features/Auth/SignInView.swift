@@ -28,6 +28,37 @@ struct SignInView: View {
     /// Set when the attempt failed because there is no account to log in to.
     @State private var needsSignUp = false
 
+    /// The same rounded card as onboarding screens 1 and 7, at a fixed height
+    /// rather than flex-fill: this screen has to leave room for two buttons and
+    /// an error line, so the video takes what it is given.
+    ///
+    /// Not full bleed, deliberately. The footage is cream, and the white
+    /// "Continue with Google" button would sit on it and vanish. Keeping the
+    /// video in a card leaves the buttons on solid background.
+    private var heroVideo: some View {
+        ZStack(alignment: .top) {
+            OnboardingTheme.videoFrame
+            LoopingVideoView(resource: "login-hero")
+            // Cream fade into the top edge, so the card reads as part of the
+            // screen rather than a rectangle pasted onto it.
+            GeometryReader { geo in
+                LinearGradient(stops: [
+                    .init(color: OnboardingTheme.videoFrame, location: 0),
+                    .init(color: OnboardingTheme.videoFrame, location: 0.70),
+                    .init(color: OnboardingTheme.videoFrame.opacity(0), location: 1),
+                ], startPoint: .top, endPoint: .bottom)
+                .frame(height: geo.size.height * 0.30)
+            }
+            .allowsHitTesting(false)
+        }
+        .frame(height: 300)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28)
+                .strokeBorder(OnboardingTheme.warmBlack(0.05), lineWidth: 1)
+        )
+    }
+
     /// The onboarding answers, sent to the profile and to PostHog once there is
     /// an account to attach them to. Read here rather than in `AccountSession`
     /// because they live in SwiftData and the session has no model context.
@@ -46,7 +77,7 @@ struct SignInView: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
 
-                MS.skilletFill.sized(46).foregroundStyle(OnboardingTheme.greenDeep)
+                heroVideo
                     .padding(.bottom, 26)
 
                 OnboardingHeadline("Save your place", size: 27, maxWidth: 300)
@@ -104,18 +135,10 @@ struct SignInView: View {
                     .padding(.top, 12)
                 }
 
-                // They pressed "Log in" and have never signed up. Nothing here
-                // is retryable, so the only useful action is the way back to
-                // setup — the error text above already says why.
-                if needsSignUp {
-                    OnboardingTextLink(title: "Go to setup") { onDismiss?() }
-                        .padding(.top, 18)
-                }
-
                 // Only offered once something has actually gone wrong. A paying
                 // customer must never be trapped behind our backend being down —
                 // they keep the app, and the next cold launch asks again.
-                if errorMessage != nil, !needsSignUp, !canDismiss {
+                if errorMessage != nil, !canDismiss {
                     OnboardingTextLink(title: "Continue without an account") {
                         Analytics.capture(.signInDeferred)
                         session.deferSignIn()
@@ -133,6 +156,16 @@ struct SignInView: View {
             .padding(.horizontal, 28)
             .padding(.bottom, 22)
             .animation(.easeInOut(duration: 0.2), value: errorMessage)
+        }
+        // An alert rather than inline text, and only for this one case. Every
+        // other failure here is worth retrying, so its message belongs next to
+        // the buttons you would press again. Having no account is final: there
+        // is nothing on this screen that would change it, so it gets a dialog
+        // whose only button leaves.
+        .alert("No account yet", isPresented: $needsSignUp) {
+            Button("OK") { onDismiss?() }
+        } message: {
+            Text("You don't have a Glutt account yet. Go through setup to create one. Your subscription is already active and will carry over.")
         }
         .overlay(alignment: .topTrailing) {
             if canDismiss {
@@ -197,10 +230,11 @@ struct SignInView: View {
         errorMessage = nil
         Task {
             do {
-                let tokens = try await GoogleAuth.tokens()
+                let tokens = try await GoogleAuth.tokens(rawNonce: rawNonce)
                 try await session.signInWithGoogle(
                     idToken: tokens.idToken,
                     accessToken: tokens.accessToken,
+                    rawNonce: rawNonce,
                     requireExisting: requiresExistingAccount
                 )
                 Analytics.capture(.signInSucceeded, ["provider": "google"])
@@ -224,8 +258,10 @@ struct SignInView: View {
     /// text, which would send someone round the same loop forever.
     private func failed(_ error: Error, fallback: String) {
         if case AccountSession.AccountError.noAccountYet = error {
+            // The alert carries the whole message, so leave `errorMessage` nil:
+            // setting it would leave the same text sitting on the screen
+            // underneath, and still be there after the alert is dismissed.
             needsSignUp = true
-            errorMessage = error.localizedDescription
             isWorking = false
             return
         }

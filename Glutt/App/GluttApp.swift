@@ -78,6 +78,9 @@ struct GluttApp: App {
             }
             // Technique lessons (fry an egg, etc.) for every user — not Beta-only.
             CookingBasics.install(context: container.mainContext)
+            // Guest chefs and their five each. Bundled, free, and kept out of
+            // the personal library feed until the user hearts one.
+            ChefContent.install(context: container.mainContext)
             return container
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")

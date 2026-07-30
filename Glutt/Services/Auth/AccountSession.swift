@@ -102,13 +102,17 @@ final class AccountSession {
     func signInWithGoogle(
         idToken: String,
         accessToken: String,
+        rawNonce: String,
         requireExisting: Bool = false
     ) async throws {
         let session = try await Backend.client.auth.signInWithIdToken(
             credentials: .init(
                 provider: .google,
                 idToken: idToken,
-                accessToken: accessToken
+                accessToken: accessToken,
+                // Raw, like Apple: GoTrue hashes this and compares it to the
+                // token's claim, which is why Google was handed the hash.
+                nonce: rawNonce
             )
         )
         if requireExisting { try await rejectIfJustCreated(session.user) }

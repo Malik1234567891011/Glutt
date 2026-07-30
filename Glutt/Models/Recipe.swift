@@ -80,11 +80,17 @@ final class Recipe {
         prepMinutes + cookMinutes == 0 && estimatedMinutes > 0
     }
 
-    /// Ready-to-show time label: "30 min", "~25 min", or "—" when unknown.
+    /// Ready-to-show time label: "30 min", "1 hr 10", "~25 min", or "—" when
+    /// unknown. Anything an hour or over reads in hours, because "150 min" is
+    /// a number you have to do arithmetic on.
     var timeLabel: String {
         let minutes = estimatedMinutes
         guard minutes > 0 else { return "—" }
-        return minutesAreEstimated ? "~\(minutes) min" : "\(minutes) min"
+        let prefix = minutesAreEstimated ? "~" : ""
+        guard minutes >= 60 else { return "\(prefix)\(minutes) min" }
+        let hours = minutes / 60
+        let rest = minutes % 60
+        return rest == 0 ? "\(prefix)\(hours) hr" : "\(prefix)\(hours) hr \(rest)"
     }
 
     var sortedSteps: [RecipeStep] {

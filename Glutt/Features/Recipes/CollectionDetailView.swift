@@ -24,7 +24,7 @@ struct CollectionDetailView: View {
                         NavigationLink(value: recipe) {
                             RecipeCard(recipe: recipe)
                         }
-                        .buttonStyle(.plain)
+                        .zoomCard(ZoomCardID(recipe.persistentModelID, slot: "collection"))
                         .simultaneousGesture(TapGesture().onEnded {
                             Haptics.impact(.light)
                         })

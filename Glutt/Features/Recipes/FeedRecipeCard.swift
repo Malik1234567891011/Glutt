@@ -1,12 +1,15 @@
 import SwiftUI
 
 /// The Feed home's big single-column recipe card: a 180pt photo with a solid tag
-/// pill + favorite heart, then title, one-line summary, and a stat-pill row
+/// pill, then title, one-line summary, and a stat-pill row
 /// (time · difficulty · rating · pantry match). Source: `Glutt Main Page.dc.html`,
-/// direction B feed cards.
+/// direction B feed cards. Favoriting lives on the detail screen, not here.
 struct FeedRecipeCard: View {
     let recipe: Recipe
     let match: PantryMatcher.MatchResult
+    /// Chef pages put the recipe's rank in that chef's top five where the tag
+    /// pill normally sits.
+    var rank: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -15,12 +18,11 @@ struct FeedRecipeCard: View {
                     .frame(height: 180)
                     .frame(maxWidth: .infinity)
                     .clipped()
-                if let tag = recipe.tags.first {
+                if let rank {
+                    rankPill(rank).padding(11)
+                } else if let tag = recipe.tags.first {
                     tagPill(tag).padding(11)
                 }
-                heart
-                    .frame(maxWidth: .infinity, alignment: .topTrailing)
-                    .padding(11)
             }
             .frame(height: 180)
             .clipped()
@@ -52,6 +54,18 @@ struct FeedRecipeCard: View {
 
     // MARK: Media overlays
 
+    /// "Number 1" and up, in the tag pill's slot. Only the top spot gets a flame.
+    private func rankPill(_ rank: Int) -> some View {
+        HStack(spacing: 5) {
+            if rank == 1 {
+                MS.fireFill.sized(14).foregroundStyle(Theme.Colors.tomato)
+            }
+            Text("Number \(rank)").font(BrandFont.nunito(12, 800)).foregroundStyle(Theme.Colors.heading)
+        }
+        .padding(.horizontal, 11).padding(.vertical, 6)
+        .background(Capsule().fill(Theme.Colors.card))
+    }
+
     private func tagPill(_ tag: String) -> some View {
         let style = Self.tagStyle(tag)
         return HStack(spacing: 5) {
@@ -60,18 +74,6 @@ struct FeedRecipeCard: View {
         }
         .padding(.horizontal, 11).padding(.vertical, 6)
         .background(Capsule().fill(Theme.Colors.card))
-    }
-
-    private var heart: some View {
-        Button {
-            Haptics.impact(.light); recipe.isFavorite.toggle()
-        } label: {
-            (recipe.isFavorite ? MS.favoriteFill : MS.favorite).sized(18)
-                .foregroundStyle(recipe.isFavorite ? Theme.Colors.tomato : Color(hex: 0xB9AEA0))
-                .frame(width: 32, height: 32)
-                .background(Circle().fill(Theme.Colors.card))
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: Stat row

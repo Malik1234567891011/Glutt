@@ -19,7 +19,8 @@ struct DiscoverTabView: View {
 
     private var tasteTags: [String] {
         let counts = recipes
-            .filter { $0.parentRecipe == nil }
+            // Bundled chef dishes are everyone's, so they say nothing about taste.
+            .filter { $0.parentRecipe == nil && !$0.isChefRecipe }
             .flatMap { $0.tags }
             .reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
         return counts.sorted { $0.value > $1.value }.prefix(5).map(\.key)

@@ -13,6 +13,7 @@
 		02826618BFC28D4E7A55403D /* CookRecapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AE0968C96DD487932B5B804 /* CookRecapView.swift */; };
 		030CECE3BDBF4FC85259EA32 /* RecipeImportService+OCR.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D21EDB37D0BDBA3422DA1A1 /* RecipeImportService+OCR.swift */; };
 		0357D9E19E7AB3EE1378A87B /* PantryScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91F167E4E8C32628B9047B00 /* PantryScan.swift */; };
+		0374C8BD0D6321B35F78582C /* ChefContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDB9677DD2A567BDA5E16554 /* ChefContentTests.swift */; };
 		049AE7BDF58916F3ED55F457 /* GoogleAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF55E4E9416F3F097DC4B4BF /* GoogleAuth.swift */; };
 		04C0DB3AA64572165BE8E75A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F7FD87E0616AE17D79248663 /* PrivacyInfo.xcprivacy */; };
 		0552409CD20AC9BE620A7E07 /* PaywallGateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 037A155DAF316A42096C3D9B /* PaywallGateViews.swift */; };
@@ -74,6 +75,7 @@
 		2E22D7543240ED83B3350F7C /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5D72BFDA83AFBD303E2775 /* ShareViewController.swift */; };
 		2F8CE75A36C1974FF06DA481 /* LLMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D79524BA975910B84DB07A03 /* LLMClient.swift */; };
 		2FF58009D64582CBBA7F0821 /* RecipeFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65FE09E5997ABD5A67C11372 /* RecipeFactoryTests.swift */; };
+		310B2E1A9B5A1B416BE6A06F /* ZoomTransition.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF964CAA5BC322D4164B9AE5 /* ZoomTransition.swift */; };
 		31DED7CE48FF3308E5FB97F2 /* TasteProfileBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 792E07A262DF875373B88FBE /* TasteProfileBuilder.swift */; };
 		3438BD5B21FCFC87449B1BD6 /* ImportInboxDrainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98B24B648D7D946D8F253FC7 /* ImportInboxDrainer.swift */; };
 		363203849DCC8694EDFC3BA1 /* PantryScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 790D532EB881A841E117F130 /* PantryScanView.swift */; };
@@ -124,6 +126,7 @@
 		64097597701E495E3BC9BB4B /* DraftCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F7860B4A0705740CD7C55F /* DraftCleanup.swift */; };
 		65757EA01A6C93767565BACF /* DiscoverTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F3977F21093EBB89DE1BF21 /* DiscoverTabView.swift */; };
 		658FF063B7D0C83A48CE0A3B /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61F5AFC37B586B18C2468CF /* Typography.swift */; };
+		660F54361C039748AAFBF23C /* Chefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 636F6E0A0709218A059859DC /* Chefs.swift */; };
 		66AA0499D03756BE62A23A49 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02A8FCA6BD6D9D0D2D91177 /* DiscoverView.swift */; };
 		674CDDCC4697492D9D421A25 /* PlatesSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0253AFA0F0F645D26A917A47 /* PlatesSaver.swift */; };
 		6793F9DC7BC9727DA673BE1C /* CookPlanCompiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78CF2A1F5E8425A001C7AE98 /* CookPlanCompiler.swift */; };
@@ -165,6 +168,7 @@
 		858A866E0199A85333682E96 /* PollyMemoryExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D6BFA58653B47D10CB71BE8 /* PollyMemoryExtractor.swift */; };
 		85CDA7F7003AC6925B7BCBCE /* MiniPhoneFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B21529DC9D6FE7BEC5F4664 /* MiniPhoneFrame.swift */; };
 		8BDD48B6434CA9E49822814F /* BrandFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3CE3284BCABBE6DFDF3FD0 /* BrandFonts.swift */; };
+		8CF3C736F5FC6104A52F5965 /* ChefDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61601122F7A17B84FC3B9124 /* ChefDetailView.swift */; };
 		8D5B5CBDC96D718DBFF8198D /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF3E70A3CCB84A7042B5FE65 /* Haptics.swift */; };
 		8D97633ED2E9B73B7FE66242 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86682BDF2281AFC52C3BCFB6 /* SignInView.swift */; };
 		8E37C6F1FD1278019E570750 /* IngredientCanonicalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */; };
@@ -275,6 +279,7 @@
 		DA5DD90A3A7CED0DCBFF96B3 /* PCMTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E69A143731D930A15C0776 /* PCMTests.swift */; };
 		DB8B8594AD637BE18F833C40 /* PlateCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C0EB5E87DDAED1F4E559F0 /* PlateCard.swift */; };
 		DC45CAD57614CC9D6259F9D8 /* UserPrefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA37957DBDDC577B2780A3E /* UserPrefs.swift */; };
+		DD5BFAA5A7CFA0B80701D7CA /* ChefRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74703162A15BC181BEEF5C32 /* ChefRail.swift */; };
 		DE12549124D3D523CCFB456A /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D56EF729F22F6F3DED29543 /* Theme.swift */; };
 		DF4B8699153B8E7A40B14DDF /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C06B098902A220170DB5726 /* Secrets.swift */; };
 		E00E0565BC59F9EFB40F594E /* OptimizeRecipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F340B99C7D917E983864BCDE /* OptimizeRecipeView.swift */; };
@@ -284,6 +289,7 @@
 		E64633C36A04C6F3ED776864 /* ReminderScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F04DC9E02007A6E7D3264D4D /* ReminderScheduler.swift */; };
 		E9E62465FDE3533A7CE521B1 /* NutritionEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF96F3FA7AE1145E7946CB47 /* NutritionEstimator.swift */; };
 		EAB06B1CEB7F2CF3DF02C083 /* KitchenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAC0FFFECF313768192EAFA2 /* KitchenView.swift */; };
+		EC7900FBF28183D9581843B3 /* login-hero.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = B4EC96BE9E53F56A78A4756C /* login-hero.mp4 */; };
 		ECA3CC45E7ACC10EC3BF2B42 /* VideoRecipeCompiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C52C47E69FDD90C9D781D4E /* VideoRecipeCompiler.swift */; };
 		EDE53C61A5EC7A9BD3EA9FC8 /* SpeechTranscriptionClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91568D9FE637F7812BD88B51 /* SpeechTranscriptionClientTests.swift */; };
 		EF4BCE72D6A0DB7A1FE0EEF2 /* CookRecapBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52969CBCE393533D0AC1BE94 /* CookRecapBuilderTests.swift */; };
@@ -446,9 +452,11 @@
 		5E591614E90A52DE6F70CD28 /* InstallID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallID.swift; sourceTree = "<group>"; };
 		5EFB5FAA0EF9CA829EE21DFA /* GluttTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GluttTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F53E9D323C8F67248EAD82D /* OptionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionRow.swift; sourceTree = "<group>"; };
+		61601122F7A17B84FC3B9124 /* ChefDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChefDetailView.swift; sourceTree = "<group>"; };
 		61DC78ADF8EA5883A89DD07D /* TutorialFrames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialFrames.swift; sourceTree = "<group>"; };
 		625F2A2C31B9D7D640FBAF29 /* MealPhotoEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPhotoEstimator.swift; sourceTree = "<group>"; };
 		62A42B699616E4522DAA5247 /* GlowBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlowBackground.swift; sourceTree = "<group>"; };
+		636F6E0A0709218A059859DC /* Chefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chefs.swift; sourceTree = "<group>"; };
 		653F9DE97C55056813E76980 /* HowToGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HowToGeneratorTests.swift; sourceTree = "<group>"; };
 		65FE09E5997ABD5A67C11372 /* RecipeFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeFactoryTests.swift; sourceTree = "<group>"; };
 		6815E861AC272B08314E8EE3 /* PlatesServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesServiceTests.swift; sourceTree = "<group>"; };
@@ -461,6 +469,7 @@
 		6F29983D8888CD4C7C082CBB /* DietGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietGuard.swift; sourceTree = "<group>"; };
 		73A2CDDF068695305D22C497 /* CookRecapCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookRecapCardView.swift; sourceTree = "<group>"; };
 		73D783DA6055930864D36F17 /* RecipeImageBackfill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImageBackfill.swift; sourceTree = "<group>"; };
+		74703162A15BC181BEEF5C32 /* ChefRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChefRail.swift; sourceTree = "<group>"; };
 		760EF4DCF55EB8C52DE51A6D /* ImportPipelineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPipelineTests.swift; sourceTree = "<group>"; };
 		76BF16002B6B6BBD5CA06064 /* StepActionChecklist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepActionChecklist.swift; sourceTree = "<group>"; };
 		77A669F9F181645D252640C8 /* Secrets.local.example.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Secrets.local.example.plist; sourceTree = "<group>"; };
@@ -541,6 +550,7 @@
 		B3EADF6FD77F51E85B3A156E /* DiscoverSaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverSaver.swift; sourceTree = "<group>"; };
 		B43E6B8457F5ABE9B016C3F5 /* RealtimeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeTransport.swift; sourceTree = "<group>"; };
 		B467C6326A00806781CC0B1D /* ImportGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportGuideView.swift; sourceTree = "<group>"; };
+		B4EC96BE9E53F56A78A4756C /* login-hero.mp4 */ = {isa = PBXFileReference; path = "login-hero.mp4"; sourceTree = "<group>"; };
 		B5F10C9946EA22B0FE0129A1 /* AIActionPromptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIActionPromptTests.swift; sourceTree = "<group>"; };
 		B5F3EF4D5C770B981E142355 /* PageDots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageDots.swift; sourceTree = "<group>"; };
 		B65CA9BF4B9DCA0A18E7D5C4 /* RecipeAdjuster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeAdjuster.swift; sourceTree = "<group>"; };
@@ -566,6 +576,7 @@
 		CBC6E1BC83BAD99543EF0A36 /* PollyTokenServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyTokenServiceTests.swift; sourceTree = "<group>"; };
 		CC157419EAEE841DD6472823 /* DiscoverVideo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverVideo.swift; sourceTree = "<group>"; };
 		CCC4B7F485CFCE9647BE61E8 /* ImportTutorialScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportTutorialScreen.swift; sourceTree = "<group>"; };
+		CDB9677DD2A567BDA5E16554 /* ChefContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChefContentTests.swift; sourceTree = "<group>"; };
 		CFA5CE3D78B241983305606C /* CookRecapBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookRecapBuilder.swift; sourceTree = "<group>"; };
 		D20092EDE21C063A448A962B /* CookBriefing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookBriefing.swift; sourceTree = "<group>"; };
 		D220BF4C17B5D8BDF6AF5766 /* PollyVoiceEventTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyVoiceEventTests.swift; sourceTree = "<group>"; };
@@ -595,6 +606,7 @@
 		EB24F00BC9661311C005BE78 /* OFL-BricolageGrotesque.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-BricolageGrotesque.txt"; sourceTree = "<group>"; };
 		ECE5BFA285767FD229AB9547 /* SegmentedTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentedTabs.swift; sourceTree = "<group>"; };
 		EF3E70A3CCB84A7042B5FE65 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
+		EF964CAA5BC322D4164B9AE5 /* ZoomTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomTransition.swift; sourceTree = "<group>"; };
 		F04DC9E02007A6E7D3264D4D /* ReminderScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderScheduler.swift; sourceTree = "<group>"; };
 		F0A1CD51469E394423D7CF6A /* ToolsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolsView.swift; sourceTree = "<group>"; };
 		F1A2F97AA4C16C61F7F73AC7 /* ImportReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportReviewView.swift; sourceTree = "<group>"; };
@@ -713,6 +725,7 @@
 			children = (
 				B5F10C9946EA22B0FE0129A1 /* AIActionPromptTests.swift */,
 				D6DBBA225C30ED379583817F /* AskGluttTests.swift */,
+				CDB9677DD2A567BDA5E16554 /* ChefContentTests.swift */,
 				08AC449BF12F35D4E4B81855 /* ConversationalGateTests.swift */,
 				08CEF3AB98B21F446C806AAA /* CookBriefingBuilderTests.swift */,
 				38D0D8556472146695E807BD /* CookingBasicsTests.swift */,
@@ -1043,6 +1056,7 @@
 				B2C63684C7E494372CA1A8B5 /* RecipeImageView.swift */,
 				ECE5BFA285767FD229AB9547 /* SegmentedTabs.swift */,
 				B33EDD3B8B89ED417D5A6494 /* StatPill.swift */,
+				EF964CAA5BC322D4164B9AE5 /* ZoomTransition.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -1051,6 +1065,8 @@
 			isa = PBXGroup;
 			children = (
 				143FFCADAD89229E2D98D272 /* AdjustRecipeView.swift */,
+				61601122F7A17B84FC3B9124 /* ChefDetailView.swift */,
+				74703162A15BC181BEEF5C32 /* ChefRail.swift */,
 				A34662C1AB1C5078CE9DA61C /* CollectionDetailView.swift */,
 				E935FD442B09E554268417A8 /* CollectionsListSheet.swift */,
 				E37A25B855F5C19D1CEECA71 /* CookingBasicsView.swift */,
@@ -1071,6 +1087,7 @@
 		BB1B039809C258CEFAF9FCB0 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				636F6E0A0709218A059859DC /* Chefs.swift */,
 				5795B007BE0D6E2F905DA6DD /* CookingBasics.swift */,
 				972437EDDFCAF92BC3F03CA5 /* CookSession.swift */,
 				AECDB51EACA72CE8D071EAD9 /* Enums.swift */,
@@ -1175,6 +1192,7 @@
 				A98B09A955FA3328149702FD /* chef-cooking.mp4 */,
 				19E4D80FF0004D4C5B35EB48 /* glutt-features.mp4 */,
 				D5121C976BFEF0283AA5AE21 /* glutt-intro.mp4 */,
+				B4EC96BE9E53F56A78A4756C /* login-hero.mp4 */,
 			);
 			path = Videos;
 			sourceTree = "<group>";
@@ -1335,6 +1353,7 @@
 				FB0E730E20B6B10177FED6A4 /* chef-cooking.mp4 in Resources */,
 				3C84411CFB8A94089ECB0D58 /* glutt-features.mp4 in Resources */,
 				D2A41A02104C2A6F5BDA2E58 /* glutt-intro.mp4 in Resources */,
+				EC7900FBF28183D9581843B3 /* login-hero.mp4 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1347,6 +1366,7 @@
 			files = (
 				126EB43D4FB3CB8CAA7FCA94 /* AIActionPromptTests.swift in Sources */,
 				D30CEDD01973C4AA7AA4F1BD /* AskGluttTests.swift in Sources */,
+				0374C8BD0D6321B35F78582C /* ChefContentTests.swift in Sources */,
 				1C0AD550808BE9C56D35B333 /* ConversationalGateTests.swift in Sources */,
 				B5173F564600C68301504D51 /* CookBriefingBuilderTests.swift in Sources */,
 				F344F24FD367B7A3C0F65F9D /* CookPlanCompilerTests.swift in Sources */,
@@ -1423,6 +1443,9 @@
 				C73CEBD239B974D03530F7FF /* Buttons.swift in Sources */,
 				AC406619DAD8BADC992A6542 /* CameraPicker.swift in Sources */,
 				0BC8E77BB485332BDEE5D720 /* CategoryCircle.swift in Sources */,
+				8CF3C736F5FC6104A52F5965 /* ChefDetailView.swift in Sources */,
+				DD5BFAA5A7CFA0B80701D7CA /* ChefRail.swift in Sources */,
+				660F54361C039748AAFBF23C /* Chefs.swift in Sources */,
 				3BEF446EA4E6D8F141D53A4C /* Chip.swift in Sources */,
 				23E7BF0DC628E856DD9B8512 /* CoachMark.swift in Sources */,
 				B95774AAB89E3BF80B7815E9 /* CollectionDetailView.swift in Sources */,
@@ -1606,6 +1629,7 @@
 				998FAAD7A57B7E080DDDAD29 /* WakeWordListener.swift in Sources */,
 				5520541095BB606F7B9519F9 /* WelcomeScreen.swift in Sources */,
 				C58AF5CFBA4EED426FF358CB /* YouTubePlayerView.swift in Sources */,
+				310B2E1A9B5A1B416BE6A06F /* ZoomTransition.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

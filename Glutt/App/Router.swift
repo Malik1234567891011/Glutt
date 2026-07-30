@@ -74,6 +74,9 @@ final class Router {
     /// Dev/testing hook (`-openRecipe`): pushes the first library recipe's detail on
     /// launch, so the detail screen can be captured without UI tapping.
     var openFirstRecipeOnLaunch = false
+    /// Dev/testing hook (`-openChef <slug>`): pushes a chef page on launch. Slug is
+    /// optional and defaults to the first chef in the rail.
+    var chefToOpenOnLaunch: String?
 
     init() {
         // Launch-argument hooks for UI tests and tooling: `-tab recipes`, `-importURL https://...`
@@ -92,6 +95,10 @@ final class Router {
         demoCookOnLaunch = arguments.contains("-demoCook")
         forceOnboarding = arguments.contains("-onboarding")
         openFirstRecipeOnLaunch = arguments.contains("-openRecipe")
+        if let flagIndex = arguments.firstIndex(of: "-openChef") {
+            let next = arguments.indices.contains(flagIndex + 1) ? arguments[flagIndex + 1] : nil
+            chefToOpenOnLaunch = (next?.hasPrefix("-") == false ? next : nil) ?? ChefContent.chefs.first?.id
+        }
     }
 
     func handle(url: URL) {

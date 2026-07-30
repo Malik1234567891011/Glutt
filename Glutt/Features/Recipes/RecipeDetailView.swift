@@ -1,6 +1,16 @@
 import SwiftData
 import SwiftUI
 
+/// How far a `ScrollView`'s content has travelled up, reported from inside it.
+/// `onScrollGeometryChange` would be neater but it's iOS 18, and this screen
+/// still has to work on 17.
+struct ScrollOffsetKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 /// Recipe detail, redesigned to `Glutt Screens.dc.html` (screen "Recipe detail"):
 /// a tall hero, a rounded cream content sheet with title, stats, nutrition for
 /// the current serving count, tags, an adapt row, Ingredients/Steps, versions of
@@ -29,10 +39,67 @@ struct RecipeDetailView: View {
     @State private var isShowingDetails = false
     @State private var substituteTarget: DietGuard.Conflict?
     @State private var selectedTab = 0   // 0 = Ingredients, 1 = Steps
+    /// Whether the cream sheet and cook bar are shown. Off for the length of the
+    /// zoom transition so the morphing card stays photo-shaped — see `contentSheet`.
+    @State private var sheetRevealed = false
+    /// 0 while the photo is in full view, 1 once the top bar has gone solid.
+    /// Quantized in `trackScroll` so scrolling doesn't re-run this body per frame.
+    @State private var barProgress: Double = 0
+    /// Whether the in-flight back swipe has already earned its tick.
+    @State private var backSwipeCommitted = false
+
+    private static let scrollSpace = "recipeDetailScroll"
+    /// The photo is 330pt tall; the bar is solid a little before it's fully gone.
+    private static let barFadeDistance: CGFloat = 190
 
     init(recipe: Recipe) {
         self.recipe = recipe
         _displayServings = State(initialValue: recipe.servings)
+    }
+
+    /// Leaves the way we arrived. The sheet is cut, not faded: the shrink starts
+    /// in the same frame, so anything still fading is what reads as doubled.
+    private func close() {
+        sheetRevealed = false
+        dismiss()
+    }
+
+    // MARK: - Scroll tracking
+
+    private var scrollTracker: some View {
+        GeometryReader { geo in
+            Color.clear.preference(
+                key: ScrollOffsetKey.self,
+                value: -geo.frame(in: .named(Self.scrollSpace)).minY
+            )
+        }
+    }
+
+    private func trackScroll(_ offset: CGFloat) {
+        let raw = min(max(offset / Self.barFadeDistance, 0), 1)
+        // 5% steps: enough for the eye, few enough that a flick through the
+        // photo costs 20 body passes instead of one per frame.
+        let stepped = (raw * 20).rounded() / 20
+        if stepped != barProgress { barProgress = stepped }
+    }
+
+    // MARK: - Swipe back
+
+    /// A single tick once a back swipe has gone far enough that letting go will
+    /// close the recipe, the way Airbnb confirms the gesture. The system pop
+    /// exposes no progress, so this reads the same drag alongside it.
+    private var backSwipeTick: some Gesture {
+        DragGesture(minimumDistance: 12, coordinateSpace: .local)
+            .onChanged { value in
+                // Only the edge-swipe zone, and only while it's a sideways drag.
+                guard value.startLocation.x < 44,
+                      value.translation.width > abs(value.translation.height) else { return }
+                let committed = value.translation.width > 130
+                guard committed != backSwipeCommitted else { return }
+                backSwipeCommitted = committed
+                if committed { Haptics.impact(.light) }
+            }
+            .onEnded { _ in backSwipeCommitted = false }
     }
 
     private var scale: Double {
@@ -65,10 +132,15 @@ struct RecipeDetailView: View {
                 heroHeader
                 contentSheet
             }
+            .background(scrollTracker)
         }
+        .coordinateSpace(name: Self.scrollSpace)
+        .onPreferenceChange(ScrollOffsetKey.self) { trackScroll($0) }
         .ignoresSafeArea(edges: .top)
         .background(Theme.Colors.background)
         .toolbar(.hidden, for: .navigationBar)
+        .overlay(alignment: .top) { topBar }
+        .simultaneousGesture(backSwipeTick)
         .safeAreaInset(edge: .bottom) { cookBar }
         .fullScreenCover(isPresented: $isCooking) { CookModeView(recipe: recipe, scale: scale) }
         .fullScreenCover(isPresented: $isShowingCookBriefing) {
@@ -105,6 +177,8 @@ struct RecipeDetailView: View {
             Button("Cancel", role: .cancel) { versionLabel = "" }
         }
         .onAppear {
+            // After the zoom has landed, not during it.
+            withAnimation(.easeOut(duration: 0.3).delay(0.12)) { sheetRevealed = true }
             RecipeNutrition.backfillIfNeeded(recipe: recipe)
             Analytics.capture(.recipeViewed)
         }
@@ -121,19 +195,42 @@ struct RecipeDetailView: View {
                 .frame(height: 150)
                 .frame(maxHeight: .infinity, alignment: .top)
                 .allowsHitTesting(false)
-            HStack {
-                circleButton(MS.chevronLeft) { Haptics.impact(.light); dismiss() }
-                Spacer()
-                circleButton(recipe.isFavorite ? MS.favoriteFill : MS.favorite,
-                             tint: recipe.isFavorite ? Theme.Colors.tomato : Theme.Colors.heading) {
-                    Haptics.impact(.medium); recipe.isFavorite.toggle()
-                }
-                overflowMenu
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 56)
         }
         .frame(height: 330)
+    }
+
+    // MARK: - Top bar
+
+    /// Nothing at all over the photo, then a cream bar that fades in as the photo
+    /// scrolls away. The controls stay put the whole time and simply trade their
+    /// blurred discs for the solid bar.
+    private var topBar: some View {
+        HStack {
+            circleButton(MS.chevronLeft) { Haptics.impact(.light); close() }
+            Spacer()
+            circleButton(recipe.isFavorite ? MS.favoriteFill : MS.favorite,
+                         tint: recipe.isFavorite ? Theme.Colors.tomato : Theme.Colors.heading) {
+                Haptics.impact(.medium); recipe.isFavorite.toggle()
+            }
+            overflowMenu
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 56)
+        .padding(.bottom, 8)
+        .background {
+            Theme.Colors.background
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(Theme.Colors.textPrimary.opacity(0.08))
+                        .frame(height: 0.5)
+                }
+                .opacity(barProgress)
+        }
+        // An overlay honours the safe area even when the scroll view under it
+        // doesn't, which would drop the controls a status bar's worth and leave
+        // the photo showing above the solid bar.
+        .ignoresSafeArea(edges: .top)
+        .opacity(sheetRevealed ? 1 : 0)
     }
 
     private func circleButton(_ icon: MS, tint: Color = Theme.Colors.heading,
@@ -141,10 +238,20 @@ struct RecipeDetailView: View {
         Button(action: action) {
             icon.sized(21).foregroundColor(tint)
                 .frame(width: 42, height: 42)
-                .background(Circle().fill(Theme.Colors.card.opacity(0.85)))
-                .background(.ultraThinMaterial, in: Circle())
+                .background(chromeDisc)
         }
         .buttonStyle(.plain)
+    }
+
+    /// A blurred disc that lets the photo through, rather than a solid puck. It
+    /// dissolves once the bar behind it has gone solid, so the icons aren't
+    /// sitting on two backgrounds at once.
+    private var chromeDisc: some View {
+        Circle()
+            .fill(Theme.Colors.card.opacity(0.3))
+            .background(.ultraThinMaterial, in: Circle())
+            .overlay(Circle().strokeBorder(Color.white.opacity(0.4), lineWidth: 0.5))
+            .opacity(1 - barProgress)
     }
 
     private var overflowMenu: some View {
@@ -166,8 +273,7 @@ struct RecipeDetailView: View {
         } label: {
             MS.moreHoriz.sized(21).foregroundColor(Theme.Colors.heading)
                 .frame(width: 42, height: 42)
-                .background(Circle().fill(Theme.Colors.card.opacity(0.85)))
-                .background(.ultraThinMaterial, in: Circle())
+                .background(chromeDisc)
         }
     }
 
@@ -188,6 +294,12 @@ struct RecipeDetailView: View {
         .padding(.top, 24)
         .padding(.bottom, 40)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Held back until the zoom has landed, and dropped again on the way out,
+        // so the card that grows and shrinks is just photo over an empty cream
+        // sheet — the part that actually matches the feed card. Cross-fading
+        // this block at full text size over the card's own title is what made
+        // the morph look doubled. Opacity only: the layout never moves.
+        .opacity(sheetRevealed ? 1 : 0)
         .background(Theme.Colors.background)
         .clipShape(.rect(topLeadingRadius: 30, topTrailingRadius: 30))
         .offset(y: -26)
@@ -247,7 +359,8 @@ struct RecipeDetailView: View {
     private var tagRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 7) {
-                ForEach(recipe.tags, id: \.self) { tag in
+                // The `chef:` discriminator is plumbing, not a tag to show.
+                ForEach(recipe.tags.filter { !$0.hasPrefix(ChefContent.tagPrefix) }, id: \.self) { tag in
                     Text(tag)
                         .font(BrandFont.nunito(12.5, 700))
                         .foregroundStyle(Color(hex: 0x3A342C))
@@ -558,6 +671,9 @@ struct RecipeDetailView: View {
         .padding(.horizontal, 20)
         .padding(.top, 14)
         .padding(.bottom, GluttTabBar.reservedHeight - 12)
+        // Rides with the sheet: a full-width green pill inside a card-sized
+        // frame is the other thing that gave the morph away.
+        .opacity(sheetRevealed ? 1 : 0)
         .background(Theme.Colors.background.opacity(0.98))
     }
 

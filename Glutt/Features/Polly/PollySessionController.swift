@@ -86,6 +86,12 @@ final class PollySessionController {
     /// Bumps on every play/restart request so the canvas remounts from the start
     /// even when the clip already finished (AVPlayer won't restart without seek).
     private(set) var clipRestartToken = 0
+    /// True while WE hold the mic muted because a technique clip is playing with
+    /// sound. Deliberately distinct from `isHardMuted`, which is the cook's own
+    /// mute and must survive anything a clip does. Readable so a test can prove
+    /// the hold is released — the bug it replaces was invisible from outside.
+    private(set) var micHeldForClipAudio = false
+    private var clipMicFailsafeTask: Task<Void, Never>?
     /// Set by the `end_session` tool; the session view observes it and calls `end`.
     private(set) var wantsEnd = false
     /// Session start — used by the Cook Recap for elapsed time.
@@ -295,30 +301,64 @@ final class PollySessionController {
             clipMuted = muted
             clipPlaybackDesired = true
             if muted {
-                if !isHardMuted { webrtc?.setMicMode(listeningMode == .dormant ? .dormant : .open) }
+                releaseMicAfterClip(reason: "clip muted")
             } else if !isHardMuted {
+                micHeldForClipAudio = true
                 webrtc?.setMicMode(.hardMuted)
+                armClipMicFailsafe()
             }
             PollyDebugLog.shared.log("media: playing muted=\(muted)")
         case .finished:
             if previous == state { break }
             clipPlaybackDesired = false
-            if !isHardMuted {
-                webrtc?.setMicMode(listeningMode == .dormant ? .dormant : .open)
-            }
+            releaseMicAfterClip(reason: "finished")
             PollyDebugLog.shared.log("media: finished")
         case .paused:
             if previous == state { break }
             clipPlaybackDesired = false
-            if !isHardMuted {
-                webrtc?.setMicMode(listeningMode == .dormant ? .dormant : .open)
-            }
+            releaseMicAfterClip(reason: "paused")
             PollyDebugLog.shared.log("media: paused")
         case .idle:
             // Player teardown/remount often reports idle — don't clear a pending play.
-            break
+            //
+            // But DO give the mic back. This used to be an unconditional no-op,
+            // and teardown is exactly what emits .idle: advance a step while an
+            // unmuted clip is playing and the player is destroyed before it can
+            // report .finished, so the mic we hard-muted for its audio was never
+            // released. The cook then spent the rest of the session talking to a
+            // muted microphone, with the UI still showing her as listening.
+            if micHeldForClipAudio {
+                releaseMicAfterClip(reason: "player torn down")
+            }
         case .preparing:
             break
+        }
+    }
+
+    /// Give the mic back after a technique clip stops owning the speaker.
+    /// Never overrides the cook's own hard mute, which is a different thing
+    /// entirely from the hold we take while a clip plays with sound.
+    private func releaseMicAfterClip(reason: String) {
+        clipMicFailsafeTask?.cancel()
+        clipMicFailsafeTask = nil
+        let wasHeld = micHeldForClipAudio
+        micHeldForClipAudio = false
+        guard !isHardMuted else { return }
+        webrtc?.setMicMode(listeningMode == .dormant ? .dormant : .open)
+        if wasHeld { PollyDebugLog.shared.log("media: mic released after clip (\(reason))") }
+    }
+
+    /// Last line of defence for the mic hold. Every path that should hand the mic
+    /// back now does, but a player destroyed at the wrong moment can stop
+    /// emitting states altogether, and the cost of missing one is that the cook
+    /// keeps talking into a dead microphone for the rest of the session. No
+    /// technique clip justifies holding it for minutes, so time it out.
+    private func armClipMicFailsafe() {
+        clipMicFailsafeTask?.cancel()
+        clipMicFailsafeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(PollyConfig.clipMicHoldMaxSeconds))
+            guard let self, !Task.isCancelled, self.micHeldForClipAudio else { return }
+            self.releaseMicAfterClip(reason: "failsafe timeout")
         }
     }
 
@@ -731,6 +771,8 @@ final class PollySessionController {
         eventTask = nil
         cancelDormancyTimer()
         cancelResponseWatchdog()
+        clipMicFailsafeTask?.cancel()
+        clipMicFailsafeTask = nil
         wakeInjectionTask?.cancel()
         wakeWord.stop()
         audio.stop()
@@ -807,6 +849,8 @@ final class PollySessionController {
         eventTask = nil
         cancelDormancyTimer()
         cancelResponseWatchdog()
+        clipMicFailsafeTask?.cancel()
+        clipMicFailsafeTask = nil
         wakeInjectionTask?.cancel()
         wakeWord.stop()
         camera.stop()

@@ -601,4 +601,46 @@ final class PollySessionControllerTests: XCTestCase {
 
         await controller.end(context: context, endedEarly: true)
     }
+
+    // MARK: an unmuted technique clip must never strand the mic
+
+    /// Advancing a step while an unmuted clip plays tears the player down, and
+    /// teardown reports `.idle`. That case used to be an unconditional no-op, so
+    /// the mic hold taken for the clip's audio was never released and the cook
+    /// spent the rest of the session talking into a dead microphone with the UI
+    /// still showing Polly as listening.
+    func testUnmutedClipDoesNotStrandTheMicWhenThePlayerIsTornDown() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+
+        controller.updateMediaState(.playing(segmentID: "seg-1", muted: false))
+        XCTAssertTrue(controller.micHeldForClipAudio, "clip audio takes the mic")
+
+        controller.updateMediaState(.idle)          // what player teardown emits
+        XCTAssertFalse(controller.micHeldForClipAudio, "teardown gives the mic back")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    /// The ordinary paths must release it too, and a muted clip must never take
+    /// it in the first place.
+    func testClipMicHoldIsReleasedOnFinishAndNeverTakenWhenMuted() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+
+        controller.updateMediaState(.playing(segmentID: "seg-1", muted: true))
+        XCTAssertFalse(controller.micHeldForClipAudio, "a silent clip needs no mic hold")
+
+        controller.updateMediaState(.playing(segmentID: "seg-1", muted: false))
+        XCTAssertTrue(controller.micHeldForClipAudio)
+
+        controller.updateMediaState(.finished(segmentID: "seg-1"))
+        XCTAssertFalse(controller.micHeldForClipAudio, "finishing gives the mic back")
+
+        await controller.end(context: context, endedEarly: true)
+    }
 }

@@ -193,7 +193,7 @@ final class PollySessionControllerTests: XCTestCase {
         }
         XCTAssertTrue(config.instructions.contains("Creamy Lemon Chicken"),
                       "instructions must embed the recipe")
-        XCTAssertEqual(config.tools.count, 18, "all locked tools advertised")
+        XCTAssertEqual(config.tools.count, 19, "all locked tools advertised")
         XCTAssertEqual(config.voice, "marin")
         XCTAssertEqual(config.model, "gpt-realtime-2")
         XCTAssertTrue(config.transcribeInput)
@@ -598,6 +598,38 @@ final class PollySessionControllerTests: XCTestCase {
         XCTAssertEqual(controller.listeningMode, .dormant)
         controller.forceListen()
         XCTAssertEqual(controller.listeningMode, .listening, "tap-to-talk works once un-muted")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    // MARK: wait_for_user is a silence, not a failure
+
+    /// Every other tool round-trip ends with a response.create so Polly speaks
+    /// the result. wait_for_user must not: she calls it precisely to say "that
+    /// audio was not for me", and answering anyway would put her back to
+    /// replying to the extractor fan. It must also not count toward the reject
+    /// tally that ends the session, because deciding correctly is not a failure.
+    func testWaitForUserStaysSilentAndDoesNotCountAsAReject() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+
+        let before = transport.sentNonAudio.count
+        transport.push(.responseDone(
+            status: "completed",
+            calls: [RealtimeFunctionCall(name: "wait_for_user", callId: "c1", argumentsJSON: "{}")],
+            usage: nil))
+        await waitUntil({ transport.sentNonAudio.count > before }, "tool output sent")
+        // Let any (incorrect) follow-up response.create land before asserting.
+        try? await Task.sleep(for: .milliseconds(120))
+
+        let after = transport.sentNonAudio.dropFirst(before)
+        XCTAssertTrue(after.contains { if case .createFunctionOutput = $0 { return true }; return false },
+                      "the tool result is still reported")
+        XCTAssertFalse(after.contains { $0 == .responseCreate },
+                       "wait_for_user must not be followed by a spoken response")
+        XCTAssertFalse(controller.isThinking, "and must not leave her stuck thinking")
 
         await controller.end(context: context, endedEarly: true)
     }

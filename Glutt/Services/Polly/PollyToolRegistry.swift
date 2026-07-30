@@ -28,6 +28,9 @@ final class PollyToolRegistry {
     var onRequestFrame: (() async -> Bool)?
     /// Controller hook: the model asked to end the session.
     var onEndSession: (() -> Void)?
+    /// Controller hook: the model decided the audio was not for her and chose to
+    /// stay quiet. A deliberate no-answer, which is the opposite of a failure.
+    var onWaitForUser: (() -> Void)?
     /// Controller hook: metadata for a step's technique clip (no playback side effects).
     var onClipInfoForStep: ((String) -> [String: Any])?
     /// Controller hook: live playback flags for the current step's clip (playing/muted).
@@ -213,6 +216,17 @@ final class PollyToolRegistry {
             description: "End the cooking session. Call only when the cook says they are finished or asks to stop.",
             parameters: emptySchema
         ),
+        // A no-op whose only job is to give Polly a way to end a turn WITHOUT
+        // speaking. A voice model answers by default, and in a kitchen most of
+        // what reaches the microphone is not addressed to it: an extractor fan, a
+        // pan, running water, a TV, someone else in the room. Without this her
+        // only options are to answer noise or to go silent in a way the client
+        // reads as a failure. This is OpenAI's own published pattern for it.
+        RealtimeToolDefinition(
+            name: "wait_for_user",
+            description: "Call this when the latest audio does not need a spoken reply: silence, kitchen noise, a running tap, a TV, side conversation, or speech not addressed to you. Ends your turn without saying anything.",
+            parameters: emptySchema
+        ),
         RealtimeToolDefinition(
             name: "show_step_video",
             description: "Restart/replay the current step's technique clip ONLY when the cook asks to see it again (e.g. \"play it again\", \"show me that once more\"). Clips already autoplay when the step opens — do not call this proactively or offer to play. Returns clip metadata (teaching_label, visual_cue) or {\"available\":false}.",
@@ -275,6 +289,7 @@ final class PollyToolRegistry {
         case "record_polly_save": return recordPollySave(args)
         case "request_camera_frame": return await requestCameraFrame()
         case "end_session": return endSession()
+        case "wait_for_user": return waitForUser()
         case "show_step_video": return showStepVideo()
         case "control_step_video": return controlStepVideo(args)
         case "dismiss_preflight": return dismissPreflight()
@@ -580,6 +595,16 @@ final class PollyToolRegistry {
     private func endSession() -> String {
         onEndSession?()
         return Self.json(["ending": true])
+    }
+
+    /// Deliberately does nothing. The value is entirely in Polly having a way to
+    /// end a turn silently instead of being forced to choose between answering
+    /// the extractor fan and going quiet in a way the client scores as a failure.
+    /// `onWaitForUser` lets the controller credit the turn rather than counting
+    /// it toward dormancy.
+    private func waitForUser() -> String {
+        onWaitForUser?()
+        return Self.json(["waiting": true])
     }
 
     private func showStepVideo() -> String {

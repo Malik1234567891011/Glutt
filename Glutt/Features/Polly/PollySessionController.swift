@@ -1487,6 +1487,21 @@ final class PollySessionController {
                         + "do NOT greet again and do NOT repeat any sentence you just said. "
                         + "Only speak if the tools require a short correction; otherwise stay silent and wait for the cook."))
                 }
+                // wait_for_user is a deliberate silence. Asking for a follow-up
+                // response after it would defeat the entire point: she called it
+                // to say "that audio was not for me", and a response.create would
+                // make her answer the extractor fan anyway.
+                if calls.contains(where: { $0.name == "wait_for_user" }) {
+                    PollyDebugLog.shared.log("gate: wait_for_user — staying silent, turn credited")
+                    isThinking = false
+                    isHoldingForAssistant = false
+                    // Credit the turn. She heard something, judged it, and decided
+                    // correctly; that must not count toward the reject tally that
+                    // ends the session.
+                    consecutiveRejects = 0
+                    noteUserActivity()
+                    return
+                }
                 // ONE response for the whole batch. A response.create per call
                 // queues N spoken replies back to back — Polly repeating herself.
                 try? await transport?.send(.responseCreate)

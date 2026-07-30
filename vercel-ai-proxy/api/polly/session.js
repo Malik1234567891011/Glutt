@@ -102,7 +102,25 @@ export default async function handler(req, res) {
       ...(withReasoning && effort ? { reasoning: { effort } } : {}),
       audio: {
         input: {
-          turn_detection: { type: "semantic_vad", eagerness },
+          // create_response / interrupt_response OFF: the CLIENT owns when Polly
+          // answers and when a barge-in cancels her audio. Omitting these let
+          // both default to true, so the server answered on its own VAD stop
+          // while PollySessionController also drove response.create after its
+          // ConversationalGate committed a turn — two masters. Worse, the server
+          // then truncated her on ANY speech-start, including her own echo, a pan
+          // clank, or a technique clip's audio. That is the "she cuts herself
+          // off" symptom, and the half-duplex mic gate exists precisely to
+          // prevent what this setting was silently allowing.
+          //
+          // The WebSocket path has always set these (RealtimeEvent.swift:188-193)
+          // with the reasoning written down. The reasoning survived the migration
+          // to WebRTC; the config did not.
+          turn_detection: {
+            type: "semantic_vad",
+            eagerness,
+            create_response: false,
+            interrupt_response: false,
+          },
           noise_reduction: { type: "far_field" },
           transcription: { model: "gpt-4o-transcribe", language: "en" },
         },

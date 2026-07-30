@@ -27,22 +27,29 @@ actor StepClipService {
         }
 
         // Phase 1 — video segmentation (slow; YouTube URL → Gemini).
-        _ = try await postJSON([
+        let segmentJSON = try await postJSON([
             "phase": "segment",
             "youtube_url": youtubeURL,
             "recipe_title": recipeTitle,
             "force": force,
             "steps": stepPayload(cookSteps),
         ])
+        let segmentDoc = try JSONSerialization.jsonObject(with: segmentJSON) as? [String: Any]
+        let segments = segmentDoc?["segments"] as? [[String: Any]] ?? []
 
-        // Phase 2 — match segments to CookPlan steps (text-only, faster).
-        let matchData = try await postJSON([
+        // Phase 2 — match segments to CookPlan steps (pass segments explicitly;
+        // Redis handoff is optional and may be unavailable on some deploys).
+        var matchBody: [String: Any] = [
             "phase": "match",
             "youtube_url": youtubeURL,
             "recipe_title": recipeTitle,
             "force": force,
             "steps": stepPayload(cookSteps),
-        ])
+        ]
+        if !segments.isEmpty {
+            matchBody["segments"] = segments
+        }
+        let matchData = try await postJSON(matchBody)
 
         let decoded = try JSONDecoder().decode(StepClipIndexResponse.self, from: matchData)
         saveDisk(cacheKey, decoded)

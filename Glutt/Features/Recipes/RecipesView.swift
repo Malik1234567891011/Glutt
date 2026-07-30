@@ -11,7 +11,11 @@ struct RecipesView: View {
     @Query private var pantryItems: [PantryItem]
     @Query private var cookHistory: [CookSession]
 
-    @State private var navPath: [Recipe] = []
+    // Heterogeneous on purpose: the feed pushes recipes, the chef rail pushes chefs.
+    @State private var navPath = NavigationPath()
+    /// Cards in this stack grow into their detail screen instead of sliding.
+    @Namespace private var zoomNamespace
+    @State private var zoomSource = ZoomSource()
     @State private var searchText = ""
     @FocusState private var searchFocused: Bool
     @State private var filter: HomeFilter = .all
@@ -65,9 +69,13 @@ struct RecipesView: View {
 
     // MARK: - Derived data
 
-    /// Top-level, non-lesson recipes (versions + Cooking Basics stay out of the feed).
+    /// Top-level, non-lesson recipes (versions + Cooking Basics stay out of the
+    /// feed). Bundled chef dishes stay out too until you heart one — the heart
+    /// on a chef card is what saves it to your library.
     private var libraryRecipes: [Recipe] {
-        allRecipes.filter { $0.parentRecipe == nil && !$0.isCookingBasic }
+        allRecipes.filter {
+            $0.parentRecipe == nil && !$0.isCookingBasic && (!$0.isChefRecipe || $0.isFavorite)
+        }
     }
 
     private var basicsLessons: [Recipe] {
@@ -204,7 +212,11 @@ struct RecipesView: View {
             }
             .background(Theme.Colors.background)
             .navigationBarHidden(true)
-            .navigationDestination(for: Recipe.self) { RecipeDetailView(recipe: $0) }
+            .navigationDestination(for: Recipe.self) { recipe in
+                RecipeDetailView(recipe: recipe)
+                    .zoomedFrom(zoomSource.card(for: recipe.persistentModelID))
+            }
+            .navigationDestination(for: Chef.self) { ChefDetailView(chef: $0) }
             .navigationDestination(for: RecipeCollection.self) { CollectionDetailView(collection: $0) }
             .onChange(of: searchText) {
                 if trimmedQuery != aiQuery { aiResults = nil; aiHeadline = nil }
@@ -216,14 +228,14 @@ struct RecipesView: View {
             .sheet(isPresented: $isShowingSettings) { SettingsView() }
             .sheet(isPresented: $isShowingBasics) {
                 NavigationStack {
-                    CookingBasicsView { recipe in isShowingBasics = false; navPath = [recipe] }
+                    CookingBasicsView { recipe in isShowingBasics = false; open(recipe) }
                 }
             }
             .sheet(isPresented: $isShowingCollections) {
                 CollectionsListSheet()
             }
             .sheet(isPresented: $isRequestingHowTo) {
-                RequestHowToSheet { recipe in navPath = [recipe] }
+                RequestHowToSheet { recipe in open(recipe) }
             }
             .onAppear(perform: handlePendingImport)
             .onChange(of: router.pendingImportURL) { handlePendingImport() }
@@ -232,7 +244,11 @@ struct RecipesView: View {
             .onAppear {
                 if router.openFirstRecipeOnLaunch, let first = libraryRecipes.first {
                     router.openFirstRecipeOnLaunch = false
-                    navPath = [first]
+                    open(first)
+                }
+                if let slug = router.chefToOpenOnLaunch, let chef = ChefContent.chef(id: slug) {
+                    router.chefToOpenOnLaunch = nil
+                    navPath = NavigationPath([chef])
                 }
             }
             .alert("New collection", isPresented: $isNamingCollection) {
@@ -245,6 +261,9 @@ struct RecipesView: View {
                 Button("Cancel", role: .cancel) { newCollectionName = "" }
             }
         }
+        // On the stack itself, so pushed screens inherit it too — a card inside
+        // a chef page has to share the namespace its destination reads.
+        .zoomTransitions(zoomNamespace, source: zoomSource)
     }
 
     // MARK: - Header
@@ -376,6 +395,7 @@ struct RecipesView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 6)
             }
+            ChefRail()
             SectionLabel(text: listSectionTitle)
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
@@ -385,7 +405,7 @@ struct RecipesView: View {
                     NavigationLink(value: recipe) {
                         FeedRecipeCard(recipe: recipe, match: match(recipe))
                     }
-                    .buttonStyle(.plain)
+                    .zoomCard(ZoomCardID(recipe.persistentModelID, slot: "feed"))
                     .hapticTap()
                 }
             }
@@ -411,8 +431,6 @@ struct RecipesView: View {
                     )
                     .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous))
                     .allowsHitTesting(false)
-
-                    heroHeart(recipe)
 
                     VStack(alignment: .leading, spacing: 9) {
                         heroPantryChip(m)
@@ -441,24 +459,13 @@ struct RecipesView: View {
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous))
                 .shadow(color: Theme.Colors.textPrimary.opacity(0.16), radius: 20, y: 12)
             }
-            .buttonStyle(.plain)
+            // Its own slot: this dish is usually also a row in the list below,
+            // and the zoom has to start from whichever one you pressed.
+            .zoomCard(ZoomCardID(recipe.persistentModelID, slot: "hero"))
             .hapticTap()
         }
     }
 
-    private func heroHeart(_ recipe: Recipe) -> some View {
-        Button {
-            Haptics.impact(.light); recipe.isFavorite.toggle()
-        } label: {
-            (recipe.isFavorite ? MS.favoriteFill : MS.favorite).sized(19)
-                .foregroundStyle(Theme.Colors.tomato)
-                .frame(width: 34, height: 34)
-                .background(Circle().fill(Theme.Colors.card))
-        }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-        .padding(12)
-    }
 
     private func heroPantryChip(_ m: PantryMatcher.MatchResult) -> some View {
         let haveAll = m.totalCount > 0 && m.ownedCount >= m.totalCount
@@ -541,14 +548,16 @@ struct RecipesView: View {
                         NavigationLink(value: result.recipe) {
                             FeedRecipeCard(recipe: result.recipe, match: match(result.recipe))
                         }
-                        .buttonStyle(.plain).hapticTap()
+                        .zoomCard(ZoomCardID(result.recipe.persistentModelID, slot: "search"))
+                        .hapticTap()
                     }
                 } else {
                     ForEach(results, id: \.recipe.persistentModelID) { result in
                         NavigationLink(value: result.recipe) {
                             FeedRecipeCard(recipe: result.recipe, match: match(result.recipe))
                         }
-                        .buttonStyle(.plain).hapticTap()
+                        .zoomCard(ZoomCardID(result.recipe.persistentModelID, slot: "search"))
+                        .hapticTap()
                     }
                 }
             }
@@ -580,8 +589,16 @@ struct RecipesView: View {
     private func openRequestedRecipe() {
         guard let id = router.recipeToOpenID,
               let recipe = allRecipes.first(where: { $0.persistentModelID == id }) else { return }
-        navPath = [recipe]
+        open(recipe)
         router.recipeToOpenID = nil
+    }
+
+    /// Opens a recipe with no card behind it (deep link, launch hook, a sheet
+    /// handing one over). Forgetting the last pressed card keeps these as plain
+    /// pushes instead of growing out of something unrelated.
+    private func open(_ recipe: Recipe) {
+        zoomSource.card = nil
+        navPath = NavigationPath([recipe])
     }
 }
 

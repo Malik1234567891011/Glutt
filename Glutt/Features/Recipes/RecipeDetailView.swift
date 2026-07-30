@@ -29,10 +29,20 @@ struct RecipeDetailView: View {
     @State private var isShowingDetails = false
     @State private var substituteTarget: DietGuard.Conflict?
     @State private var selectedTab = 0   // 0 = Ingredients, 1 = Steps
+    /// Whether the cream sheet and cook bar are shown. Off for the length of the
+    /// zoom transition so the morphing card stays photo-shaped — see `contentSheet`.
+    @State private var sheetRevealed = false
 
     init(recipe: Recipe) {
         self.recipe = recipe
         _displayServings = State(initialValue: recipe.servings)
+    }
+
+    /// Leaves the way we arrived. The sheet is cut, not faded: the shrink starts
+    /// in the same frame, so anything still fading is what reads as doubled.
+    private func close() {
+        sheetRevealed = false
+        dismiss()
     }
 
     private var scale: Double {
@@ -105,6 +115,8 @@ struct RecipeDetailView: View {
             Button("Cancel", role: .cancel) { versionLabel = "" }
         }
         .onAppear {
+            // After the zoom has landed, not during it.
+            withAnimation(.easeOut(duration: 0.3).delay(0.12)) { sheetRevealed = true }
             RecipeNutrition.backfillIfNeeded(recipe: recipe)
             Analytics.capture(.recipeViewed)
         }
@@ -122,7 +134,7 @@ struct RecipeDetailView: View {
                 .frame(maxHeight: .infinity, alignment: .top)
                 .allowsHitTesting(false)
             HStack {
-                circleButton(MS.chevronLeft) { Haptics.impact(.light); dismiss() }
+                circleButton(MS.chevronLeft) { Haptics.impact(.light); close() }
                 Spacer()
                 circleButton(recipe.isFavorite ? MS.favoriteFill : MS.favorite,
                              tint: recipe.isFavorite ? Theme.Colors.tomato : Theme.Colors.heading) {
@@ -188,6 +200,12 @@ struct RecipeDetailView: View {
         .padding(.top, 24)
         .padding(.bottom, 40)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Held back until the zoom has landed, and dropped again on the way out,
+        // so the card that grows and shrinks is just photo over an empty cream
+        // sheet — the part that actually matches the feed card. Cross-fading
+        // this block at full text size over the card's own title is what made
+        // the morph look doubled. Opacity only: the layout never moves.
+        .opacity(sheetRevealed ? 1 : 0)
         .background(Theme.Colors.background)
         .clipShape(.rect(topLeadingRadius: 30, topTrailingRadius: 30))
         .offset(y: -26)
@@ -247,7 +265,8 @@ struct RecipeDetailView: View {
     private var tagRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 7) {
-                ForEach(recipe.tags, id: \.self) { tag in
+                // The `chef:` discriminator is plumbing, not a tag to show.
+                ForEach(recipe.tags.filter { !$0.hasPrefix(ChefContent.tagPrefix) }, id: \.self) { tag in
                     Text(tag)
                         .font(BrandFont.nunito(12.5, 700))
                         .foregroundStyle(Color(hex: 0x3A342C))
@@ -558,6 +577,9 @@ struct RecipeDetailView: View {
         .padding(.horizontal, 20)
         .padding(.top, 14)
         .padding(.bottom, GluttTabBar.reservedHeight - 12)
+        // Rides with the sheet: a full-width green pill inside a card-sized
+        // frame is the other thing that gave the morph away.
+        .opacity(sheetRevealed ? 1 : 0)
         .background(Theme.Colors.background.opacity(0.98))
     }
 

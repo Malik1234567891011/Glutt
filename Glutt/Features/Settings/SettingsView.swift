@@ -380,7 +380,12 @@ struct SettingsView: View {
             }
             Button {
                 Haptics.impact(.light)
-                prefs.tasteProfile = TasteProfileBuilder.descriptors(recipes: recipes, sessions: sessions)
+                // Bundled chef dishes ship with every install, so they'd skew
+                // the profile toward content the user never chose.
+                prefs.tasteProfile = TasteProfileBuilder.descriptors(
+                    recipes: recipes.filter { !$0.isChefRecipe },
+                    sessions: sessions
+                )
             } label: {
                 HStack {
                     Ph.arrowsClockwise.regular

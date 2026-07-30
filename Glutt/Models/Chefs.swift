@@ -36,19 +36,19 @@ enum ChefContent {
             id: "gordon-ramsay",
             name: "Gordon Ramsay",
             credit: "Michelin chef, London",
-            portraitAsset: nil
+            portraitAsset: "chefGordonRamsay"
         ),
         Chef(
             id: "nick-digiovanni",
             name: "Nick DiGiovanni",
-            credit: "MasterChef finalist, cookbook author",
-            portraitAsset: nil
+            credit: "MasterChef finalist",
+            portraitAsset: "chefNickDiGiovanni"
         ),
         Chef(
             id: "joshua-weissman",
             name: "Joshua Weissman",
             credit: "Cookbook author, Austin",
-            portraitAsset: nil
+            portraitAsset: "chefJoshuaWeissman"
         ),
     ]
 
@@ -139,8 +139,6 @@ enum ChefContent {
     struct Dish {
         let title: String
         let summary: String
-        /// Popularity rating shown on the card. Not the user's private 1 to 5 rating.
-        let rating: Double
         let servings: Int
         let prepMinutes: Int
         let cookMinutes: Int
@@ -165,11 +163,10 @@ enum ChefContent {
         Dish(
             title: "Beef Wellington",
             summary: "Fillet in mushroom duxelles, wrapped in puff pastry",
-            rating: 4.9,
             servings: 4, prepMinutes: 45, cookMinutes: 105,
             difficulty: .advanced,
-            tags: ["signature", "beef", "dinner party"],
-            imageAsset: "garlicButterSteakPotatoBowl",
+            tags: ["Signature", "Beef", "Dinner party"],
+            imageAsset: "chefBeefWellington",
             ingredients: [
                 ("Beef fillet", 1, "kg"),
                 ("Chestnut mushrooms", 500, "g"),
@@ -191,11 +188,10 @@ enum ChefContent {
         Dish(
             title: "Pan Seared Salmon",
             summary: "Crisp skin salmon, lemon butter, soft herbs",
-            rating: 4.8,
             servings: 2, prepMinutes: 5, cookMinutes: 13,
             difficulty: .intermediate,
-            tags: ["fish", "quick", "high protein"],
-            imageAsset: "lemonDillSalmonBowl",
+            tags: ["Fish", "Quick", "High protein"],
+            imageAsset: "chefPanSearedSalmon",
             ingredients: [
                 ("Salmon fillets", 2, nil),
                 ("Olive oil", 1, "tbsp"),
@@ -214,11 +210,10 @@ enum ChefContent {
         Dish(
             title: "Shepherd's Pie",
             summary: "Slow cooked lamb under a browned mash crust",
-            rating: 4.7,
             servings: 4, prepMinutes: 20, cookMinutes: 50,
             difficulty: .intermediate,
-            tags: ["comfort", "lamb", "sunday"],
-            imageAsset: "koreanBeefMealPrep",
+            tags: ["Comfort", "Lamb", "Sunday"],
+            imageAsset: "chefShepherdsPie",
             ingredients: [
                 ("Lamb mince", 700, "g"),
                 ("Potatoes", 1, "kg"),
@@ -245,11 +240,10 @@ enum ChefContent {
         Dish(
             title: "Spiced Lamb Flatbread",
             summary: "Kofta spiced lamb, yogurt, quick pickled onion",
-            rating: 4.6,
             servings: 4, prepMinutes: 20, cookMinutes: 20,
             difficulty: .beginner,
-            tags: ["lamb", "sharing", "weeknight"],
-            imageAsset: "koftaFlatbreadWrap",
+            tags: ["Lamb", "Sharing", "Weeknight"],
+            imageAsset: "chefSpicedLambFlatbread",
             ingredients: [
                 ("Lamb mince", 400, "g"),
                 ("Flatbreads", 4, nil),
@@ -274,11 +268,10 @@ enum ChefContent {
         Dish(
             title: "Scrambled Eggs",
             summary: "Low and slow, folded off the heat with creme fraiche",
-            rating: 4.9,
             servings: 2, prepMinutes: 2, cookMinutes: 6,
             difficulty: .beginner,
-            tags: ["breakfast", "eggs", "quick"],
-            imageAsset: "greekYogurtBowl",
+            tags: ["Breakfast", "Eggs", "Quick"],
+            imageAsset: "chefScrambledEggs",
             ingredients: [
                 ("Eggs", 6, nil),
                 ("Butter", 30, "g"),
@@ -301,10 +294,9 @@ enum ChefContent {
         Dish(
             title: "Garlic Butter Steak Bites",
             summary: "Hard seared sirloin, basted in garlic rosemary butter",
-            rating: 4.9,
             servings: 2, prepMinutes: 10, cookMinutes: 15,
             difficulty: .beginner,
-            tags: ["beef", "high protein", "quick"],
+            tags: ["Beef", "High protein", "Quick"],
             imageAsset: "greenGoddessSteakPlate",
             ingredients: [
                 ("Sirloin steak", 500, "g"),
@@ -326,10 +318,9 @@ enum ChefContent {
         Dish(
             title: "Chicken Katsu Sandwich",
             summary: "Panko chicken, milk bread, tonkatsu sauce, crunchy cabbage",
-            rating: 4.8,
             servings: 2, prepMinutes: 15, cookMinutes: 20,
             difficulty: .intermediate,
-            tags: ["chicken", "sandwich", "fried"],
+            tags: ["Chicken", "Sandwich", "Fried"],
             imageAsset: "beefWrapWithWedges",
             ingredients: [
                 ("Chicken breasts", 2, nil),
@@ -353,11 +344,10 @@ enum ChefContent {
         Dish(
             title: "Truffle Mac and Cheese",
             summary: "Gruyere and cheddar sauce under a parmesan panko lid",
-            rating: 4.8,
             servings: 4, prepMinutes: 10, cookMinutes: 30,
             difficulty: .beginner,
-            tags: ["comfort", "pasta", "vegetarian"],
-            imageAsset: "pestoGnocchiMealPrep",
+            tags: ["Comfort", "Pasta", "Vegetarian"],
+            imageAsset: "chefTruffleMac",
             ingredients: [
                 ("Macaroni", 400, "g"),
                 ("Butter", 50, "g"),
@@ -380,11 +370,10 @@ enum ChefContent {
         Dish(
             title: "Crispy Chicken Fried Rice",
             summary: "Day old rice pressed flat until it crackles",
-            rating: 4.7,
             servings: 2, prepMinutes: 10, cookMinutes: 15,
             difficulty: .beginner,
-            tags: ["chicken", "rice", "quick"],
-            imageAsset: "chickenRiceBowl",
+            tags: ["Chicken", "Rice", "Quick"],
+            imageAsset: "chefFriedRice",
             ingredients: [
                 ("Cooked rice", 3, "cup"),
                 ("Chicken thighs", 300, "g"),
@@ -408,10 +397,9 @@ enum ChefContent {
         Dish(
             title: "Hot Honey Chicken",
             summary: "Craggy buttermilk chicken tossed in chili honey butter",
-            rating: 4.7,
             servings: 2, prepMinutes: 15, cookMinutes: 30,
             difficulty: .intermediate,
-            tags: ["chicken", "spicy", "fried"],
+            tags: ["Chicken", "Spicy", "Fried"],
             imageAsset: "hotHoneyChickenRice",
             ingredients: [
                 ("Chicken thighs", 500, "g"),
@@ -442,11 +430,10 @@ enum ChefContent {
         Dish(
             title: "Birria Tacos",
             summary: "Chile braised beef, cheese crisped tortillas, consomme",
-            rating: 4.9,
             servings: 6, prepMinutes: 20, cookMinutes: 180,
             difficulty: .advanced,
-            tags: ["beef", "slow cooked", "sharing"],
-            imageAsset: "steakFajitaSalad",
+            tags: ["Beef", "Slow cooked", "Sharing"],
+            imageAsset: "chefBirriaTacos",
             ingredients: [
                 ("Beef chuck", 1.5, "kg"),
                 ("Guajillo chiles", 6, nil),
@@ -477,11 +464,10 @@ enum ChefContent {
         Dish(
             title: "Smash Burgers",
             summary: "Lacy edged patties, american cheese, toasted potato bun",
-            rating: 4.9,
             servings: 4, prepMinutes: 15, cookMinutes: 15,
             difficulty: .intermediate,
-            tags: ["beef", "burger", "weekend"],
-            imageAsset: "beefWrapWithWedges",
+            tags: ["Beef", "Burger", "Weekend"],
+            imageAsset: "chefSmashBurgers",
             ingredients: [
                 ("Ground beef", 600, "g"),
                 ("Potato buns", 4, nil),
@@ -505,11 +491,10 @@ enum ChefContent {
         Dish(
             title: "Crispy Orange Chicken",
             summary: "Double fried chicken in a sharp citrus glaze",
-            rating: 4.8,
             servings: 4, prepMinutes: 20, cookMinutes: 15,
             difficulty: .intermediate,
-            tags: ["chicken", "fried", "takeout"],
-            imageAsset: "hotHoneyChickenRice",
+            tags: ["Chicken", "Fried", "Takeout"],
+            imageAsset: "chefOrangeChicken",
             ingredients: [
                 ("Chicken thighs", 700, "g"),
                 ("Cornstarch", 100, "g"),
@@ -535,11 +520,10 @@ enum ChefContent {
         Dish(
             title: "Chicken Shawarma",
             summary: "Yogurt spiced thighs, garlic sauce, warm flatbread",
-            rating: 4.7,
             servings: 4, prepMinutes: 20, cookMinutes: 30,
             difficulty: .intermediate,
-            tags: ["chicken", "grill", "wrap"],
-            imageAsset: "saffronChickenShawarmaBowl",
+            tags: ["Chicken", "Grill", "Wrap"],
+            imageAsset: "chefChickenShawarma",
             ingredients: [
                 ("Chicken thighs", 1, "kg"),
                 ("Greek yogurt", 150, "g"),
@@ -567,11 +551,10 @@ enum ChefContent {
         Dish(
             title: "Burrito Bowl",
             summary: "Adobo chicken, cilantro lime rice, quick pico",
-            rating: 4.6,
             servings: 4, prepMinutes: 25, cookMinutes: 20,
             difficulty: .beginner,
-            tags: ["chicken", "meal prep", "high protein"],
-            imageAsset: "koftaPotatoSaladMealPrep",
+            tags: ["Chicken", "Meal prep", "High protein"],
+            imageAsset: "chefBurritoBowl",
             ingredients: [
                 ("Chicken thighs", 600, "g"),
                 ("Chipotle in adobo", 2, "tbsp"),

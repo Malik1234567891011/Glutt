@@ -19,7 +19,7 @@ final class YouTubeEmbedTests: XCTestCase {
         )
         XCTAssertEqual(
             url?.absoluteString,
-            "https://example.test/api/discover/player?v=abc123&start=42&end=58&mute=1"
+            "https://example.test/api/discover/player?v=abc123&start=42&end=58&mute=1&w=42-58"
         )
     }
 

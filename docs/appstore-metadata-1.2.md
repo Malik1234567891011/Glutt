@@ -301,14 +301,14 @@ Glutt requires an active subscription to use. There is no free tier. How to get 
 1. Complete the short onboarding on first launch.
 2. The paywall appears. Either tap Continue to take the yearly plan, or turn on the "Not sure yet? Enable free trial." switch and tap "Start my 3-day free trial". If the switch is not shown, Continue takes the yearly plan.
 3. Complete the purchase with your sandbox Apple Account. Sandbox purchases are free.
-4. The app unlocks straight away. No demo account is needed.
+4. The app unlocks, then asks you to sign in. Tap "Sign in with Apple" and use your own Apple Account — Glutt creates the account for you on the spot. There is no password-based demo login to hand over, because Glutt only supports Sign in with Apple and Google. Signing in is what carries a subscription to a new phone; Glutt stores nothing but your name and email.
 
 Three in-app purchases are submitted with this build: com.omarlahmimi.glutt.premium.yearly, com.omarlahmimi.glutt.premium.monthly, and com.omarlahmimi.glutt.premium.yearly.trial.
 
 Other things worth knowing:
 
 Restore Purchases is on the paywall and in Settings.
-Signing in is optional and only offered after a purchase. Account deletion is in Settings, Account, Delete account.
+Sign-in is asked for after the purchase, never before, and only via Sign in with Apple or Google. Account deletion is in Settings, Account, Delete account.
 The microphone and speech recognition are used by Polly, the in-app voice cooking assistant. Wake word detection runs on device. Camera access is optional and only used inside a Polly session or when scanning a pantry.
 To try Polly: open any recipe, tap Cook with Polly, then say "Polly" or tap the mic. It needs a network connection.
 The app is iPhone only and portrait only by design.
@@ -348,7 +348,15 @@ accuracy problem as section 1.3 in a different document.
 ## 5. Submission checklist
 
 - [ ] Decide what happens to the chef rail (section 1.1) and adjust What's New to match
-- [ ] Bump the build number if 11 was already uploaded, then `xcodegen generate`
+- [x] Build bumped to 12 and `xcodegen generate` run
+- [ ] Tick **Sign-in required** in App Review Information. Glutt walls the app behind Sign in
+      with Apple or Google once the purchase lands (`RootView.unlockedOverlay` presents
+      `SignInView` with `canDismiss: false`, and its "Continue without an account" link only
+      appears after a sign-in failure). There is no password-based login, so leave Username
+      and Password empty and let the notes in section 3 explain that the reviewer signs in
+      with their own Apple Account. Omar chose to keep the wall mandatory rather than make it
+      skippable; if a reviewer refuses to use their own ID, the fix is to show that link
+      unconditionally and untick this box.
 - [ ] Publish Superwall paywall 243875
 - [ ] Confirm the trial SKU and its 3-day free introductory offer exist and are Ready to Submit
 - [ ] Confirm a sandbox purchase completes for both annual products

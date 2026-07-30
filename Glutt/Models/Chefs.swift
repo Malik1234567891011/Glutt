@@ -81,8 +81,9 @@ enum ChefContent {
 
     // MARK: - Install
 
-    /// Bump when dish copy changes so existing installs refresh.
-    private static let contentVersion = 1
+    /// Bump when dish copy or photography changes so existing installs refresh.
+    /// 2: real dish photos replaced the stand-in stock food art.
+    private static let contentVersion = 2
     private static let contentVersionKey = "glutt.chefContent.contentVersion"
 
     /// Idempotent: inserts missing chef dishes and refreshes their copy when
@@ -144,7 +145,8 @@ enum ChefContent {
         let cookMinutes: Int
         let difficulty: Difficulty
         let tags: [String]
-        /// Stand-in dish photography until chef recipe photos are shot.
+        /// Asset-catalog name. `chef*` assets are the real dish photos; the
+        /// three that aren't yet fall back to the app's stock food art.
         let imageAsset: String
         let ingredients: [(name: String, quantity: Double?, unit: String?)]
         let steps: [(text: String, durationSeconds: Int?)]

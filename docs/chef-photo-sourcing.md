@@ -1,108 +1,71 @@
-# Chef feature: photo sourcing
+# Chef feature: photography
 
-Status as of 2026-07-30. The Top Chefs feature ships with placeholder art: chef
-portraits are initials on a tinted circle, and the fifteen dishes reuse the
-existing stock food photos in `Assets.xcassets`. This is what it takes to
-replace them.
+Status 2026-07-30. Omar supplied eighteen images by hand. Twelve of the fifteen
+dishes and all three portraits are now real photos, installed in
+`Assets.xcassets` as `chef*` imagesets and wired through
+`Glutt/Models/Chefs.swift`.
 
-**Decided 2026-07-30:** Omar is sourcing the fifteen dish photos by hand
-(option B below). The shopping list lives in
-`design_handoff_top_chefs/dish-photos/README.md`. Chef portraits stay as initial
-monograms until there is written permission, so the "Official" badge is not
-making a claim nobody agreed to.
+## What landed
 
-## What I tried without an API key, and why it failed
+Portraits, all three, square and cropped to the head:
 
-| Source | Key needed | Result |
+| Chef | Asset | Size |
 |---|---|---|
-| Openverse (Flickr CC) | no | Amateur snapshots. A billboard, a statue, a restaurant doorway. Unusable. |
-| Wikimedia Commons | no | Legally clean, but restaurant table snapshots with Coke cans and receipts. Two or three usable out of thirty. |
-| Foodiesfeed | no | Real food photography, free for commercial use, but a generic catalogue. No Beef Wellington, no birria, no katsu. Searching returns a burger for "beef wellington". |
-| Unsplash internal search | blocked | Returns "Authorization required" now. The public API needs a free key. |
+| Gordon Ramsay | `chefGordonRamsay` | 447 x 447 |
+| Nick DiGiovanni | `chefNickDiGiovanni` | 500 x 500 |
+| Joshua Weissman | `chefJoshuaWeissman` | 183 x 183, soft at 66pt |
 
-Conclusion: no keyless source can produce a coherent set of fifteen specific
-dishes at the quality the app already ships.
+Dishes. Nine of these came from YouTube thumbnails, so each was cropped down to
+the food and away from the presenter's face and the title text. Crop boxes live
+in the install script noted at the bottom.
 
-## Option A, fastest: give me a free API key
+| Dish | Asset | Size | Note |
+|---|---|---|---|
+| Beef Wellington | `chefBeefWellington` | 640 x 480 | soft |
+| Pan Seared Salmon | `chefPanSearedSalmon` | 780 x 438 | soft |
+| Shepherd's Pie | `chefShepherdsPie` | 1200 x 1200 | sharp |
+| Spiced Lamb Flatbread | `chefSpicedLambFlatbread` | 447 x 447 | soft |
+| Scrambled Eggs | `chefScrambledEggs` | 452 x 678 | soft |
+| Truffle Mac and Cheese | `chefTruffleMac` | 460 x 224 | cropped off the face, soft |
+| Crispy Chicken Fried Rice | `chefFriedRice` | 346 x 396 | softest of the set |
+| Birria Tacos | `chefBirriaTacos` | 1140 x 389 | cropped off the title text, sharp |
+| Smash Burgers | `chefSmashBurgers` | 717 x 562 | cropped off the face |
+| Crispy Orange Chicken | `chefOrangeChicken` | 717 x 533 | cropped off the title text |
+| Chicken Shawarma | `chefChickenShawarma` | 692 x 663 | cropped off the face |
+| Burrito Bowl | `chefBurritoBowl` | 858 x 562 | cropped off the face |
 
-Either one works, five minutes end to end, and then no further work from you.
+## Still on stand-in art
 
-**Pexels** (best fit for bundling into the asset catalog)
-1. https://www.pexels.com/api/ → "Get Started" → sign in
-2. Copy the API key
-3. Paste it to me, or put it in `vercel-ai-proxy/.env.local` as `PEXELS_API_KEY=`
+Three supplied photos could not be used. Those dishes keep the app's existing
+stock food art, which is higher resolution and reads as the right dish.
 
-Pexels licenses allow downloading, modifying and shipping the photos inside an
-app, with no attribution required.
-
-**Unsplash** (matches how `CookingBasics` and the Plates seed deck already work)
-1. https://unsplash.com/developers → "Register as a developer" → "New Application"
-2. Copy the Access Key
-
-Unsplash's API terms want the photos hotlinked from `images.unsplash.com`
-rather than bundled. That is exactly what the app already does elsewhere, and
-`RecipeImageBackfill` caches them locally on first view, so it works offline
-after that.
-
-## Option B: you grab the photos yourself
-
-Fifteen files. Any stock site you like: Unsplash, Pexels, Freepik, or your own
-camera. Spec:
-
-- Landscape, at least 1600 pixels wide, JPEG or PNG
-- The dish fills the frame, shot from above or at a 45 degree angle
-- No text, no watermarks, no visible restaurant branding
-- Name the file exactly as listed below and drop them all in
-  `design_handoff_top_chefs/dish-photos/`. I will crop, downscale and wire them up.
-
-| Filename | Search for |
-|---|---|
-| `beef-wellington.jpg` | beef wellington sliced |
-| `pan-seared-salmon.jpg` | crispy skin salmon fillet pan |
-| `shepherds-pie.jpg` | shepherds pie baking dish |
-| `spiced-lamb-flatbread.jpg` | lamb flatbread yogurt |
-| `scrambled-eggs.jpg` | creamy scrambled eggs toast |
-| `steak-bites.jpg` | garlic butter steak bites skillet |
-| `katsu-sandwich.jpg` | katsu sandwich milk bread |
-| `truffle-mac.jpg` | baked macaroni and cheese skillet |
-| `fried-rice.jpg` | chicken fried rice wok |
-| `hot-honey-chicken.jpg` | crispy fried chicken honey glaze |
-| `birria-tacos.jpg` | birria tacos consomme |
-| `smash-burgers.jpg` | smash burger cheese lacy edges |
-| `orange-chicken.jpg` | orange chicken glazed crispy |
-| `chicken-shawarma.jpg` | chicken shawarma flatbread |
-| `burrito-bowl.jpg` | burrito bowl rice beans chicken |
-
-## Chef portraits are a separate problem
-
-Two questions have to be answered, and only the second one is technical.
-
-**1. Do you have the right to use their faces?** A photo of a public figure next
-to an "Official" badge, on recipes we wrote, in a paid app, reads as an
-endorsement. That is a right of publicity question, not a copyright one, and it
-is the kind of thing App Review has pulled apps for. A CC licence on the
-photograph does not grant it. Worth a decision before shipping, whatever the
-photo source.
-
-**2. What is actually available?**
-
-| Chef | Wikimedia Commons | Notes |
+| Dish | Current asset | Why the supplied photo was skipped |
 |---|---|---|
-| Gordon Ramsay | Yes, several CC BY 2.0 | Usable head and shoulders shots in chef whites |
-| Nick DiGiovanni | Yes, CC BY 4.0 and CC BY-SA 4.0 | One is a clean straight to camera portrait |
-| Joshua Weissman | None | Nothing licensed on Commons |
+| Garlic Butter Steak Bites | `greenGoddessSteakPlate` | The photo is raw steak held up to camera, not the cooked dish |
+| Chicken Katsu Sandwich | `beefWrapWithWedges` | 320 x 180, far too small for a card |
+| Hot Honey Chicken | `hotHoneyChickenRice` | Blurry close up of one piece in a hand; the stand-in is a better and sharper match |
 
-So a photo rail would be two real faces and one monogram, which looks broken.
+## If you want to sharpen it later
 
-Alternatives that carry no likeness risk:
+A card is about 370pt wide and renders at 3x, so anything under roughly 1100
+pixels wide is visibly soft. Ten of the twelve are under that. They are legible
+and on brand, just not crisp. Replacing any of them is a drop-in: same filename,
+`design_handoff_top_chefs/dish-photos/`, and re-run the install script.
 
-- Keep the initials monograms (what ships today). Consistent, and honest.
-- Commission or generate three illustrated chef avatars in the app's palette, so
-  the rail reads as illustration rather than as a claim of endorsement.
-- Get written permission or a licensed press kit from each chef's team, which is
-  also what makes the "Official" badge true.
+Portrait spec is square, face centred, 512 x 512 or larger. Joshua's is the one
+worth redoing first, at 183 pixels it is the softest thing on the rail.
 
-Portrait spec if you do supply photos: square, face centred, 512 x 512 or larger,
-named `chef-gordon-ramsay.jpg`, `chef-nick-digiovanni.jpg`,
-`chef-joshua-weissman.jpg` in `design_handoff_top_chefs/portraits/`. Wiring them
-in is one line per chef (`portraitAsset:` in `Glutt/Models/Chefs.swift`).
+## Reproducing the processing
+
+The install script lives in the session scratchpad
+(`install_supplied.py`): it reads the raw files, applies the per photo crop
+boxes, downscales without ever upscaling, and writes the imagesets. Worth
+copying into the repo if this becomes a recurring job.
+
+## Note on likeness
+
+The three portraits are real photographs of real people, shown next to an
+"Official" badge on recipes written for this app. That reads as an endorsement.
+It is a right of publicity question rather than a copyright one, and no photo
+licence settles it. Getting written permission from each chef's team is what
+would make the badge true. Flagged, not blocking.

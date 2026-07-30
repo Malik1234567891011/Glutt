@@ -7,7 +7,7 @@ import SwiftData
 /// Bump `seedVersion` to wipe and reseed after content changes.
 enum SeedData {
 
-    private static let seedVersion = 3
+    private static let seedVersion = 4
     private static let seedVersionKey = "glutt.seedVersion"
 
     static func seedIfNeeded(context: ModelContext) {
@@ -395,10 +395,9 @@ enum SeedData {
         ))
 
         // Pilot recipe for auto YouTube step-clips (Gemini index → embed seek).
-        // Image reuses the yogurt bowl asset until a dedicated photo lands.
         let eggsBenedict = build(Seed(
             title: "Eggs Benedict",
-            asset: "greekYogurtBowl",
+            asset: "eggsBenedict",
             summary: "Poached eggs on toasted English muffins with hollandaise — Gordon Ramsay technique video attached for Polly step clips.",
             creator: "Gordon Ramsay", platform: .youtube, confidence: 0.95,
             servings: 2, prep: 15, cook: 20, difficulty: .intermediate,

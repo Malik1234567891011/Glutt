@@ -70,8 +70,8 @@ struct RecipesView: View {
     // MARK: - Derived data
 
     /// Top-level, non-lesson recipes (versions + Cooking Basics stay out of the
-    /// feed). Bundled chef dishes stay out too until you heart one — the heart
-    /// on a chef card is what saves it to your library.
+    /// feed). Bundled chef dishes stay out too until you favorite one from its
+    /// detail screen, which is what saves it to your library.
     private var libraryRecipes: [Recipe] {
         allRecipes.filter {
             $0.parentRecipe == nil && !$0.isCookingBasic && (!$0.isChefRecipe || $0.isFavorite)
@@ -245,6 +245,13 @@ struct RecipesView: View {
                 if router.openFirstRecipeOnLaunch, let first = libraryRecipes.first {
                     router.openFirstRecipeOnLaunch = false
                     open(first)
+                }
+                if ProcessInfo.processInfo.arguments.contains("-zoomDemo"), let hero = heroRecipe {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(1.5))
+                        zoomSource.card = ZoomCardID(hero.persistentModelID, slot: "hero")
+                        navPath = NavigationPath([hero])
+                    }
                 }
                 if let slug = router.chefToOpenOnLaunch, let chef = ChefContent.chef(id: slug) {
                     router.chefToOpenOnLaunch = nil

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Fetches Gemini-indexed YouTube step clips via the Vercel proxy.
-/// Indexes once per (video, step-set); client disk-caches so Polly cooks stay snappy.
+/// Two-phase (segment → match) so each call fits Hobby's 60s limit.
 actor StepClipService {
     typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
 
@@ -26,12 +26,50 @@ actor StepClipService {
             return cached
         }
 
-        guard !baseURL.isEmpty else {
-            throw URLError(.badURL)
+        // Phase 1 — video segmentation (slow; YouTube URL → Gemini).
+        _ = try await postJSON([
+            "phase": "segment",
+            "youtube_url": youtubeURL,
+            "recipe_title": recipeTitle,
+            "force": force,
+            "steps": stepPayload(cookSteps),
+        ])
+
+        // Phase 2 — match segments to CookPlan steps (text-only, faster).
+        let matchData = try await postJSON([
+            "phase": "match",
+            "youtube_url": youtubeURL,
+            "recipe_title": recipeTitle,
+            "force": force,
+            "steps": stepPayload(cookSteps),
+        ])
+
+        let decoded = try JSONDecoder().decode(StepClipIndexResponse.self, from: matchData)
+        saveDisk(cacheKey, decoded)
+        return decoded
+    }
+
+    func clip(forStepID stepID: String, in response: StepClipIndexResponse) -> StepClip? {
+        response.clips.first { $0.stepID == stepID }
+    }
+
+    // MARK: - HTTP
+
+    private func stepPayload(_ steps: [CookPlan.PlanStep]) -> [[String: Any]] {
+        steps.map { step in
+            [
+                "id": step.id,
+                "title": step.title,
+                "instruction": step.instruction,
+                "kind": step.kind.rawValue,
+            ]
         }
-        guard let url = URL(string: "\(baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/cook/clips") else {
-            throw URLError(.badURL)
-        }
+    }
+
+    private func postJSON(_ body: [String: Any]) async throws -> Data {
+        guard !baseURL.isEmpty else { throw URLError(.badURL) }
+        let root = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard let url = URL(string: "\(root)/cook/clips") else { throw URLError(.badURL) }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -39,21 +77,7 @@ actor StepClipService {
         if !clientKey.isEmpty {
             request.setValue(clientKey, forHTTPHeaderField: "x-glutt-proxy-key")
         }
-        request.timeoutInterval = 55
-
-        let body: [String: Any] = [
-            "youtube_url": youtubeURL,
-            "recipe_title": recipeTitle,
-            "force": force,
-            "steps": cookSteps.map { step -> [String: Any] in
-                [
-                    "id": step.id,
-                    "title": step.title,
-                    "instruction": step.instruction,
-                    "kind": step.kind.rawValue,
-                ]
-            },
-        ]
+        request.timeoutInterval = 58
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await transport(request)
@@ -64,14 +88,7 @@ actor StepClipService {
                 NSLocalizedDescriptionKey: message,
             ])
         }
-
-        let decoded = try JSONDecoder().decode(StepClipIndexResponse.self, from: data)
-        saveDisk(cacheKey, decoded)
-        return decoded
-    }
-
-    func clip(forStepID stepID: String, in response: StepClipIndexResponse) -> StepClip? {
-        response.clips.first { $0.stepID == stepID }
+        return data
     }
 
     // MARK: - Disk cache

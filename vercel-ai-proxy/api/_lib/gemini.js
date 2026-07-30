@@ -12,7 +12,9 @@ export function resolveGeminiKey() {
 }
 
 export function resolveGeminiModel() {
-  return (process.env.GEMINI_MODEL || "gemini-2.5-flash").trim();
+  // 2.0-flash is the safer default on Hobby (60s): full YT video understanding
+  // with 2.5 often times out before match can run.
+  return (process.env.GEMINI_MODEL || "gemini-2.0-flash").trim();
 }
 
 /**

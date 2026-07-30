@@ -14,23 +14,23 @@ enum StepClipFallbacks {
         let notice: String
     }
 
-    /// Ordered most-specific first so "poach" wins over generic "egg".
+    /// Grounded AV pass (2026-07-29) with spoken evidence quotes + duration cap 274s.
     private static let eggsBenedictRules: [Rule] = [
-        Rule(keywords: ["hollandaise", "emuls"], start: 40, end: 58,
+        Rule(keywords: ["hollandaise", "emuls"], start: 40, end: 65,
              label: "Watch hollandaise emulsion",
-             notice: "Notice how he streams the butter in slowly while whisking so it stays glossy."),
-        Rule(keywords: ["poach"], start: 230, end: 255,
-             label: "Watch the egg poach setup",
-             notice: "Seasoned simmering water, then the egg goes in — pull when the white is set."),
-        Rule(keywords: ["muffin", "toast"], start: 214, end: 226,
+             notice: "Butter goes in slowly while whisking so the sauce stays glossy and doesn’t split."),
+        Rule(keywords: ["poach"], start: 251, end: 274,
+             label: "Watch the egg poach",
+             notice: "Whirlpool the water, drop the egg from a cup, and pull when the white is set."),
+        Rule(keywords: ["muffin", "toast"], start: 215, end: 228,
              label: "Watch muffin toasting",
-             notice: "Toast until the cut face is golden so it holds the sauce."),
-        Rule(keywords: ["ham", "bacon", "canadian", "prosciutto", "parma"], start: 134, end: 155,
+             notice: "Muffins go into the pan to suck up the Parma ham fat and toast golden."),
+        Rule(keywords: ["ham", "bacon", "canadian", "prosciutto", "parma"], start: 146, end: 176,
              label: "Watch the Parma ham crisp",
-             notice: "He fries thin Parma ham until crisp, then uses that fat to toast the muffins."),
-        Rule(keywords: ["simmer", "vinegar"], start: 230, end: 245,
+             notice: "Hot pan — he fries the Parma ham until crisp (‘posh rashers of bacon’)."),
+        Rule(keywords: ["simmer", "vinegar"], start: 240, end: 255,
              label: "Watch the poaching water",
-             notice: "Bring it to a gentle simmer with a splash of vinegar before the eggs go in."),
+             notice: "Turn the water down and spin a whirlpool before the eggs go in."),
         Rule(keywords: ["plate", "assembl", "serve", "stack"], start: 255, end: 274,
              label: "Watch the plate-up",
              notice: "Muffin, ham, egg, then hollandaise — keep the stack tight."),

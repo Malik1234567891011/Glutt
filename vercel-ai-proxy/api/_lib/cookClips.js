@@ -42,12 +42,27 @@ function normalizeYoutubeURL(_url, videoId) {
 }
 
 function clampSegment(seg) {
-  let start = Math.max(0, Math.round(Number(seg.start_seconds) || 0));
-  let end = Math.max(0, Math.round(Number(seg.end_seconds) || 0));
-  if (end <= start) end = start + MIN_SEGMENT_S;
-  if (end - start < MIN_SEGMENT_S) end = start + MIN_SEGMENT_S;
-  if (end - start > MAX_SEGMENT_S) end = start + MAX_SEGMENT_S;
-  return { ...seg, start_seconds: start, end_seconds: end };
+  const start = Math.round(Number(seg.start_seconds));
+  const end = Math.round(Number(seg.end_seconds));
+  // Never invent a 0–5s intro window from missing/broken timestamps.
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) {
+    return null;
+  }
+  let s = start;
+  let e = end;
+  if (e - s < MIN_SEGMENT_S) e = s + MIN_SEGMENT_S;
+  if (e - s > MAX_SEGMENT_S) e = s + MAX_SEGMENT_S;
+  return { ...seg, start_seconds: s, end_seconds: e };
+}
+
+function isProbablyIntroSegment(seg) {
+  if (!seg) return true;
+  const start = Number(seg.start_seconds) || 0;
+  const end = Number(seg.end_seconds) || 0;
+  const action = `${seg.primary_action || ""} ${seg.technique || ""} ${seg.dish_stage || ""}`.toLowerCase();
+  if (end - start <= 10 && start <= 5) return true;
+  if (start <= 8 && /(intro|title|talking|hello|welcome|sponsor)/.test(action)) return true;
+  return false;
 }
 
 async function redisCommand(command) {
@@ -87,22 +102,24 @@ function clipsCacheKey(videoId, steps) {
   const payload = steps.map((s) => `${s.id}|${s.title}|${s.instruction}`).join("\n");
   let h = 0;
   for (let i = 0; i < payload.length; i++) h = (Math.imul(31, h) + payload.charCodeAt(i)) | 0;
-  return `cook:clips:v1:${videoId}:${h}`;
+  return `cook:clips:v2:${videoId}:${h}`;
 }
 
 function segmentsCacheKey(videoId) {
-  return `cook:segments:v1:${videoId}`;
+  return `cook:segments:v2:${videoId}`;
 }
 
 const SEGMENT_PROMPT = `Analyse this cooking video. Identify up to 12 short segments that are useful visual demos while someone cooks.
 
 Only include segments where the cooking action or food state is clearly visible.
-Skip intros, talking heads, ingredient lists without action, sponsors, and glamour plating unless needed for doneness.
+Skip intros, title cards, talking heads, ingredient lists without action, sponsors, and glamour plating unless needed for doneness.
+
+CRITICAL: start_seconds and end_seconds must be real timestamps from the video timeline (seconds from the beginning). Never use 0–5 unless the cooking action truly happens in the opening seconds.
 
 Return JSON:
 {"segments":[{"start_seconds":0,"end_seconds":0,"primary_action":"","ingredients_visible":[],"tools_visible":[],"starting_state":"","ending_state":"","technique":"","dish_stage":"","visual_cue_taught":"","spoken_instruction_summary":"","is_action_clearly_visible":true,"visual_quality":0.0,"boundary_confidence":0.0}]}
 
-Prefer 6–25 second segments. Do not invent actions that are only mentioned.`;
+Prefer 8–25 second segments. Do not invent actions that are only mentioned.`;
 
 function matchPrompt(recipeTitle, steps, segments) {
   return `Match recipe cook-steps to video demonstration segments.
@@ -112,13 +129,27 @@ Recipe: ${recipeTitle}
 Steps:
 ${JSON.stringify(steps)}
 
-Segments:
-${JSON.stringify(segments)}
+Segments (use these exact indexes and timestamps — do not invent new times):
+${JSON.stringify(segments.map((s, i) => ({
+    index: i,
+    start_seconds: s.start_seconds,
+    end_seconds: s.end_seconds,
+    primary_action: s.primary_action,
+    technique: s.technique,
+    dish_stage: s.dish_stage,
+    visual_cue_taught: s.visual_cue_taught,
+  })))}
 
-Rules: prefer exact technique+ingredient matches; return no_safe_match for timer/wait steps; wrong clip is worse than none; only recommend when the segment SHOWS the action.
+Rules:
+- segment_index MUST be the segment that visually shows the step's action.
+- If you mention "segment N" in notice, segment_index must be N.
+- Never recommend intro/title segments (early talking-head with no cooking action).
+- Prefer exact technique+ingredient matches.
+- Return no_safe_match for timer/wait steps or when unsure.
+- Wrong clip is worse than none.
 
 Return JSON:
-{"matches":[{"step_id":"","segment_index":0,"match_type":"exact_recipe|technique|target_state|no_safe_match","action_match":0.0,"ingredient_match":0.0,"state_transition_match":0.0,"visual_usefulness":0.0,"conflicts":[],"shows_action_not_just_mentions_it":true,"recommended":true,"watch_label":"","notice":""}]}
+{"matches":[{"step_id":"","segment_index":0,"match_type":"exact_recipe|technique|target_state|no_safe_match","action_match":0.0,"ingredient_match":0.0,"state_transition_match":0.0,"visual_usefulness":0.0,"conflicts":[],"shows_action_not_just_mentions_it":true,"recommended":true,"watch_label":"short label","notice":"one sentence about what to notice"}]}
 
 One entry per step. recommended:false + no_safe_match when unsure.`;
 }
@@ -140,6 +171,9 @@ function buildClips(matches, segments, videoId) {
     if (!Number.isInteger(idx) || idx < 0 || idx >= segments.length) continue;
     if (m.shows_action_not_just_mentions_it === false) continue;
 
+    const seg = segments[idx];
+    if (!seg || isProbablyIntroSegment(seg)) continue;
+
     const scores = [
       Number(m.action_match) || 0,
       Number(m.ingredient_match) || 0,
@@ -149,10 +183,12 @@ function buildClips(matches, segments, videoId) {
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     if (avg < MIN_RECOMMEND_SCORE) continue;
 
-    const seg = segments[idx];
     const start = seg.start_seconds;
     const end = seg.end_seconds;
     const duration = Math.max(1, end - start);
+    // Hard reject the classic bad window we were shipping (0:00–0:05).
+    if (start <= 5 && duration <= 10) continue;
+
     clips.push({
       step_id: String(m.step_id || ""),
       youtube_video_id: videoId,
@@ -161,7 +197,7 @@ function buildClips(matches, segments, videoId) {
       duration_seconds: duration,
       match_type: String(m.match_type || "technique"),
       confidence: Math.round(avg * 1000) / 1000,
-      watch_label: String(m.watch_label || `Watch technique · ${duration}s`).slice(0, 80),
+      watch_label: String(m.watch_label || `Watch · ${duration}s`).slice(0, 80),
       notice: String(m.notice || "").slice(0, 240),
       primary_action: seg.primary_action || "",
       visual_cue: seg.visual_cue_taught || "",
@@ -198,6 +234,7 @@ async function runSegment({ apiKey, model, videoId, canonicalURL, force }) {
   const segments = (Array.isArray(segDoc.segments) ? segDoc.segments : [])
     .filter((s) => s && s.is_action_clearly_visible !== false)
     .map(clampSegment)
+    .filter(Boolean)
     .slice(0, 12);
 
   const payload = { youtube_video_id: videoId, youtube_url: canonicalURL, segments, model };
@@ -304,7 +341,9 @@ export async function handleCookClips(req, res) {
       if (steps.length === 0) {
         return res.status(400).json({ error: "steps[] required for match phase" });
       }
-      let segments = Array.isArray(body.segments) ? body.segments.map(clampSegment) : null;
+      let segments = Array.isArray(body.segments)
+        ? body.segments.map(clampSegment).filter(Boolean)
+        : null;
       if (!segments) {
         const cachedSeg = await redisGet(segmentsCacheKey(videoId));
         segments = cachedSeg?.segments || [];

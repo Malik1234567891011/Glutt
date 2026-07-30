@@ -12,7 +12,7 @@ actor StepClipService {
     static let shared = StepClipService()
 
     private let defaults = UserDefaults.standard
-    private let cachePrefix = "glutt.stepClips.v1."
+    private let cachePrefix = "glutt.stepClips.v2."
 
     func clips(
         youtubeURL: String,

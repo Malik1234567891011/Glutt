@@ -169,11 +169,24 @@ struct PollyStepGuidePanel: View {
             .animation(.easeInOut(duration: 0.22), value: stepIndex)
 
             if let clip = currentStepClip {
-                StepClipWatchButton(clip: clip, dark: true) {
-                    Haptics.selection()
-                    onWatchClip?(clip)
+                VStack(alignment: .leading, spacing: 6) {
+                    YouTubePlayerView(
+                        videoId: clip.youtubeVideoID,
+                        startSeconds: clip.startSeconds,
+                        endSeconds: clip.endSeconds,
+                        mute: true
+                    )
+                    .frame(maxWidth: .infinity)
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Color.black)
+                    .padding(.horizontal, 18)
+
+                    Text("\(clip.watchLabel) · \(formatClock(clip.startSeconds))–\(formatClock(clip.endSeconds))")
+                        .font(BrandFont.nunito(11, 700))
+                        .foregroundStyle(Theme.Colors.tabLabel.opacity(0.55))
+                        .padding(.horizontal, 22)
                 }
-                .padding(.horizontal, 18)
             }
 
             if let step = currentStep, let seconds = step.timerSeconds {
@@ -400,5 +413,11 @@ struct PollyStepGuidePanel: View {
                 }
             }
         }
+    }
+
+    private func formatClock(_ seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return String(format: "%d:%02d", m, s)
     }
 }

@@ -28,6 +28,16 @@ final class PollyToolRegistry {
     var onRequestFrame: (() async -> Bool)?
     /// Controller hook: the model asked to end the session.
     var onEndSession: (() -> Void)?
+    /// Controller hook: metadata for a step's technique clip (no playback side effects).
+    var onClipInfoForStep: ((String) -> [String: Any])?
+    /// Controller hook: live playback flags for the current step's clip (playing/muted).
+    var onClipPlaybackStatus: (() -> [String: Any])?
+    /// Controller hook: Polly was asked to show the step technique clip (may focus UI).
+    var onShowStepVideo: (() -> [String: Any])?
+    /// Controller hook: dismiss the missing-ingredients preflight screen.
+    var onDismissPreflight: (() -> Void)?
+    /// Controller hook: play / pause / mute / unmute the current step clip.
+    var onControlStepVideo: ((String) -> [String: Any])?
 
     private let plan: CookPlan
     private let recipe: Recipe
@@ -47,7 +57,7 @@ final class PollyToolRegistry {
         self.state = CookState(servings: plan.servings > 0 ? plan.servings : max(1, recipe.servings))
     }
 
-    // MARK: - Tool definitions (15, names locked)
+    // MARK: - Tool definitions (names locked for shipped prompts)
 
     static let toolDefinitions: [RealtimeToolDefinition] = [
         RealtimeToolDefinition(
@@ -203,6 +213,30 @@ final class PollyToolRegistry {
             description: "End the cooking session. Call only when the cook says they are finished or asks to stop.",
             parameters: emptySchema
         ),
+        RealtimeToolDefinition(
+            name: "show_step_video",
+            description: "Restart/replay the current step's technique clip ONLY when the cook asks to see it again (e.g. \"play it again\", \"show me that once more\"). Clips already autoplay when the step opens — do not call this proactively or offer to play. Returns clip metadata (teaching_label, visual_cue) or {\"available\":false}.",
+            parameters: emptySchema
+        ),
+        RealtimeToolDefinition(
+            name: "control_step_video",
+            description: "Control the on-screen technique clip: play (replay), pause, mute, or unmute. Call only when the cook asks (\"pause the video\", \"unmute\", \"play it again\"). Do not offer these — the clip autoplays on step entry.",
+            parameters: schema(
+                properties: [
+                    "action": .object([
+                        "type": .string("string"),
+                        "description": .string("One of: play, pause, mute, unmute"),
+                        "enum": .array([.string("play"), .string("pause"), .string("mute"), .string("unmute")]),
+                    ]),
+                ],
+                required: ["action"]
+            )
+        ),
+        RealtimeToolDefinition(
+            name: "dismiss_preflight",
+            description: "Dismiss the on-screen \"missing ingredients\" / before-you-start list so cooking UI can advance. Call when the cook says they actually have everything, found substitutes, or are ready to start cooking — do not leave them stuck on that screen while you keep talking.",
+            parameters: emptySchema
+        ),
     ]
 
     private static let emptySchema: JSONValue = .object([
@@ -241,6 +275,9 @@ final class PollyToolRegistry {
         case "record_polly_save": return recordPollySave(args)
         case "request_camera_frame": return await requestCameraFrame()
         case "end_session": return endSession()
+        case "show_step_video": return showStepVideo()
+        case "control_step_video": return controlStepVideo(args)
+        case "dismiss_preflight": return dismissPreflight()
         default: return Self.json(["error": "unknown tool"])
         }
     }
@@ -274,6 +311,39 @@ final class PollyToolRegistry {
         ]
         if let timerSeconds = step.timerSeconds { payload["timerSeconds"] = timerSeconds }
         if let visualCheck = step.visualCheck { payload["visualCheck"] = visualCheck }
+        if let clipInfo = onClipInfoForStep?(step.id), clipInfo["available"] as? Bool == true {
+            payload["hasTechniqueClip"] = true
+            let teaching = (clipInfo["teaching_label"] as? String)
+                ?? (clipInfo["watch_label"] as? String)
+                ?? ""
+            let cue = (clipInfo["visual_cue"] as? String) ?? ""
+            let notice = (clipInfo["notice"] as? String) ?? ""
+            payload["clipLabel"] = teaching
+            payload["clipTeachingLabel"] = teaching
+            payload["clipVisualCue"] = cue
+            payload["clipNotice"] = notice
+            payload["clipDurationSeconds"] = clipInfo["duration_seconds"] ?? 0
+            payload["preferVideoTechnique"] = true
+            // Hard override: spoken guidance IS the video method. Keep the
+            // recipe line only as background so Polly can't invent a toaster
+            // while the clip shows a pan.
+            if !cue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                payload["recipeInstruction"] = step.instruction
+                payload["instruction"] = cue
+                payload["speakThis"] = cue
+                payload["techniqueSource"] = "video"
+            }
+            payload["clipAutoplays"] = true
+            payload["doNotOfferToPlayClip"] = true
+            if let status = onClipPlaybackStatus?() {
+                for (k, v) in status { payload[k] = v }
+            }
+        } else {
+            payload["hasTechniqueClip"] = false
+            payload["preferVideoTechnique"] = false
+            payload["techniqueSource"] = "plan"
+            payload["clipAutoplays"] = false
+        }
         return payload
     }
 
@@ -510,6 +580,32 @@ final class PollyToolRegistry {
     private func endSession() -> String {
         onEndSession?()
         return Self.json(["ending": true])
+    }
+
+    private func showStepVideo() -> String {
+        guard let onShowStepVideo else {
+            return Self.json(["available": false, "reason": "player not ready"])
+        }
+        let payload = onShowStepVideo()
+        return Self.json(payload)
+    }
+
+    private func controlStepVideo(_ args: [String: Any]) -> String {
+        guard let action = (args["action"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased(),
+              !action.isEmpty else {
+            return Self.json(["error": "action required: play|pause|mute|unmute"])
+        }
+        guard let onControlStepVideo else {
+            return Self.json(["ok": false, "reason": "player not ready"])
+        }
+        return Self.json(onControlStepVideo(action))
+    }
+
+    private func dismissPreflight() -> String {
+        onDismissPreflight?()
+        return Self.json(["dismissed": true])
     }
 
     // MARK: - JSON plumbing

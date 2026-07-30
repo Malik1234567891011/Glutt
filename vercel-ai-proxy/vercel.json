@@ -4,6 +4,10 @@
     {
       "source": "/api/cook/clips",
       "destination": "/api/discover/suggested"
+    },
+    {
+      "source": "/api/media/ingest",
+      "destination": "/api/health"
     }
   ],
   "functions": {

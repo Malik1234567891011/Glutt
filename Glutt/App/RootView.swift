@@ -145,7 +145,9 @@ struct RootView: View {
         switch session.state {
         case .resolving:
             GateSplashView()
-        case .signedOut where !session.deferredThisLaunch:
+        case .signedOut where !session.deferredThisLaunch
+            && !ProcessInfo.processInfo.arguments.contains("-seed")
+            && !ProcessInfo.processInfo.arguments.contains("-uiPreview"):
             SignInView(session: session)
         default:
             EmptyView()

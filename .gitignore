@@ -43,3 +43,9 @@ Secrets.local.plist
 
 .vercel
 .env*
+
+# Media worker local archive / work (large binaries)
+media-worker/data/
+media-worker/work/
+media-worker/node_modules/
+media-worker/bin/yt-dlp

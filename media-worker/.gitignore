@@ -1,0 +1,11 @@
+node_modules/
+data/
+work/
+bin/yt-dlp
+bin/yt-dlp_*
+.env
+*.mp4
+*.m4a
+*.webm
+*.mkv
+*.part

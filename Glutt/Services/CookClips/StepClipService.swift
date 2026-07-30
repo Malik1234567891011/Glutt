@@ -1,7 +1,7 @@
 import Foundation
 
 /// Fetches Gemini-indexed YouTube step clips via the Vercel proxy.
-/// Prefers a single grounded pass (spoken audio + visible action + duration cap).
+/// Pipeline: ground (AV + duration) → refine (extend truncated continuous actions).
 actor StepClipService {
     typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
 
@@ -12,7 +12,7 @@ actor StepClipService {
     static let shared = StepClipService()
 
     private let defaults = UserDefaults.standard
-    private let cachePrefix = "glutt.stepClips.v3."
+    private let cachePrefix = "glutt.stepClips.v5."
 
     func clips(
         youtubeURL: String,
@@ -23,22 +23,55 @@ actor StepClipService {
         let cookSteps = steps.filter { !CookPlan.isSetupStep($0) }
         let cacheKey = diskKey(youtubeURL: youtubeURL, steps: cookSteps)
         if !force, let cached = loadDisk(cacheKey) {
-            return cached
+            // Discard stale truncated windows from the old 30s clamp era.
+            if !containsTruncationSmell(cached) {
+                return cached
+            }
         }
 
-        var body: [String: Any] = [
+        // Always bypass server Redis when local cache was truncation-smelly.
+        let bypassServerCache = force || (loadDisk(cacheKey).map(containsTruncationSmell) ?? false)
+
+        var groundBody: [String: Any] = [
             "phase": "ground",
             "youtube_url": youtubeURL,
             "recipe_title": recipeTitle,
-            "force": force,
+            "force": bypassServerCache,
             "steps": stepPayload(cookSteps),
         ]
         if let duration = knownDuration(for: youtubeURL) {
-            body["duration_seconds"] = duration
+            groundBody["duration_seconds"] = duration
         }
 
-        let data = try await postJSON(body)
-        let decoded = try JSONDecoder().decode(StepClipIndexResponse.self, from: data)
+        let groundData = try await postJSON(groundBody)
+        let grounded = try JSONDecoder().decode(StepClipIndexResponse.self, from: groundData)
+
+        // Boundary refine — second AV pass expands truncated continuous actions.
+        var refineBody: [String: Any] = [
+            "phase": "refine",
+            "youtube_url": youtubeURL,
+            "recipe_title": recipeTitle,
+            "force": bypassServerCache,
+            "steps": stepPayload(cookSteps),
+            "clips": grounded.clips.map { clip -> [String: Any] in
+                [
+                    "step_id": clip.stepID,
+                    "start_seconds": clip.startSeconds,
+                    "end_seconds": clip.endSeconds,
+                    "duration_seconds": clip.durationSeconds,
+                    "watch_label": clip.watchLabel,
+                    "notice": clip.notice,
+                    "confidence": clip.confidence,
+                    "match_type": clip.matchType,
+                ]
+            },
+        ]
+        if let duration = knownDuration(for: youtubeURL) {
+            refineBody["duration_seconds"] = duration
+        }
+
+        let refinedData = try await postJSON(refineBody)
+        let decoded = try JSONDecoder().decode(StepClipIndexResponse.self, from: refinedData)
         saveDisk(cacheKey, decoded)
         return decoded
     }
@@ -52,6 +85,7 @@ actor StepClipService {
     private func knownDuration(for youtubeURL: String) -> Int? {
         switch YouTubeEmbed.videoId(from: youtubeURL) {
         case "gBJjRYk0yC0": return 274
+        case "Cyskqnp1j64": return 471
         default: return nil
         }
     }
@@ -93,6 +127,17 @@ actor StepClipService {
     }
 
     // MARK: - Disk cache
+
+    /// Old pipeline clamped every window to 30s. If every clip is ≤30s while
+    /// cook steps look continuous, treat the cache as poisoned.
+    private func containsTruncationSmell(_ response: StepClipIndexResponse) -> Bool {
+        let clips = response.clips
+        guard !clips.isEmpty else { return false }
+        let allShort = clips.allSatisfy { $0.durationSeconds <= 30 }
+        let anyClassicClamp = clips.contains { $0.startSeconds == 146 && $0.endSeconds == 176 }
+            || clips.contains { $0.durationSeconds == 30 && $0.startSeconds >= 140 && $0.startSeconds <= 150 }
+        return anyClassicClamp || (allShort && clips.count >= 3)
+    }
 
     private func diskKey(youtubeURL: String, steps: [CookPlan.PlanStep]) -> String {
         let video = YouTubeEmbed.videoId(from: youtubeURL) ?? youtubeURL

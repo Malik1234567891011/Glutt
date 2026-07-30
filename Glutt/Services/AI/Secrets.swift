@@ -27,6 +27,12 @@ enum Secrets {
     /// Proxy client key; empty (AI features disabled) when the plist is absent.
     static let aiProxyClientKey = local["aiProxyClientKey"] ?? ""
 
+    /// Local/dev media playback base (media-worker `serve-local`). Optional.
+    static let mediaPlaybackBaseURL: String? = {
+        let v = local["mediaPlaybackBaseURL"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (v?.isEmpty == false) ? v : nil
+    }()
+
     /// Supabase project (accounts). Committed defaults, not secrets: the URL is
     /// public and the publishable key is designed to ship in clients — every
     /// table it can reach is guarded by RLS. The service-role key, which

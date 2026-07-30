@@ -7,7 +7,7 @@ import SwiftData
 /// Bump `seedVersion` to wipe and reseed after content changes.
 enum SeedData {
 
-    private static let seedVersion = 4
+    private static let seedVersion = 6
     private static let seedVersionKey = "glutt.seedVersion"
 
     static func seedIfNeeded(context: ModelContext) {
@@ -416,7 +416,7 @@ enum SeedData {
                 ("Chives", nil, nil, .garnish),
             ],
             steps: [
-                ("Toast the English muffins until golden and keep warm.", 180),
+                ("Toast the English muffins cut-side down in a hot pan (with ham fat if you have it) until golden; keep warm.", 180),
                 ("Warm the ham or Canadian bacon in a pan; set aside.", 180),
                 ("Make hollandaise: whisk egg yolks with a splash of water over gentle heat until thickened, then slowly whisk in melted butter and finish with lemon juice, salt, and cayenne.", 480),
                 ("Bring a pot of water to a gentle simmer and add a splash of vinegar.", 300),
@@ -426,10 +426,42 @@ enum SeedData {
             sourceURL: "https://www.youtube.com/watch?v=gBJjRYk0yC0"
         ))
 
+        // Pilot #2 — Christmas Beef Wellington technique clips (media-worker).
+        let beefWellington = build(Seed(
+            title: "Beef Wellington",
+            asset: "eggsBenedict", // reuse plated hero until a dedicated asset ships
+            summary: "Seared fillet, mustard, chestnut mushroom duxelles, Parma ham wrap, puff pastry — Gordon Ramsay Christmas Wellington video for Polly step clips.",
+            creator: "Gordon Ramsay", platform: .youtube, confidence: 0.95,
+            servings: 4, prep: 45, cook: 40, difficulty: .advanced,
+            tags: ["Dinner", "Beef", "Holiday"],
+            calories: 780, protein: 48,
+            ingredients: [
+                ("Center-cut beef fillet", 1, "kg", .protein),
+                ("Olive oil", 2, "tbsp", .fat),
+                ("English mustard", 2, "tbsp", .spice),
+                ("Chestnut mushrooms", 700, "g", .vegetable),
+                ("Cooked chestnuts", 100, "g", .starch),
+                ("Parma ham", 10, "slices", .protein),
+                ("Puff pastry", 500, "g", .starch),
+                ("Egg yolks", 2, nil, .protein),
+                ("Salt", nil, nil, .spice),
+                ("Black pepper", nil, nil, .spice),
+            ],
+            steps: [
+                ("Season the beef fillet and sear it in a smoking-hot pan with oil, rolling so every side browns quickly; rest.", 300),
+                ("Brush the warm seared fillet all over with English mustard (horseradish works as a swap).", 120),
+                ("Pulse mushrooms (and chestnuts if using) then cook the mix in a hot dry pan until all the water cooks off; cool the duxelles.", 720),
+                ("Overlap Parma ham on cling film, spread the cooled mushrooms, lay the beef on top, wrap tightly and chill 15 minutes to set.", 900),
+                ("Wrap the chilled parcel in puff pastry, seal the join and ends tightly, then chill briefly again.", 600),
+                ("Egg-wash the pastry, lightly score a pattern, salt the top, and bake at 200°C / 400°F until golden; rest 10 minutes before slicing.", 2100),
+            ],
+            sourceURL: "https://www.youtube.com/watch?v=Cyskqnp1j64"
+        ))
+
         let recipes = [
             chickenRiceBowl, hotHoney, koreanBeef, shawarmaBowl, koftaWrap, koftaMealPrep,
             steakPotatoBowl, greenGoddess, salmonBowl, beefWrap, fajitaSalad, pestoGnocchi, yogurtBowl,
-            eggsBenedict,
+            eggsBenedict, beefWellington,
         ]
         recipes.forEach(context.insert)
 

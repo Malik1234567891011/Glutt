@@ -1,4 +1,12 @@
-export default function handler(_req, res) {
+import { handleMediaIngest } from "./_lib/mediaIngest.js";
+
+export default async function handler(req, res) {
+  // POST /api/health with action=* → media control plane (Hobby fn budget).
+  // Clean URL: /api/media/ingest rewrites here.
+  if (req.method === "POST") {
+    return handleMediaIngest(req, res);
+  }
+
   res.status(200).json({
     ok: true,
     service: "glutt-vercel-ai-proxy",

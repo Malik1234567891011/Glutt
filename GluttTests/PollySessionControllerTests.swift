@@ -189,7 +189,7 @@ final class PollySessionControllerTests: XCTestCase {
         }
         XCTAssertTrue(config.instructions.contains("Creamy Lemon Chicken"),
                       "instructions must embed the recipe")
-        XCTAssertEqual(config.tools.count, 15, "all locked tools advertised")
+        XCTAssertEqual(config.tools.count, 18, "all locked tools advertised")
         XCTAssertEqual(config.voice, "marin")
         XCTAssertEqual(config.model, "gpt-realtime-2")
         XCTAssertTrue(config.transcribeInput)

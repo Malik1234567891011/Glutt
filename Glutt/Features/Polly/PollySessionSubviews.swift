@@ -142,7 +142,10 @@ struct PollyStepGuidePanel: View {
     let onSelectStep: (Int) -> Void
     let onToggleItem: (String) -> Void
     var onStartTimer: ((CookPlan.PlanStep, Int) -> Void)? = nil
-    /// Optional clip for the currently selected step (Gemini-indexed YouTube window).
+    /// Preferred: native downloaded clip (media-worker / Stream).
+    var currentNativeClip: NativeStepClip? = nil
+    var onNativeMediaState: ((PollyMediaState) -> Void)? = nil
+    /// Fallback: Gemini-indexed YouTube window.
     var currentStepClip: StepClip? = nil
     var onWatchClip: ((StepClip) -> Void)? = nil
 
@@ -168,7 +171,23 @@ struct PollyStepGuidePanel: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut(duration: 0.22), value: stepIndex)
 
-            if let clip = currentStepClip {
+            if let native = currentNativeClip {
+                VStack(alignment: .leading, spacing: 6) {
+                    NativeClipPlayerView(clip: native) { state in
+                        onNativeMediaState?(state)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Color.black)
+                    .padding(.horizontal, 18)
+
+                    Text("\(native.watchLabel) · \(formatClock(Int(native.startSeconds)))–\(formatClock(Int(native.endSeconds)))")
+                        .font(BrandFont.nunito(11, 700))
+                        .foregroundStyle(Theme.Colors.tabLabel.opacity(0.55))
+                        .padding(.horizontal, 22)
+                }
+            } else if let clip = currentStepClip {
                 VStack(alignment: .leading, spacing: 6) {
                     YouTubePlayerView(
                         videoId: clip.youtubeVideoID,

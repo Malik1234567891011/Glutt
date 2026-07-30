@@ -31,7 +31,7 @@ struct StepClipPlayerSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Text("Playing on YouTube · \(clip.durationSeconds)s demo")
+                Text("Playing on YouTube · \(clip.durationSeconds)s · \(formatClock(clip.startSeconds))–\(formatClock(clip.endSeconds))")
                     .font(BrandFont.nunito(12, 700))
                     .foregroundStyle(Theme.Colors.muted)
 
@@ -50,6 +50,12 @@ struct StepClipPlayerSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+
+    private func formatClock(_ seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return String(format: "%d:%02d", m, s)
     }
 }
 

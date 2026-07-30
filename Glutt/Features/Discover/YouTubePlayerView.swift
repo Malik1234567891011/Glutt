@@ -30,13 +30,17 @@ enum YouTubeEmbed {
         let base = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !base.isEmpty, var comps = URLComponents(string: "\(base)/discover/player") else { return nil }
         var items = [URLQueryItem(name: "v", value: videoId)]
-        if let startSeconds, startSeconds > 0 {
+        if let startSeconds, startSeconds >= 0 {
             items.append(URLQueryItem(name: "start", value: String(startSeconds)))
         }
         if let endSeconds, endSeconds > (startSeconds ?? 0) {
             items.append(URLQueryItem(name: "end", value: String(endSeconds)))
         }
         items.append(URLQueryItem(name: "mute", value: mute ? "1" : "0"))
+        // Bust any intermediary caches when the window changes.
+        if let startSeconds, let endSeconds {
+            items.append(URLQueryItem(name: "w", value: "\(startSeconds)-\(endSeconds)"))
+        }
         comps.queryItems = items
         return comps.url
     }

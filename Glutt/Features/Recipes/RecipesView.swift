@@ -246,13 +246,6 @@ struct RecipesView: View {
                     router.openFirstRecipeOnLaunch = false
                     open(first)
                 }
-                if ProcessInfo.processInfo.arguments.contains("-zoomDemo"), let hero = heroRecipe {
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(1.5))
-                        zoomSource.card = ZoomCardID(hero.persistentModelID, slot: "hero")
-                        navPath = NavigationPath([hero])
-                    }
-                }
                 if let slug = router.chefToOpenOnLaunch, let chef = ChefContent.chef(id: slug) {
                     router.chefToOpenOnLaunch = nil
                     navPath = NavigationPath([chef])

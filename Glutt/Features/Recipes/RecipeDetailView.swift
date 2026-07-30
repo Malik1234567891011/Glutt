@@ -181,12 +181,6 @@ struct RecipeDetailView: View {
             withAnimation(.easeOut(duration: 0.3).delay(0.12)) { sheetRevealed = true }
             RecipeNutrition.backfillIfNeeded(recipe: recipe)
             Analytics.capture(.recipeViewed)
-            if ProcessInfo.processInfo.arguments.contains("-zoomDemo") {
-                Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(2.2))
-                    close()
-                }
-            }
         }
     }
 

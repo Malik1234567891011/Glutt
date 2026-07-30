@@ -681,6 +681,9 @@ final class PollySessionController {
         if let webrtc = transport as? RealtimeWebRTCTransport {
             let wake = wakeWord
             webrtc.onCaptureBuffer = { buffer in wake.append(buffer) }
+            webrtc.onAudioInterrupted = { [weak self] interrupted in
+                Task { @MainActor in self?.handleAudioInterruption(interrupted) }
+            }
         }
         do {
             try await transport.connect(token: token.value, model: token.model)
@@ -885,6 +888,27 @@ final class PollySessionController {
     /// Push a flipped audio-lab setting down to the live transport. Flipping one
     /// mid-cook is the entire point of shipping them.
     func refreshAudioLab() { webrtc?.refreshAudioLab() }
+
+    /// A call, alarm, Siri or another app took the microphone and then gave it
+    /// back. Previously nothing observed this at all: `DormantReason
+    /// .audioInterrupted` and `PollyVoiceEvent.audioInterrupted` were both
+    /// declared and never emitted, so a phone call mid-cook simply ended the
+    /// conversation with no explanation on screen and no line in the log.
+    ///
+    /// Go dormant rather than trying to keep talking through it. The mic is gone
+    /// either way, and coming back to a wake word the cook already knows beats a
+    /// session that looks live and hears nothing.
+    private func handleAudioInterruption(_ interrupted: Bool) {
+        guard phase == .live else { return }
+        if interrupted {
+            PollyDebugLog.shared.event(.audioInterrupted)
+            if isEngaged { returnToDormant(reason: .audioInterrupted) }
+            captionText = "Something else took the microphone. Say Polly when you are ready."
+        } else {
+            PollyDebugLog.shared.log("session: audio back after interruption")
+            captionText = pollyCaption
+        }
+    }
 
     // MARK: - Wake-word / follow-up gate
 

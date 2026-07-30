@@ -62,6 +62,9 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     /// Fired when the voice-reopen gate detected a real voice during her turn
     /// and reopened the mic for barge-in. Transport thread.
     var onBargeInReopen: (() -> Void)?
+    /// True when the audio session was taken by a call/alarm/Siri, false when it
+    /// came back. Main queue.
+    var onAudioInterrupted: ((Bool) -> Void)?
 
     /// Latest mic-observation RMS, from whichever feed is actually alive
     /// (capture hook, local-track renderer, or the engine tap).
@@ -172,6 +175,7 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     private var meterTask: Task<Void, Never>?
     private var greetingFailsafeTask: Task<Void, Never>?
     private var routeObserver: NSObjectProtocol?
+    private var interruptionObserver: NSObjectProtocol?
 
     /// How many transports exist right now. A healthy cook is 1; a reconnect
     /// briefly touches 2 and must settle back to 1. Anything that stays above 1
@@ -431,6 +435,10 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
             NotificationCenter.default.removeObserver(routeObserver)
             self.routeObserver = nil
         }
+        if let interruptionObserver {
+            NotificationCenter.default.removeObserver(interruptionObserver)
+            self.interruptionObserver = nil
+        }
         meterTask?.cancel()
         meterTask = nil
         greetingFailsafeTask?.cancel()
@@ -463,6 +471,35 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         dc.sendData(LKRTCDataBuffer(data: data, isBinary: false))
     }
 
+    /// A phone call, alarm, Siri or another app took the session, then gave it
+    /// back. On `.began` the input is dead whatever we do; on `.ended` with
+    /// `shouldResume` the session has to be reactivated explicitly, because
+    /// nothing does it for us and libwebrtc's audio unit will not restart on its
+    /// own. Without this the cook went silent and never came back.
+    private func handleInterruption(type: AVAudioSession.InterruptionType, userInfo: [AnyHashable: Any]?) {
+        switch type {
+        case .began:
+            PollyDebugLog.shared.log("audio: INTERRUPTED (call, alarm, Siri or another app took the session)")
+            onAudioInterrupted?(true)
+        case .ended:
+            let options = (userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt)
+                .map(AVAudioSession.InterruptionOptions.init(rawValue:)) ?? []
+            let shouldResume = options.contains(.shouldResume)
+            PollyDebugLog.shared.log("audio: interruption ended shouldResume=\(shouldResume ? 1 : 0)")
+            if shouldResume {
+                do {
+                    try PollyAudioSession.configure(active: true)
+                    PollyDebugLog.shared.log("audio: session resumed \(PollyAudioSession.routeSummary())")
+                } catch {
+                    PollyDebugLog.shared.log("audio: session RESUME FAILED — \(error.localizedDescription)")
+                }
+            }
+            onAudioInterrupted?(false)
+        @unknown default:
+            break
+        }
+    }
+
     /// Shared with the WebSocket engine path: `.videoChat` (speaker-tuned AEC),
     /// Bluetooth HFP allowed for AirPods, speaker override only when no headset.
     private func configureAudioSession() {
@@ -472,11 +509,34 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         webRTCConfig.categoryOptions = PollyAudioSession.categoryOptions
         LKRTCAudioSessionConfiguration.setWebRTC(webRTCConfig)
 
+        // What we are taking the session OVER from. The briefing runs immediately
+        // before this with .playback/.spokenAudio, and a hot category swap on a
+        // still-active session is a plausible reason the voice-processing unit
+        // comes up unhappy. If this line ever reads Playback, the handover did
+        // not happen.
+        let incoming = AVAudioSession.sharedInstance()
+        PollyDebugLog.shared.log(
+            "audio: taking session from category=\(incoming.category.rawValue) mode=\(incoming.mode.rawValue)")
+
         do {
             try PollyAudioSession.configure(active: true)
             PollyDebugLog.shared.log("audio: WebRTC session \(PollyAudioSession.routeSummary())")
         } catch {
             PollyDebugLog.shared.log("audio: WebRTC session configure FAILED — \(error.localizedDescription)")
+        }
+
+        // A phone call, an alarm, Siri, or any other app taking the session used
+        // to be entirely unhandled: nothing observed interruptions on the shipping
+        // path, and DormantReason.audioInterrupted was a declared enum case that
+        // nothing ever emitted. The cook simply went quiet and stayed quiet.
+        if interruptionObserver == nil {
+            interruptionObserver = NotificationCenter.default.addObserver(
+                forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
+            ) { [weak self] note in
+                guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                      let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+                self?.handleInterruption(type: type, userInfo: note.userInfo)
+            }
         }
 
         if routeObserver == nil {

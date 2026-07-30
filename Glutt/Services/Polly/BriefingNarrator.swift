@@ -61,6 +61,27 @@ final class BriefingNarrator: NSObject, AVAudioPlayerDelegate {
         chunkIndex = nil
         beatIndex = nil
         caption = ""
+        releaseAudioSession()
+    }
+
+    /// Hand the audio session back rather than leaving `.playback` installed and
+    /// active for the next owner to inherit.
+    ///
+    /// The briefing is the doorway into every Polly session: it plays, it stops,
+    /// and moments later the WebRTC transport asks for `.playAndRecord` +
+    /// `.videoChat`. Swapping category on a still-active session forces an IO
+    /// unit teardown and rebuild and a route change right as the voice-processing
+    /// unit is trying to come up, which is a plausible cause of the "she misses
+    /// the first thing I say" complaint. Deactivating first makes the handover
+    /// explicit. Failure is logged, never thrown: a session we could not release
+    /// must not stop the cook from starting.
+    private func releaseAudioSession() {
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            PollyDebugLog.shared.log("briefing: audio session released")
+        } catch {
+            PollyDebugLog.shared.log("briefing: audio session release failed — \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Narration loop

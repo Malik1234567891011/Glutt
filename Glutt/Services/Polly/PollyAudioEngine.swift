@@ -367,6 +367,20 @@ final class PollyAudioEngine {
             self.configObserver = nil
         }
         onSessionInterrupted = nil
+        // Everything below only makes sense for an engine that actually started.
+        //
+        // In the shipped WebRTC path `start()` is never called, yet `stop()` is —
+        // from PollySessionController.end(), three lines before transport.close().
+        // So this method used to deactivate the shared AVAudioSession out from
+        // under a live WebRTC stack, behind libwebrtc's back and with its
+        // activationCount left unbalanced. It is reachable mid-cook whenever
+        // Polly calls her own end_session tool. Touching inputNode is not free
+        // either: it lazily instantiates the node and queries the hardware format
+        // against that same live session.
+        guard isRunning else {
+            PollyDebugLog.shared.log("audio: stop() on an engine that never started — nothing to tear down")
+            return
+        }
         engine.inputNode.removeTap(onBus: 0)
         if isPlayerAttached { playerNode.stop() }
         engine.stop()

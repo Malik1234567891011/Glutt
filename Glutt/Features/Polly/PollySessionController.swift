@@ -671,8 +671,16 @@ final class PollySessionController {
             self?.wakeUp()
         }
         wakeWord.onPartialTranscript = { [weak self] text in self?.updateLiveTranscript(text) }
+        // Ask unconditionally and let the listener report back when it is really
+        // listening. Gating the start on a single read of `isAvailable` was a coin
+        // flip: SFSpeechRecognizer reports unavailable for a moment after init, and
+        // losing that toss killed the wake word for the whole cook with the UI
+        // still promising "Say Polly to talk".
+        wakeWord.onListeningChange = { [weak self] listening in
+            self?.wakeWordAvailable = listening
+        }
+        wakeWord.start()
         wakeWordAvailable = wakeWord.isAvailable
-        if wakeWordAvailable { wakeWord.start() }
 
         if awaitVerbalGo {
             listeningMode = .listening
@@ -960,7 +968,9 @@ final class PollySessionController {
             PollyDebugLog.shared.event(.sessionClosed, ["reason": DormantReason.hardMute.rawValue])
             PollyDebugLog.shared.log("gate: HARD MUTED")
         } else {
-            if wakeWordAvailable { wakeWord.start() }
+            // Unconditional for the same reason as at session start: a stale
+            // `wakeWordAvailable` must never be what stops us re-arming.
+            wakeWord.start()
             PollyDebugLog.shared.log("gate: unmuted → dormant")
         }
     }

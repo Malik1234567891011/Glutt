@@ -52,6 +52,10 @@ protocol WakeWordListening: AnyObject {
     var onWake: (() -> Void)? { get set }
     /// Fired with the rolling live transcript (for the Listening caption).
     var onPartialTranscript: ((String) -> Void)? { get set }
+    /// Fired when on-device listening actually starts or stops. Recognizer
+    /// availability is transient, so this — not a one-shot read of `isAvailable`
+    /// at session start — is what the UI should believe.
+    var onListeningChange: ((Bool) -> Void)? { get set }
     /// Whether on-device recognition is usable right now (authorized + supported).
     var isAvailable: Bool { get }
     /// Requests Speech authorization; returns whether on-device listening can run.
@@ -79,10 +83,16 @@ protocol WakeWordListening: AnyObject {
 final class WakeWordListener: WakeWordListening {
     var onWake: (() -> Void)?
     var onPartialTranscript: ((String) -> Void)?
+    var onListeningChange: ((Bool) -> Void)?
 
     @ObservationIgnored private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
     @ObservationIgnored private var task: SFSpeechRecognitionTask?
-    @ObservationIgnored private var isRunning = false
+    @ObservationIgnored private var isRunning = false {
+        didSet {
+            guard isRunning != oldValue else { return }
+            onListeningChange?(isRunning)
+        }
+    }
     /// Bumped on every (re)start; callbacks from a superseded task carry an old
     /// value and are ignored, so a `restart()` can't double-spawn tasks.
     @ObservationIgnored private var generation = 0
@@ -94,6 +104,17 @@ final class WakeWordListener: WakeWordListening {
     /// render thread in `append` — guarded by `requestLock`.
     @ObservationIgnored private let requestLock = NSLock()
     @ObservationIgnored nonisolated(unsafe) private var activeRequest: SFSpeechAudioBufferRecognitionRequest?
+    /// The format of the first buffer this segment accepted. `append` is fanned
+    /// out to three candidate mic feeds (APM capture-post, local track renderer,
+    /// ADM engine tap) and nothing enforces that only one is live. They can carry
+    /// different sample rates and commonFormats, and interleaving those into a
+    /// single SFSpeechAudioBufferRecognitionRequest corrupts recognition rather
+    /// than improving it. First format wins; the rest are dropped.
+    @ObservationIgnored nonisolated(unsafe) private var acceptedFormat: AVAudioFormat?
+
+    /// `start()` was asked for, regardless of whether the recognizer was ready.
+    @ObservationIgnored private var wantsToRun = false
+    @ObservationIgnored private var availabilityRetryTask: Task<Void, Never>?
 
     var isAvailable: Bool {
         guard let recognizer, recognizer.isAvailable, recognizer.supportsOnDeviceRecognition else { return false }
@@ -110,12 +131,26 @@ final class WakeWordListener: WakeWordListening {
     }
 
     func start() {
-        guard isAvailable, !isRunning else { return }
+        wantsToRun = true
+        guard !isRunning else { return }
+        guard isAvailable else {
+            // Do NOT give up here. `SFSpeechRecognizer.isAvailable` is transient and
+            // is routinely false for a moment right after init — and the caller reads
+            // this exactly once at session start. One unlucky read used to leave the
+            // wake word dead for the entire cook, which from the counter is
+            // indistinguishable from "she never hears me".
+            PollyDebugLog.shared.log("wake: recognizer not available yet — retrying")
+            scheduleAvailabilityRetry()
+            return
+        }
         isRunning = true
         beginTask()
     }
 
     func stop() {
+        wantsToRun = false
+        availabilityRetryTask?.cancel()
+        availabilityRetryTask = nil
         isRunning = false
         generation &+= 1   // ignore any in-flight callbacks
         task?.cancel()
@@ -123,8 +158,34 @@ final class WakeWordListener: WakeWordListening {
         requestLock.lock()
         activeRequest?.endAudio()
         activeRequest = nil
+        acceptedFormat = nil
         requestLock.unlock()
         PollyDebugLog.shared.log("wake: stopped")
+    }
+
+    /// Poll until the recognizer shows up, then start. Bounded so a genuinely
+    /// unsupported device does not spin for the whole cook.
+    private func scheduleAvailabilityRetry() {
+        guard availabilityRetryTask == nil else { return }
+        availabilityRetryTask = Task { [weak self] in
+            for _ in 0..<20 {                       // ~10s at 500ms
+                try? await Task.sleep(for: .milliseconds(500))
+                guard let self, !Task.isCancelled else { return }
+                guard self.wantsToRun, !self.isRunning else {
+                    self.availabilityRetryTask = nil
+                    return
+                }
+                if self.isAvailable {
+                    self.isRunning = true
+                    self.beginTask()
+                    self.availabilityRetryTask = nil
+                    PollyDebugLog.shared.log("wake: recognizer became available — listening")
+                    return
+                }
+            }
+            self?.availabilityRetryTask = nil
+            PollyDebugLog.shared.log("wake: recognizer never became available this session")
+        }
     }
 
     /// Finalizes the current segment and starts a clean one, so the running
@@ -132,19 +193,48 @@ final class WakeWordListener: WakeWordListening {
     /// wake. The cancelled task's late callbacks are ignored via `generation`.
     func restart() {
         guard isRunning else { return }
-        task?.cancel()
-        task = nil
-        requestLock.lock()
-        activeRequest?.endAudio()
-        activeRequest = nil
-        requestLock.unlock()
-        beginTask()
+        swapInFreshSegment()
         PollyDebugLog.shared.log("wake: segment restarted (rearmed)")
+    }
+
+    /// Install a new recognition segment BEFORE letting the old one go.
+    ///
+    /// The old order — nil out `activeRequest`, then `beginTask()` — opened a
+    /// window in which every mic buffer was appended to nothing and silently
+    /// discarded. It is reached from `restartIfCurrent` roughly once a minute for
+    /// the whole cook, because the on-device request caps out around there, and
+    /// the window spans a hop back to the main actor from the recognition
+    /// callback, which is not short when the cook screen is rendering video. Say
+    /// "Polly" inside one and she simply does not hear you.
+    private func swapInFreshSegment() {
+        let previousTask = task
+        requestLock.lock()
+        let previousRequest = activeRequest
+        requestLock.unlock()
+
+        beginTask()   // overwrites activeRequest under the lock: no gap
+
+        previousRequest?.endAudio()
+        previousTask?.cancel()
     }
 
     nonisolated func append(_ buffer: AVAudioPCMBuffer) {
         requestLock.lock()
         let req = activeRequest
+        // Lock the segment to the first format it sees. Three separate mic feeds
+        // are wired to this method and nothing guarantees only one is live; mixing
+        // sample rates into one request degrades recognition instead of enriching
+        // it. Dropping the odd ones out is strictly better than interleaving.
+        if let accepted = acceptedFormat {
+            guard buffer.format.sampleRate == accepted.sampleRate,
+                  buffer.format.channelCount == accepted.channelCount,
+                  buffer.format.commonFormat == accepted.commonFormat else {
+                requestLock.unlock()
+                return
+            }
+        } else if req != nil {
+            acceptedFormat = buffer.format
+        }
         requestLock.unlock()
         req?.append(buffer)
     }
@@ -192,11 +282,14 @@ final class WakeWordListener: WakeWordListening {
     /// so listening is continuous for a whole cook. Ignores superseded tasks.
     private func restartIfCurrent(gen: Int) {
         guard gen == generation else { return }
-        task = nil
-        requestLock.lock()
-        activeRequest = nil
-        requestLock.unlock()
-        guard isRunning else { return }
-        beginTask()
+        guard isRunning else {
+            task = nil
+            requestLock.lock()
+            activeRequest = nil
+            acceptedFormat = nil
+            requestLock.unlock()
+            return
+        }
+        swapInFreshSegment()
     }
 }

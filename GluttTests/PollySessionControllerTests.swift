@@ -32,6 +32,10 @@ final class FakeRealtimeTransport: RealtimeTransporting, @unchecked Sendable {
     var connectedModel: String? { lock.withLock { models.last } }
     var connectCount: Int { lock.withLock { tokens.count } }
     var isClosed: Bool { lock.withLock { closeCount > 0 } }
+    /// How many times close() was called. A reconnect must close the dying
+    /// transport before standing up its replacement — skipping that leaked a
+    /// whole WebRTC stack, mic claim included, on every hiccup.
+    var closes: Int { lock.withLock { closeCount } }
 
     /// Sends minus mic audio. The sim test host may or may not deliver mic
     /// chunks — tests must never assert on their presence or absence.
@@ -333,6 +337,12 @@ final class PollySessionControllerTests: XCTestCase {
         transport.push(.error(code: "transport", message: "socket dropped"))
         await waitUntil({ transport.connectCount == 2 }, "exactly one silent reconnect")
         await waitUntil({ controller.phase == .live }, "phase returns to .live")
+
+        // The dying transport must be released, not merely dropped on the floor.
+        // Before this, self.transport was overwritten while the old peer
+        // connection, its audio device module and its claim on the microphone
+        // stayed alive, so every reconnect stacked another one on top.
+        XCTAssertEqual(transport.closes, 1, "the dead transport is closed before the new one connects")
 
         XCTAssertTrue(controller.captionText.localizedCaseInsensitiveContains("hiccup"))
         let sessionUpdates = transport.sent.filter {

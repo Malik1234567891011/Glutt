@@ -599,9 +599,11 @@ struct PollySessionView: View {
             VStack {
                 Text("One sec, reconnecting…")
                     .font(.gluttCaption.weight(.semibold))
-                    .foregroundStyle(Theme.Colors.creamText)
+                    .foregroundStyle(CookCanvasTheme.primaryText)
                     .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(Theme.Colors.textPrimary.opacity(0.55)).clipShape(Capsule())
+                    .background(CookCanvasTheme.elevated.opacity(0.92))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().strokeBorder(CookCanvasTheme.primaryText.opacity(0.10), lineWidth: 1))
                     .padding(.top, 110)
                 Spacer()
             }
@@ -613,22 +615,51 @@ struct PollySessionView: View {
     }
 
     private func statusCard(_ message: String) -> some View {
-        VStack(spacing: Theme.Spacing.md) {
-            ProgressView().tint(Theme.Colors.accent)
-            Text(message).font(.gluttHeadline).foregroundStyle(Theme.Colors.textPrimary)
+        cookCard(maxWidth: 300) {
+            PollyPulse()
+            Text(message)
+                .font(.gluttHeadline)
+                .foregroundStyle(CookCanvasTheme.primaryText)
                 .multilineTextAlignment(.center)
         }
-        .padding(Theme.Spacing.lg)
-        .frame(maxWidth: 300)
-        .background(Theme.Colors.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous))
+    }
+
+    /// The one card chrome for every full-screen state on the cook canvas.
+    ///
+    /// These three cards used to be built from `Theme.Colors`, which is the
+    /// LIGHT app palette: a #FFFDF7 cream surface with near-black text, dropped
+    /// onto a #0C0B09 canvas. On a phone it read as a bright white slab with a
+    /// stock UIKit spinner tinted #2E5339, a dark green that is nearly invisible
+    /// against cream. It also had no scrim, so the screen behind stayed at full
+    /// brightness and competed with it.
+    private func cookCard<Content: View>(
+        maxWidth: CGFloat,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        ZStack {
+            // Sit the canvas back so the card is unmistakably the thing to look
+            // at, and so a half-presented screen behind it stops showing through.
+            CookCanvasTheme.mainBlack.opacity(0.72).ignoresSafeArea()
+            VStack(spacing: Theme.Spacing.md, content: content)
+                .padding(Theme.Spacing.lg)
+                .frame(maxWidth: maxWidth)
+                .background(CookCanvasTheme.elevated)
+                .clipShape(RoundedRectangle(cornerRadius: CookCanvasTheme.sheetRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: CookCanvasTheme.sheetRadius, style: .continuous)
+                        .strokeBorder(CookCanvasTheme.primaryText.opacity(0.10), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.5), radius: 30, y: 12)
+        }
+        .transition(.opacity)
     }
 
     private func failedCard(message: String, controller: PollySessionController) -> some View {
-        VStack(spacing: Theme.Spacing.md) {
-            MS.graphicEqFill.sized(30).foregroundStyle(Theme.Colors.accent)
-            Text("Polly couldn't pick up").font(.gluttTitle).foregroundStyle(Theme.Colors.textPrimary)
-            Text(message).font(.gluttBody).foregroundStyle(Theme.Colors.textSecondary)
+        cookCard(maxWidth: 320) {
+            MS.graphicEqFill.sized(30).foregroundStyle(CookCanvasTheme.green)
+            Text("Polly couldn't pick up")
+                .font(.gluttTitle).foregroundStyle(CookCanvasTheme.primaryText)
+            Text(message).font(.gluttBody).foregroundStyle(CookCanvasTheme.secondaryText)
                 .multilineTextAlignment(.center)
             Button("Try again") {
                 Haptics.impact(.medium)
@@ -651,18 +682,16 @@ struct PollySessionView: View {
             }
             .buttonStyle(.gluttSecondary)
         }
-        .padding(Theme.Spacing.lg)
-        .frame(maxWidth: 320)
-        .background(Theme.Colors.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous))
     }
 
     private var micDeniedCard: some View {
-        VStack(spacing: Theme.Spacing.md) {
-            MS.micOffFill.sized(30).foregroundStyle(Theme.Colors.accent)
-            Text("Polly can't hear you").font(.gluttTitle).foregroundStyle(Theme.Colors.textPrimary)
+        cookCard(maxWidth: 320) {
+            MS.micOffFill.sized(30).foregroundStyle(CookCanvasTheme.green)
+            Text("Polly can't hear you")
+                .font(.gluttTitle).foregroundStyle(CookCanvasTheme.primaryText)
             Text("Polly needs the microphone to cook with you. You can enable it in Settings, or cook without her.")
-                .font(.gluttBody).foregroundStyle(Theme.Colors.textSecondary).multilineTextAlignment(.center)
+                .font(.gluttBody).foregroundStyle(CookCanvasTheme.secondaryText)
+                .multilineTextAlignment(.center)
             Button("Cook without Polly") {
                 Haptics.impact(.light)
                 isCookingWithoutPolly = true
@@ -670,10 +699,41 @@ struct PollySessionView: View {
             }
             .buttonStyle(.gluttPrimary)
         }
-        .padding(Theme.Spacing.lg)
-        .frame(maxWidth: 320)
-        .background(Theme.Colors.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cardLarge, style: .continuous))
+    }
+}
+
+// MARK: - Connecting pulse
+
+/// Three bars breathing in Polly's green. Replaces a stock `ProgressView`,
+/// which on the cook canvas rendered as a grey UIKit spinner tinted with a dark
+/// green that was invisible against the card behind it.
+///
+/// Deliberately not a spinner: connecting takes a couple of seconds while the
+/// token is minted and WebRTC negotiates, and a voice assistant coming to life
+/// should look like a voice, not like a web page loading.
+private struct PollyPulse: View {
+    @State private var animating = false
+    private let bars = 3
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<bars, id: \.self) { i in
+                Capsule()
+                    .fill(CookCanvasTheme.green)
+                    .frame(width: 6, height: animating ? 26 : 10)
+                    .animation(
+                        .easeInOut(duration: 0.55)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(i) * 0.16),
+                        value: animating
+                    )
+            }
+        }
+        .frame(height: 28)
+        // Motion is meaningful here, so respect the accessibility setting rather
+        // than animating regardless: a static row of bars still reads as "busy".
+        .onAppear { if !UIAccessibility.isReduceMotionEnabled { animating = true } }
+        .accessibilityLabel("Connecting")
     }
 }
 

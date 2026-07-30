@@ -12,6 +12,11 @@ export default function handler(req, res) {
   const raw = (req.query.v || "").toString();
   // Whitelist YouTube's video-id charset to prevent injection into the inline script.
   const videoId = /^[A-Za-z0-9_-]{1,20}$/.test(raw) ? raw : "";
+  const startRaw = parseInt((req.query.start || "").toString(), 10);
+  const endRaw = parseInt((req.query.end || "").toString(), 10);
+  const start = Number.isFinite(startRaw) && startRaw >= 0 ? startRaw : 0;
+  const end = Number.isFinite(endRaw) && endRaw > start ? endRaw : 0;
+  const mute = (req.query.mute || "1").toString() !== "0";
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate=604800");
@@ -23,11 +28,31 @@ export default function handler(req, res) {
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
 var player;
+var startSec = ${start};
+var endSec = ${end};
+var preferMute = ${mute ? "true" : "false"};
 function onYouTubeIframeAPIReady() {
+  var vars = { playsinline: 1, autoplay: 1, mute: preferMute ? 1 : 0, controls: 1, rel: 0, modestbranding: 1, origin: location.origin };
+  if (startSec > 0) vars.start = startSec;
+  if (endSec > startSec) vars.end = endSec;
   player = new YT.Player('player', {
     videoId: '${videoId}',
-    playerVars: { playsinline: 1, autoplay: 1, mute: 1, controls: 1, rel: 0, modestbranding: 1, origin: location.origin },
-    events: { onReady: function(e) { e.target.mute(); e.target.playVideo(); } }
+    playerVars: vars,
+    events: {
+      onReady: function(e) {
+        if (preferMute) e.target.mute();
+        if (startSec > 0) e.target.seekTo(startSec, true);
+        e.target.playVideo();
+      },
+      onStateChange: function(e) {
+        // Keep a tight demo loop inside [start, end] when end is set.
+        if (!endSec || endSec <= startSec) return;
+        if (e.data === YT.PlayerState.ENDED) {
+          e.target.seekTo(startSec, true);
+          e.target.playVideo();
+        }
+      }
+    }
   });
 }
 </script>

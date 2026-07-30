@@ -142,6 +142,9 @@ struct PollyStepGuidePanel: View {
     let onSelectStep: (Int) -> Void
     let onToggleItem: (String) -> Void
     var onStartTimer: ((CookPlan.PlanStep, Int) -> Void)? = nil
+    /// Optional clip for the currently selected step (Gemini-indexed YouTube window).
+    var currentStepClip: StepClip? = nil
+    var onWatchClip: ((StepClip) -> Void)? = nil
 
     @State private var appearedStepID: String?
     @State private var revealCount = 0
@@ -164,6 +167,14 @@ struct PollyStepGuidePanel: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut(duration: 0.22), value: stepIndex)
+
+            if let clip = currentStepClip {
+                StepClipWatchButton(clip: clip, dark: true) {
+                    Haptics.selection()
+                    onWatchClip?(clip)
+                }
+                .padding(.horizontal, 18)
+            }
 
             if let step = currentStep, let seconds = step.timerSeconds {
                 Button {

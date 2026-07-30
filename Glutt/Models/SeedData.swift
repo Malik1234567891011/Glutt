@@ -7,7 +7,7 @@ import SwiftData
 /// Bump `seedVersion` to wipe and reseed after content changes.
 enum SeedData {
 
-    private static let seedVersion = 2
+    private static let seedVersion = 3
     private static let seedVersionKey = "glutt.seedVersion"
 
     static func seedIfNeeded(context: ModelContext) {
@@ -55,14 +55,18 @@ enum SeedData {
         let protein: Int?
         let ingredients: [(String, Double?, String?, IngredientRole?)]
         let steps: [(String, Int?)]
+        /// When set, overrides the placeholder `example.com` source URL.
+        var sourceURL: String? = nil
     }
 
     private static func build(_ seed: Seed) -> Recipe {
+        let resolvedSourceURL = seed.sourceURL
+            ?? (seed.creator != nil ? "https://example.com/\(seed.asset)" : nil)
         let recipe = Recipe(
             title: seed.title,
             summary: seed.summary,
             sourceCreator: seed.creator,
-            sourceURL: seed.creator != nil ? "https://example.com/\(seed.asset)" : nil,
+            sourceURL: resolvedSourceURL,
             sourcePlatform: seed.platform,
             importedAt: seed.platform == .manual ? nil : .now,
             importConfidence: seed.confidence,
@@ -390,9 +394,43 @@ enum SeedData {
             ]
         ))
 
+        // Pilot recipe for auto YouTube step-clips (Gemini index → embed seek).
+        // Image reuses the yogurt bowl asset until a dedicated photo lands.
+        let eggsBenedict = build(Seed(
+            title: "Eggs Benedict",
+            asset: "greekYogurtBowl",
+            summary: "Poached eggs on toasted English muffins with hollandaise — Gordon Ramsay technique video attached for Polly step clips.",
+            creator: "Gordon Ramsay", platform: .youtube, confidence: 0.95,
+            servings: 2, prep: 15, cook: 20, difficulty: .intermediate,
+            tags: ["Breakfast", "Brunch", "Eggs"],
+            calories: 720, protein: 32,
+            ingredients: [
+                ("Eggs", 4, nil, .protein),
+                ("English muffins", 2, nil, .starch),
+                ("Butter", 150, "g", .fat),
+                ("Egg yolks", 2, nil, .protein),
+                ("Lemon juice", 1, "tbsp", .acid),
+                ("White wine vinegar", 1, "tbsp", .acid),
+                ("Canadian bacon or ham", 4, "slices", .protein),
+                ("Salt", nil, nil, .spice),
+                ("Cayenne or white pepper", nil, nil, .spice),
+                ("Chives", nil, nil, .garnish),
+            ],
+            steps: [
+                ("Toast the English muffins until golden and keep warm.", 180),
+                ("Warm the ham or Canadian bacon in a pan; set aside.", 180),
+                ("Make hollandaise: whisk egg yolks with a splash of water over gentle heat until thickened, then slowly whisk in melted butter and finish with lemon juice, salt, and cayenne.", 480),
+                ("Bring a pot of water to a gentle simmer and add a splash of vinegar.", 300),
+                ("Crack each egg into a cup, swirl the water, and poach 3–4 minutes until whites are set and yolks are soft.", 240),
+                ("Plate: muffin, ham, poached egg, hollandaise; garnish with chives.", nil),
+            ],
+            sourceURL: "https://www.youtube.com/watch?v=gBJjRYk0yC0"
+        ))
+
         let recipes = [
             chickenRiceBowl, hotHoney, koreanBeef, shawarmaBowl, koftaWrap, koftaMealPrep,
             steakPotatoBowl, greenGoddess, salmonBowl, beefWrap, fajitaSalad, pestoGnocchi, yogurtBowl,
+            eggsBenedict,
         ]
         recipes.forEach(context.insert)
 

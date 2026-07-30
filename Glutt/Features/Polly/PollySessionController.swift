@@ -128,6 +128,12 @@ final class PollySessionController {
     /// Bumps when step index / checklist changes so the guide panel re-renders.
     private(set) var sessionUIEpoch: Int = 0
 
+    /// Auto-indexed YouTube demo clips for the current CookPlan (step id → clip).
+    private(set) var stepClipsByID: [String: StepClip] = [:]
+    /// True while Gemini indexing is in flight (first cook of a linked video).
+    private(set) var isIndexingStepClips = false
+    private var didStartClipIndex = false
+
     /// Touch/swipe step navigation — keeps voice tools and UI in sync.
     func goToStep(_ index: Int) {
         registry?.jumpToStep(index)
@@ -150,6 +156,41 @@ final class PollySessionController {
     private func publishSessionUI() {
         checkedActionIDs = registry?.state.checkedActionIDs ?? []
         sessionUIEpoch += 1
+    }
+
+    func clipForCurrentStep() -> StepClip? {
+        guard let plan, plan.steps.indices.contains(stepIndex) else { return nil }
+        return stepClipsByID[plan.steps[stepIndex].id]
+    }
+
+    private func startStepClipIndexingIfNeeded(plan: CookPlan) {
+        guard !didStartClipIndex else { return }
+        guard let sourceURL = recipe.sourceURL,
+              YouTubeEmbed.videoId(from: sourceURL) != nil else { return }
+        didStartClipIndex = true
+        isIndexingStepClips = true
+        Task { [weak self] in
+            guard let self else { return }
+            defer { self.isIndexingStepClips = false }
+            do {
+                let response = try await StepClipService.shared.clips(
+                    youtubeURL: sourceURL,
+                    recipeTitle: self.recipe.title,
+                    steps: plan.steps
+                )
+                var map: [String: StepClip] = [:]
+                for clip in response.clips {
+                    map[clip.stepID] = clip
+                }
+                self.stepClipsByID = map
+                PollyDebugLog.shared.log(
+                    "clips: indexed \(map.count) step clips (cached=\(response.cached ?? false))"
+                )
+                self.publishSessionUI()
+            } catch {
+                PollyDebugLog.shared.log("clips: index failed — \(error.localizedDescription)")
+            }
+        }
     }
 
     private let recipe: Recipe
@@ -259,6 +300,7 @@ final class PollySessionController {
         let plan = await deps.compilePlan(recipe, scale)
         self.plan = plan
         PollyDebugLog.shared.log("session: plan ready — \(plan.steps.count) steps")
+        startStepClipIndexingIfNeeded(plan: plan)
 
         // 2. Session snapshot: pantry, prefs, memories, past cooks of this recipe.
         let pantry = (try? context.fetch(FetchDescriptor<PantryItem>())) ?? []

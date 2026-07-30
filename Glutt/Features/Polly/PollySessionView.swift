@@ -29,6 +29,8 @@ struct PollySessionView: View {
     @State private var micDenied = false
     @State private var didDismissPreflight = false
     @State private var isCookingWithoutPolly = false
+    @State private var activeStepClip: StepClip?
+    @State private var didMuteForClip = false
 
     var body: some View {
         Group {
@@ -72,6 +74,11 @@ struct PollySessionView: View {
         .sheet(isPresented: $isShowingFinish) {
             cookRecapSheet
                 .interactiveDismissDisabled()
+        }
+        .sheet(item: $activeStepClip) { clip in
+            StepClipPlayerSheet(clip: clip) {
+                closeClip(controller: controller)
+            }
         }
         .confirmationDialog("End cooking with Polly?", isPresented: $isConfirmingExit, titleVisibility: .visible) {
             Button("Keep cooking", role: .cancel) {}
@@ -201,7 +208,9 @@ struct PollySessionView: View {
                     onToggleItem: { controller.toggleChecklistItem($0) },
                     onStartTimer: { step, seconds in
                         startTimer(for: step, seconds: seconds, controller: controller)
-                    }
+                    },
+                    currentStepClip: controller.clipForCurrentStep(),
+                    onWatchClip: { openClip($0, controller: controller) }
                 )
                 .id(controller.sessionUIEpoch)
                 .padding(.top, 14)
@@ -424,6 +433,17 @@ struct PollySessionView: View {
                 .lineSpacing(2)
                 .lineLimit(3)
                 .padding(.top, 5)
+            if let clip = controller.clipForCurrentStep() {
+                StepClipWatchButton(clip: clip) {
+                    openClip(clip, controller: controller)
+                }
+                .padding(.top, 13)
+            } else if controller.isIndexingStepClips {
+                Text("Finding a technique clip…")
+                    .font(BrandFont.nunito(12, 700))
+                    .foregroundStyle(Theme.Colors.muted)
+                    .padding(.top, 10)
+            }
             if let seconds = step.timerSeconds {
                 Button {
                     Haptics.selection()
@@ -447,6 +467,25 @@ struct PollySessionView: View {
         .background(Theme.Colors.card)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .shadow(color: Color.black.opacity(0.3), radius: 20, y: 12)
+    }
+
+    private func openClip(_ clip: StepClip, controller: PollySessionController?) {
+        Haptics.selection()
+        if let controller, !controller.isHardMuted {
+            controller.toggleHardMute()
+            didMuteForClip = true
+        } else {
+            didMuteForClip = false
+        }
+        activeStepClip = clip
+    }
+
+    private func closeClip(controller: PollySessionController?) {
+        activeStepClip = nil
+        if didMuteForClip, let controller, controller.isHardMuted {
+            controller.toggleHardMute()
+        }
+        didMuteForClip = false
     }
 
     private func progressBar(done: Int, total: Int) -> some View {

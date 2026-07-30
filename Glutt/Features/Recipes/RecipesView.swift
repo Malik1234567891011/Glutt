@@ -395,7 +395,9 @@ struct RecipesView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 6)
             }
-            ChefRail()
+            if ChefContent.isEnabled {
+                ChefRail()
+            }
             SectionLabel(text: listSectionTitle)
                 .padding(.horizontal, 20)
                 .padding(.top, 16)

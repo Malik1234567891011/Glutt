@@ -5,8 +5,11 @@ things that are wrong in the **live 1.1 listing** and have to change with it.
 
 - **Live now:** "Glutt - Cooking" 1.1, released 2026-07-15, updated 2026-07-20, seller
   CielPM, Inc., Food & Drink, `id6780553556`.
-- **Submitting:** 1.2 (project.yml says build 11), new screenshots (5 panels,
-  1320 x 2868, in `~/Desktop/glutt-appstore/panels/`), new app icon.
+- **Submitting:** 1.2, build 12, new screenshots (5 panels, 1320 x 2868, in
+  `~/Desktop/glutt-appstore/panels/`), new app icon, and a new store name.
+- **Paste sheet:** `appstore-metadata-1.2-paste.md` holds the same values with every
+  decision locked and no commentary, for handing to an agent driving the browser. This
+  document is the reasoning; that one is the script.
 - **Locales:** the app ships English only (no `.strings` / `.xcstrings` anywhere), so keep
   the store listing at **English (U.S.) only**. Adding a second store locale would
   translate the listing while the app stays English, which reads as broken.
@@ -21,6 +24,12 @@ things that are wrong in the **live 1.1 listing** and have to change with it.
 Ordered by how likely each one is to cost you the release.
 
 ### 1.1 The three real chefs are the biggest risk in this build
+
+> **Decided 2026-07-30: held back from 1.2.** `ChefContent.isEnabled = false` now gates the
+> rail on the Recipes home, the bundled dish rows in `GluttApp`, and the `-openChef` launch
+> hook. Simulator build passes with no warnings. Flip the one flag in
+> `Glutt/Models/Chefs.swift` to bring the feature back. The rest of this section is the why,
+> and what has to be true before you flip it.
 
 `Glutt/Models/Chefs.swift` ships **Gordon Ramsay, Nick DiGiovanni and Joshua Weissman**
 by name, with credit lines ("Michelin chef, London", "MasterChef finalist"), portraits, and
@@ -101,9 +110,8 @@ From `docs/HARD-PAYWALL-FREE-TRIAL.md`, both must happen **before** you hit Subm
   `...premium.monthly`, `...premium.yearly.trial`. Attaching the trial is what gets it
   approved and what makes it testable in the review sandbox.
 
-Also: if build 11 was already uploaded to TestFlight, ASC will reject a second upload with
-the same number. Bump `CURRENT_PROJECT_VERSION` to 12 in `project.yml` (both targets) and
-run `xcodegen generate` before archiving.
+Build numbering is already handled: `CURRENT_PROJECT_VERSION` is 12 on both targets, so the
+upload cannot collide with the build 11 that went to TestFlight.
 
 ---
 
@@ -111,27 +119,26 @@ run `xcodegen generate` before archiving.
 
 Character counts are exact, and every field is inside Apple's limit.
 
+Name, subtitle and keywords are one search index, and the name is weighted highest, so a
+term only needs to appear once. The three fields below are coordinated on that basis: no
+word repeats across them. Changing one means rebalancing the other two.
+
 ### App Name (limit 30)
 
 ```
-Glutt - Cooking
+Glutt: Recipes & AI Chef
 ```
-15 characters. Keep it. Renaming triggers a fresh name review and you gain little.
-
-Optional, if you want the search weight instead: `Glutt: Recipes and AI Chef` (26). Only do
-this if you are ready for the listing name to stop matching the icon label everywhere.
+24 characters. This is a change from the live `Glutt - Cooking`, chosen 2026-07-30 to put
+the two strongest terms in the strongest field. The home screen label is unaffected, since
+that comes from `CFBundleDisplayName` and stays "Glutt".
 
 ### Subtitle (limit 30)
 
-Recommended:
 ```
-Recipes and a live AI chef
+Your cookbook, smart pantry
 ```
-26 characters. Says what it is, and carries two terms people actually search.
-
-Alternatives:
-- `Save recipes. Cook hands-free.` (30, exactly at the limit)
-- `Your kitchen, sorted.` (21, what is live now, zero search value)
+27 characters. Carries "cookbook" and "pantry" precisely because the name already carries
+"recipes" and "AI chef".
 
 ### Promotional Text (limit 170)
 
@@ -145,16 +152,19 @@ Glutt has been rebuilt. Every screen is redesigned, and Polly now wakes up when 
 ### Keywords (limit 100, comma separated, no spaces after commas)
 
 ```
-recipe,cookbook,meal,pantry,fridge,grocery list,voice,hands free,dinner,macro,calorie,cook
+cooking,meal,dinner,fridge,grocery,leftovers,voice,hands free,macro,calorie,kitchen,organizer
 ```
-90 characters. Notes on why it looks like that:
+93 characters. Notes on why it looks like that:
 
-- No "glutt", no "cooking", no "AI chef". Those are already in the name and subtitle, which
-  Apple indexes, so repeating them wastes characters.
+- Nothing here repeats the name or subtitle. No "glutt", "recipe", "chef", "cookbook" or
+  "pantry", because those four fields are already indexed above.
+- "cooking" moved down here from the old name, so the term is not lost in the rename.
+- "organizer" is here rather than "recipe organizer". Apple pairs terms across fields, so
+  "recipe" in the name plus "organizer" here already matches that phrase.
 - No "Instagram" or "TikTok". Third-party trademarks in the keyword field are a known
   rejection. They are fine in the description as plain prose, which is how the live listing
   passed review.
-- Singular forms only. Apple matches plurals from the singular stem.
+- Singular forms only, except "leftovers", which is how people type it.
 
 ### Description (limit 4000)
 
@@ -214,9 +224,6 @@ Share a cooking video and Glutt listens to what the cook actually says, then wri
 BEFORE AND AFTER THE COOK
 A short briefing before you start, so you know what is coming. A recap at the end, where you keep a photo of what you made.
 
-CHEF PACKS
-Signature dishes ready to cook step by step with Polly.
-
 YOUR KITCHEN, BY VOICE
 Say what is in your fridge instead of typing it in, and every recipe now carries its calories and protein per serving.
 
@@ -227,13 +234,13 @@ Plus better AirPods and Bluetooth headset support during a live cook, fixes to l
 
 Happy cooking.
 ```
-1282 characters. **Delete the CHEF PACKS block if you hide the chef rail** (section 1.1).
+1214 characters. The chef packs paragraph is already removed, since the rail is off.
 
 Everything above landed after 1.1 was cut. 1.1 was build 10 from 2026-07-18, so the
 redesign (2026-07-23), the Polly voice rebuild (2026-07-24), video import, the pre-cook
-briefing, the cook recap, voice pantry, recipe nutrition, accounts and chef packs are all
-new to the store with this version. The redesign is the reason the screenshots changed, so
-naming it first also explains the new gallery to anyone comparing.
+briefing, the cook recap, voice pantry, recipe nutrition and accounts are all new to the
+store with this version. The redesign is the reason the screenshots changed, so naming it
+first also explains the new gallery to anyone comparing.
 
 ### URLs, copyright, category
 
@@ -314,6 +321,15 @@ To try Polly: open any recipe, tap Cook with Polly, then say "Polly" or tap the 
 The app is iPhone only and portrait only by design.
 ```
 
+Verified in code on 2026-07-30, so the notes above are safe to stand behind: the wall really
+is mandatory. `RootView.unlockedOverlay` shows `SignInView` for any `.signedOut` session, and
+the "Continue without an account" link inside it renders only when `errorMessage != nil`. It
+is a post-failure escape hatch, not a skip button.
+
+If App Store Connect refuses to save with **Sign-in required** ticked and the username and
+password empty, put `Sign in with Apple only` in both fields rather than inventing
+credentials, and let the notes carry the explanation.
+
 ---
 
 ## 4. App Privacy answers
@@ -347,7 +363,9 @@ accuracy problem as section 1.3 in a different document.
 
 ## 5. Submission checklist
 
-- [ ] Decide what happens to the chef rail (section 1.1) and adjust What's New to match
+- [x] Chef rail held back for 1.2 via `ChefContent.isEnabled = false`, simulator build clean,
+      and the chef paragraph removed from What's New
+- [ ] Change the app name to `Glutt: Recipes & AI Chef` in the 1.2 version record
 - [x] Build bumped to 12 and `xcodegen generate` run
 - [ ] Tick **Sign-in required** in App Review Information. Glutt walls the app behind Sign in
       with Apple or Google once the purchase lands (`RootView.unlockedOverlay` presents

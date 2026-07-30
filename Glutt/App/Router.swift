@@ -95,7 +95,7 @@ final class Router {
         demoCookOnLaunch = arguments.contains("-demoCook")
         forceOnboarding = arguments.contains("-onboarding")
         openFirstRecipeOnLaunch = arguments.contains("-openRecipe")
-        if let flagIndex = arguments.firstIndex(of: "-openChef") {
+        if ChefContent.isEnabled, let flagIndex = arguments.firstIndex(of: "-openChef") {
             let next = arguments.indices.contains(flagIndex + 1) ? arguments[flagIndex + 1] : nil
             chefToOpenOnLaunch = (next?.hasPrefix("-") == false ? next : nil) ?? ChefContent.chefs.first?.id
         }

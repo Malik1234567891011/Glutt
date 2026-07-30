@@ -27,6 +27,16 @@ struct Chef: Identifiable, Hashable {
 /// library feed — the same trick `CookingBasics` uses for technique lessons.
 enum ChefContent {
 
+    /// Held back from the 1.2 App Store submission. The three chefs ship by name
+    /// and likeness, with portraits and dish photos cut from YouTube thumbnails
+    /// and no licence for either — App Review 5.2 exposure we are not taking on
+    /// a release. Flipping this to `true` is the whole switch: the rail, the
+    /// bundled dish rows and the `-openChef` hook all read it.
+    ///
+    /// Turn it back on once the names and credits are gone, or once the content
+    /// is licensed. See `docs/appstore-metadata-1.2.md` section 1.1.
+    static let isEnabled = false
+
     /// Discriminator tag prefix. Keep in sync with `Recipe.chefSlug`.
     static let tagPrefix = "chef:"
 

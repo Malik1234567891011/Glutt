@@ -28,6 +28,37 @@ struct SignInView: View {
     /// Set when the attempt failed because there is no account to log in to.
     @State private var needsSignUp = false
 
+    /// The same rounded card as onboarding screens 1 and 7, at a fixed height
+    /// rather than flex-fill: this screen has to leave room for two buttons and
+    /// an error line, so the video takes what it is given.
+    ///
+    /// Not full bleed, deliberately. The footage is cream, and the white
+    /// "Continue with Google" button would sit on it and vanish. Keeping the
+    /// video in a card leaves the buttons on solid background.
+    private var heroVideo: some View {
+        ZStack(alignment: .top) {
+            OnboardingTheme.videoFrame
+            LoopingVideoView(resource: "login-hero")
+            // Cream fade into the top edge, so the card reads as part of the
+            // screen rather than a rectangle pasted onto it.
+            GeometryReader { geo in
+                LinearGradient(stops: [
+                    .init(color: OnboardingTheme.videoFrame, location: 0),
+                    .init(color: OnboardingTheme.videoFrame, location: 0.70),
+                    .init(color: OnboardingTheme.videoFrame.opacity(0), location: 1),
+                ], startPoint: .top, endPoint: .bottom)
+                .frame(height: geo.size.height * 0.30)
+            }
+            .allowsHitTesting(false)
+        }
+        .frame(height: 300)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28)
+                .strokeBorder(OnboardingTheme.warmBlack(0.05), lineWidth: 1)
+        )
+    }
+
     /// The onboarding answers, sent to the profile and to PostHog once there is
     /// an account to attach them to. Read here rather than in `AccountSession`
     /// because they live in SwiftData and the session has no model context.
@@ -46,7 +77,7 @@ struct SignInView: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
 
-                MS.skilletFill.sized(46).foregroundStyle(OnboardingTheme.greenDeep)
+                heroVideo
                     .padding(.bottom, 26)
 
                 OnboardingHeadline("Save your place", size: 27, maxWidth: 300)

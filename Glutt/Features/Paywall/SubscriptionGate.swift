@@ -145,10 +145,34 @@ final class SubscriptionGate {
     ///
     /// In Superwall's automatic mode the SDK raises its own alert when there is
     /// nothing to restore, so callers should not add a second one.
+    /// Reading `subscriptionStatus` the instant the restore call returns is a
+    /// race, and it lost: a real subscriber got "nothing to restore", then had
+    /// the login screen open normally after a relaunch. `subscriptionStatus` is
+    /// published asynchronously as StoreKit transactions are processed, so it
+    /// is routinely still `.unknown` or stale at the moment `restorePurchases()`
+    /// hands back.
+    ///
+    /// So the SDK's own verdict is read first — it was previously discarded
+    /// with `_ =` — and the status is then given a moment to catch up before
+    /// anyone is told they have not paid. Telling a paying customer that is the
+    /// expensive mistake here; a second of waiting is the cheap one.
     func restorePurchases() async -> Bool {
         guard !Self.bypassEnabled else { return true }
-        _ = await Superwall.shared.restorePurchases()
-        return Superwall.shared.subscriptionStatus.isActive
+
+        let result = await Superwall.shared.restorePurchases()
+        if Superwall.shared.subscriptionStatus.isActive { return true }
+
+        // Nothing to restore is an answer, not a race: don't stall on it.
+        guard case .restored = result else { return false }
+
+        // Poll rather than await the publisher: `status` is already driven by
+        // that subscription in `start()`, and a second sink here would need
+        // unwinding on every exit path.
+        for _ in 0 ..< 20 {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            if Superwall.shared.subscriptionStatus.isActive { return true }
+        }
+        return false
     }
 
     /// Presents the paywall on its own, the first time a locked user lands past

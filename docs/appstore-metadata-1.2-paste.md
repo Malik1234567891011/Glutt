@@ -171,8 +171,17 @@ Each is 1320 x 2868. No other display size is required, since the app is iPhone 
 
 Tick **Sign-in required**.
 
-Leave Username and Password empty. If the page refuses to save that way, put
-`Sign in with Apple only` in both fields. Never invent credentials.
+App Store Connect will not save the page with these empty once the box is ticked. It
+rejects with "User name, This field is required" and the same for Password. Confirmed
+2026-07-30. Put this in **both** fields, exactly:
+
+```
+Sign in with Apple only. See Notes.
+```
+
+Never invent credentials. Glutt has no password-based login, so anything that looks like a
+working account sends a reviewer into a loop and reads as bad faith. The string above is a
+pointer to the Notes block below, which is where the real instruction lives.
 
 Leave the contact name, phone and email as they are.
 

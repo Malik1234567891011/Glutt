@@ -6,17 +6,23 @@ import UIKit
 /// Named `GoogleAuth` rather than `GoogleSignIn` so the type does not collide
 /// with the module it imports.
 ///
-/// **No nonce, on either side.** This flow shipped passing the same raw nonce
-/// to Google and to Supabase, on the reasoning that Google embeds it verbatim.
-/// It cannot work: GoogleSignIn does forward the nonce unchanged into the
-/// token's `nonce` claim, but GoTrue compares that claim against the *SHA256*
-/// of the nonce it was given, which is Apple's convention. Raw on one side,
-/// hashed on the other, so every attempt returned `Nonces mismatch`.
+/// **Google takes the hashed nonce, Supabase takes the raw one** — the same
+/// dance as Apple, and for the same reason.
 ///
-/// Supabase's own native-Google example passes no nonce at all, and their iOS
-/// guide says to enable "Skip nonce check" on the provider. Sending nothing
-/// matches both and needs no dashboard switch. Apple keeps its nonce dance,
-/// where hashing is exactly what is required.
+/// This shipped sending the *raw* nonce to both, on the reasoning that Google
+/// embeds it verbatim. Google does embed it verbatim; that is precisely the
+/// problem. GoTrue hashes whatever nonce it is given and compares that against
+/// the token's claim, for every provider — "If the ID token contains a nonce
+/// claim, then the hash of this value is compared to the value in the ID
+/// token." Raw in the token, hashed at the comparison, so every attempt came
+/// back `Nonces mismatch`.
+///
+/// Dropping the nonce entirely was tried and is worse: Google hands back a
+/// *cached* token from a previous sign-in, which still carries the old nonce
+/// claim, and GoTrue then rejects the mismatched pair with "Passed nonce and
+/// nonce in id_token should either both exist or not". Hence the `signOut()`
+/// below — every attempt must mint a fresh token, or a stale one from an
+/// earlier failed attempt poisons the next.
 enum GoogleAuth {
     /// False when no client id is configured, which is the signal to hide the
     /// button instead of offering a flow that cannot complete.
@@ -40,13 +46,25 @@ enum GoogleAuth {
     /// Throws `GIDSignInError.canceled` when the user backs out, which callers
     /// should treat as a choice rather than an error.
     @MainActor
-    static func tokens() async throws -> (idToken: String, accessToken: String) {
+    static func tokens(rawNonce: String) async throws -> (idToken: String, accessToken: String) {
         guard isConfigured else { throw Failure.notConfigured }
         guard let presenter else { throw Failure.noPresenter }
 
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: Secrets.googleClientID)
 
-        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter)
+        // Discard any cached authorization first. Without this the SDK can
+        // return the token it already holds, whose nonce claim belongs to an
+        // earlier attempt and will never match the one we are about to send.
+        GIDSignIn.sharedInstance.signOut()
+
+        let result = try await GIDSignIn.sharedInstance.signIn(
+            withPresenting: presenter,
+            hint: nil,
+            additionalScopes: nil,
+            // The hash, exactly as Apple gets it. Supabase is handed the raw
+            // value and hashes it to compare.
+            nonce: AppleSignIn.sha256(rawNonce)
+        )
 
         guard let idToken = result.user.idToken?.tokenString else {
             throw Failure.noIdentityToken

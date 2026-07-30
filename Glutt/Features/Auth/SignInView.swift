@@ -197,10 +197,11 @@ struct SignInView: View {
         errorMessage = nil
         Task {
             do {
-                let tokens = try await GoogleAuth.tokens()
+                let tokens = try await GoogleAuth.tokens(rawNonce: rawNonce)
                 try await session.signInWithGoogle(
                     idToken: tokens.idToken,
                     accessToken: tokens.accessToken,
+                    rawNonce: rawNonce,
                     requireExisting: requiresExistingAccount
                 )
                 Analytics.capture(.signInSucceeded, ["provider": "google"])

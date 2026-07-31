@@ -9,7 +9,9 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.10"
-    DEVELOPMENT_TEAM: Q7ZLXMG4SB
+    # Malik personal team (OU on Apple Development: malik.shourbaji@gmail.com).
+    # Q7ZLXMG4SB is stale — Xcode has no account for it on this machine.
+    DEVELOPMENT_TEAM: K8MRHHZ85N
     CODE_SIGN_STYLE: Automatic
 
 packages:
@@ -47,7 +49,14 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Glutt
+      # ImportSheet / ImportProgressViews are a half-landed design-loading UI that
+      # still references APIs ShareImportViewModel / ImportPipeline do not have
+      # (headerLabel, abandon, ImportPipeline.Stage). ShareRootView does not use
+      # them — keep the sources on disk, exclude until the ViewModel catches up.
+      - path: Glutt
+        excludes:
+          - Features/Import/ImportSheet.swift
+          - Features/Import/ImportProgressViews.swift
     info:
       path: Glutt/Info.plist
       properties:
@@ -116,19 +125,11 @@ targets:
       - path: Glutt/Services/Import/VideoRecipeCompiler.swift
       - path: Glutt/Services/Import/ImportInbox.swift
       - path: Glutt/Services/Import/ShareImportViewModel.swift
-      # The share sheet's own UI vocabulary and the pantry-coverage line it
-      # shows. Both live in the app target but the extension renders them, so
-      # they have to be compiled into it too.
-      #
-      # These three were removed once already because the files were untracked,
-      # which makes `xcodegen generate` fail on a fresh clone. They are back
-      # because ShareRootView does not compile without them — so the files
-      # themselves have to be committed, not the paths removed.
-      - path: Glutt/Features/Import/ImportProgressViews.swift
-      - path: Glutt/Features/Import/ImportSheet.swift
+      # App-group pantry coverage for the share-sheet confirmation line.
       - path: Glutt/Services/Import/PantrySnapshot.swift
       # Shared with the app target — extension needs the same canonicalizer for
       # pantry-coverage lines on the share-sheet preview.
+      # (ImportSheet / ImportProgressViews excluded — see Glutt target excludes.)
       - path: Glutt/Services/IngredientCanonicalizer.swift
       - path: Glutt/Services/Import/PendingImportStore.swift
       - path: Glutt/Services/AI/LLMClient.swift

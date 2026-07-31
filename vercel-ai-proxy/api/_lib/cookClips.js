@@ -24,6 +24,7 @@ const MIN_RECOMMEND_SCORE = 0.72;
 /** Known lengths — Gemini often invents times past EOF without this. */
 const KNOWN_DURATIONS = {
   gBJjRYk0yC0: 274, // How To Cook Eggs Benedict | Gordon Ramsay (4:34)
+  Cyskqnp1j64: 471, // Christmas Beef Wellington | Gordon Ramsay (~7:51)
 };
 
 function youtubeVideoId(url) {
@@ -123,11 +124,11 @@ function clipsCacheKey(videoId, steps) {
   const payload = steps.map((s) => `${s.id}|${s.title}|${s.instruction}`).join("\n");
   let h = 0;
   for (let i = 0; i < payload.length; i++) h = (Math.imul(31, h) + payload.charCodeAt(i)) | 0;
-  return `cook:clips:v4:${videoId}:${h}`;
+  return `cook:clips:v5:${videoId}:${h}`;
 }
 
 function segmentsCacheKey(videoId) {
-  return `cook:segments:v4:${videoId}`;
+  return `cook:segments:v5:${videoId}`;
 }
 
 function segmentPrompt(durationSeconds) {
@@ -190,7 +191,18 @@ Use BOTH:
 1) what the chef SAYS (audio / narration), and
 2) what is VISIBLY happening on screen.
 
-For each recipe step, choose ONE continuous window that covers the FULL on-screen action for that step — from the moment the action clearly starts until it clearly finishes or the camera leaves it.
+CRITICAL boundary rule (wrong clips ruin the cook-along):
+- start_seconds = the first second where the step's technique is CLEARLY ON CAMERA
+  (food, hands, tools, or the transformation — NOT a talking-head face shot).
+- If the chef NAMES the action a few seconds before the camera cuts to it, IGNORE
+  that speech lead-in. Start when the camera shows the action.
+- end_seconds = when that SAME on-screen action finishes or the camera leaves it.
+- Reject talking-head / face-only / "chef explaining" windows even if the word
+  matches (e.g. saying "mustard" while looking at camera is NOT a mustard clip).
+- visual_evidence must describe what the VIEWER SEES across the window (beef,
+  brush, pan, sauce…), not just what was said.
+
+For each recipe step, choose ONE continuous window that covers the FULL on-screen action for that step.
 Do NOT return only the first few seconds of a longer action.
 Windows of 15–60 seconds are expected when the action continues that long (e.g. frying ham until crisp, reducing a sauce).
 Prefer tight boundaries, but never cut an ongoing action short just to stay under 30 seconds.
@@ -202,9 +214,10 @@ Steps:
 ${JSON.stringify(steps)}
 
 Return JSON:
-{"clips":[{"step_id":"","start_seconds":0,"end_seconds":0,"spoken_evidence":"short quote or paraphrase of relevant speech","visual_evidence":"what is on screen across the FULL window","confidence":0.0,"watch_label":"short UI label","notice":"one sentence about what to notice","recommended":true,"action_still_ongoing_at_end":false}]}
+{"clips":[{"step_id":"","start_seconds":0,"end_seconds":0,"spoken_evidence":"short quote or paraphrase of relevant speech","visual_evidence":"what is on screen across the FULL window (food/hands/tools)","technique_on_camera":true,"talking_head_only":false,"confidence":0.0,"watch_label":"short UI label","notice":"one sentence about what to notice","recommended":true,"action_still_ongoing_at_end":false}]}
 
 Include one object per step. Set recommended:false when there is no safe visual match.
+Set technique_on_camera:false / talking_head_only:true when the window is speech without the demo — those must not be recommended.
 Set action_still_ongoing_at_end=true if you had to stop while the same action was still clearly continuing.
 Never return a window that starts at 0 unless cooking action truly begins in the opening seconds.`;
 }
@@ -222,17 +235,17 @@ Step: ${JSON.stringify(step)}
 Proposed clip: ${JSON.stringify(clip)}
 
 Tasks:
-1) Confirm the proposed window actually shows this step's action (not a different action).
-2) Find the earliest second where the action is clearly underway on camera → start_seconds.
+1) Confirm the proposed window actually SHOWS this step's action on camera (not a talking-head while the chef merely says the word).
+2) Find the earliest second where the action is clearly underway ON CAMERA (food/hands/tools visible) → start_seconds. Trim any leading face-only speech.
 3) Find the latest second where that SAME action is still clearly underway (or just completes) → end_seconds.
 4) If the action continues past the proposed end, EXTEND end_seconds.
-5) If the proposed start is late, MOVE start earlier.
+5) If the proposed start is late, MOVE start earlier — but never earlier than the first visible technique frame.
 6) Keep the window continuous. Prefer 15–60s when the action lasts that long.
 
 Return JSON:
-{"ok":true,"start_seconds":0,"end_seconds":0,"spoken_evidence":"","visual_evidence":"","confidence":0.0,"watch_label":"","notice":"","reason":"why boundaries changed or were kept"}
+{"ok":true,"start_seconds":0,"end_seconds":0,"spoken_evidence":"","visual_evidence":"","technique_on_camera":true,"talking_head_only":false,"confidence":0.0,"watch_label":"","notice":"","reason":"why boundaries changed or were kept"}
 
-If the proposal is about the wrong action entirely, return {"ok":false,"reason":"..."}.`;
+If the proposal is about the wrong action entirely, or only speech without the demo, return {"ok":false,"reason":"..."}.`;
 }
 
 function normalizeSteps(stepsIn) {
@@ -290,6 +303,8 @@ function buildClipsFromGround(rawClips, videoId, durationSeconds, steps = []) {
   const clips = [];
   for (const c of rawClips || []) {
     if (!c || c.recommended === false) continue;
+    if (c.talking_head_only === true) continue;
+    if (c.technique_on_camera === false) continue;
     const win = clampWindow(c.start_seconds, c.end_seconds, durationSeconds);
     if (!win) continue;
     const confidence = normalizeConfidence(c.confidence);
@@ -313,6 +328,7 @@ function buildClipsFromGround(rawClips, videoId, durationSeconds, steps = []) {
     };
     // Drop whole-recipe / wrong-action dumps — common when the model panics.
     if (isMegaMultiStageClip(clip)) continue;
+    if (looksTalkingHeadOnly(clip)) continue;
     if (!evidenceAlignsWithStep(stepById.get(clip.step_id), clip)) continue;
     clips.push(clip);
   }
@@ -340,10 +356,29 @@ function isMegaMultiStageClip(clip) {
     /muffin|toast/,
     /poach/,
     /plate|assembl|stack/,
+    /sear|fillet/,
+    /mustard|horseradish/,
+    /mushroom|duxelle/,
+    /pastry|puff/,
   ];
   const hits = stages.filter((re) => re.test(hay)).length;
   // A single step clip naming 3+ distinct dish stages is almost never right.
   return hits >= 3;
+}
+
+/**
+ * Speech-only / face-only windows are the #1 failure mode: chef says "mustard"
+ * while the camera is still on his face, then cuts to the brush a few seconds later.
+ */
+function looksTalkingHeadOnly(clip) {
+  const visual = `${clip.visual_evidence || ""} ${clip.primary_action || ""} ${clip.notice || ""}`.toLowerCase();
+  const spoken = `${clip.spoken_evidence || ""} ${clip.visual_cue || ""}`.toLowerCase();
+  const faceOnly = /(talking.?head|close-?up of (his|her|the )?face|looking (down|at camera)|face shot|mid-speech|explaining|narrat)/.test(visual);
+  const hasTechniqueVisual = /(hand|brush|spoon|spatula|tongs|pan|knife|beef|fillet|meat|egg|sauce|mustard|mushroom|pastry|dough|oil|butter|whisk|bowl|plate|ham|bacon)/.test(visual);
+  if (faceOnly && !hasTechniqueVisual) return true;
+  // Evidence text that only paraphrases speech with no on-screen nouns.
+  if (!hasTechniqueVisual && spoken.length > 0 && visual.length < 24) return true;
+  return false;
 }
 
 /** Require at least one meaningful token from the step to appear in evidence. */
@@ -365,6 +400,11 @@ function evidenceAlignsWithStep(step, clip) {
     ["muffin", "toast", "english"],
     ["poach", "whirlpool", "simmer", "vinegar"],
     ["plate", "assembl", "serve", "stack", "garnish"],
+    ["sear", "brown", "fillet", "sizzle"],
+    ["mustard", "horseradish", "brush", "coat"],
+    ["mushroom", "duxelle", "chestnut"],
+    ["pastry", "puff", "enrobe", "egg wash", "score"],
+    ["wrap", "cling", "cylinder", "roll"],
   ];
   for (const g of groups) {
     const stepHas = g.some((k) => stepText.includes(k));
@@ -387,8 +427,10 @@ function needsBoundaryRefine(clip, step) {
   if (clip.action_still_ongoing_at_end) return true;
   // Short windows on continuous cook actions are usually truncated.
   const hay = `${step?.title || ""} ${step?.instruction || ""} ${clip.watch_label || ""}`.toLowerCase();
-  const continuous = /(fry|warm|sear|crisp|reduce|whisk|emuls|poach|simmer|toast|cook)/.test(hay);
+  const continuous = /(fry|warm|sear|crisp|reduce|whisk|emuls|poach|simmer|toast|cook|brush|coat|mustard|wrap|pastry|duxelle)/.test(hay);
   if (continuous && clip.duration_seconds < 40) return true;
+  // Always refine brush/coat steps — speech often leads the cut by several seconds.
+  if (/(brush|coat|mustard|horseradish|glaze)/.test(hay)) return true;
   return false;
 }
 
@@ -418,8 +460,11 @@ async function runRefine({ apiKey, model, videoId, canonicalURL, recipeTitle, st
   const refineBatchPrompt = `${durationSeconds ? `Video length is EXACTLY ${durationSeconds}s. All times MUST stay in [0, ${durationSeconds}].` : ""}
 
 Refine clip boundaries for a cook-along app using BOTH audio and visuals.
-For each proposed clip: keep it only if it shows the step's action; then expand/shrink so the window covers the FULL continuous on-screen action (start when action is clearly underway, end when it finishes or camera leaves).
-Do not truncate a continuing fry/warm/sear/reduce/whisk/poach just to stay short — 15–60s+ is fine when the action lasts that long.
+For each proposed clip:
+- Keep it only if the technique is ON CAMERA (food/hands/tools), not a talking-head while the chef merely says the word.
+- Trim any leading face-only / speech-only seconds.
+- Expand/shrink so the window covers the FULL continuous on-screen action (start when action is clearly underway on camera, end when it finishes or camera leaves).
+Do not truncate a continuing fry/warm/sear/reduce/whisk/poach/brush just to stay short — 15–60s+ is fine when the action lasts that long.
 
 Recipe: ${recipeTitle}
 
@@ -430,9 +475,9 @@ ${JSON.stringify(targets.map((c) => ({
   })))}
 
 Return JSON:
-{"clips":[{"step_id":"","ok":true,"start_seconds":0,"end_seconds":0,"spoken_evidence":"","visual_evidence":"","confidence":0.0,"watch_label":"","notice":"","reason":""}]}
+{"clips":[{"step_id":"","ok":true,"start_seconds":0,"end_seconds":0,"spoken_evidence":"","visual_evidence":"","technique_on_camera":true,"talking_head_only":false,"confidence":0.0,"watch_label":"","notice":"","reason":""}]}
 
-One entry per proposed clip. ok:false drops that clip.`;
+One entry per proposed clip. ok:false drops that clip (including speech-only / wrong-action proposals).`;
 
   const pass = await geminiGenerate({
     apiKey,
@@ -448,12 +493,14 @@ One entry per proposed clip. ok:false drops that clip.`;
   const refinedByStep = new Map();
   for (const c of doc.clips || []) {
     if (!c || c.ok === false) continue;
+    if (c.talking_head_only === true) continue;
+    if (c.technique_on_camera === false) continue;
     const win = clampWindow(c.start_seconds, c.end_seconds, durationSeconds);
     if (!win) continue;
     const confidence = normalizeConfidence(c.confidence);
     if (confidence < MIN_RECOMMEND_SCORE) continue;
     const duration = win.end_seconds - win.start_seconds;
-    refinedByStep.set(String(c.step_id || ""), {
+    const candidate = {
       step_id: String(c.step_id || ""),
       youtube_video_id: videoId,
       start_seconds: win.start_seconds,
@@ -465,7 +512,13 @@ One entry per proposed clip. ok:false drops that clip.`;
       notice: String(c.notice || c.visual_evidence || "").slice(0, 240),
       primary_action: String(c.visual_evidence || "").slice(0, 120),
       visual_cue: String(c.spoken_evidence || "").slice(0, 240),
-    });
+      spoken_evidence: String(c.spoken_evidence || ""),
+      visual_evidence: String(c.visual_evidence || ""),
+    };
+    if (looksTalkingHeadOnly(candidate)) continue;
+    if (!evidenceAlignsWithStep(stepById.get(candidate.step_id), candidate)) continue;
+    const { spoken_evidence, visual_evidence, ...rest } = candidate;
+    refinedByStep.set(String(c.step_id || ""), rest);
   }
 
   const merged = clips.map((c) => refinedByStep.get(c.step_id) || c);
@@ -589,6 +642,53 @@ async function runMatch({ apiKey, model, videoId, canonicalURL, recipeTitle, ste
   };
   await redisSet(key, result);
   return { ...result, cached: false };
+}
+
+/**
+ * Programmatic ground→refine for background import indexing.
+ * Used by mediaIngest action=analyze (does not serve HTTP itself).
+ */
+export async function indexYouTubeClips({
+  apiKey,
+  model,
+  youtubeURL,
+  recipeTitle,
+  steps: stepsIn,
+  force = false,
+  durationSeconds: bodyDuration,
+}) {
+  const videoId = youtubeVideoId(youtubeURL);
+  if (!videoId) {
+    const err = new Error("youtube_url must be a valid YouTube watch/youtu.be URL");
+    err.status = 400;
+    throw err;
+  }
+  const steps = normalizeSteps(stepsIn);
+  const canonicalURL = normalizeYoutubeURL(youtubeURL, videoId);
+  const durationSeconds = videoDuration(videoId, bodyDuration);
+  const grounded = await runGround({
+    apiKey,
+    model,
+    videoId,
+    canonicalURL,
+    recipeTitle: recipeTitle || "Recipe",
+    steps,
+    durationSeconds,
+    force,
+  });
+  if (!steps.length || !(grounded.clips || []).length) return grounded;
+  const refined = await runRefine({
+    apiKey,
+    model,
+    videoId,
+    canonicalURL,
+    recipeTitle: recipeTitle || "Recipe",
+    steps,
+    clips: grounded.clips,
+    durationSeconds,
+    force,
+  });
+  return refined;
 }
 
 export async function handleCookClips(req, res) {

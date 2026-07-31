@@ -109,9 +109,17 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { ok: true, segment: seg });
     }
 
-    if (url.pathname === "/v1/pilot/eggs-benedict" || url.pathname === "/v1/pilot/beef-wellington") {
+    if (
+      url.pathname === "/v1/pilot/eggs-benedict"
+      || url.pathname === "/v1/pilot/beef-wellington"
+      || url.pathname === "/v1/pilot/tiktok-scrambled-eggs"
+    ) {
       await store.load();
-      const externalId = url.pathname.endsWith("beef-wellington") ? "Cyskqnp1j64" : "gBJjRYk0yC0";
+      const externalId = url.pathname.endsWith("beef-wellington")
+        ? "Cyskqnp1j64"
+        : url.pathname.endsWith("tiktok-scrambled-eggs")
+          ? "7333706662634704161"
+          : "gBJjRYk0yC0";
       const asset = Object.values(store.data.source_assets).find(
         (a) => a.external_id === externalId && a.status !== "revoked"
       );
@@ -121,9 +129,12 @@ const server = http.createServer(async (req, res) => {
         });
       }
       const segments = await store.listApprovedSegments(asset.id);
+      // Prefer the Host the client actually used (phone → Mac LAN IP), not
+      // hardcoded 127.0.0.1 — that only works in the iOS Simulator.
+      const hostHeader = String(req.headers.host || `127.0.0.1:${config.localPlaybackPort}`);
+      const base = `http://${hostHeader}/media/objects/`;
       const clips = segments.map((seg) => {
         const clip = store.data.clip_assets[seg.id] || {};
-        const base = `http://127.0.0.1:${config.localPlaybackPort}/media/objects/`;
         const verticalKey = clip.vertical_object_key;
         const landscapeKey = clip.object_key;
         const playbackKey = verticalKey || landscapeKey || asset.normalized_object_key;
@@ -143,7 +154,7 @@ const server = http.createServer(async (req, res) => {
           landscape_playback_url: landscapeKey ? `${base}${landscapeKey}` : null,
           thumbnail_url: posterKey
             ? `${base}${posterKey}`
-            : (clip.thumbnail_url ? `http://127.0.0.1:${config.localPlaybackPort}${clip.thumbnail_url}` : null),
+            : (clip.thumbnail_url ? `http://${hostHeader}${clip.thumbnail_url}` : null),
           master_url: asset.normalized_object_key ? `${base}${asset.normalized_object_key}` : null,
           uses_virtual_range: !landscapeKey && !verticalKey,
           creator_attribution: asset.creator_name || "Gordon Ramsay",
@@ -205,5 +216,7 @@ const server = http.createServer(async (req, res) => {
 await store.load();
 server.listen(config.localPlaybackPort, "0.0.0.0", () => {
   console.log(`[local-playback] http://127.0.0.1:${config.localPlaybackPort}`);
-  console.log(`[local-playback] pilots: /v1/pilot/eggs-benedict · /v1/pilot/beef-wellington`);
+  console.log(
+    `[local-playback] pilots: /v1/pilot/eggs-benedict · /v1/pilot/beef-wellington · /v1/pilot/tiktok-scrambled-eggs`
+  );
 });

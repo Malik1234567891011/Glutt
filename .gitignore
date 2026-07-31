@@ -43,6 +43,8 @@ Secrets.local.plist
 
 .vercel
 .env*
+!.env.example
+!**/.env.example
 
 # Media worker local archive / work (large binaries)
 media-worker/data/

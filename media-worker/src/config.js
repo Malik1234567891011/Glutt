@@ -42,7 +42,7 @@ export const config = {
   allowedHosts: new Set(
     (env(
       "MEDIA_ALLOWED_HOSTS",
-      "youtube.com,www.youtube.com,youtu.be,m.youtube.com,tiktok.com,www.tiktok.com,vm.tiktok.com,instagram.com,www.instagram.com"
+      "youtube.com,www.youtube.com,youtu.be,m.youtube.com,tiktok.com,www.tiktok.com,vm.tiktok.com,vt.tiktok.com,instagram.com,www.instagram.com"
     ) || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
   ),
 };

@@ -266,6 +266,9 @@ struct RecipeDetailView: View {
     private var contentSheet: some View {
         VStack(alignment: .leading, spacing: 0) {
             titleBlock
+            if showsClipProgressBanner {
+                clipProgressBanner.padding(.top, 14)
+            }
             if !recipe.isCookingBasic { adaptRow.padding(.top, 18) }
             dietWarnings
             SegmentedTabs(titles: ["Ingredients", "Steps"], selection: $selectedTab)
@@ -288,6 +291,58 @@ struct RecipeDetailView: View {
         .clipShape(.rect(topLeadingRadius: 30, topTrailingRadius: 30))
         .offset(y: -26)
         .padding(.bottom, -26)
+        .task(id: recipe.persistentModelID) {
+            await MediaClipEnqueue.refreshStatus(for: recipe, in: context)
+            // Keep polling while clips are in flight — cook is never blocked.
+            while !Task.isCancelled, showsClipProgressBanner {
+                try? await Task.sleep(for: .seconds(8))
+                await MediaClipEnqueue.refreshStatus(for: recipe, in: context)
+            }
+        }
+    }
+
+    private var showsClipProgressBanner: Bool {
+        switch recipe.mediaStatus {
+        case "queued", "analysing", "indexed", "downloading", "probing",
+             "normalizing", "uploaded", "failed":
+            return true
+        default:
+            return false
+        }
+    }
+
+    private var clipProgressBanner: some View {
+        let progress = min(1, max(0, recipe.mediaProgress ?? 0.08))
+        let detail = (recipe.mediaStatusDetail?.trimmingCharacters(in: .whitespacesAndNewlines))
+            .flatMap { $0.isEmpty ? nil : $0 }
+            ?? (recipe.mediaStatus == "failed"
+                ? "Couldn't prepare clips — you can still cook"
+                : "Preparing technique clips…")
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                if recipe.mediaStatus == "failed" {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(Theme.Colors.warning)
+                } else {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Text(detail)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            if recipe.mediaStatus != "failed" {
+                ProgressView(value: progress)
+                    .tint(Theme.Colors.accent)
+                Text("You can cook with Polly or the written steps anytime.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+        }
+        .padding(12)
+        .background(Theme.Colors.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var titleBlock: some View {

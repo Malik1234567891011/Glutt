@@ -139,17 +139,95 @@ export class TikTokDownloader extends BaseDownloader {
   }
 
   async probe(url) {
-    // Same yt-dlp path; extractor-specific failures stay in this adapter.
-    const yt = new YouTubeDownloader();
-    const probe = await yt.probe(url);
-    return { ...probe, platform: "tiktok" };
+    validateSourceUrl(url.href);
+    // Do NOT reuse YouTube player_client args — they break TikTok extractors.
+    const { stdout } = await runCommand(config.ytDlpBin, [
+      "--dump-single-json",
+      "--skip-download",
+      "--no-playlist",
+      url.href,
+    ], { timeoutMs: 120000 });
+    const raw = JSON.parse(stdout);
+    if (raw.is_live) {
+      throw Object.assign(new Error("Livestreams not supported"), { code: "LIVE_REJECTED" });
+    }
+    const duration = Number(raw.duration) || 0;
+    if (duration > config.maxDurationSeconds) {
+      throw Object.assign(new Error(`Duration ${duration}s exceeds max ${config.maxDurationSeconds}s`), {
+        code: "DURATION_TOO_LONG",
+      });
+    }
+    return {
+      platform: "tiktok",
+      externalId: raw.id || raw.display_id || null,
+      title: raw.title || raw.description?.slice?.(0, 120) || null,
+      uploader: raw.uploader || raw.creator || raw.channel || null,
+      durationSeconds: duration || null,
+      thumbnail: raw.thumbnail || null,
+      hasSubtitles: Boolean(
+        (raw.subtitles && Object.keys(raw.subtitles).length)
+        || (raw.automatic_captions && Object.keys(raw.automatic_captions).length)
+      ),
+      width: raw.width || null,
+      height: raw.height || null,
+      fps: raw.fps || null,
+      formats: (raw.formats || []).slice(0, 40).map((f) => ({
+        format_id: f.format_id,
+        ext: f.ext,
+        resolution: f.resolution,
+        vcodec: f.vcodec,
+        acodec: f.acodec,
+        filesize: f.filesize || f.filesize_approx || null,
+      })),
+      estimatedBytes: raw.filesize || raw.filesize_approx || null,
+      rawSummary: {
+        webpage_url: raw.webpage_url,
+        ext: raw.ext,
+        format: raw.format,
+      },
+    };
   }
 
   async download(url, destinationDirectory) {
-    const yt = new YouTubeDownloader();
-    const out = await yt.download(url, destinationDirectory);
-    out.probe = { ...out.probe, platform: "tiktok" };
-    return out;
+    validateSourceUrl(url.href);
+    await fs.mkdir(destinationDirectory, { recursive: true });
+    const outTemplate = path.join(destinationDirectory, "source.%(ext)s");
+    await runCommand(config.ytDlpBin, [
+      "--no-playlist",
+      // Prefer progressive h264+aac ("download" / h264_*). bytevc1/h265 TikTok
+      // variants often claim aac in metadata but ship video-only — that kills
+      // normalize→extractAudio and loses chef speech for analysis.
+      "-f", "download/best[vcodec^=h264]/best[ext=mp4]/best",
+      "--merge-output-format", "mp4",
+      "--write-info-json",
+      "--write-thumbnail",
+      "--retries", "5",
+      "-o", outTemplate,
+      url.href,
+    ], { timeoutMs: 20 * 60 * 1000 });
+
+    const files = await fs.readdir(destinationDirectory);
+    const media = files.find((f) => /^source\.(mp4|mkv|webm|mov)$/i.test(f));
+    if (!media) {
+      throw Object.assign(new Error(`No media file after download: ${files.join(",")}`), {
+        code: "DOWNLOAD_MISSING_FILE",
+      });
+    }
+    const filePath = path.join(destinationDirectory, media);
+    const st = await fs.stat(filePath);
+    if (st.size > config.maxDownloadBytes) {
+      throw Object.assign(new Error("Downloaded file exceeds size ceiling"), { code: "FILE_TOO_LARGE" });
+    }
+    const probe = await this.probe(url);
+    return {
+      filePath,
+      infoPath: files.find((f) => f.endsWith(".info.json"))
+        ? path.join(destinationDirectory, files.find((f) => f.endsWith(".info.json")))
+        : undefined,
+      ext: path.extname(media).slice(1).toLowerCase(),
+      probe: { ...probe, platform: "tiktok" },
+      bytes: st.size,
+    };
   }
 }
 

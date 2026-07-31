@@ -16,6 +16,18 @@ final class Recipe {
     /// 0.0–1.0 confidence from the import pipeline. Nil for manually created recipes.
     var importConfidence: Double?
 
+    // Background technique-clip pipeline (Supabase / media-worker). Soft fields —
+    // cook + Polly work while these are nil or mid-flight.
+    /// Platform media id (YouTube video id / TikTok numeric id).
+    var mediaExternalID: String?
+    var mediaSourceAssetID: String?
+    var mediaJobID: String?
+    /// queued | analysing | indexed | ready | failed
+    var mediaStatus: String?
+    /// 0...1 best-effort progress for detail UI.
+    var mediaProgress: Double?
+    var mediaStatusDetail: String?
+
     var imageURL: String?
     /// Name of a bundled asset-catalog image (used by seed/sample content).
     var imageAssetName: String?

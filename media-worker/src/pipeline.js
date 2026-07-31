@@ -144,14 +144,16 @@ export async function runFullIngest(job) {
       const normSrc = (await objectExists(keys.normalized))
         ? await localObjectPath(keys.normalized)
         : normalizedPath;
-      await extractAudio(normSrc, audioPath);
-      await putObject(keys.audio, audioPath);
+      const audioOut = await extractAudio(normSrc, audioPath);
+      if (!audioOut?.skipped) {
+        await putObject(keys.audio, audioPath);
+      }
     }
 
     await store.updateSourceAsset(asset.id, {
       normalized_object_key: keys.normalized,
       analysis_proxy_object_key: keys.analysisProxy,
-      audio_object_key: keys.audio,
+      audio_object_key: (await objectExists(keys.audio)) ? keys.audio : null,
       status: "review_required",
     });
 
@@ -277,9 +279,14 @@ async function materializePilotClips(sourceAssetId, normalizedKey, workRoot) {
 export async function createIngestJob({ sourceUrl, rightsRecordId, clearanceNotes }) {
   const { url } = downloaderFor(sourceUrl);
   const platform = (await import("./security.js")).detectPlatform(url);
-  const externalId = platform === "youtube"
-    ? (await import("./security.js")).youtubeExternalId(url)
-    : null;
+  const sec = await import("./security.js");
+  let externalId = null;
+  if (platform === "youtube") externalId = sec.youtubeExternalId(url);
+  else if (platform === "tiktok") {
+    const parts = new URL(url).pathname.split("/").filter(Boolean);
+    const i = parts.indexOf("video");
+    if (i >= 0 && parts[i + 1] && /^\d+$/.test(parts[i + 1])) externalId = parts[i + 1];
+  }
 
   let rightsId = rightsRecordId;
   if (!rightsId) {

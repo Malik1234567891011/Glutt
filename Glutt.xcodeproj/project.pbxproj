@@ -50,6 +50,7 @@
 		1661179CF6A104D217CAD7F1 /* GroceriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB8FA604EA35D2EE6E94CE4A /* GroceriesView.swift */; };
 		16A900F3A424ABAF1A47B201 /* SegmentedTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE5BFA285767FD229AB9547 /* SegmentedTabs.swift */; };
 		16B9A16071EB1350972B7E98 /* StarterRecipes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3800A614501862AB11EC98A2 /* StarterRecipes.swift */; };
+		16CBBDD788910752EEEAFB3D /* MediaSourceID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 687CBF3B8552E392ECD5AF97 /* MediaSourceID.swift */; };
 		184D5CEC21A6649F6118726E /* PageDots.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5F3EF4D5C770B981E142355 /* PageDots.swift */; };
 		18852B7929DEF332DCDD0D55 /* DiscoverSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EADF6FD77F51E85B3A156E /* DiscoverSaver.swift */; };
 		18A06021F18EFAB77EC116F2 /* GroceryListBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 476DE0FF02A984E39531A7EF /* GroceryListBuilder.swift */; };
@@ -81,6 +82,7 @@
 		3438BD5B21FCFC87449B1BD6 /* ImportInboxDrainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98B24B648D7D946D8F253FC7 /* ImportInboxDrainer.swift */; };
 		3502A104C62676FCDE04A3B0 /* NativeClipPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B1BF2148E47A63470436B7 /* NativeClipPlayerView.swift */; };
 		363203849DCC8694EDFC3BA1 /* PantryScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 790D532EB881A841E117F130 /* PantryScanView.swift */; };
+		368021550C3D77518EE61F7F /* MediaIngestClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A527EB07CBA68606F73331C7 /* MediaIngestClient.swift */; };
 		37818B4FA6B793068175A873 /* Nunito-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3A25590275E891541AD53BF1 /* Nunito-Variable.ttf */; };
 		379A94F1E3A0CDCDF0B7867F /* PreCookBriefingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87CFE4BDFB32B6E0BD6C1865 /* PreCookBriefingView.swift */; };
 		3817F550A930B025765D4569 /* VideoTranscriptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94EFC739B93E472DE204230B /* VideoTranscriptTests.swift */; };
@@ -173,6 +175,7 @@
 		8587DC0BAF1A3EA34F5AE852 /* SuperwallKit in Frameworks */ = {isa = PBXBuildFile; productRef = 591C68092C0509ECBD9FC072 /* SuperwallKit */; };
 		858A866E0199A85333682E96 /* PollyMemoryExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D6BFA58653B47D10CB71BE8 /* PollyMemoryExtractor.swift */; };
 		85CDA7F7003AC6925B7BCBCE /* MiniPhoneFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B21529DC9D6FE7BEC5F4664 /* MiniPhoneFrame.swift */; };
+		8860D5671D3717C24F92A438 /* MediaClipEnqueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C292A52779CC8F6B6FE53E /* MediaClipEnqueue.swift */; };
 		8BDD48B6434CA9E49822814F /* BrandFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3CE3284BCABBE6DFDF3FD0 /* BrandFonts.swift */; };
 		8C0D062FF6DCCED2FCA0D6ED /* ReviewPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B54E978F5F5933B538CAAC5 /* ReviewPrompt.swift */; };
 		8CF3C736F5FC6104A52F5965 /* ChefDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61601122F7A17B84FC3B9124 /* ChefDetailView.swift */; };
@@ -454,6 +457,7 @@
 		528768F4E45A7F8D5E44D4CB /* FakeLLMTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeLLMTransport.swift; sourceTree = "<group>"; };
 		52969CBCE393533D0AC1BE94 /* CookRecapBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookRecapBuilderTests.swift; sourceTree = "<group>"; };
 		52A7667C662E7DE5F305F488 /* YouTubePlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubePlayerView.swift; sourceTree = "<group>"; };
+		52C292A52779CC8F6B6FE53E /* MediaClipEnqueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaClipEnqueue.swift; sourceTree = "<group>"; };
 		5315436BAEC0329F2C853629 /* OnboardingComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingComponents.swift; sourceTree = "<group>"; };
 		53EECA663831A359D8B5CE92 /* WakeWordMatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeWordMatcherTests.swift; sourceTree = "<group>"; };
 		5663D6194C572417A0998736 /* OnboardingFlowModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowModel.swift; sourceTree = "<group>"; };
@@ -478,6 +482,7 @@
 		6815E861AC272B08314E8EE3 /* PlatesServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesServiceTests.swift; sourceTree = "<group>"; };
 		681E8F39983440A8907907AB /* SubstituteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubstituteSheet.swift; sourceTree = "<group>"; };
 		686B936DCDB29F97AD25509A /* ConversationalGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationalGate.swift; sourceTree = "<group>"; };
+		687CBF3B8552E392ECD5AF97 /* MediaSourceID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaSourceID.swift; sourceTree = "<group>"; };
 		6A6A303457644EB7ED607170 /* CategoryCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryCircle.swift; sourceTree = "<group>"; };
 		6D3533E8376C43D34EDA406C /* FourWeeksScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourWeeksScreen.swift; sourceTree = "<group>"; };
 		6D9F150DFC70660877D485E4 /* SubscriptionGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionGateTests.swift; sourceTree = "<group>"; };
@@ -547,6 +552,7 @@
 		A2333EA3B0F39F9356AC2C07 /* SubscriptionGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionGate.swift; sourceTree = "<group>"; };
 		A34662C1AB1C5078CE9DA61C /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
 		A45301997FCD1BF1A6D7095C /* PollySessionControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollySessionControllerTests.swift; sourceTree = "<group>"; };
+		A527EB07CBA68606F73331C7 /* MediaIngestClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaIngestClient.swift; sourceTree = "<group>"; };
 		A54C0CB6A5BB8B74924F7A87 /* RealtimeTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeTransportTests.swift; sourceTree = "<group>"; };
 		A581E002B169649AB5C28EB6 /* RecipeSearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeSearchEngine.swift; sourceTree = "<group>"; };
 		A6AA607718196B77CD8D95CC /* RecipeFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeFactory.swift; sourceTree = "<group>"; };
@@ -1092,6 +1098,9 @@
 		AAF5043CDDA0247841F96A96 /* CookClips */ = {
 			isa = PBXGroup;
 			children = (
+				52C292A52779CC8F6B6FE53E /* MediaClipEnqueue.swift */,
+				A527EB07CBA68606F73331C7 /* MediaIngestClient.swift */,
+				687CBF3B8552E392ECD5AF97 /* MediaSourceID.swift */,
 				9E3A210F8AF35E346B89F89E /* NativeClipModels.swift */,
 				D59AF18366B2E6BA8D74C44A /* NativeClipService.swift */,
 				DCCB97E3E9E973E51DDB56C2 /* StepClipFallbacks.swift */,
@@ -1566,6 +1575,9 @@
 				D41EE3F280E4192C9FB1E6EC /* MacroStrip.swift in Sources */,
 				75229BB601F27BE25B6AD342 /* MaterialSymbol.swift in Sources */,
 				F414351CC012911B4E45E28F /* MealPhotoEstimator.swift in Sources */,
+				8860D5671D3717C24F92A438 /* MediaClipEnqueue.swift in Sources */,
+				368021550C3D77518EE61F7F /* MediaIngestClient.swift in Sources */,
+				16CBBDD788910752EEEAFB3D /* MediaSourceID.swift in Sources */,
 				85CDA7F7003AC6925B7BCBCE /* MiniPhoneFrame.swift in Sources */,
 				C8926002EB7C459C66BECADF /* NativeClipModels.swift in Sources */,
 				3502A104C62676FCDE04A3B0 /* NativeClipPlayerView.swift in Sources */,

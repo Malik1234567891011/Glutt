@@ -95,7 +95,8 @@ enum ChefContent {
     /// Bump when dish copy or photography changes so existing installs refresh.
     /// 2: real dish photos replaced the stand-in stock food art.
     /// 3: Eggs Benedict + YouTube source URLs on Gordon clip pilots.
-    private static let contentVersion = 3
+    /// 4: Scrambled Eggs TikTok technique source (vt → canonical /video/id).
+    private static let contentVersion = 4
     private static let contentVersionKey = "glutt.chefContent.contentVersion"
 
     /// Idempotent: inserts missing chef dishes and refreshes their copy when
@@ -141,7 +142,9 @@ enum ChefContent {
         recipe.imageAssetName = dish.imageAsset
         if let sourceURL = dish.sourceURL {
             recipe.sourceURL = sourceURL
-            recipe.sourcePlatform = .youtube
+            if let url = URL(string: sourceURL) {
+                recipe.sourcePlatform = ImportedRecipeDraft.platform(for: url)
+            }
         }
         recipe.ingredients = dish.ingredients.enumerated().map { index, line in
             RecipeIngredient(name: line.name, quantity: line.quantity, unit: line.unit, sortIndex: index)
@@ -166,7 +169,7 @@ enum ChefContent {
         let imageAsset: String
         let ingredients: [(name: String, quantity: Double?, unit: String?)]
         let steps: [(text: String, durationSeconds: Int?)]
-        /// Optional YouTube technique video — powers Polly native step clips.
+        /// Optional technique video URL (YouTube / TikTok) — powers Polly native clips.
         let sourceURL: String?
 
         init(
@@ -361,7 +364,9 @@ enum ChefContent {
                 ("Put the pan on medium heat and stir constantly with a spatula, scraping the base. After about 30 seconds, lift the pan off the heat for 10 seconds, keep stirring, then put it back. Repeat.", nil),
                 ("Keep going for about 5 minutes. You are looking for soft folds and a glossy, loose custard, not dry curds. Take it off the heat while it still looks slightly underdone.", 300),
                 ("Stir in the creme fraiche to stop the cooking dead, season now, add chives, and pile it onto hot toast. Eat immediately.", nil),
-            ]
+            ],
+            // Canonical TikTok id (short vt.tiktok.com links are not parseable as numeric ids).
+            sourceURL: "https://www.tiktok.com/@f00dt0k1/video/7333706662634704161"
         ),
     ]
 

@@ -72,6 +72,11 @@ export async function makeAnalysisProxy(inputPath, outputPath) {
 }
 
 export async function extractAudio(inputPath, outputPath) {
+  const probe = await ffprobeJson(inputPath);
+  const hasAudio = (probe.streams || []).some((s) => s.codec_type === "audio");
+  if (!hasAudio) {
+    return { skipped: true, reason: "no_audio_stream" };
+  }
   await runCommand(config.ffmpegBin, [
     "-y",
     "-i", inputPath,
@@ -80,6 +85,7 @@ export async function extractAudio(inputPath, outputPath) {
     "-b:a", "96k",
     outputPath,
   ], { timeoutMs: 10 * 60 * 1000 });
+  return { skipped: false };
 }
 
 /** Accurate re-encode clip (not stream-copy). */

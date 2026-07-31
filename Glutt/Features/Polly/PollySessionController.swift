@@ -1397,7 +1397,28 @@ final class PollySessionController {
                 expectingAnswer: false)
             listeningMode = .followUp
 
-        case .background, .selfTalk, .uncertain:
+        case .uncertain:
+            // "I don't know" is not "no". This used to be dropped like
+            // background noise, and it is the single biggest reason Polly feels
+            // deaf: a real cook answering the question she just asked —
+            // "everything is set", "like I said, everything is set" — scores
+            // uncertain because it contains no word on a 30-item cook-word list
+            // and no overlap with the recipe title. The transcript was perfect.
+            // The gate threw it away, four seconds passed, and the watchdog made
+            // her apologise for not hearing something she had heard exactly.
+            //
+            // The model is far better at "was that meant for me" than a keyword
+            // list can ever be, and it now has `wait_for_user` to say no with.
+            // So: the gate keeps what it is CONFIDENT about, and hands its
+            // uncertainty to the model instead of to silence.
+            PollyDebugLog.shared.log("gate: uncertain → asking Polly to judge it")
+            PollyDebugLog.shared.event(.followUpAccepted, ["reason": "uncertain-deferred"])
+            consecutiveRejects = 0
+            await commitUserTurn(wasSpeaking: isPollySpeaking && bargeInCandidate)
+            bargeInCandidate = false
+            return
+
+        case .background, .selfTalk:
             consecutiveRejects += 1
             if let itemId { try? await transport?.send(.deleteItem(itemId: itemId)) }
             PollyDebugLog.shared.event(.followUpRejected, [

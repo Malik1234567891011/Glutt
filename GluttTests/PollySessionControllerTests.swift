@@ -613,6 +613,34 @@ final class PollySessionControllerTests: XCTestCase {
         await controller.end(context: context, endedEarly: true)
     }
 
+    // MARK: an uncertain transcript goes to Polly, not to the bin
+
+    /// Verbatim from a real cook. Polly asked "tell me when they're set", the
+    /// cook said exactly that, and the gate scored it `uncertain` and deleted it
+    /// — no cook word, no overlap with "Broccolini Quinoa Pilaf". Four seconds
+    /// later the watchdog made her apologise for missing something she had
+    /// transcribed perfectly. Three turns in a row went that way.
+    func testUncertainTranscriptIsAnsweredRatherThanDiscarded() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+        controller.wakeUp()
+
+        let before = transport.sentNonAudio.count
+        transport.push(.inputTranscript(itemId: "item-1", text: "Everything is set like everything is on my table."))
+        await waitUntil({ transport.sentNonAudio.count > before }, "the turn is acted on")
+        try? await Task.sleep(for: .milliseconds(120))
+
+        let after = Array(transport.sentNonAudio.dropFirst(before))
+        XCTAssertTrue(after.contains { $0 == .responseCreate },
+                      "an uncertain turn must reach Polly, who can decline with wait_for_user")
+        XCTAssertFalse(after.contains { if case .deleteItem = $0 { return true }; return false },
+                       "and must not be deleted unheard")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
     // MARK: wait_for_user is a silence, not a failure
 
     /// Every other tool round-trip ends with a response.create so Polly speaks

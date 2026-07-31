@@ -755,7 +755,8 @@ final class PollySessionController {
             voice: token.voice,
             model: token.model,
             transcribeInput: true,
-            audioPinnedAtMint: true)
+            audioPinnedAtMint: true,
+            textOnlyOutput: chef.elevenLabsVoiceID != nil)
         liveConfig = config
 
         let transport = deps.makeTransport()
@@ -765,6 +766,9 @@ final class PollySessionController {
         if let webrtc = transport as? RealtimeWebRTCTransport {
             let wake = wakeWord
             webrtc.onCaptureBuffer = { buffer in wake.append(buffer) }
+            // Must be set BEFORE connect: the remote track can arrive during
+            // negotiation and starts playing the moment it does.
+            webrtc.muteRemoteAudio = chef.elevenLabsVoiceID != nil
             webrtc.onAudioInterrupted = { [weak self] interrupted in
                 Task { @MainActor in self?.handleAudioInterruption(interrupted) }
             }

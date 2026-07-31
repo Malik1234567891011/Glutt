@@ -84,6 +84,15 @@ struct RealtimeSessionConfig: Equatable {
     /// carries only the brain plane (instructions + tools). WS keeps the full
     /// GA shape (default false) for the legacy transport and its tests.
     var audioPinnedAtMint: Bool = false
+    /// True when the picked chef has a cloned voice, so the model must emit TEXT
+    /// and the app speaks it via ElevenLabs.
+    ///
+    /// Has to be carried here, not just requested at mint: `session.update`
+    /// sends `output_modalities` on every connect, so a session minted text-only
+    /// gets flipped straight back to audio unless this agrees with it. The
+    /// symptom is unmistakable and was reported from a real cook — the model's
+    /// voice and the cloned voice both talking at once.
+    var textOnlyOutput: Bool = false
 }
 
 /// A function call the model asked us to run, lifted out of `response.done`.
@@ -168,7 +177,12 @@ enum RealtimeClientEvent: Equatable {
         }
         var payload: [String: Any] = [
             "type": "realtime",
-            "output_modalities": ["audio"],
+            // Must match what the mint asked for. This line used to be hardcoded
+            // to ["audio"], which meant a session minted text-only for a cloned
+            // voice was silently flipped back to audio a second later by our own
+            // session.update — so the model spoke AND the app spoke, and the cook
+            // heard two people at once.
+            "output_modalities": [config.textOnlyOutput ? "text" : "audio"],
             "instructions": config.instructions,
             "tools": tools,
             "tool_choice": "auto"

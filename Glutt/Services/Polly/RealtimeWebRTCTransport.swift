@@ -62,6 +62,10 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     /// Fired when the voice-reopen gate detected a real voice during her turn
     /// and reopened the mic for barge-in. Transport thread.
     var onBargeInReopen: (() -> Void)?
+    /// Set before `connect()` when the app owns playback (cloned voice). Any
+    /// remote audio track is then silenced on arrival so the model's voice can
+    /// never play underneath the one we synthesise.
+    var muteRemoteAudio = false
     /// True when the audio session was taken by a call/alarm/Siri, false when it
     /// came back. Main queue.
     var onAudioInterrupted: ((Bool) -> Void)?
@@ -738,7 +742,21 @@ extension RealtimeWebRTCTransport: LKRTCPeerConnectionDelegate {
     }
 
     func peerConnection(_ peerConnection: LKRTCPeerConnection, didChange stateChanged: LKRTCSignalingState) {}
-    func peerConnection(_ peerConnection: LKRTCPeerConnection, didAdd stream: LKRTCMediaStream) {}
+    func peerConnection(_ peerConnection: LKRTCPeerConnection, didAdd stream: LKRTCMediaStream) {
+        // Belt and braces for the cloned voice. `output_modalities: ["text"]`
+        // should mean the model never sends audio at all, but a remote audio
+        // track plays through the speaker the instant it arrives, with nothing
+        // in the app asked for permission. If the server ever sends audio
+        // anyway — a mint that silently ignored the field, a session.update that
+        // disagreed, a future API change — the cook hears the model's voice
+        // layered over the cloned one, which is precisely the bug this defends
+        // against. Muting the track costs nothing when it is already silent.
+        guard muteRemoteAudio else { return }
+        for track in stream.audioTracks {
+            track.isEnabled = false
+            PollyDebugLog.shared.log("transport: remote audio track MUTED (cloned voice owns playback)")
+        }
+    }
     func peerConnection(_ peerConnection: LKRTCPeerConnection, didRemove stream: LKRTCMediaStream) {}
     func peerConnectionShouldNegotiate(_ peerConnection: LKRTCPeerConnection) {}
     func peerConnection(_ peerConnection: LKRTCPeerConnection, didGenerate candidate: LKRTCIceCandidate) {}

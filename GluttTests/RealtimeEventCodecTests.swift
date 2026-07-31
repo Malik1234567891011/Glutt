@@ -70,6 +70,24 @@ final class RealtimeEventCodecTests: XCTestCase {
 
     // MARK: - Client events: session.update
 
+    /// The cloned voice depends on the model NOT producing audio. A session
+    /// minted with output_modalities ["text"] was being flipped straight back to
+    /// audio by our own session.update, because that line was hardcoded — so on
+    /// a real device the model's voice and the cloned voice both played, at the
+    /// same time, over each other.
+    func testTextOnlyOutputSurvivesTheSessionUpdate() throws {
+        var textOnly = config
+        textOnly.textOnlyOutput = true
+        let session = try XCTUnwrap(
+            try encodedDictionary(.sessionUpdate(textOnly))["session"] as? [String: Any])
+        XCTAssertEqual(session["output_modalities"] as? [String], ["text"],
+                       "session.update must agree with the mint, or the model speaks too")
+        // Everything else about the brain plane is unchanged by the voice choice.
+        XCTAssertEqual(session["instructions"] as? String, textOnly.instructions)
+        XCTAssertEqual(session["tool_choice"] as? String, "auto")
+        XCTAssertNotNil(session["tools"])
+    }
+
     func testSessionUpdateEncodesGAShape() throws {
         let payload = try encodedDictionary(.sessionUpdate(config))
         XCTAssertEqual(payload["type"] as? String, "session.update")

@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftData
 import SwiftUI
 
@@ -31,6 +32,13 @@ struct OnboardingFlow: View {
     /// scaffold screens and fade when a full-screen special is on either side.
     @State private var fromScreen = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.requestReview) private var requestReview
+
+    /// How long screen 6 is left alone before the rating card is asked for. Long
+    /// enough for the spring transition to settle (~0.45s) and for the laurel
+    /// badge and headline to actually be read, short enough that most people are
+    /// still on the screen when it lands.
+    private static let reviewPromptDelay = Duration.milliseconds(1200)
 
     /// Screens that share the cream chrome + footer scaffold.
     private static let scaffoldScreens: Set<Int> = [1, 2, 3, 4, 5, 7, 8]
@@ -127,8 +135,39 @@ struct OnboardingFlow: View {
                 "name": Self.screenName(screen),
             ])
         }
+        // The App Store rating card, asked for once, on the Polly hero (6).
+        //
+        // Placed here rather than in `PollyHeroScreen` because it is navigation
+        // timing, not content — the screen stays a pure view, and the ask is
+        // visible next to the funnel event above it.
+        //
+        // Why 6: it is the emotional peak (chef footage, the hands-free
+        // promise), it lands right after the user has invested in goals and
+        // rules and been shown the 4-week payoff, and the screen already carries
+        // the "4.9 ★ rated / Loved by 1M+ home cooks" laurel — the card arrives
+        // on top of visible social proof. It is also two screens clear of the
+        // notification permission dialog (8) and four clear of the paywall, so
+        // no two system dialogs stack up and nobody is asked to rate the app
+        // moments before being asked to pay for it.
+        //
+        // Keyed on `flow.screen`, so tapping Continue inside the delay cancels
+        // the task and the ask is never spent — they get it on a later run
+        // instead of having it fired at a screen they already left.
+        .task(id: flow.screen) {
+            guard flow.screen == 6, ReviewPrompt.shouldAsk() else { return }
+            try? await Task.sleep(for: Self.reviewPromptDelay)
+            guard !Task.isCancelled else { return }
+            ReviewPrompt.markAsked(.onboardingPolly)
+            requestReview()
+        }
         .onAppear {
             #if DEBUG
+            // `-resetReviewPrompt YES`: re-arm the rating card so it can be
+            // reached again. Clears our latch only — iOS keeps its own
+            // 3-per-year throttle on top.
+            if UserDefaults.standard.bool(forKey: "resetReviewPrompt") {
+                ReviewPrompt.resetForTesting()
+            }
             // Staging hook: launch with `-onboardingScreen 6`, plus
             // `-onboardingPhase 2` on screen 9 (the import tutorial).
             let jump = UserDefaults.standard.integer(forKey: "onboardingScreen")

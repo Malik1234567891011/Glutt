@@ -46,6 +46,12 @@ enum Analytics {
         /// The soft-ask outcome: granted / denied / skipped.
         case onboardingNotifications = "onboarding_notifications"
         case onboardingCompleted = "onboarding_completed"
+        /// The native App Store rating card was asked for, with the `moment` it
+        /// fired at. Counts *asks*, not ratings: iOS never reports whether the
+        /// card actually appeared (it is throttled to 3 a year and users can
+        /// switch it off) or what was tapped. Compare against App Store Connect
+        /// review counts, never against this alone.
+        case reviewPrompted = "review_prompted"
         /// Once per cold launch, when entitlement settles: locked or unlocked.
         case gateResolved = "gate_resolved"
         case paywallPresented = "paywall_presented"

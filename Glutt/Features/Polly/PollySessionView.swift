@@ -195,6 +195,12 @@ struct PollySessionView: View {
         }
     }
 
+    /// UNREFERENCED. Nothing calls this, so `topBar` and its overflow menu below
+    /// never appear in a real cook — `sessionContent` renders
+    /// `PollyAdaptiveCanvasView`, whose own confirmationDialog is the overflow
+    /// menu the user actually sees. Anything added here is invisible; put it
+    /// there instead. Left in place rather than deleted because the canvas may
+    /// yet adopt this chrome, but do not trust it to render.
     private func overlayChrome(for controller: PollySessionController) -> some View {
         VStack(spacing: 0) {
             topBar(for: controller)
@@ -259,18 +265,6 @@ struct PollySessionView: View {
                 Button("Copy debug log", systemImage: "doc.on.clipboard") {
                     UIPasteboard.general.string = PollyDebugLog.shared.dump()
                     Haptics.notify(.success)
-                }
-                // Audio lab. Both settings take effect immediately on the live
-                // transport, so one cook can A/B them instead of two installs.
-                // Neither behaviour is reproducible off a real device, which is
-                // why these ship rather than hiding behind a Debug build.
-                Menu("Audio lab", systemImage: "waveform") {
-                    Toggle("Stacked echo cancel", isOn: Binding(
-                        get: { PollyAudioLab.stackedAEC },
-                        set: { PollyAudioLab.stackedAEC = $0; controller.refreshAudioLab() }))
-                    Toggle("Keep mic open while she talks", isOn: Binding(
-                        get: { PollyAudioLab.fullDuplex },
-                        set: { PollyAudioLab.fullDuplex = $0; controller.refreshAudioLab() }))
                 }
                 Button("End without saving", systemImage: "xmark", role: .destructive) {
                     isEndingWithoutSaving = true

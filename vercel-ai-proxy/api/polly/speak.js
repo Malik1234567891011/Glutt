@@ -19,7 +19,7 @@ function resolveOpenAIKey() {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("x-glutt-proxy-version", "polly-speak-2026-07-24-fast");
+  res.setHeader("x-glutt-proxy-version", "polly-speak-2026-07-31-eleven");
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -81,6 +81,15 @@ export default async function handler(req, res) {
   // Same two spellings transcribe.js accepts, so one endpoint can't silently
   // work while the other falls back to the wrong voice.
   const elevenKey = (process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_LABS_API_KEY || "").trim();
+  // Why we did NOT use the requested voice, reported as a response header.
+  // A silent fallback is undiagnosable from the app: the briefing simply plays
+  // in the wrong voice and there is nothing to look at. Vercel keeps no runtime
+  // logs at this plan, so the header is the only channel.
+  let ttsFallback = "";
+  if (elevenVoiceID) {
+    if (!elevenKey) ttsFallback = "no-elevenlabs-key";
+    else if (!/^[A-Za-z0-9]+$/.test(elevenVoiceID)) ttsFallback = "bad-voice-id-format";
+  }
   if (elevenVoiceID && elevenKey && /^[A-Za-z0-9]+$/.test(elevenVoiceID)) {
     const elevenModel = (process.env.POLLY_ELEVENLABS_MODEL || "").trim() || "eleven_turbo_v2_5";
     try {
@@ -110,10 +119,13 @@ export default async function handler(req, res) {
       }
       // Fall through to OpenAI rather than failing. A briefing in the wrong
       // voice is a disappointment; a briefing that 502s blocks the cook.
-      const detail = (await upstream.text()).slice(0, 240);
+      const detail = (await upstream.text()).slice(0, 200).replace(/[\r\n]+/g, " ");
+      ttsFallback = `elevenlabs-${upstream.status}: ${detail}`;
       console.warn(`[polly/speak] elevenlabs ${upstream.status}: ${detail}`);
     } catch (error) {
-      console.warn(`[polly/speak] elevenlabs failed: ${error instanceof Error ? error.message : error}`);
+      const message = error instanceof Error ? error.message : String(error);
+      ttsFallback = `elevenlabs-threw: ${message.slice(0, 200)}`;
+      console.warn(`[polly/speak] elevenlabs failed: ${message}`);
     }
   }
 
@@ -164,6 +176,8 @@ export default async function handler(req, res) {
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("x-glutt-polly-voice", voice);
     res.setHeader("x-glutt-polly-tts-model", model);
+    // Empty unless a cloned voice was requested and could not be used.
+    if (ttsFallback) res.setHeader("x-glutt-tts-fallback", ttsFallback.slice(0, 300));
     return res.status(200).send(audio);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Adaptive Video Canvas cook session UI (`docs/newDesign.md`).
 /// Layers: full-bleed visual canvas → floating step sheet → Polly dock.
@@ -69,6 +70,34 @@ struct PollyAdaptiveCanvasView: View {
             Button("Ingredients") { showIngredients = true }
             if !controller.timers.timers.isEmpty {
                 Button("Timers (\(controller.timers.timers.count))") {}
+            }
+            // Diagnostics live HERE because this dialog is the only overflow menu
+            // that actually renders. PollySessionView has a topBar with its own
+            // menu, but nothing calls overlayChrome(), so anything added there is
+            // invisible in a real cook.
+            //
+            // A confirmationDialog cannot hold Toggles, so the two audio-lab
+            // switches carry their state in the button title and flip on tap.
+            // Both apply to the live transport immediately, which is the point:
+            // neither behaviour is reproducible off a device, so the only useful
+            // test is flipping them mid-cook and listening.
+            Button("Copy debug log") {
+                UIPasteboard.general.string = PollyDebugLog.shared.dump()
+                Haptics.notify(.success)
+            }
+            Button(PollyAudioLab.stackedAEC
+                   ? "Echo cancel: stacked (tap to turn off)"
+                   : "Echo cancel: off (tap to stack)") {
+                PollyAudioLab.stackedAEC.toggle()
+                controller.refreshAudioLab()
+                Haptics.impact(.light)
+            }
+            Button(PollyAudioLab.fullDuplex
+                   ? "Mic while she talks: OPEN (tap to close)"
+                   : "Mic while she talks: closed (tap to open)") {
+                PollyAudioLab.fullDuplex.toggle()
+                controller.refreshAudioLab()
+                Haptics.impact(.light)
             }
             Button("End cooking session", role: .destructive, action: onRequestEnd)
             Button("Cancel", role: .cancel) {}

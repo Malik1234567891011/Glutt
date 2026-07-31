@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..700,0..1,0&display=swap" rel="stylesheet">
+<style>
+  * { -webkit-font-smoothing: antialiased; box-sizing: border-box; }
+  body { margin: 0; background: #E7DBC9; }
+  a { color: #2E5339; text-decoration: none; }
+  a:hover { color: #3d6d4b; }
+  .ms { font-family: 'Material Symbols Rounded'; font-weight: 400; font-style: normal; line-height: 1; display: inline-block; font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  .msl { font-family: 'Material Symbols Rounded'; font-weight: 400; font-style: normal; line-height: 1; display: inline-block; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  .gs::-webkit-scrollbar { display: none; }
+  .gs { scrollbar-width: none; }
+  @keyframes gluttFloat {
+    0%   { transform: translateY(0); }
+    50%  { transform: translateY(-9px); }
+    100% { transform: translateY(0); }
+  }
+  @keyframes gluttFloatBack {
+    0%   { transform: translateY(0) scale(1); opacity: 1; }
+    50%  { transform: translateY(-3px) scale(0.994); opacity: 0.88; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+</style>
+</helmet>
+
+<section style="padding:72px 80px 40px;font-family:Nunito;color:#241E19;">
+
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:48px;max-width:900px;">
+    <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;">Turn 2 · Just the loading screen</div>
+    <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:44px;letter-spacing:-1px;line-height:1.05;">Import and done</div>
+    <div style="font-family:Nunito;font-weight:600;font-size:17px;line-height:1.5;color:#6E6456;text-wrap:pretty;">1b stripped back. No list to watch, no recipe assembling, nothing to read. One loading screen, one confirmation, and you are back in the feed. Three screens total and you tap none of them.</div>
+  </div>
+
+  <div id="2a" style="display:flex;flex-direction:column;gap:20px;margin-bottom:96px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1px;padding:6px 11px;border-radius:8px;background:#2E5339;color:#F4ECDF;">2a</div>
+      <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:26px;letter-spacing:-0.5px;">The loading screen</div>
+    </div>
+    <div style="max-width:1250px;font-family:Nunito;font-weight:600;font-size:15.5px;line-height:1.55;color:#6E6456;text-wrap:pretty;">The thumbnail of the thing you shared, the dish name as soon as Glutt knows it, one honest status line, one warm progress bar. That is the whole wait. It fills in place and turns into the tick, so there is no second screen to parse.</div>
+
+    <div style="display:flex;gap:28px;align-items:flex-start;">
+
+      <!-- 2a importing -->
+      <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+        <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">1 · Importing</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+          <div style="position:absolute;inset:0;background:#17120E;">
+            <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.28;">
+            <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#FAF3E7;border-radius:26px 26px 0 0;overflow:hidden;">
+              <div style="display:flex;justify-content:center;padding-top:10px;"><div style="width:38px;height:5px;border-radius:100px;background:#D8CDBE;"></div></div>
+              <div style="padding:16px 20px 0;display:flex;align-items:center;justify-content:space-between;">
+                <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;">Saving from Instagram</div>
+                <div style="width:30px;height:30px;border-radius:50%;background:#F1E9D6;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:18px;color:#6E6456;">close</span></div>
+              </div>
+
+              <div style="position:absolute;left:0;right:0;top:158px;padding:0 24px;display:flex;flex-direction:column;align-items:center;">
+                <div style="position:relative;width:338px;height:338px;overflow:hidden;">
+                  <video src="uploads/new-loading-animation.mp4" autoplay muted loop playsinline style="position:absolute;left:-13.5px;top:-128.4px;width:365px;height:648.9px;display:block;"></video>
+                </div>
+
+                <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:21px;letter-spacing:-0.4px;line-height:1.2;color:#6E6456;text-align:center;margin-top:24px;">Korean Beef Bowl Meal Prep</div>
+                <div style="font-family:Nunito;font-weight:600;font-size:13.5px;color:#B0A697;margin-top:7px;">Listening to the video</div>
+              </div>
+
+              <div style="position:absolute;left:20px;right:20px;bottom:42px;display:flex;align-items:center;justify-content:center;gap:7px;">
+                <span class="msl" style="font-size:16px;color:#9A9082;">check</span>
+                <span style="font-family:Nunito;font-weight:700;font-size:13px;color:#9A9082;">You can close this, Glutt finishes it for you</span>
+              </div>
+            </div>
+            <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+          </div>
+        </x-import>
+      </div>
+
+      <!-- 2a done -->
+      <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+        <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">2 · Done</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+          <div style="position:absolute;inset:0;background:#17120E;">
+            <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.28;">
+            <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#FAF3E7;border-radius:26px 26px 0 0;overflow:hidden;">
+              <div style="display:flex;justify-content:center;padding-top:10px;"><div style="width:38px;height:5px;border-radius:100px;background:#D8CDBE;"></div></div>
+              <div style="padding:16px 20px 0;display:flex;align-items:center;justify-content:space-between;">
+                <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;">Saved from Instagram</div>
+                <div style="width:30px;height:30px;border-radius:50%;background:#F1E9D6;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:18px;color:#6E6456;">close</span></div>
+              </div>
+
+              <div style="position:absolute;left:0;right:0;top:150px;padding:0 32px;display:flex;flex-direction:column;align-items:center;">
+                <div style="position:relative;">
+                  <div style="position:absolute;left:-13px;right:-13px;top:11px;bottom:-11px;border-radius:30px;background:#F1E9D6;animation:gluttFloatBack 4.4s ease-in-out infinite;animation-delay:0.5s;"></div>
+                  <div style="position:absolute;left:-6px;right:-6px;top:5px;bottom:-5px;border-radius:28px;background:#F6EFE0;animation:gluttFloatBack 4.4s ease-in-out infinite;animation-delay:0.25s;"></div>
+                  <div style="position:relative;animation:gluttFloat 4.4s ease-in-out infinite;">
+                    <img src="assets/food-korean-beef.png" alt="" style="width:214px;height:214px;border-radius:26px;object-fit:cover;display:block;box-shadow:0 14px 30px rgba(42,36,32,0.14);">
+                    <div style="position:absolute;right:-14px;bottom:-14px;width:52px;height:52px;border-radius:50%;background:#2E5339;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 22px rgba(42,36,32,0.2);"><span class="ms" style="font-size:30px;color:#FBF5E9;">check</span></div>
+                  </div>
+                </div>
+
+                <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:27px;letter-spacing:-0.7px;line-height:1.1;color:#241E19;text-align:center;margin-top:44px;">Korean Beef Bowl Meal Prep</div>
+                <div style="font-family:Nunito;font-weight:600;font-size:15px;color:#6E6456;margin-top:9px;text-align:center;line-height:1.45;">In your recipes. 35 min, 4 servings, 8 of the 12 ingredients already in your kitchen.</div>
+              </div>
+
+              <div style="position:absolute;left:0;right:0;bottom:0;padding:18px 20px 34px;">
+                <div style="background:#2E5339;border-radius:100px;padding:16px;text-align:center;font-family:Nunito;font-weight:800;font-size:16px;color:#FBF5E9;box-shadow:0 10px 24px rgba(42,36,32,0.14);">Back to Instagram</div>
+                <div style="text-align:center;font-family:Nunito;font-weight:800;font-size:15px;color:#2E5339;padding:16px 6px 0;">Open it in Glutt</div>
+              </div>
+            </div>
+            <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+          </div>
+        </x-import>
+      </div>
+
+      <!-- 2a failed -->
+      <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+        <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">3 · If it cannot</div>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+          <div style="position:absolute;inset:0;background:#17120E;">
+            <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.28;">
+            <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#FAF3E7;border-radius:26px 26px 0 0;overflow:hidden;">
+              <div style="display:flex;justify-content:center;padding-top:10px;"><div style="width:38px;height:5px;border-radius:100px;background:#D8CDBE;"></div></div>
+              <div style="padding:16px 20px 0;display:flex;align-items:center;justify-content:space-between;">
+                <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#C28C21;">Could not read it</div>
+                <div style="width:30px;height:30px;border-radius:50%;background:#F1E9D6;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:18px;color:#6E6456;">close</span></div>
+              </div>
+
+              <div style="position:absolute;left:0;right:0;top:150px;padding:0 32px;display:flex;flex-direction:column;align-items:center;">
+                <div style="position:relative;">
+                  <img src="assets/food-korean-beef.png" alt="" style="position:relative;width:214px;height:214px;border-radius:26px;object-fit:cover;display:block;opacity:0.45;box-shadow:0 14px 30px rgba(42,36,32,0.1);">
+                  <div style="position:absolute;right:-12px;bottom:-12px;width:52px;height:52px;border-radius:50%;background:#FCF0D6;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:28px;color:#C28C21;">priority_high</span></div>
+                </div>
+
+                <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:27px;letter-spacing:-0.7px;line-height:1.1;color:#241E19;text-align:center;margin-top:44px;">No recipe in this one</div>
+                <div style="font-family:Nunito;font-weight:600;font-size:15px;color:#6E6456;margin-top:9px;text-align:center;line-height:1.45;">Nothing was said out loud and the caption has no amounts. Keep the link and Glutt will ask you a couple of questions later.</div>
+              </div>
+
+              <div style="position:absolute;left:0;right:0;bottom:0;padding:18px 20px 34px;">
+                <div style="background:#2E5339;border-radius:100px;padding:16px;text-align:center;font-family:Nunito;font-weight:800;font-size:16px;color:#FBF5E9;box-shadow:0 10px 24px rgba(42,36,32,0.14);">Keep the link anyway</div>
+                <div style="text-align:center;font-family:Nunito;font-weight:800;font-size:15px;color:#2E5339;padding:16px 6px 0;">Try again</div>
+              </div>
+            </div>
+            <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+          </div>
+        </x-import>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding:0 80px 120px;font-family:Nunito;color:#241E19;">
+
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:56px;max-width:900px;">
+    <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;">Turn 1 · Recipe import</div>
+    <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:44px;letter-spacing:-1px;line-height:1.05;">The page that pops up when you share a recipe</div>
+    <div style="font-family:Nunito;font-weight:600;font-size:17px;line-height:1.5;color:#6E6456;text-wrap:pretty;">Recreated from <span style="font-family:Nunito;font-weight:800;">GluttShare/ShareRootView.swift</span> and <span style="font-family:Nunito;font-weight:800;">Features/Import/ImportRecipeView.swift</span>, then three directions for the same moment. Reference <a href="#1a">1a</a> <a href="#1b">1b</a> <a href="#1c">1c</a> <a href="#1d">1d</a> in chat.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:96px;align-items:flex-start;">
+
+    <!-- ============================ 1a — TODAY ============================ -->
+    <sc-if value="{{ showToday }}" hint-placeholder-val="{{ true }}">
+    <div id="1a" style="display:flex;flex-direction:column;gap:20px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1px;padding:6px 11px;border-radius:8px;background:#241E19;color:#F4ECDF;">1a</div>
+        <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:26px;letter-spacing:-0.5px;">Today, as shipped</div>
+      </div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+      <div style="max-width:860px;font-family:Nunito;font-weight:600;font-size:15.5px;line-height:1.55;color:#6E6456;text-wrap:pretty;">Two surfaces run the same import. The share extension is the one you actually use: it opens over Instagram or TikTok and starts on its own. The in app sheet is the fallback from the plus button. Both spend the whole wait on a grey system spinner, and both land you in an unstyled form.</div>
+      </sc-if>
+
+      <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;margin-top:8px;">Share extension · over Instagram</div>
+      <div style="display:flex;gap:28px;align-items:flex-start;">
+
+        <!-- share: importing -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">1 · Importing</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#17120E;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.3;">
+              <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#FAF3E7;border-radius:12px 12px 0 0;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;">
+                  <div style="position:relative;width:37px;height:37px;">
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(0deg) translateY(-12px);opacity:1;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(45deg) translateY(-12px);opacity:0.85;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(90deg) translateY(-12px);opacity:0.7;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(135deg) translateY(-12px);opacity:0.55;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(180deg) translateY(-12px);opacity:0.45;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(225deg) translateY(-12px);opacity:0.35;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(270deg) translateY(-12px);opacity:0.25;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(315deg) translateY(-12px);opacity:0.15;"></div>
+                  </div>
+                  <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#6E6456;text-align:center;">Reading the recipe…</div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+
+        <!-- share: preview -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">2 · Preview</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#17120E;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.3;">
+              <div class="gs" style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#FAF3E7;border-radius:12px 12px 0 0;overflow:auto;">
+                <div style="padding:16px;display:flex;flex-direction:column;gap:16px;">
+                  <img src="assets/food-korean-beef.png" alt="" style="width:100%;height:160px;object-fit:cover;border-radius:16px;display:block;">
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:22px;letter-spacing:-0.3px;color:#000;">Korean Beef Bowl Meal Prep</div>
+                    <div style="font-family:Nunito;font-weight:600;font-size:14px;color:#6E6456;">by thesapor</div>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#000;">Servings: 4</div>
+                    <div style="display:flex;background:#E9E9EB;border-radius:8px;">
+                      <div style="width:47px;height:32px;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:19px;color:#000;">remove</span></div>
+                      <div style="width:1px;background:rgba(0,0,0,0.14);margin:6px 0;"></div>
+                      <div style="width:47px;height:32px;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:19px;color:#000;">add</span></div>
+                    </div>
+                  </div>
+                  <div style="font-family:Nunito;font-weight:600;font-size:14px;color:#6E6456;">12 ingredients · 6 steps · 35 min</div>
+                  <div style="display:flex;flex-direction:column;gap:4px;">
+                    <div style="font-family:-apple-system,system-ui;font-weight:600;font-size:11px;color:#6E6456;">INGREDIENTS</div>
+                    <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;line-height:1.45;">•  1 lb ground beef</div>
+                    <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;line-height:1.45;">•  2 cups jasmine rice</div>
+                    <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;line-height:1.45;">•  3 tbsp gochujang</div>
+                    <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;line-height:1.45;">•  2 tbsp sesame oil</div>
+                    <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;line-height:1.45;">•  2 tbsp honey</div>
+                    <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;line-height:1.45;">•  4 scallions, sliced</div>
+                    <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;line-height:1.45;">•  1 tbsp toasted sesame seeds</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:4px;">
+                    <div style="font-family:-apple-system,system-ui;font-weight:600;font-size:11px;color:#6E6456;">STEPS</div>
+                    <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;line-height:1.45;">1.  Rinse the rice and cook it.</div>
+                    <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;line-height:1.45;">2.  Brown the beef over high heat.</div>
+                    <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;line-height:1.45;">3.  Stir in gochujang, honey and sesame oil.</div>
+                  </div>
+                  <div style="background:#2E5339;border-radius:12px;padding:14px;text-align:center;font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:#fff;">Save recipe</div>
+                  <div style="text-align:center;font-family:Nunito;font-weight:600;font-size:14px;color:#FF3B30;padding-bottom:34px;">Discard</div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+
+        <!-- share: saved -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">3 · Saved</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#17120E;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.3;">
+              <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#FAF3E7;border-radius:12px 12px 0 0;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;width:100%;">
+                  <span class="ms" style="font-size:48px;color:#2E5339;">check_circle</span>
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:#2A2420;">Saved to Glutt</div>
+                  <div style="width:100%;background:#2E5339;border-radius:12px;padding:14px;text-align:center;font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:#fff;">Add more recipes</div>
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:#2E5339;">View recipe</div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+
+        <!-- share: failed -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">4 · Failed</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#17120E;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.3;">
+              <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#FAF3E7;border-radius:12px 12px 0 0;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;width:100%;">
+                  <span class="msl" style="font-size:40px;color:#C28C21;">warning</span>
+                  <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;text-align:center;line-height:1.4;">The network connection was lost.</div>
+                  <div style="width:100%;background:#2E5339;border-radius:12px;padding:14px;text-align:center;font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:#fff;">Open in Glutt</div>
+                  <div style="font-family:Nunito;font-weight:600;font-size:14px;color:#2E5339;">Close</div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+      </div>
+
+      <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;margin-top:20px;">In app sheet · from the plus button</div>
+      <div style="display:flex;gap:28px;align-items:flex-start;">
+
+        <!-- app: input -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">1 · Input</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#FAF3E7;">
+              <div style="padding-top:62px;">
+                <div style="height:44px;display:flex;align-items:center;padding:0 16px;position:relative;">
+                  <div style="font-family:-apple-system,system-ui;font-weight:400;font-size:17px;color:#2E5339;">Cancel</div>
+                  <div style="position:absolute;left:0;right:0;text-align:center;font-family:-apple-system,system-ui;font-weight:600;font-size:17px;color:#000;">Import recipe</div>
+                </div>
+              </div>
+              <div class="gs" style="position:absolute;left:0;right:0;top:106px;bottom:0;overflow:auto;">
+                <div style="padding:16px;display:flex;flex-direction:column;gap:24px;">
+
+                  <div style="background:#FFFDF7;border:1px solid rgba(225,215,202,0.55);border-radius:16px;padding:16px;box-shadow:0 3px 10px rgba(42,36,32,0.07);display:flex;align-items:center;gap:16px;">
+                    <div style="width:32px;display:flex;justify-content:center;"><span class="msl" style="font-size:24px;color:#2E5339;">ios_share</span></div>
+                    <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+                      <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:#2A2420;line-height:1.2;">Save straight from TikTok &amp; Instagram</div>
+                      <div style="font-family:Nunito;font-weight:600;font-size:14px;color:#6E6456;">Tap Share in any app → Glutt. See how →</div>
+                    </div>
+                  </div>
+
+                  <div style="background:#FFFDF7;border:1px solid rgba(225,215,202,0.55);border-radius:16px;padding:16px;box-shadow:0 3px 10px rgba(42,36,32,0.07);display:flex;flex-direction:column;gap:8px;">
+                    <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:#2A2420;">Paste a link</div>
+                    <div style="font-family:Nunito;font-weight:600;font-size:14px;color:#6E6456;line-height:1.35;">TikTok, Instagram, YouTube, Reddit, or any recipe website.</div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <div style="flex:1;background:#FFFDF7;border-radius:12px;padding:8px;font-family:Nunito;font-weight:500;font-size:16px;color:#C7C7CD;">https://…</div>
+                      <div style="background:rgba(46,83,57,0.12);border-radius:100px;padding:8px 14px;display:flex;align-items:center;justify-content:center;"><span class="msl" style="font-size:18px;color:#2E5339;">content_paste</span></div>
+                    </div>
+                    <div style="background:#2E5339;border-radius:12px;padding:14px;text-align:center;font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:rgba(255,255,255,0.45);">Import from link</div>
+                  </div>
+
+                  <div style="background:#FFFDF7;border:1px solid rgba(225,215,202,0.55);border-radius:16px;padding:16px;box-shadow:0 3px 10px rgba(42,36,32,0.07);display:flex;flex-direction:column;gap:8px;">
+                    <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:#2A2420;">Or use a screenshot</div>
+                    <div style="font-family:Nunito;font-weight:600;font-size:14px;color:#6E6456;line-height:1.35;">A photo of a recipe, cookbook page, or saved notes. Glutt reads the text on-device.</div>
+                    <div style="border:1.5px solid #2E5339;border-radius:12px;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;">
+                      <span class="msl" style="font-size:18px;color:#2E5339;">image</span>
+                      <span style="font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:#2E5339;">Choose a screenshot</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </x-import>
+        </div>
+
+        <!-- app: loading -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">2 · Loading</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#FAF3E7;">
+              <div style="padding-top:62px;">
+                <div style="height:44px;display:flex;align-items:center;padding:0 16px;position:relative;">
+                  <div style="font-family:-apple-system,system-ui;font-weight:400;font-size:17px;color:#2E5339;">Cancel</div>
+                  <div style="position:absolute;left:0;right:0;text-align:center;font-family:-apple-system,system-ui;font-weight:600;font-size:17px;color:#000;">Import recipe</div>
+                </div>
+              </div>
+              <div style="position:absolute;left:0;right:0;top:106px;bottom:0;display:flex;align-items:center;justify-content:center;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+                  <div style="position:relative;width:37px;height:37px;">
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(0deg) translateY(-12px);opacity:1;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(45deg) translateY(-12px);opacity:0.85;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(90deg) translateY(-12px);opacity:0.7;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(135deg) translateY(-12px);opacity:0.55;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(180deg) translateY(-12px);opacity:0.45;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(225deg) translateY(-12px);opacity:0.35;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(270deg) translateY(-12px);opacity:0.25;"></div>
+                    <div style="position:absolute;left:50%;top:50%;width:3px;height:10px;border-radius:2px;background:#8E8E93;transform:translate(-50%,-50%) rotate(315deg) translateY(-12px);opacity:0.15;"></div>
+                  </div>
+                  <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#6E6456;">Listening to the video…</div>
+                </div>
+              </div>
+            </div>
+          </x-import>
+        </div>
+
+        <!-- app: failed -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">3 · Failed</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#FAF3E7;">
+              <div style="padding-top:62px;">
+                <div style="height:44px;display:flex;align-items:center;padding:0 16px;position:relative;">
+                  <div style="font-family:-apple-system,system-ui;font-weight:400;font-size:17px;color:#2E5339;">Cancel</div>
+                  <div style="position:absolute;left:0;right:0;text-align:center;font-family:-apple-system,system-ui;font-weight:600;font-size:17px;color:#000;">Import recipe</div>
+                </div>
+              </div>
+              <div style="position:absolute;left:0;right:0;top:106px;bottom:0;display:flex;align-items:center;justify-content:center;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:32px;">
+                  <span class="msl" style="font-size:44px;color:rgba(46,83,57,0.5);">warning</span>
+                  <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:#2A2420;">Import failed</div>
+                  <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#6E6456;text-align:center;line-height:1.4;">The data couldn’t be read because it isn’t in the correct format.</div>
+                  <div style="background:rgba(46,83,57,0.12);border-radius:100px;padding:8px 14px;font-family:Nunito;font-weight:500;font-size:14px;color:#2E5339;">Try again</div>
+                </div>
+              </div>
+            </div>
+          </x-import>
+        </div>
+
+        <!-- app: review -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">4 · Review</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#FAF3E7;">
+              <div style="padding-top:62px;">
+                <div style="height:44px;display:flex;align-items:center;padding:0 16px;position:relative;">
+                  <div style="font-family:-apple-system,system-ui;font-weight:400;font-size:17px;color:#2E5339;">Cancel</div>
+                  <div style="position:absolute;left:0;right:0;text-align:center;font-family:-apple-system,system-ui;font-weight:600;font-size:17px;color:#000;">Import recipe</div>
+                </div>
+              </div>
+              <div class="gs" style="position:absolute;left:0;right:0;top:106px;bottom:0;overflow:auto;">
+                <div style="padding:16px;display:flex;flex-direction:column;gap:24px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:4px;background:rgba(194,140,33,0.12);border-radius:100px;padding:5px 10px;">
+                      <span class="ms" style="font-size:11px;color:#C28C21;">warning</span>
+                      <span style="font-family:Nunito;font-weight:500;font-size:14px;color:#C28C21;">Mostly confident</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:4px;font-family:Nunito;font-weight:600;font-size:14px;color:#6E6456;">
+                      <span class="msl" style="font-size:12px;">link</span><span>www.instagram.com</span>
+                    </div>
+                  </div>
+
+                  <div style="background:#FCF0D6;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:4px;">
+                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                      <span class="ms" style="font-size:14px;color:#C28C21;margin-top:2px;">warning</span>
+                      <span style="font-family:Nunito;font-weight:600;font-size:14px;color:#2A2420;line-height:1.35;">Some amounts were unclear, give them a read.</span>
+                    </div>
+                  </div>
+
+                  <img src="assets/food-korean-beef.png" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:16px;display:block;">
+
+                  <div style="background:#FFFDF7;border:1px solid rgba(225,215,202,0.55);border-radius:16px;padding:16px;box-shadow:0 3px 10px rgba(42,36,32,0.07);display:flex;flex-direction:column;gap:8px;">
+                    <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:22px;letter-spacing:-0.3px;color:#000;">Korean Beef Bowl Meal Prep</div>
+                    <div style="font-family:Nunito;font-weight:600;font-size:14px;color:#6E6456;">by thesapor</div>
+                    <div style="height:1px;background:rgba(60,60,67,0.18);"></div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#000;">Servings: 4</div>
+                      <div style="display:flex;background:#E9E9EB;border-radius:8px;">
+                        <div style="width:47px;height:32px;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:19px;color:#000;">remove</span></div>
+                        <div style="width:1px;background:rgba(0,0,0,0.14);margin:6px 0;"></div>
+                        <div style="width:47px;height:32px;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:19px;color:#000;">add</span></div>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#000;">Prep: 10 min</div>
+                      <div style="display:flex;background:#E9E9EB;border-radius:8px;">
+                        <div style="width:47px;height:32px;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:19px;color:#000;">remove</span></div>
+                        <div style="width:1px;background:rgba(0,0,0,0.14);margin:6px 0;"></div>
+                        <div style="width:47px;height:32px;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:19px;color:#000;">add</span></div>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <div style="font-family:Nunito;font-weight:500;font-size:16px;color:#000;">Cook: 25 min</div>
+                      <div style="display:flex;background:#E9E9EB;border-radius:8px;">
+                        <div style="width:47px;height:32px;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:19px;color:#000;">remove</span></div>
+                        <div style="width:1px;background:rgba(0,0,0,0.14);margin:6px 0;"></div>
+                        <div style="width:47px;height:32px;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:19px;color:#000;">add</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="background:#FFFDF7;border:1px solid rgba(225,215,202,0.55);border-radius:16px;padding:16px;box-shadow:0 3px 10px rgba(42,36,32,0.07);display:flex;flex-direction:column;gap:8px;">
+                    <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:22px;letter-spacing:-0.3px;color:#2A2420;">Ingredients</div>
+                    <div style="display:flex;align-items:center;gap:8px;"><span class="ms" style="font-size:14px;color:#2E5339;">check_circle</span><span style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;">1 lb ground beef</span></div>
+                    <div style="display:flex;align-items:center;gap:8px;"><span class="ms" style="font-size:14px;color:#2E5339;">check_circle</span><span style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;">2 cups jasmine rice</span></div>
+                    <div style="display:flex;align-items:center;gap:8px;"><span class="msl" style="font-size:14px;color:#C28C21;">radio_button_unchecked</span><span style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;">gochujang</span></div>
+                    <div style="display:flex;align-items:center;gap:8px;"><span class="ms" style="font-size:14px;color:#2E5339;">check_circle</span><span style="font-family:Nunito;font-weight:500;font-size:16px;color:#2A2420;">2 tbsp sesame oil</span></div>
+                    <div style="display:flex;align-items:center;gap:4px;margin-top:2px;"><span class="msl" style="font-size:12px;color:#2E5339;">add</span><span style="font-family:Nunito;font-weight:500;font-size:14px;color:#2E5339;">Add ingredient</span></div>
+                  </div>
+
+                  <div style="background:#2E5339;border-radius:12px;padding:14px;text-align:center;font-family:'Bricolage Grotesque';font-weight:600;font-size:17px;color:#fff;margin-bottom:34px;">Save recipe</div>
+                </div>
+              </div>
+            </div>
+          </x-import>
+        </div>
+      </div>
+
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;max-width:1690px;margin-top:8px;">
+        <div style="flex:1;min-width:320px;background:#FBF3E4;border:1px solid rgba(42,36,32,0.09);border-radius:18px;padding:18px 20px;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9483B;margin-bottom:6px;">Dead air</div>
+          <div style="font-family:Nunito;font-weight:600;font-size:14.5px;line-height:1.5;color:#4A4238;">The whole import is one grey UIKit spinner and a sentence. Video imports transcribe the audio, so this can run 10 seconds or more with nothing to look at and no way out.</div>
+        </div>
+        <div style="flex:1;min-width:320px;background:#FBF3E4;border:1px solid rgba(42,36,32,0.09);border-radius:18px;padding:18px 20px;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9483B;margin-bottom:6px;">Not Glutt</div>
+          <div style="font-family:Nunito;font-weight:600;font-size:14.5px;line-height:1.5;color:#4A4238;">Bare bullet lists, three system steppers stacked, an all caps INGREDIENTS label in SF Pro. None of the cream cards, food icon tiles or pantry chips the rest of the app is built from.</div>
+        </div>
+        <div style="flex:1;min-width:320px;background:#FBF3E4;border:1px solid rgba(42,36,32,0.09);border-radius:18px;padding:18px 20px;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9483B;margin-bottom:6px;">Invisible field</div>
+          <div style="font-family:Nunito;font-weight:600;font-size:14.5px;line-height:1.5;color:#4A4238;">In the in app sheet the link field is filled with <span style="font-family:Nunito;font-weight:800;">Theme.Colors.card</span> inside a card that is already <span style="font-family:Nunito;font-weight:800;">Theme.Colors.card</span>, so the input has no visible edge and Import from link sits there looking enabled while disabled.</div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <!-- ============================ 1b ============================ -->
+    <sc-if value="{{ showB }}" hint-placeholder-val="{{ true }}">
+    <div id="1b" style="display:flex;flex-direction:column;gap:20px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1px;padding:6px 11px;border-radius:8px;background:#2E5339;color:#F4ECDF;">1b</div>
+        <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:26px;letter-spacing:-0.5px;">It builds itself</div>
+      </div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+      <div style="max-width:1250px;font-family:Nunito;font-weight:600;font-size:15.5px;line-height:1.55;color:#6E6456;text-wrap:pretty;">The wait becomes the content. No spinner: the recipe card is on screen from the first frame and fills in as the pipeline works, ingredient rows dropping into place one at a time in real Glutt food icon tiles. You can leave whenever you want, because the import already finishes in the background through the import inbox.</div>
+      </sc-if>
+      <div style="display:flex;gap:28px;align-items:flex-start;">
+
+        <!-- 1b assembling -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">1 · Assembling</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#17120E;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.28;">
+              <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#FAF3E7;border-radius:26px 26px 0 0;overflow:hidden;">
+                <div style="display:flex;justify-content:center;padding-top:10px;"><div style="width:38px;height:5px;border-radius:100px;background:#D8CDBE;"></div></div>
+                <div style="padding:16px 20px 0;display:flex;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;align-items:center;gap:7px;">
+                    <span class="ms" style="font-size:17px;color:#2E5339;">auto_awesome</span>
+                    <span style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;">Saving from Instagram</span>
+                  </div>
+                  <div style="width:30px;height:30px;border-radius:50%;background:#F1E9D6;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:18px;color:#6E6456;">close</span></div>
+                </div>
+
+                <div style="margin:18px 20px 0;background:#FFFDF7;border:1px solid rgba(42,36,32,0.07);border-radius:26px;padding:16px;box-shadow:0 8px 20px rgba(42,36,32,0.05);">
+                  <div style="display:flex;gap:14px;align-items:flex-start;">
+                    <img src="assets/food-korean-beef.png" alt="" style="width:88px;height:88px;border-radius:18px;object-fit:cover;display:block;flex-shrink:0;">
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:21px;letter-spacing:-0.5px;line-height:1.1;color:#241E19;">Korean Beef Bowl Meal Prep</div>
+                      <div style="font-family:Nunito;font-weight:700;font-size:13px;color:#9A9082;margin-top:5px;">thesapor · 0:47 reel</div>
+                      <div style="display:flex;align-items:center;gap:7px;margin-top:10px;">
+                        <div style="width:7px;height:7px;border-radius:50%;background:#8FE3A3;"></div>
+                        <div style="font-family:Nunito;font-weight:700;font-size:13px;color:#2E5339;">Listening to the video</div>
+                      </div>
+                      <div style="display:flex;align-items:flex-end;gap:2.5px;height:18px;margin-top:8px;">
+                        <div style="width:3px;height:6px;border-radius:2px;background:#2E5339;opacity:0.55;"></div>
+                        <div style="width:3px;height:13px;border-radius:2px;background:#2E5339;opacity:0.8;"></div>
+                        <div style="width:3px;height:18px;border-radius:2px;background:#2E5339;"></div>
+                        <div style="width:3px;height:9px;border-radius:2px;background:#2E5339;opacity:0.7;"></div>
+                        <div style="width:3px;height:15px;border-radius:2px;background:#2E5339;opacity:0.9;"></div>
+                        <div style="width:3px;height:5px;border-radius:2px;background:#2E5339;opacity:0.4;"></div>
+                        <div style="width:3px;height:11px;border-radius:2px;background:#2E5339;opacity:0.6;"></div>
+                        <div style="width:3px;height:16px;border-radius:2px;background:#2E5339;opacity:0.85;"></div>
+                        <div style="width:3px;height:7px;border-radius:2px;background:#D8CDBE;"></div>
+                        <div style="width:3px;height:12px;border-radius:2px;background:#D8CDBE;"></div>
+                        <div style="width:3px;height:8px;border-radius:2px;background:#D8CDBE;"></div>
+                        <div style="width:3px;height:14px;border-radius:2px;background:#D8CDBE;"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 20px 10px;">
+                  <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;">Found so far</div>
+                  <div style="font-family:Nunito;font-weight:800;font-size:12px;color:#9A9082;">7 of about 12</div>
+                </div>
+
+                <div style="margin:0 20px;background:#FFFDF7;border:1px solid rgba(42,36,32,0.06);border-radius:20px;padding:2px 14px;box-shadow:0 6px 16px rgba(42,36,32,0.04);">
+                  <div style="display:flex;align-items:center;gap:13px;padding:12px 0;">
+                    <div style="width:46px;height:46px;border-radius:13px;background:#F4EDDC;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><img src="assets/ing-beef.png" alt="" style="width:30px;height:30px;object-fit:contain;display:block;"></div>
+                    <div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:700;font-size:15px;color:#241E19;">Ground beef</div><div style="font-family:Nunito;font-weight:700;font-size:12.5px;color:#829A86;margin-top:1px;">1 lb · in your kitchen</div></div>
+                    <div style="width:27px;height:27px;border-radius:9px;background:#2E5339;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="ms" style="font-size:17px;color:#FBF5E9;">check</span></div>
+                  </div>
+                  <div style="height:1px;background:#EFE7D6;margin-left:59px;"></div>
+                  <div style="display:flex;align-items:center;gap:13px;padding:12px 0;">
+                    <div style="width:46px;height:46px;border-radius:13px;background:#F4EDDC;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><img src="assets/ing-rice.png" alt="" style="width:30px;height:30px;object-fit:contain;display:block;"></div>
+                    <div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:700;font-size:15px;color:#241E19;">Jasmine rice</div><div style="font-family:Nunito;font-weight:700;font-size:12.5px;color:#829A86;margin-top:1px;">2 cups · in your kitchen</div></div>
+                    <div style="width:27px;height:27px;border-radius:9px;background:#2E5339;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="ms" style="font-size:17px;color:#FBF5E9;">check</span></div>
+                  </div>
+                  <div style="height:1px;background:#EFE7D6;margin-left:59px;"></div>
+                  <div style="display:flex;align-items:center;gap:13px;padding:12px 0;">
+                    <div style="width:46px;height:46px;border-radius:13px;background:#FCF0D6;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><img src="assets/ing-honey.png" alt="" style="width:30px;height:30px;object-fit:contain;display:block;"></div>
+                    <div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:700;font-size:15px;color:#241E19;">Honey</div><div style="font-family:Nunito;font-weight:700;font-size:12.5px;color:#C28C21;margin-top:1px;">2 tbsp · add to groceries</div></div>
+                    <div style="width:27px;height:27px;border-radius:9px;border:2px solid #DCD2C1;flex-shrink:0;"></div>
+                  </div>
+                  <div style="height:1px;background:#EFE7D6;margin-left:59px;"></div>
+                  <div style="display:flex;align-items:center;gap:13px;padding:12px 0;opacity:0.5;">
+                    <div style="width:46px;height:46px;border-radius:13px;background:#F1E9D6;flex-shrink:0;"></div>
+                    <div style="flex:1;min-width:0;"><div style="height:11px;width:58%;border-radius:6px;background:#EBE2D4;"></div><div style="height:9px;width:36%;border-radius:6px;background:#EFE7D6;margin-top:7px;"></div></div>
+                  </div>
+                  <div style="height:1px;background:#EFE7D6;margin-left:59px;"></div>
+                  <div style="display:flex;align-items:center;gap:13px;padding:12px 0;opacity:0.28;">
+                    <div style="width:46px;height:46px;border-radius:13px;background:#F1E9D6;flex-shrink:0;"></div>
+                    <div style="flex:1;min-width:0;"><div style="height:11px;width:44%;border-radius:6px;background:#EBE2D4;"></div><div style="height:9px;width:28%;border-radius:6px;background:#EFE7D6;margin-top:7px;"></div></div>
+                  </div>
+                </div>
+
+                <div style="position:absolute;left:0;right:0;bottom:0;padding:16px 20px 30px;background:linear-gradient(to top, #FAF3E7 62%, rgba(250,243,231,0));">
+                  <div style="display:flex;align-items:center;justify-content:center;gap:7px;">
+                    <span class="msl" style="font-size:16px;color:#9A9082;">check</span>
+                    <span style="font-family:Nunito;font-weight:700;font-size:13px;color:#9A9082;">You can close this, Glutt finishes it for you</span>
+                  </div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+
+        <!-- 1b ready -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">2 · Ready</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#17120E;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.28;">
+              <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#FAF3E7;border-radius:26px 26px 0 0;overflow:hidden;">
+                <div style="display:flex;justify-content:center;padding-top:10px;"><div style="width:38px;height:5px;border-radius:100px;background:#D8CDBE;"></div></div>
+                <div style="padding:16px 20px 0;display:flex;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;align-items:center;gap:7px;">
+                    <span class="ms" style="font-size:17px;color:#2E5339;">check_circle</span>
+                    <span style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;">Recipe found</span>
+                  </div>
+                  <div style="width:30px;height:30px;border-radius:50%;background:#F1E9D6;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:18px;color:#6E6456;">close</span></div>
+                </div>
+
+                <div style="margin:16px 20px 0;position:relative;">
+                  <img src="assets/food-korean-beef.png" alt="" style="width:100%;height:186px;object-fit:cover;border-radius:26px;display:block;">
+                  <div style="position:absolute;left:12px;bottom:12px;display:flex;align-items:center;gap:6px;background:#FFFDF7;border-radius:13px;padding:6px 11px;">
+                    <span class="ms" style="font-size:14px;color:#241E19;">person</span>
+                    <span style="font-family:Nunito;font-weight:800;font-size:12px;color:#241E19;">thesapor</span>
+                  </div>
+                  <div style="position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:13px;background:#FFFDF7;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:19px;color:#D9483B;">favorite</span></div>
+                </div>
+
+                <div style="padding:16px 20px 0;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:26px;letter-spacing:-0.7px;line-height:1.08;color:#241E19;">Korean Beef Bowl Meal Prep</div>
+                  <div style="display:flex;align-items:center;gap:7px;margin-top:12px;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:5px;background:#F4EDDC;padding:7px 12px;border-radius:100px;"><span class="msl" style="font-size:15px;color:#6E6456;">schedule</span><span style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#4A4238;">35 min</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;background:#F4EDDC;padding:7px 12px;border-radius:100px;"><span class="msl" style="font-size:15px;color:#6E6456;">restaurant</span><span style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#4A4238;">4 servings</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;background:#F4EDDC;padding:7px 12px;border-radius:100px;"><span class="msl" style="font-size:15px;color:#6E6456;">bolt</span><span style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#4A4238;">38 g protein</span></div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:14px;">
+                    <span class="ms" style="font-size:17px;color:#2E5339;">shopping_basket</span>
+                    <span style="font-family:Nunito;font-weight:700;font-size:13.5px;color:#2E5339;">You already have 8 of the 12 ingredients</span>
+                  </div>
+                </div>
+
+                <div style="margin:18px 20px 0;background:#FFFDF7;border:1px solid rgba(42,36,32,0.06);border-radius:20px;padding:2px 14px;box-shadow:0 6px 16px rgba(42,36,32,0.04);">
+                  <div style="display:flex;align-items:center;gap:13px;padding:12px 0;">
+                    <div style="width:46px;height:46px;border-radius:13px;background:#F4EDDC;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><img src="assets/ing-beef.png" alt="" style="width:30px;height:30px;object-fit:contain;display:block;"></div>
+                    <div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:700;font-size:15px;color:#241E19;">Ground beef</div><div style="font-family:Nunito;font-weight:700;font-size:12.5px;color:#829A86;margin-top:1px;">1 lb · in your kitchen</div></div>
+                    <div style="width:27px;height:27px;border-radius:9px;background:#2E5339;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="ms" style="font-size:17px;color:#FBF5E9;">check</span></div>
+                  </div>
+                  <div style="height:1px;background:#EFE7D6;margin-left:59px;"></div>
+                  <div style="display:flex;align-items:center;gap:13px;padding:12px 0;">
+                    <div style="width:46px;height:46px;border-radius:13px;background:#F4EDDC;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><img src="assets/ing-scallion.png" alt="" style="width:30px;height:30px;object-fit:contain;display:block;"></div>
+                    <div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:700;font-size:15px;color:#241E19;">Scallions</div><div style="font-family:Nunito;font-weight:700;font-size:12.5px;color:#829A86;margin-top:1px;">4 stalks · in your kitchen</div></div>
+                    <div style="width:27px;height:27px;border-radius:9px;background:#2E5339;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="ms" style="font-size:17px;color:#FBF5E9;">check</span></div>
+                  </div>
+                  <div style="height:1px;background:#EFE7D6;margin-left:59px;"></div>
+                  <div style="display:flex;align-items:center;gap:13px;padding:12px 0;">
+                    <div style="width:46px;height:46px;border-radius:13px;background:#FCF0D6;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><img src="assets/ing-honey.png" alt="" style="width:30px;height:30px;object-fit:contain;display:block;"></div>
+                    <div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:700;font-size:15px;color:#241E19;">Honey</div><div style="font-family:Nunito;font-weight:700;font-size:12.5px;color:#C28C21;margin-top:1px;">2 tbsp · add to groceries</div></div>
+                    <div style="width:27px;height:27px;border-radius:9px;border:2px solid #DCD2C1;flex-shrink:0;"></div>
+                  </div>
+                  <div style="height:1px;background:#EFE7D6;margin-left:59px;"></div>
+                  <div style="display:flex;align-items:center;gap:8px;padding:13px 0;">
+                    <span style="font-family:Nunito;font-weight:800;font-size:13.5px;color:#2E5339;">9 more ingredients and 6 steps</span>
+                    <span class="msl" style="font-size:16px;color:#2E5339;">expand_more</span>
+                  </div>
+                </div>
+
+                <div style="position:absolute;left:0;right:0;bottom:0;padding:18px 20px 30px;background:linear-gradient(to top, #FAF3E7 68%, rgba(250,243,231,0));">
+                  <div style="display:flex;gap:10px;align-items:center;">
+                    <div style="flex:1;background:#2E5339;border-radius:100px;padding:16px;text-align:center;font-family:Nunito;font-weight:800;font-size:16px;color:#FBF5E9;box-shadow:0 10px 24px rgba(42,36,32,0.14);">Keep it</div>
+                    <div style="width:54px;height:54px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);display:flex;align-items:center;justify-content:center;"><span class="msl" style="font-size:22px;color:#3A342C;">edit</span></div>
+                  </div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+
+        <!-- 1b saved -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">3 · Kept</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#17120E;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.28;">
+              <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#FAF3E7;border-radius:26px 26px 0 0;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;">
+                <div style="position:relative;width:196px;">
+                  <div style="position:absolute;left:14px;right:14px;top:-14px;height:60px;border-radius:22px;background:#F1E9D6;"></div>
+                  <div style="position:absolute;left:7px;right:7px;top:-7px;height:60px;border-radius:22px;background:#F6EFE0;"></div>
+                  <div style="position:relative;background:#FFFDF7;border:1px solid rgba(42,36,32,0.07);border-radius:22px;padding:12px;box-shadow:0 14px 30px rgba(42,36,32,0.12);">
+                    <img src="assets/food-korean-beef.png" alt="" style="width:100%;height:130px;object-fit:cover;border-radius:16px;display:block;">
+                    <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:16px;letter-spacing:-0.3px;line-height:1.15;color:#241E19;margin-top:10px;">Korean Beef Bowl Meal Prep</div>
+                    <div style="font-family:Nunito;font-weight:700;font-size:12px;color:#9A9082;margin-top:3px;">35 min · 4 servings</div>
+                  </div>
+                  <div style="position:absolute;right:-10px;top:-10px;width:38px;height:38px;border-radius:50%;background:#2E5339;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(42,36,32,0.18);"><span class="ms" style="font-size:22px;color:#FBF5E9;">check</span></div>
+                </div>
+
+                <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:27px;letter-spacing:-0.6px;color:#241E19;margin-top:34px;text-align:center;">In your recipes</div>
+                <div style="font-family:Nunito;font-weight:600;font-size:15px;color:#6E6456;margin-top:7px;text-align:center;line-height:1.45;">Honey went on your grocery list. Everything else is already in your kitchen.</div>
+
+                <div style="display:flex;align-items:center;gap:6px;margin-top:16px;background:#EAF1E7;border-radius:100px;padding:8px 14px;">
+                  <span class="ms" style="font-size:16px;color:#2E5339;">local_fire_department</span>
+                  <span style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#2E5339;">4 saved this week</span>
+                </div>
+
+                <div style="width:100%;display:flex;flex-direction:column;gap:12px;margin-top:36px;">
+                  <div style="background:#2E5339;border-radius:100px;padding:16px;text-align:center;font-family:Nunito;font-weight:800;font-size:16px;color:#FBF5E9;box-shadow:0 10px 24px rgba(42,36,32,0.14);">Back to Instagram</div>
+                  <div style="text-align:center;font-family:Nunito;font-weight:800;font-size:15px;color:#2E5339;padding:6px;">Open it in Glutt</div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ============================ 1c ============================ -->
+    <sc-if value="{{ showC }}" hint-placeholder-val="{{ true }}">
+    <div id="1c" style="display:flex;flex-direction:column;gap:20px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1px;padding:6px 11px;border-radius:8px;background:#2E5339;color:#F4ECDF;">1c</div>
+        <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:26px;letter-spacing:-0.5px;">Watch it read the video</div>
+      </div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+      <div style="max-width:1250px;font-family:Nunito;font-weight:600;font-size:15.5px;line-height:1.55;color:#6E6456;text-wrap:pretty;">Glutt already transcribes the audio with word level timestamps. This direction shows that off: the reel plays behind, the words it hears run underneath, and ingredients pop out as chips at the second they were said. The payoff is trust, every line keeps the timestamp it came from, so a wrong amount is one tap from the moment in the video.</div>
+      </sc-if>
+      <div style="display:flex;gap:28px;align-items:flex-start;">
+
+        <!-- 1c listening -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">1 · Listening</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#1A140F;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;left:0;right:0;top:0;width:100%;height:470px;object-fit:cover;display:block;">
+              <div style="position:absolute;left:0;right:0;top:0;height:470px;background:linear-gradient(to bottom, rgba(20,15,10,0.62) 0%, rgba(20,15,10,0.18) 24%, rgba(20,15,10,0.72) 46%, rgba(26,20,15,0.94) 78%, #1A140F 100%);"></div>
+
+              <div style="position:absolute;top:62px;left:20px;right:20px;display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:7px;background:rgba(255,253,247,0.92);border-radius:100px;padding:7px 13px;">
+                  <span class="ms" style="font-size:15px;color:#2E5339;">graphic_eq</span>
+                  <span style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:#241E19;">Listening</span>
+                </div>
+                <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,253,247,0.92);display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:19px;color:#241E19;">close</span></div>
+              </div>
+
+              <div style="position:absolute;left:20px;right:20px;top:250px;">
+                <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:#8FE3A3;">Heard at 0:14</div>
+                <div style="font-family:'Bricolage Grotesque';font-weight:600;font-size:25px;letter-spacing:-0.5px;line-height:1.22;color:#FBF5E9;margin-top:9px;text-wrap:pretty;"><span style="color:rgba(251,245,233,0.66);">then three tablespoons of </span>gochujang<span style="color:rgba(251,245,233,0.66);">, a tablespoon of sesame</span></div>
+
+                <div style="display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:20px;">
+                  <div style="width:3px;height:8px;border-radius:2px;background:#8FE3A3;"></div>
+                  <div style="width:3px;height:17px;border-radius:2px;background:#8FE3A3;"></div>
+                  <div style="width:3px;height:26px;border-radius:2px;background:#8FE3A3;"></div>
+                  <div style="width:3px;height:12px;border-radius:2px;background:#8FE3A3;"></div>
+                  <div style="width:3px;height:21px;border-radius:2px;background:#8FE3A3;"></div>
+                  <div style="width:3px;height:7px;border-radius:2px;background:#8FE3A3;"></div>
+                  <div style="width:3px;height:15px;border-radius:2px;background:#8FE3A3;"></div>
+                  <div style="width:3px;height:24px;border-radius:2px;background:#8FE3A3;"></div>
+                  <div style="width:3px;height:10px;border-radius:2px;background:#8FE3A3;"></div>
+                  <div style="width:3px;height:19px;border-radius:2px;background:#8FE3A3;"></div>
+                  <div style="width:3px;height:6px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:13px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:9px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:18px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:11px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:22px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:8px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:14px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:20px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:10px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:16px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:7px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:23px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                  <div style="width:3px;height:12px;border-radius:2px;background:rgba(251,245,233,0.22);"></div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:9px;">
+                  <span style="font-family:Nunito;font-weight:800;font-size:11.5px;color:#8FE3A3;">0:14</span>
+                  <span style="font-family:Nunito;font-weight:800;font-size:11.5px;color:rgba(251,245,233,0.4);">0:47</span>
+                </div>
+              </div>
+
+              <div style="position:absolute;left:0;right:0;top:470px;bottom:0;background:#FAF3E7;border-radius:26px 26px 0 0;padding:20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;">Pulled out so far</div>
+                  <div style="font-family:Nunito;font-weight:800;font-size:12px;color:#9A9082;">6 ingredients</div>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+                  <div style="display:flex;align-items:center;gap:8px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);border-radius:100px;padding:7px 13px 7px 7px;">
+                    <img src="assets/ing-beef.png" alt="" style="width:22px;height:22px;object-fit:contain;display:block;">
+                    <span style="font-family:Nunito;font-weight:700;font-size:13.5px;color:#241E19;">1 lb ground beef</span>
+                    <span style="font-family:Nunito;font-weight:800;font-size:11px;color:#9A9082;">0:03</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);border-radius:100px;padding:7px 13px 7px 7px;">
+                    <img src="assets/ing-rice.png" alt="" style="width:22px;height:22px;object-fit:contain;display:block;">
+                    <span style="font-family:Nunito;font-weight:700;font-size:13.5px;color:#241E19;">2 cups rice</span>
+                    <span style="font-family:Nunito;font-weight:800;font-size:11px;color:#9A9082;">0:08</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);border-radius:100px;padding:7px 13px 7px 7px;">
+                    <img src="assets/ing-olive-oil.png" alt="" style="width:22px;height:22px;object-fit:contain;display:block;">
+                    <span style="font-family:Nunito;font-weight:700;font-size:13.5px;color:#241E19;">1 tbsp sesame oil</span>
+                    <span style="font-family:Nunito;font-weight:800;font-size:11px;color:#9A9082;">0:12</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;background:#EAF1E7;border:1.5px solid rgba(46,83,57,0.28);border-radius:100px;padding:7px 13px 7px 7px;">
+                    <div style="width:22px;height:22px;border-radius:8px;background:#2E5339;display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:14px;color:#FBF5E9;">add</span></div>
+                    <span style="font-family:Nunito;font-weight:800;font-size:13.5px;color:#2E5339;">3 tbsp gochujang</span>
+                    <span style="font-family:Nunito;font-weight:800;font-size:11px;color:#2E5339;">0:14</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;background:#F4EDDC;border-radius:100px;padding:7px 13px;opacity:0.55;">
+                    <span style="font-family:Nunito;font-weight:700;font-size:13.5px;color:#9A9082;">2 tbsp honey</span>
+                    <span style="font-family:Nunito;font-weight:800;font-size:11px;color:#9A9082;">0:19</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:7px;position:absolute;left:20px;right:20px;bottom:42px;">
+                  <span class="msl" style="font-size:16px;color:#9A9082;">check</span>
+                  <span style="font-family:Nunito;font-weight:700;font-size:13px;color:#9A9082;">You can close this, Glutt finishes it for you</span>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+
+        <!-- 1c evidence -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">2 · Every line, sourced</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#1A140F;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;left:0;right:0;top:0;width:100%;height:250px;object-fit:cover;display:block;">
+              <div style="position:absolute;left:0;right:0;top:0;height:250px;background:linear-gradient(to bottom, rgba(20,15,10,0.55), rgba(20,15,10,0.05) 55%, rgba(20,15,10,0.35));"></div>
+              <div style="position:absolute;top:62px;left:20px;right:20px;display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:7px;background:rgba(255,253,247,0.92);border-radius:100px;padding:7px 13px;">
+                  <span class="ms" style="font-size:15px;color:#2E5339;">check_circle</span>
+                  <span style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:#241E19;">Heard it all</span>
+                </div>
+                <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,253,247,0.92);display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:19px;color:#241E19;">close</span></div>
+              </div>
+
+              <div class="gs" style="position:absolute;left:0;right:0;top:224px;bottom:0;background:#FAF3E7;border-radius:26px 26px 0 0;overflow:auto;">
+                <div style="padding:22px 20px 130px;">
+                  <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:26px;letter-spacing:-0.7px;line-height:1.08;color:#241E19;">Korean Beef Bowl Meal Prep</div>
+                  <div style="font-family:Nunito;font-weight:600;font-size:14.5px;color:#6E6456;margin-top:7px;line-height:1.4;">From a 47 second reel by thesapor. Glutt heard 12 of 12 ingredients spoken out loud.</div>
+
+                  <div style="display:flex;align-items:center;gap:9px;margin-top:16px;background:#EAF1E7;border-radius:16px;padding:12px 14px;">
+                    <span class="ms" style="font-size:20px;color:#2E5339;">verified</span>
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-family:Nunito;font-weight:800;font-size:13.5px;color:#2E5339;">Nothing was invented</div>
+                      <div style="font-family:Nunito;font-weight:600;font-size:12.5px;color:#4E6B54;margin-top:1px;">Tap any timestamp to hear that line again.</div>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin:22px 0 9px;">
+                    <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;">Ingredients</div>
+                    <div style="display:flex;align-items:center;gap:5px;"><span style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#2E5339;">all 12</span><span class="msl" style="font-size:15px;color:#2E5339;">expand_more</span></div>
+                  </div>
+                  <div style="background:#FFFDF7;border:1px solid rgba(42,36,32,0.06);border-radius:20px;padding:2px 14px;box-shadow:0 6px 16px rgba(42,36,32,0.04);">
+                    <div style="display:flex;align-items:center;gap:13px;padding:12px 0;">
+                      <div style="width:46px;height:46px;border-radius:13px;background:#F4EDDC;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><img src="assets/ing-beef.png" alt="" style="width:30px;height:30px;object-fit:contain;display:block;"></div>
+                      <div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:700;font-size:15px;color:#241E19;">Ground beef</div><div style="font-family:Nunito;font-weight:700;font-size:12.5px;color:#829A86;margin-top:1px;">1 lb · in your kitchen</div></div>
+                      <div style="display:flex;align-items:center;gap:4px;background:#F1E9D6;border-radius:100px;padding:5px 9px;flex-shrink:0;"><span class="ms" style="font-size:13px;color:#6E6456;">play_arrow</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#6E6456;">0:03</span></div>
+                    </div>
+                    <div style="height:1px;background:#EFE7D6;margin-left:59px;"></div>
+                    <div style="display:flex;align-items:center;gap:13px;padding:12px 0;">
+                      <div style="width:46px;height:46px;border-radius:13px;background:#F4EDDC;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><img src="assets/ing-rice.png" alt="" style="width:30px;height:30px;object-fit:contain;display:block;"></div>
+                      <div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:700;font-size:15px;color:#241E19;">Jasmine rice</div><div style="font-family:Nunito;font-weight:700;font-size:12.5px;color:#829A86;margin-top:1px;">2 cups · in your kitchen</div></div>
+                      <div style="display:flex;align-items:center;gap:4px;background:#F1E9D6;border-radius:100px;padding:5px 9px;flex-shrink:0;"><span class="ms" style="font-size:13px;color:#6E6456;">play_arrow</span><span style="font-family:Nunito;font-weight:800;font-size:11px;color:#6E6456;">0:08</span></div>
+                    </div>
+                  </div>
+
+                  <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#2E5339;margin:22px 0 9px;">Method</div>
+                  <div style="background:#FFFDF7;border:1px solid rgba(42,36,32,0.06);border-radius:20px;padding:16px;box-shadow:0 6px 16px rgba(42,36,32,0.04);display:flex;flex-direction:column;gap:14px;">
+                    <div style="display:flex;gap:12px;">
+                      <div style="width:24px;height:24px;border-radius:9px;background:#EAF1E7;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:Nunito;font-weight:800;font-size:12.5px;color:#2E5339;">1</div>
+                      <div style="flex:1;font-family:Nunito;font-weight:600;font-size:14.5px;line-height:1.45;color:#2A2420;">Rinse the rice until the water runs clear, then cook it.</div>
+                    </div>
+                    <div style="display:flex;gap:12px;">
+                      <div style="width:24px;height:24px;border-radius:9px;background:#EAF1E7;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:Nunito;font-weight:800;font-size:12.5px;color:#2E5339;">2</div>
+                      <div style="flex:1;font-family:Nunito;font-weight:600;font-size:14.5px;line-height:1.45;color:#2A2420;">Brown the beef over high heat, breaking it up as it goes.</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:7px;">
+                      <span style="font-family:Nunito;font-weight:800;font-size:13.5px;color:#2E5339;">4 more steps</span>
+                      <span class="msl" style="font-size:16px;color:#2E5339;">expand_more</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="position:absolute;left:0;right:0;bottom:0;padding:18px 20px 30px;background:linear-gradient(to top, #FAF3E7 68%, rgba(250,243,231,0));z-index:5;">
+                <div style="display:flex;gap:10px;align-items:center;">
+                  <div style="flex:1;background:#2E5339;border-radius:100px;padding:16px;text-align:center;font-family:Nunito;font-weight:800;font-size:16px;color:#FBF5E9;box-shadow:0 10px 24px rgba(42,36,32,0.14);">Save to Glutt</div>
+                  <div style="width:54px;height:54px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);display:flex;align-items:center;justify-content:center;"><span class="msl" style="font-size:22px;color:#3A342C;">edit</span></div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+
+        <!-- 1c saved -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">3 · Saved, then what</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#17120E;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.28;">
+              <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#FAF3E7;border-radius:26px 26px 0 0;overflow:hidden;display:flex;flex-direction:column;padding:34px 24px 30px;">
+                <div style="display:flex;justify-content:center;margin-top:26px;">
+                  <div style="width:76px;height:76px;border-radius:50%;background:#2E5339;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px rgba(42,36,32,0.16);"><span class="ms" style="font-size:42px;color:#FBF5E9;">check</span></div>
+                </div>
+                <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:30px;letter-spacing:-0.8px;color:#241E19;text-align:center;margin-top:24px;line-height:1.1;">Saved, with the video</div>
+                <div style="font-family:Nunito;font-weight:600;font-size:15px;color:#6E6456;text-align:center;margin-top:9px;line-height:1.45;">Every step keeps its clip, so you can watch the tricky bits while you cook.</div>
+
+                <div style="margin-top:30px;background:#FFFDF7;border:1px solid rgba(42,36,32,0.07);border-radius:24px;padding:14px;box-shadow:0 8px 20px rgba(42,36,32,0.05);display:flex;align-items:center;gap:14px;">
+                  <div style="position:relative;flex-shrink:0;">
+                    <img src="assets/food-korean-beef.png" alt="" style="width:74px;height:74px;border-radius:18px;object-fit:cover;display:block;">
+                    <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;background:rgba(255,253,247,0.94);display:flex;align-items:center;justify-content:center;"><span class="ms" style="font-size:18px;color:#241E19;">play_arrow</span></div>
+                  </div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:17px;letter-spacing:-0.3px;line-height:1.15;color:#241E19;">Korean Beef Bowl Meal Prep</div>
+                    <div style="font-family:Nunito;font-weight:700;font-size:12.5px;color:#9A9082;margin-top:4px;">35 min · 6 steps · 8 of 12 in your kitchen</div>
+                  </div>
+                </div>
+
+                <div style="flex:1;"></div>
+
+                <div style="display:flex;flex-direction:column;gap:11px;">
+                  <div style="display:flex;align-items:center;gap:12px;background:#2E5339;border-radius:100px;padding:15px 18px;box-shadow:0 10px 24px rgba(42,36,32,0.14);">
+                    <span class="ms" style="font-size:22px;color:#8FE3A3;">graphic_eq</span>
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-family:Nunito;font-weight:800;font-size:16px;color:#FBF5E9;">Cook it with Polly</div>
+                      <div style="font-family:Nunito;font-weight:600;font-size:12.5px;color:rgba(251,245,233,0.7);margin-top:1px;">She has watched the video too</div>
+                    </div>
+                    <span class="msl" style="font-size:20px;color:rgba(251,245,233,0.7);">arrow_forward</span>
+                  </div>
+                  <div style="display:flex;gap:10px;">
+                    <div style="flex:1;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);border-radius:100px;padding:14px;text-align:center;font-family:Nunito;font-weight:800;font-size:15px;color:#3A342C;">Add 4 to groceries</div>
+                    <div style="background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);border-radius:100px;padding:14px 20px;text-align:center;font-family:Nunito;font-weight:800;font-size:15px;color:#3A342C;">Done</div>
+                  </div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ============================ 1d ============================ -->
+    <sc-if value="{{ showD }}" hint-placeholder-val="{{ true }}">
+    <div id="1d" style="display:flex;flex-direction:column;gap:20px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-family:Nunito;font-weight:800;font-size:12px;letter-spacing:1px;padding:6px 11px;border-radius:8px;background:#2E5339;color:#F4ECDF;">1d</div>
+        <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:26px;letter-spacing:-0.5px;">Never leaves the post</div>
+      </div>
+      <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+      <div style="max-width:1250px;font-family:Nunito;font-weight:600;font-size:15.5px;line-height:1.55;color:#6E6456;text-wrap:pretty;">The opposite bet. Saving a recipe while scrolling is a reflex, not a task, so the sheet shrinks to a card at the bottom and never asks you to read anything. One glance, one tap, back to the feed. Review moves into the app, where there is room for it, and the card tells you what changed in your kitchen on the way out.</div>
+      </sc-if>
+      <div style="display:flex;gap:28px;align-items:flex-start;">
+
+        <!-- 1d importing -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">1 · Working</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#0E0B08;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.5;">
+              <div style="position:absolute;inset:0;background:rgba(14,11,8,0.45);"></div>
+
+              <div style="position:absolute;left:12px;right:12px;bottom:12px;background:#FAF3E7;border-radius:30px;padding:20px;box-shadow:0 -10px 40px rgba(0,0,0,0.35);">
+                <div style="height:4px;border-radius:100px;background:#EBE2D4;overflow:hidden;">
+                  <div style="width:44%;height:100%;border-radius:100px;background:#2E5339;"></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:14px;margin-top:18px;">
+                  <img src="assets/food-korean-beef.png" alt="" style="width:64px;height:64px;border-radius:18px;object-fit:cover;display:block;flex-shrink:0;">
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:19px;letter-spacing:-0.4px;line-height:1.12;color:#241E19;">Korean Beef Bowl Meal Prep</div>
+                    <div style="display:flex;align-items:center;gap:7px;margin-top:7px;">
+                      <div style="width:6px;height:6px;border-radius:50%;background:#2E5339;"></div>
+                      <div style="font-family:Nunito;font-weight:700;font-size:13px;color:#2E5339;">Listening to the video</div>
+                    </div>
+                  </div>
+                  <div style="font-family:Nunito;font-weight:800;font-size:13px;color:#9A9082;flex-shrink:0;">4s</div>
+                </div>
+                <div style="height:1px;background:#EFE7D6;margin:18px 0 14px;"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div style="font-family:Nunito;font-weight:700;font-size:13px;color:#9A9082;">Saving on its own, you can keep scrolling</div>
+                  <div style="font-family:Nunito;font-weight:800;font-size:14px;color:#6E6456;">Cancel</div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(255,255,255,0.7);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+
+        <!-- 1d ready -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">2 · One tap to keep</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#0E0B08;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.5;">
+              <div style="position:absolute;inset:0;background:rgba(14,11,8,0.45);"></div>
+
+              <div style="position:absolute;left:12px;right:12px;bottom:12px;background:#FAF3E7;border-radius:30px;padding:20px;box-shadow:0 -10px 40px rgba(0,0,0,0.35);">
+                <div style="display:flex;align-items:center;gap:14px;">
+                  <img src="assets/food-korean-beef.png" alt="" style="width:72px;height:72px;border-radius:20px;object-fit:cover;display:block;flex-shrink:0;">
+                  <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                      <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:20px;letter-spacing:-0.4px;line-height:1.12;color:#241E19;">Korean Beef Bowl</div>
+                      <span class="msl" style="font-size:16px;color:#9A9082;">edit</span>
+                    </div>
+                    <div style="font-family:Nunito;font-weight:700;font-size:13px;color:#9A9082;margin-top:5px;">thesapor · 35 min · 12 ingredients · 6 steps</div>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:7px;margin-top:16px;flex-wrap:wrap;">
+                  <div style="display:flex;align-items:center;gap:5px;background:#EAF1E7;border-radius:100px;padding:7px 12px;"><span class="ms" style="font-size:15px;color:#2E5339;">check_circle</span><span style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#2E5339;">8 of 12 in your kitchen</span></div>
+                  <div style="display:flex;align-items:center;gap:5px;background:#F4EDDC;border-radius:100px;padding:7px 12px;"><span class="msl" style="font-size:15px;color:#6E6456;">bolt</span><span style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#4A4238;">38 g protein</span></div>
+                </div>
+
+                <div style="display:flex;gap:6px;margin-top:16px;">
+                  <div style="width:44px;height:44px;border-radius:13px;background:#F4EDDC;display:flex;align-items:center;justify-content:center;"><img src="assets/ing-beef.png" alt="" style="width:28px;height:28px;object-fit:contain;display:block;"></div>
+                  <div style="width:44px;height:44px;border-radius:13px;background:#F4EDDC;display:flex;align-items:center;justify-content:center;"><img src="assets/ing-rice.png" alt="" style="width:28px;height:28px;object-fit:contain;display:block;"></div>
+                  <div style="width:44px;height:44px;border-radius:13px;background:#F4EDDC;display:flex;align-items:center;justify-content:center;"><img src="assets/ing-scallion.png" alt="" style="width:28px;height:28px;object-fit:contain;display:block;"></div>
+                  <div style="width:44px;height:44px;border-radius:13px;background:#FCF0D6;display:flex;align-items:center;justify-content:center;"><img src="assets/ing-honey.png" alt="" style="width:28px;height:28px;object-fit:contain;display:block;"></div>
+                  <div style="width:44px;height:44px;border-radius:13px;background:#F4EDDC;display:flex;align-items:center;justify-content:center;"><img src="assets/ing-olive-oil.png" alt="" style="width:28px;height:28px;object-fit:contain;display:block;"></div>
+                  <div style="flex:1;height:44px;border-radius:13px;background:#F1E9D6;display:flex;align-items:center;justify-content:center;font-family:Nunito;font-weight:800;font-size:13px;color:#6E6456;">+7</div>
+                </div>
+
+                <div style="display:flex;gap:10px;align-items:center;margin-top:20px;">
+                  <div style="flex:1;background:#2E5339;border-radius:100px;padding:16px;text-align:center;font-family:Nunito;font-weight:800;font-size:16px;color:#FBF5E9;box-shadow:0 10px 24px rgba(42,36,32,0.14);">Keep it</div>
+                  <div style="width:54px;height:54px;border-radius:100px;background:#FFFDF7;border:1.5px solid rgba(42,36,32,0.08);display:flex;align-items:center;justify-content:center;"><span class="msl" style="font-size:22px;color:#3A342C;">close</span></div>
+                </div>
+                <div style="text-align:center;font-family:Nunito;font-weight:700;font-size:13px;color:#9A9082;margin-top:14px;">Fix anything later in Glutt</div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(255,255,255,0.7);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+
+        <!-- 1d saved -->
+        <div style="display:flex;flex-direction:column;gap:11px;align-items:center;">
+          <div style="font-family:Nunito;font-weight:800;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#9A9082;">3 · Gone in two seconds</div>
+          <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="position:absolute;inset:0;background:#0E0B08;">
+              <img src="assets/food-korean-beef.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.72;">
+              <div style="position:absolute;inset:0;background:rgba(14,11,8,0.14);"></div>
+
+              <div style="position:absolute;left:12px;right:12px;bottom:12px;background:#FAF3E7;border-radius:30px;padding:18px 20px;box-shadow:0 -10px 40px rgba(0,0,0,0.3);">
+                <div style="display:flex;align-items:center;gap:14px;">
+                  <div style="width:44px;height:44px;border-radius:50%;background:#2E5339;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="ms" style="font-size:26px;color:#FBF5E9;">check</span></div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:19px;letter-spacing:-0.4px;color:#241E19;">Saved to Glutt</div>
+                    <div style="font-family:Nunito;font-weight:700;font-size:13px;color:#6E6456;margin-top:3px;">Honey and 3 more went on your list</div>
+                  </div>
+                  <div style="font-family:Nunito;font-weight:800;font-size:14px;color:#2E5339;flex-shrink:0;">Undo</div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:100px;background:rgba(255,255,255,0.7);z-index:70;"></div>
+            </div>
+          </x-import>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showToday&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Board&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Board&quot;},&quot;focus&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;all&quot;,&quot;1b&quot;,&quot;1c&quot;,&quot;1d&quot;],&quot;default&quot;:&quot;all&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Board&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const focus = p.focus ?? 'all';
+    return {
+      showToday: (p.showToday ?? true) && focus === 'all',
+      showNotes: p.showNotes ?? true,
+      showB: focus === 'all' || focus === '1b',
+      showC: focus === 'all' || focus === '1c',
+      showD: focus === 'all' || focus === '1d',
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -92,18 +92,61 @@ export default async function handler(req, res) {
   }
   if (elevenVoiceID && elevenKey && /^[A-Za-z0-9]+$/.test(elevenVoiceID)) {
     const elevenModel = (process.env.POLLY_ELEVENLABS_MODEL || "").trim() || "eleven_turbo_v2_5";
+
+    // Continuity. Each request is otherwise an independent generation with no
+    // memory of the last, so tone and energy drift line to line and the cook
+    // hears a slightly different person every turn. ElevenLabs' request
+    // stitching exists for exactly this: previous_request_ids conditions this
+    // generation on ones already completed, previous_text does the same from
+    // the words alone. Max 3 ids, and each must have finished — ours have,
+    // because we read the whole body before returning.
+    const previousText = typeof req.body?.previousText === "string"
+      ? req.body.previousText.slice(-600)
+      : "";
+    const previousRequestIds = Array.isArray(req.body?.previousRequestIds)
+      ? req.body.previousRequestIds.filter((id) => typeof id === "string" && id).slice(-3)
+      : [];
+
+    // Pinned rather than left to the voice's saved defaults, because
+    // `stability` IS the randomness-between-generations knob and leaving it
+    // unset is what let the voice wander. Mid-range keeps her recognisably the
+    // same person without flattening her into a monotone. `style` stays 0: it
+    // exaggerates delivery, and it costs latency we are already short of.
+    const num = (value, fallback) => {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    };
+    const voiceSettings = {
+      stability: num(process.env.POLLY_ELEVENLABS_STABILITY, 0.55),
+      similarity_boost: num(process.env.POLLY_ELEVENLABS_SIMILARITY, 0.8),
+      style: num(process.env.POLLY_ELEVENLABS_STYLE, 0),
+      use_speaker_boost: true,
+    };
+
     try {
       const upstream = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${elevenVoiceID}?output_format=mp3_44100_128`,
         {
           method: "POST",
           headers: { "xi-api-key": elevenKey, "Content-Type": "application/json" },
-          body: JSON.stringify({ text, model_id: elevenModel }),
+          body: JSON.stringify({
+            text,
+            model_id: elevenModel,
+            voice_settings: voiceSettings,
+            ...(previousText ? { previous_text: previousText } : {}),
+            ...(previousRequestIds.length ? { previous_request_ids: previousRequestIds } : {}),
+          }),
           signal: AbortSignal.timeout(45_000),
         }
       );
       if (upstream.ok) {
         const audio = Buffer.from(await upstream.arrayBuffer());
+        // Handed back so the next line can be stitched onto this one. Without
+        // returning it the client has nothing to chain and every generation
+        // starts cold again.
+        const requestId = upstream.headers.get("request-id")
+          || upstream.headers.get("x-request-id") || "";
+        if (requestId) res.setHeader("x-glutt-tts-request-id", requestId);
         await logUsage({
           feature: "polly_speak",
           model: elevenModel,

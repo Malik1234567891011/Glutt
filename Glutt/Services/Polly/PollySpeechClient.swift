@@ -34,6 +34,15 @@ struct PollySpeechClient {
     ///   the proxy renders the briefing with it. The proxy falls back to OpenAI
     ///   TTS if ElevenLabs is unreachable, so the wrong voice is the worst case,
     ///   never a silent briefing.
+    /// Audio plus the id needed to stitch the NEXT line onto this one.
+    struct Spoken {
+        let audio: Data
+        /// ElevenLabs request id, when a cloned voice rendered it. Feed back as
+        /// `previousRequestIds` so tone carries across utterances.
+        let requestID: String?
+    }
+
+    /// Convenience for callers that don't chain (the briefing renders whole).
     func speak(
         _ text: String,
         instructions: String? = nil,
@@ -41,6 +50,28 @@ struct PollySpeechClient {
         elevenLabsVoiceID: String? = nil,
         timeout: TimeInterval = 40
     ) async throws -> Data {
+        try await speakWithContinuity(
+            text, instructions: instructions, speed: speed,
+            elevenLabsVoiceID: elevenLabsVoiceID, timeout: timeout).audio
+    }
+
+    /// - Parameters:
+    ///   - previousText: the line spoken immediately before this one.
+    ///   - previousRequestIds: up to 3 completed ElevenLabs request ids.
+    ///
+    /// Both exist because each synthesis is otherwise an independent generation
+    /// with no memory of the last, so tone and energy drift line to line and the
+    /// cook hears a slightly different person every turn. This is ElevenLabs'
+    /// documented fix for it.
+    func speakWithContinuity(
+        _ text: String,
+        instructions: String? = nil,
+        speed: Double = 1.2,
+        elevenLabsVoiceID: String? = nil,
+        previousText: String? = nil,
+        previousRequestIds: [String] = [],
+        timeout: TimeInterval = 40
+    ) async throws -> Spoken {
         guard isConfigured else { throw SpeechError.notConfigured }
 
         let root = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
@@ -65,6 +96,12 @@ struct PollySpeechClient {
         if let elevenLabsVoiceID, !elevenLabsVoiceID.isEmpty {
             body["elevenLabsVoiceId"] = elevenLabsVoiceID
         }
+        if let previousText, !previousText.isEmpty {
+            body["previousText"] = previousText
+        }
+        if !previousRequestIds.isEmpty {
+            body["previousRequestIds"] = previousRequestIds
+        }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await transport(request)
@@ -78,6 +115,7 @@ struct PollySpeechClient {
         guard !data.isEmpty else {
             throw SpeechError.upstream("empty audio")
         }
-        return data
+        let requestID = http.value(forHTTPHeaderField: "x-glutt-tts-request-id")
+        return Spoken(audio: data, requestID: requestID?.isEmpty == false ? requestID : nil)
     }
 }

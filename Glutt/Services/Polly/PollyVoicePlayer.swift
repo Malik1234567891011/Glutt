@@ -45,6 +45,14 @@ final class PollyVoicePlayer: NSObject, AVAudioPlayerDelegate {
     /// checks this and throws its audio away instead of talking over the cook.
     private var generation = 0
 
+    /// Continuity across utterances. Each synthesis is otherwise an independent
+    /// generation with no memory of the last, so tone, energy and even the
+    /// apparent person drift line to line — reported from a real cook as "every
+    /// time it talks, the voice changes a bit". ElevenLabs conditions on both
+    /// the previous words and up to three completed request ids.
+    private var lastSpokenText: String?
+    private var recentRequestIDs: [String] = []
+
     init(speech: PollySpeechClient = .live) {
         self.speech = speech
         super.init()
@@ -65,17 +73,31 @@ final class PollyVoicePlayer: NSObject, AVAudioPlayerDelegate {
         currentTask = Task { [weak self] in
             guard let self else { return }
             let startedAt = Date()
-            let audio = try? await speech.speak(trimmed, elevenLabsVoiceID: voiceID)
+            let spoken = try? await speech.speakWithContinuity(
+                trimmed,
+                elevenLabsVoiceID: voiceID,
+                previousText: self.lastSpokenText,
+                previousRequestIds: self.recentRequestIDs)
             guard !Task.isCancelled, gen == self.generation else { return }
-            guard let audio, !audio.isEmpty else {
+            guard let spoken, !spoken.audio.isEmpty else {
                 // Silence is the one outcome a cooking assistant must never
                 // produce, so say so loudly in the log rather than just stopping.
                 PollyDebugLog.shared.log("voice: SYNTHESIS FAILED — she will be silent this turn")
                 return
             }
+            // Only chain from lines that actually reached the speaker. Stitching
+            // onto a generation the cook never heard would carry over prosody
+            // from a turn that, as far as they are concerned, never happened.
+            self.lastSpokenText = trimmed
+            if let id = spoken.requestID {
+                self.recentRequestIDs.append(id)
+                if self.recentRequestIDs.count > 3 { self.recentRequestIDs.removeFirst() }
+            }
             let ms = Int(Date().timeIntervalSince(startedAt) * 1000)
-            PollyDebugLog.shared.log("voice: synthesised \(audio.count) bytes in \(ms) ms")
-            self.play(audio)
+            PollyDebugLog.shared.log(
+                "voice: synthesised \(spoken.audio.count) bytes in \(ms) ms"
+                + " (stitched from \(self.recentRequestIDs.count))")
+            self.play(spoken.audio)
         }
     }
 

@@ -644,6 +644,53 @@ async function runMatch({ apiKey, model, videoId, canonicalURL, recipeTitle, ste
   return { ...result, cached: false };
 }
 
+/**
+ * Programmatic ground→refine for background import indexing.
+ * Used by mediaIngest action=analyze (does not serve HTTP itself).
+ */
+export async function indexYouTubeClips({
+  apiKey,
+  model,
+  youtubeURL,
+  recipeTitle,
+  steps: stepsIn,
+  force = false,
+  durationSeconds: bodyDuration,
+}) {
+  const videoId = youtubeVideoId(youtubeURL);
+  if (!videoId) {
+    const err = new Error("youtube_url must be a valid YouTube watch/youtu.be URL");
+    err.status = 400;
+    throw err;
+  }
+  const steps = normalizeSteps(stepsIn);
+  const canonicalURL = normalizeYoutubeURL(youtubeURL, videoId);
+  const durationSeconds = videoDuration(videoId, bodyDuration);
+  const grounded = await runGround({
+    apiKey,
+    model,
+    videoId,
+    canonicalURL,
+    recipeTitle: recipeTitle || "Recipe",
+    steps,
+    durationSeconds,
+    force,
+  });
+  if (!steps.length || !(grounded.clips || []).length) return grounded;
+  const refined = await runRefine({
+    apiKey,
+    model,
+    videoId,
+    canonicalURL,
+    recipeTitle: recipeTitle || "Recipe",
+    steps,
+    clips: grounded.clips,
+    durationSeconds,
+    force,
+  });
+  return refined;
+}
+
 export async function handleCookClips(req, res) {
   res.setHeader("x-glutt-proxy-version", "cook-clips-2026-07-29-3");
 

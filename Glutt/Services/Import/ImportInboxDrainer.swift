@@ -25,6 +25,9 @@ enum ImportInboxDrainer {
         for _ in inserted {
             Analytics.capture(.recipeCreated, ["source": "import_share"])
         }
+        for (_, recipe) in inserted {
+            Task { await MediaClipEnqueue.ensure(for: recipe, in: context) }
+        }
         var map: [UUID: PersistentIdentifier] = [:]
         for (id, recipe) in inserted {
             map[id] = recipe.persistentModelID

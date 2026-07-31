@@ -311,7 +311,10 @@ struct ImportReviewView: View {
         for collection in collections where selectedCollections.contains(collection.persistentModelID) {
             collection.recipes.append(recipe)
         }
-        Task { await RecipeImageBackfill.ensure(for: recipe, in: context) }
+        Task {
+            await RecipeImageBackfill.ensure(for: recipe, in: context)
+            await MediaClipEnqueue.ensure(for: recipe, in: context)
+        }
         onDone()
     }
 }

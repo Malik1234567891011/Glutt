@@ -394,34 +394,31 @@ final class PollySessionController {
             guard let self else { return }
             defer { self.isIndexingStepClips = false }
 
-            // Prefer native downloaded clips (media-worker) when available.
-            if NativeClipService.supportsPilot(mediaID: mediaID) {
-                do {
-                    let pilot = try await NativeClipService.shared.pilotClips(mediaID: mediaID)
-                    var nativeMap: [String: NativeStepClip] = [:]
-                    for step in plan.steps where !CookPlan.isSetupStep(step) {
-                        if let clip = await NativeClipService.shared.clipMatching(
-                            stepTitle: step.title,
-                            instruction: step.instruction,
-                            in: pilot
-                        ) {
-                            nativeMap[step.id] = clip
-                        }
+            // Prefer native Supabase clips whenever ready for this media id.
+            do {
+                let pilot = try await NativeClipService.shared.clips(forMediaID: mediaID)
+                var nativeMap: [String: NativeStepClip] = [:]
+                for step in plan.steps where !CookPlan.isSetupStep(step) {
+                    if let clip = await NativeClipService.shared.clipMatching(
+                        stepTitle: step.title,
+                        instruction: step.instruction,
+                        in: pilot
+                    ) {
+                        nativeMap[step.id] = clip
                     }
-                    self.nativeClipsByStepID = nativeMap
-                    PollyDebugLog.shared.log("clips: native pilot \(mediaID) matched \(nativeMap.count) steps")
-                    self.publishSessionUI()
-                    // If the cook is already on a clip step when matches arrive, start it.
-                    if self.nativeClipForCurrentStep() != nil {
-                        self.syncClipPlaybackForCurrentStep()
-                    }
-                    await self.injectTechniqueClipContext(nativeMap)
-                    if !nativeMap.isEmpty { return }
-                } catch {
-                    PollyDebugLog.shared.log(
-                        "clips: native pilot unavailable — \(error.localizedDescription); falling back to YouTube index"
-                    )
                 }
+                self.nativeClipsByStepID = nativeMap
+                PollyDebugLog.shared.log("clips: native \(mediaID) matched \(nativeMap.count) steps")
+                self.publishSessionUI()
+                if self.nativeClipForCurrentStep() != nil {
+                    self.syncClipPlaybackForCurrentStep()
+                }
+                await self.injectTechniqueClipContext(nativeMap)
+                if !nativeMap.isEmpty { return }
+            } catch {
+                PollyDebugLog.shared.log(
+                    "clips: native unavailable — \(error.localizedDescription); falling back if YouTube"
+                )
             }
 
             // Gemini timestamp index — YouTube only for now (proxy passes YT URL to Gemini).

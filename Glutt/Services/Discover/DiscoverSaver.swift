@@ -36,6 +36,7 @@ enum DiscoverSaver {
         context.insert(recipe)
         try context.save()
         Analytics.capture(.recipeCreated, ["source": "discover"])
+        Task { await MediaClipEnqueue.ensure(for: recipe, in: context) }
         return recipe
     }
 }

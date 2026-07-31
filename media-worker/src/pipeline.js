@@ -279,9 +279,14 @@ async function materializePilotClips(sourceAssetId, normalizedKey, workRoot) {
 export async function createIngestJob({ sourceUrl, rightsRecordId, clearanceNotes }) {
   const { url } = downloaderFor(sourceUrl);
   const platform = (await import("./security.js")).detectPlatform(url);
-  const externalId = platform === "youtube"
-    ? (await import("./security.js")).youtubeExternalId(url)
-    : null;
+  const sec = await import("./security.js");
+  let externalId = null;
+  if (platform === "youtube") externalId = sec.youtubeExternalId(url);
+  else if (platform === "tiktok") {
+    const parts = new URL(url).pathname.split("/").filter(Boolean);
+    const i = parts.indexOf("video");
+    if (i >= 0 && parts[i + 1] && /^\d+$/.test(parts[i + 1])) externalId = parts[i + 1];
+  }
 
   let rightsId = rightsRecordId;
   if (!rightsId) {

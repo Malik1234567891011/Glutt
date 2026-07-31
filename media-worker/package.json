@@ -16,7 +16,8 @@
     "evidence": "node src/cli.js evidence",
     "normalize": "node src/cli.js normalize",
     "serve-local": "node src/localPlaybackServer.js",
-    "sync:supabase": "node scripts/syncToSupabase.js"
+    "sync:supabase": "node scripts/syncToSupabase.js",
+    "claim:supabase": "node scripts/claimSupabaseJobs.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.850.0",

@@ -13,6 +13,18 @@ export function supabaseConfigured() {
   return Boolean(supabaseConfig());
 }
 
+/** Upsert rows. `onConflict` is a comma-separated PK/unique column list. */
+export async function sbUpsert(table, rows, onConflict) {
+  const list = Array.isArray(rows) ? rows : [rows];
+  if (!list.length) return [];
+  const q = onConflict ? `?on_conflict=${encodeURIComponent(onConflict)}` : "";
+  return sb(`${table}${q}`, {
+    method: "POST",
+    body: list,
+    prefer: "resolution=merge-duplicates,return=representation",
+  });
+}
+
 export async function sb(pathname, { method = "GET", body, prefer } = {}) {
   const cfg = supabaseConfig();
   if (!cfg) {

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Fetches native step clips for Polly.
+/// Fetches native step clips for Polly by media `external_id` (YouTube / TikTok).
 /// Production: signed progressive MP4s from Supabase Storage via the AI proxy.
 /// Optional local override: Secrets `mediaPlaybackBaseURL` → media-worker serve-local.
 actor NativeClipService {
@@ -24,49 +24,52 @@ actor NativeClipService {
 
     private let defaults = UserDefaults.standard
 
-    /// Known pilot media ids (YouTube / TikTok) → local path (dev) + cache key.
-    private static let pilots: [String: (localPath: String, cacheKey: String)] = [
-        "gBJjRYk0yC0": ("/v1/pilot/eggs-benedict", "glutt.nativeClips.eggsBenedict.v9"),
-        "Cyskqnp1j64": ("/v1/pilot/beef-wellington", "glutt.nativeClips.beefWellington.v5"),
-        "7333706662634704161": ("/v1/pilot/tiktok-scrambled-eggs", "glutt.nativeClips.ttScramble.v3"),
+    /// Optional local playback paths when `mediaPlaybackBaseURL` is set (dev only).
+    private static let localPaths: [String: String] = [
+        "gBJjRYk0yC0": "/v1/pilot/eggs-benedict",
+        "Cyskqnp1j64": "/v1/pilot/beef-wellington",
+        "7333706662634704161": "/v1/pilot/tiktok-scrambled-eggs",
     ]
 
-    func pilotClips(mediaID: String, force: Bool = false) async throws -> NativePilotClipsResponse {
-        guard let pilot = Self.pilots[mediaID] else {
-            throw NSError(domain: "NativeClipService", code: 404, userInfo: [
-                NSLocalizedDescriptionKey: "no pilot for media id \(mediaID)",
-            ])
-        }
-        if !force, let cached = loadCache(key: pilot.cacheKey) { return cached }
+    private func cacheKey(for mediaID: String) -> String {
+        "glutt.nativeClips.\(mediaID).v1"
+    }
 
-        let decoded: NativePilotClipsResponse
-        if let local = localBaseURL {
-            decoded = try await fetchLocalPilot(base: local, path: pilot.localPath)
+    /// Fetch clips for any media id. Throws on network/404 — caller falls back.
+    func clips(forMediaID mediaID: String, force: Bool = false) async throws -> NativePilotClipsResponse {
+        let key = cacheKey(for: mediaID)
+        if !force, let cached = loadCache(key: key) { return cached }
+
+        if let local = localBaseURL, let path = Self.localPaths[mediaID] {
+            let decoded = try await fetchLocalPilot(base: local, path: path)
             let rewritten = rewriteLocalhostURLs(in: decoded, using: local)
-            saveCache(rewritten, key: pilot.cacheKey)
+            saveCache(rewritten, key: key)
             return rewritten
         }
 
-        decoded = try await fetchProxyClips(externalID: mediaID)
-        saveCache(decoded, key: pilot.cacheKey)
+        let decoded = try await fetchProxyClips(externalID: mediaID)
+        saveCache(decoded, key: key)
         return decoded
     }
 
-    /// Back-compat name — media id may be YouTube or TikTok.
+    /// Back-compat name used by Polly session.
+    func pilotClips(mediaID: String, force: Bool = false) async throws -> NativePilotClipsResponse {
+        try await clips(forMediaID: mediaID, force: force)
+    }
+
     func pilotClips(youtubeID: String, force: Bool = false) async throws -> NativePilotClipsResponse {
-        try await pilotClips(mediaID: youtubeID, force: force)
+        try await clips(forMediaID: youtubeID, force: force)
     }
 
-    /// Back-compat for Eggs Benedict call sites / tests.
     func eggsBenedictPilot(force: Bool = false) async throws -> NativePilotClipsResponse {
-        try await pilotClips(mediaID: "gBJjRYk0yC0", force: force)
+        try await clips(forMediaID: "gBJjRYk0yC0", force: force)
     }
 
+    /// Always true when we have a media id — proxy may still 404 until ready.
     static func supportsPilot(mediaID: String) -> Bool {
-        pilots[mediaID] != nil
+        !mediaID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    /// Back-compat alias.
     static func supportsPilot(youtubeID: String) -> Bool {
         supportsPilot(mediaID: youtubeID)
     }
@@ -97,14 +100,9 @@ actor NativeClipService {
         return best?.clip
     }
 
-    /// Phrase or token match with word boundaries (spaces/punctuation).
-    /// "sear" → "sear the fillet" yes; "seared" no.
-    /// "mushroom" → "mushrooms" yes (simple plural).
-    /// "wrap" → "unwrap" no (left boundary).
     private func hayContainsKeyword(_ hay: String, _ key: String) -> Bool {
         if key.contains(" ") { return hay.contains(key) }
         let escaped = NSRegularExpression.escapedPattern(for: key)
-        // Optional plural s/es only — not arbitrary suffixes like "ed".
         guard let regex = try? NSRegularExpression(
             pattern: "(?<![a-z0-9])\(escaped)(?:es|s)?(?![a-z0-9])",
             options: []

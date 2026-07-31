@@ -27,11 +27,18 @@ export default async function handler(req, res) {
     return handleMediaIngest(req, res);
   }
 
-  // GET media ingest status when action/job ids present.
+  // GET media ingest status (also rewritten from /api/media/ingest).
   const ingestAction = (req.query?.action || "").toString();
+  const rawURL =
+    (req.headers["x-forwarded-uri"] || req.headers["x-invoke-path"] || req.url || "").toString();
   if (
     req.method === "GET" &&
-    (ingestAction === "status" || req.query?.job_id || req.query?.source_asset_id)
+    (ingestAction === "status"
+      || ingestAction === "enqueue"
+      || req.query?.job_id
+      || req.query?.source_asset_id
+      || req.query?.external_id
+      || rawURL.includes("/media/ingest"))
   ) {
     return handleMediaIngest(req, res);
   }

@@ -32,6 +32,17 @@ Local testing is done via `serve-local`. For phones / TestFlight / anyone not on
 4. Deploy `vercel-ai-proxy` so `GET /api/media/clips?external_id=…` is live.
 5. In the app, **omit** `mediaPlaybackBaseURL` from `Secrets.local.plist` so Polly hits the proxy.
 
+### Background jobs (user imports)
+
+After import, the app calls `POST /api/media/ingest` (`enqueue` + YouTube `analyze`).
+Native MP4 materialization is claimed by this worker:
+
+```bash
+npm run claim:supabase -- --loop --interval=30
+```
+
+Leave that running (or on a host) so queued `ingestion_jobs` become `ready` HD clips.
+
 ## Env (optional cloud)
 
 | Var | Purpose |

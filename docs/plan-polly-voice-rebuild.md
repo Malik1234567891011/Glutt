@@ -156,7 +156,32 @@ Branch `polly-voice-rebuild`, 7 commits, 380 tests green, nothing merged.
 | 8 gate | **done** — `create_response`/`interrupt_response` false, `wait_for_user` tool, Unclear Audio and Silence prompt blocks |
 | 9 latency | **done** — voice-to-voice timer in production, p50/p95 on the `cookFinished` PostHog event |
 | 9b usage durability | **not done** — 27 mints produced 10 usage rows. Cost-visibility work, deprioritised |
-| 10 voice spike | **not started** — the decision point for the custom voice |
+| 10 voice spike | **PASSED** — cloned voice ships on device, LiveKit not needed. See below |
+
+### Step 10 result: device-side ElevenLabs playback stays echo-cancelled
+
+Settled 2026-07-31 from three device cooks (45, 293 and 429 line logs), not from
+reasoning.
+
+The question was whether audio the app plays itself — outside libWebRTC, through
+`AVAudioPlayer` on the shared session — is still cancelled by Apple's
+voice-processing unit. `docs/plan-polly-voice-and-cost.md` assumed it would not,
+and used that to argue for LiveKit and server-rendered TTS: "a device-direct
+custom voice does not degrade the echo defence, it dismantles it."
+
+**The decisive test is whether Polly's own words ever come back as a USER
+transcript.** Across every turn of all three cooks, they never do — each `heard:`
+line is the cook, none contains a phrase she spoke. `AEC[avail=1 req=1 ACTIVE=1]`
+throughout. VPIO cancels her even though libWebRTC no longer owns playback.
+
+So: **the cloned voice runs on device. No LiveKit, no Python worker, no
+$50/month, and the 15 tools stay local and zero-hop.** That closes the largest
+open architectural question in both plan documents.
+
+One caveat from the same data. The residue is inaudible to the transcriber but
+not to the RMS meter: the mic reopened mid-utterance at `rms 0.069` and `0.088`
+with the cook silent. `bargeReopenSoftRMS` raised 0.055 → 0.09; real speech
+measured 0.162–0.233 in the same logs.
 
 ### What needs a device, not a simulator
 

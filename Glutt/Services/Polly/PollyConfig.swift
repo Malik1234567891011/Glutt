@@ -64,7 +64,16 @@ enum PollyConfig {
     /// at this capture RMS…
     static let bargeReopenLoudRMS: Float = 0.12
     /// …or two ticks above this within 0.6s (syllable-gap tolerant).
-    static let bargeReopenSoftRMS: Float = 0.055
+    ///
+    /// Raised from 0.055 after three device cooks. Apple's VPIO cancels her
+    /// well enough that her words never reach the transcriber — no log shows a
+    /// line of hers coming back as a user turn — but the residue still clears
+    /// 0.055, so the mic reopened mid-utterance on her own voice: `rms 0.069`
+    /// 1.1s into a turn with the cook silent for another four seconds, `rms
+    /// 0.088` in another. Real speech at counter distance measured 0.162 and
+    /// 0.233 in the same logs, so 0.09 sits comfortably between echo and a
+    /// person while staying far below a raised voice.
+    static let bargeReopenSoftRMS: Float = 0.09
     /// After Polly answers, keep listening this long for a natural follow-up
     /// without requiring "Polly" again. Activity-based: speech during the window
     /// extends the deadline until the turn completes.

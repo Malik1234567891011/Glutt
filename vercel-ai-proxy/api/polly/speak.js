@@ -78,7 +78,9 @@ export default async function handler(req, res) {
   const elevenVoiceID = typeof req.body?.elevenLabsVoiceId === "string"
     ? req.body.elevenLabsVoiceId.trim().slice(0, 64)
     : "";
-  const elevenKey = (process.env.ELEVENLABS_API_KEY || "").trim();
+  // Same two spellings transcribe.js accepts, so one endpoint can't silently
+  // work while the other falls back to the wrong voice.
+  const elevenKey = (process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_LABS_API_KEY || "").trim();
   if (elevenVoiceID && elevenKey && /^[A-Za-z0-9]+$/.test(elevenVoiceID)) {
     const elevenModel = (process.env.POLLY_ELEVENLABS_MODEL || "").trim() || "eleven_turbo_v2_5";
     try {

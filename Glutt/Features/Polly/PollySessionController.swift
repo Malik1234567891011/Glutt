@@ -187,10 +187,17 @@ final class PollySessionController {
         PollyDebugLog.shared.log("preflight: dismissed")
     }
 
-    func setClipMuted(_ muted: Bool) {
+    /// - Parameter announceUnmute: when turning audio on from the UI speaker
+    ///   control, Polly says the short "I'll stay quiet while you listen" line.
+    ///   Voice-tool unmute sets this false — the post-tool response speaks it.
+    func setClipMuted(_ muted: Bool, announceUnmute: Bool = true) {
+        let turningAudioOn = clipMuted && !muted
         clipMuted = muted
         if case .playing(let id, _) = mediaState {
             updateMediaState(.playing(segmentID: id, muted: muted))
+        }
+        if turningAudioOn, announceUnmute {
+            Task { await speakClipUnmuteQuietMode() }
         }
     }
 
@@ -212,14 +219,38 @@ final class PollySessionController {
             updateMediaState(.paused(segmentID: clip.segmentID))
             return clipControlPayload(clip, action: "pause")
         case "mute":
-            setClipMuted(true)
+            setClipMuted(true, announceUnmute: false)
             return clipControlPayload(clip, action: "mute")
         case "unmute":
-            setClipMuted(false)
-            return clipControlPayload(clip, action: "unmute")
+            // System speaks the quiet-mode line after tool results (see responseDone).
+            setClipMuted(false, announceUnmute: false)
+            var payload = clipControlPayload(clip, action: "unmute")
+            payload["requires_spoken_ack"] = true
+            payload["speak_after"] =
+                "Say ONE short warm sentence: you'll stay quiet while they listen to the video, but you're still here — they can ask anytime (say Polly). Then wait. Do not keep talking over the clip."
+            return payload
         default:
             return ["ok": false, "reason": "unknown action — use play|pause|mute|unmute"]
         }
+    }
+
+    /// Forced one-liner when original clip audio turns on — she steps back but
+    /// stays available for wake/questions.
+    private func speakClipUnmuteQuietMode() async {
+        guard let transport, phase == .live else { return }
+        if isPollySpeaking {
+            try? await transport.send(.responseCancel)
+            try? await transport.send(.outputAudioBufferClear)
+        }
+        try? await transport.send(.responseCreateWithInstructions(
+            """
+            Original technique-clip audio was just turned ON. Say ONE short warm sentence only — \
+            something like you'll stay quiet while they listen, but you're still here and they can \
+            ask anytime (say Polly). Do not keep coaching over the video. Then wait.
+            """
+        ))
+        isThinking = true
+        PollyDebugLog.shared.log("media: unmute quiet-mode ack")
     }
 
     /// Called when the cook advances steps — autoplay if this step has a clip.
@@ -297,7 +328,11 @@ final class PollySessionController {
             if muted {
                 if !isHardMuted { webrtc?.setMicMode(listeningMode == .dormant ? .dormant : .open) }
             } else if !isHardMuted {
-                webrtc?.setMicMode(.hardMuted)
+                // Don't stomp an engaged wake — remount churn was re-hard-muting
+                // after "Polly" and swallowing the first utterance.
+                if listeningMode == .dormant {
+                    webrtc?.setMicMode(.hardMuted)
+                }
             }
             PollyDebugLog.shared.log("media: playing muted=\(muted)")
         case .finished:
@@ -352,7 +387,7 @@ final class PollySessionController {
     private func startStepClipIndexingIfNeeded(plan: CookPlan) {
         guard !didStartClipIndex else { return }
         guard let sourceURL = recipe.sourceURL,
-              YouTubeEmbed.videoId(from: sourceURL) != nil else { return }
+              let mediaID = MediaSourceID.from(sourceURL: sourceURL) else { return }
         didStartClipIndex = true
         isIndexingStepClips = true
         Task { [weak self] in
@@ -360,10 +395,9 @@ final class PollySessionController {
             defer { self.isIndexingStepClips = false }
 
             // Prefer native downloaded clips (media-worker) when available.
-            if let youtubeID = YouTubeEmbed.videoId(from: sourceURL),
-               NativeClipService.supportsPilot(youtubeID: youtubeID) {
+            if NativeClipService.supportsPilot(mediaID: mediaID) {
                 do {
-                    let pilot = try await NativeClipService.shared.pilotClips(youtubeID: youtubeID)
+                    let pilot = try await NativeClipService.shared.pilotClips(mediaID: mediaID)
                     var nativeMap: [String: NativeStepClip] = [:]
                     for step in plan.steps where !CookPlan.isSetupStep(step) {
                         if let clip = await NativeClipService.shared.clipMatching(
@@ -375,7 +409,7 @@ final class PollySessionController {
                         }
                     }
                     self.nativeClipsByStepID = nativeMap
-                    PollyDebugLog.shared.log("clips: native pilot \(youtubeID) matched \(nativeMap.count) steps")
+                    PollyDebugLog.shared.log("clips: native pilot \(mediaID) matched \(nativeMap.count) steps")
                     self.publishSessionUI()
                     // If the cook is already on a clip step when matches arrive, start it.
                     if self.nativeClipForCurrentStep() != nil {
@@ -390,6 +424,11 @@ final class PollySessionController {
                 }
             }
 
+            // Gemini timestamp index — YouTube only for now (proxy passes YT URL to Gemini).
+            guard YouTubeEmbed.videoId(from: sourceURL) != nil else {
+                PollyDebugLog.shared.log("clips: no YouTube fallback for non-YT source \(mediaID)")
+                return
+            }
             do {
                 let response = try await StepClipService.shared.clips(
                     youtubeURL: sourceURL,
@@ -815,7 +854,20 @@ final class PollySessionController {
                 try? await transport?.send(.outputAudioBufferClear)
             }
         }
-        guard listeningMode == .dormant else { return }
+        // Already Listening but mic still gated (greeting hold / half-duplex):
+        // re-arm instead of ignoring the second "Polly".
+        if listeningMode != .dormant {
+            if webrtc?.isMicServerGated == true {
+                PollyDebugLog.shared.log("gate: re-arm wake while Listening but server-deaf")
+                webrtc?.forceMicOpenForWake()
+                openFollowUpWindow(
+                    seconds: PollyConfig.initialListenWindowSeconds,
+                    expectingAnswer: false,
+                    preferFollowUpUI: false)
+                armWakeInjection()
+            }
+            return
+        }
         let now = deps.now()
         lastWakeWordAt = now
         lastValidInteractionAt = now
@@ -824,7 +876,9 @@ final class PollySessionController {
         listeningMode = .listening
         liveTranscript = ""
         audio.isMuted = false
-        webrtc?.setMicMode(.open)
+        // Force past greetingHold / half-duplex — setMicMode(.open) alone is
+        // only intent; the track stays off until the greeting finishes.
+        webrtc?.forceMicOpenForWake()
         PollyDebugLog.shared.log("gate: LISTENING (woken)")
         openFollowUpWindow(
             seconds: PollyConfig.initialListenWindowSeconds,
@@ -1349,8 +1403,13 @@ final class PollySessionController {
             // response (barge-in) can carry partial calls, and answering them
             // talks over the cook who just interrupted.
             if status == "completed", !calls.isEmpty, let registry {
+                var unmutedClipAudio = false
                 for call in calls {
                     let output = await registry.handle(name: call.name, argumentsJSON: call.argumentsJSON)
+                    if call.name == "control_step_video",
+                       output.contains("\"action\":\"unmute\"") || output.contains("\"requires_spoken_ack\":true") {
+                        unmutedClipAudio = true
+                    }
                     try? await transport?.send(.createFunctionOutput(callId: call.callId, output: output))
                 }
                 // Push step / checklist changes into Observation so the guide updates live.
@@ -1359,15 +1418,27 @@ final class PollySessionController {
                 // serializes audio server-side, so the follow-up response
                 // generates DURING any preamble she's still speaking and plays
                 // seamlessly after it.
-                if alreadySpoke {
-                    try? await transport?.send(.createUserText(
-                        "[system note] Tool results are in. You already spoke this turn aloud — "
-                        + "do NOT greet again and do NOT repeat any sentence you just said. "
-                        + "Only speak if the tools require a short correction; otherwise stay silent and wait for the cook."))
+                if unmutedClipAudio {
+                    // Force the quiet-mode line even if she already said "sure" —
+                    // otherwise the alreadySpoke suppress path would stay silent.
+                    try? await transport?.send(.responseCreateWithInstructions(
+                        """
+                        Original clip audio is now ON. Say ONE short warm sentence only — you'll stay \
+                        quiet while they listen, but you're still here and they can ask anytime \
+                        (say Polly). Do not keep talking over the video. Then wait.
+                        """
+                    ))
+                } else {
+                    if alreadySpoke {
+                        try? await transport?.send(.createUserText(
+                            "[system note] Tool results are in. You already spoke this turn aloud — "
+                            + "do NOT greet again and do NOT repeat any sentence you just said. "
+                            + "Only speak if the tools require a short correction; otherwise stay silent and wait for the cook."))
+                    }
+                    // ONE response for the whole batch. A response.create per call
+                    // queues N spoken replies back to back — Polly repeating herself.
+                    try? await transport?.send(.responseCreate)
                 }
-                // ONE response for the whole batch. A response.create per call
-                // queues N spoken replies back to back — Polly repeating herself.
-                try? await transport?.send(.responseCreate)
                 isThinking = true
             } else if status == "completed", calls.isEmpty {
                 // Follow-up re-arm normally waits for outputAudioStopped. If this

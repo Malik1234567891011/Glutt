@@ -1,9 +1,38 @@
 import { handleMediaIngest } from "./_lib/mediaIngest.js";
+import { handleMediaClips } from "./_lib/mediaClips.js";
+
+function wantsMediaClips(req) {
+  const q = (req.query?.action || "").toString();
+  if (q === "clips" || q === "media_clips") return true;
+  const bodyAction = (req.body?.action || "").toString();
+  if (bodyAction === "clips" || bodyAction === "media_clips") return true;
+  // Rewrite from /api/media/clips → /api/health (Hobby fn budget).
+  const raw =
+    (req.headers["x-forwarded-uri"] ||
+      req.headers["x-invoke-path"] ||
+      req.url ||
+      "").toString();
+  return raw.includes("/media/clips");
+}
 
 export default async function handler(req, res) {
+  // Native Polly clip manifests (Supabase + signed Storage URLs).
+  if (wantsMediaClips(req)) {
+    return handleMediaClips(req, res);
+  }
+
   // POST /api/health with action=* → media control plane (Hobby fn budget).
   // Clean URL: /api/media/ingest rewrites here.
   if (req.method === "POST") {
+    return handleMediaIngest(req, res);
+  }
+
+  // GET media ingest status when action/job ids present.
+  const ingestAction = (req.query?.action || "").toString();
+  if (
+    req.method === "GET" &&
+    (ingestAction === "status" || req.query?.job_id || req.query?.source_asset_id)
+  ) {
     return handleMediaIngest(req, res);
   }
 
@@ -34,4 +63,3 @@ export default async function handler(req, res) {
     timestamp: new Date().toISOString(),
   });
 }
-

@@ -8,6 +8,10 @@
     {
       "source": "/api/media/ingest",
       "destination": "/api/health"
+    },
+    {
+      "source": "/api/media/clips",
+      "destination": "/api/health?action=clips"
     }
   ],
   "functions": {

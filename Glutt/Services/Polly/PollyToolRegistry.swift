@@ -220,7 +220,7 @@ final class PollyToolRegistry {
         ),
         RealtimeToolDefinition(
             name: "control_step_video",
-            description: "Control the on-screen technique clip: play (replay), pause, mute, or unmute. Call only when the cook asks (\"pause the video\", \"unmute\", \"play it again\"). Do not offer these — the clip autoplays on step entry.",
+            description: "Control the on-screen technique clip: play (replay), pause, mute, or unmute. Call only when the cook asks (\"pause the video\", \"unmute\", \"hear the original\", \"play it again\"). Unmute: after the tool, say one short line that you'll stay quiet while they listen but they're free to ask (say Polly) — then wait. Do not offer these — the clip autoplays on step entry.",
             parameters: schema(
                 properties: [
                     "action": .object([

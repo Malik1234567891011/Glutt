@@ -7,42 +7,7 @@
  * overnight work the worker CLI owns the LocalStore directly.
  */
 import { isAuthorized } from "./auth.js";
-
-function supabaseConfigured() {
-  return Boolean(
-    (process.env.SUPABASE_URL || "").trim() &&
-      (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim()
-  );
-}
-
-async function sb(path, { method = "GET", body } = {}) {
-  const base = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const r = await fetch(`${base}/rest/v1/${path}`, {
-    method,
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-      Prefer: method === "POST" ? "return=representation" : "return=representation",
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const text = await r.text();
-  let json = null;
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    json = { raw: text };
-  }
-  if (!r.ok) {
-    const err = new Error(json?.message || json?.error || text || `supabase ${r.status}`);
-    err.status = r.status;
-    err.body = json;
-    throw err;
-  }
-  return json;
-}
+import { sb, supabaseConfigured } from "./supabase.js";
 
 function youtubeId(url) {
   try {
@@ -191,12 +156,13 @@ export async function handleMediaIngest(req, res) {
     }
 
     if (action === "playback_token") {
-      // Phase B stub — Stream signed tokens land when CF_STREAM_* is configured.
+      // Clip manifests now mint Storage signed URLs via action=clips /media/clips.
+      // Cloudflare Stream tokens remain a Phase B upgrade when CF_STREAM_* lands.
       return res.status(200).json({
         token: null,
         expires_in: 0,
-        mode: "stub",
-        message: "Use local playback server for pilot; Stream tokens in Phase B cloud path.",
+        mode: supabaseConfigured() ? "storage_signed_via_clips" : "stub",
+        message: "Fetch /api/media/clips?external_id=… for signed progressive MP4 URLs.",
         playback_base: process.env.MEDIA_LOCAL_PLAYBACK_BASE || null,
       });
     }

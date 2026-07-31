@@ -88,7 +88,15 @@ export default async function handler(req, res) {
           model,
           audio: {
             input: {
-              turn_detection: { type: "semantic_vad", eagerness },
+              // Client owns response.create via ConversationalGate.
+              // create_response:true (API default) races the gate and causes
+              // half-duplex flaps that feel like "she didn't hear me".
+              turn_detection: {
+                type: "semantic_vad",
+                eagerness,
+                create_response: false,
+                interrupt_response: false,
+              },
               noise_reduction: { type: "far_field" },
               transcription: { model: "gpt-4o-transcribe", language: "en" },
             },

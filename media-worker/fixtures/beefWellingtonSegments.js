@@ -2,12 +2,14 @@
  * Manually reviewed pilot segments for Gordon Ramsay Christmas Beef Wellington
  * https://www.youtube.com/watch?v=Cyskqnp1j64 (≈471s).
  *
- * Windows from en.vtt keyword timeline (sear / duxelles / wrap / pastry / finish).
+ * Windows from en.vtt + frame QA. Mustard 77–94 is frame-verified.
+ * v3: trim talking-head / dog cutaways; start on technique-on-camera.
  */
 export const beefWellingtonSegments = [
   {
     id: "seg-beefwellington-sear",
-    start_seconds: 30,
+    // Frame QA: 35–42 still face/prep; beef hits the hot pan ~44.
+    start_seconds: 44,
     end_seconds: 68,
     primary_action: "sear",
     secondary_actions: ["roll", "brown"],
@@ -26,13 +28,14 @@ export const beefWellingtonSegments = [
     visual_quality: 0.9,
     boundary_confidence: 0.9,
     review_status: "approved",
-    model_version: "manual-pilot-v1-vtt",
+    model_version: "manual-pilot-v3-frame-qa",
     step_keywords: ["sear", "fillet", "beef", "brown", "hot pan"],
   },
   {
     id: "seg-beefwellington-mustard",
-    start_seconds: 72,
-    end_seconds: 95,
+    // Frame-verified: 75–76 talking-head; mustard hits fillet ~77; done ~94.
+    start_seconds: 77,
+    end_seconds: 94,
     primary_action: "coat",
     secondary_actions: ["brush"],
     ingredients: ["english mustard", "beef"],
@@ -47,11 +50,14 @@ export const beefWellingtonSegments = [
     teaching_label: "See how to coat the beef in mustard",
     notice: "English mustard over the warm sear — horseradish is a fine swap.",
     audio_useful: true,
-    visual_quality: 0.85,
-    boundary_confidence: 0.85,
+    visual_quality: 0.95,
+    boundary_confidence: 0.95,
     review_status: "approved",
-    model_version: "manual-pilot-v1-vtt",
+    model_version: "manual-pilot-v2-frame-verified",
+    // No "sear" keyword — instruction says "seared fillet" and must not
+    // outrank this clip via substring match.
     step_keywords: ["mustard", "horseradish", "brush", "coat"],
+    action_visible_from_seconds: 77,
   },
   {
     id: "seg-beefwellington-duxelles",
@@ -79,8 +85,10 @@ export const beefWellingtonSegments = [
   },
   {
     id: "seg-beefwellington-wrap",
-    start_seconds: 240,
-    end_seconds: 295,
+    // 240 = bulldog cutaway. Technique (beef onto ham/duxelles) ~245;
+    // roll/twist through ~300.
+    start_seconds: 245,
+    end_seconds: 300,
     primary_action: "wrap",
     secondary_actions: ["roll", "tighten"],
     ingredients: ["parma ham", "mushrooms", "beef"],
@@ -96,14 +104,15 @@ export const beefWellingtonSegments = [
     notice: "Overlap the Parma ham, spread duxelles, wrap the fillet, twist the ends tight.",
     audio_useful: true,
     visual_quality: 0.9,
-    boundary_confidence: 0.85,
+    boundary_confidence: 0.9,
     review_status: "approved",
-    model_version: "manual-pilot-v1-vtt",
-    step_keywords: ["wrap", "parma", "prosciutto", "ham", "cling", "roll", "assemble"],
+    model_version: "manual-pilot-v3-frame-qa",
+    step_keywords: ["parma", "prosciutto", "ham", "cling", "assemble", "wrap"],
   },
   {
     id: "seg-beefwellington-pastry",
-    start_seconds: 318,
+    // First roll cue ~321; 318 still placing the log.
+    start_seconds: 321,
     end_seconds: 352,
     primary_action: "enrobe",
     secondary_actions: ["seal", "roll"],
@@ -122,12 +131,13 @@ export const beefWellingtonSegments = [
     visual_quality: 0.9,
     boundary_confidence: 0.85,
     review_status: "approved",
-    model_version: "manual-pilot-v1-vtt",
-    step_keywords: ["pastry", "puff", "seal", "enrobe", "wrap pastry"],
+    model_version: "manual-pilot-v3-frame-qa",
+    step_keywords: ["pastry", "puff", "seal", "enrobe"],
   },
   {
     id: "seg-beefwellington-finish",
-    start_seconds: 370,
+    // Egg yolk / wash action ~373.8; 370 is still holding sealed pastry.
+    start_seconds: 373,
     end_seconds: 405,
     primary_action: "glaze",
     secondary_actions: ["score", "salt"],
@@ -146,7 +156,7 @@ export const beefWellingtonSegments = [
     visual_quality: 0.9,
     boundary_confidence: 0.85,
     review_status: "approved",
-    model_version: "manual-pilot-v1-vtt",
+    model_version: "manual-pilot-v3-frame-qa",
     step_keywords: ["egg wash", "score", "glaze", "bake", "oven", "decoration"],
   },
 ];

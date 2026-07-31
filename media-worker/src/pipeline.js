@@ -144,14 +144,16 @@ export async function runFullIngest(job) {
       const normSrc = (await objectExists(keys.normalized))
         ? await localObjectPath(keys.normalized)
         : normalizedPath;
-      await extractAudio(normSrc, audioPath);
-      await putObject(keys.audio, audioPath);
+      const audioOut = await extractAudio(normSrc, audioPath);
+      if (!audioOut?.skipped) {
+        await putObject(keys.audio, audioPath);
+      }
     }
 
     await store.updateSourceAsset(asset.id, {
       normalized_object_key: keys.normalized,
       analysis_proxy_object_key: keys.analysisProxy,
-      audio_object_key: keys.audio,
+      audio_object_key: (await objectExists(keys.audio)) ? keys.audio : null,
       status: "review_required",
     });
 

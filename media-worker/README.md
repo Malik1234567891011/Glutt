@@ -22,13 +22,23 @@ npm run serve-local        # leave running for the iOS simulator
 
 Ham oracle window after pilot: **145–201** (2:25–3:21).
 
+## Cloud sync (Supabase)
+
+Local testing is done via `serve-local`. For phones / TestFlight / anyone not on your LAN:
+
+1. Paste `supabase/migrations/0011_media_source_assets.sql` into the Supabase SQL editor and run it.
+2. `cp .env.example .env` and set `SUPABASE_SERVICE_ROLE_KEY`.
+3. `npm run sync:supabase` — upserts metadata + uploads vertical clips/posters to private bucket `glutt-media`.
+4. Deploy `vercel-ai-proxy` so `GET /api/media/clips?external_id=…` is live.
+5. In the app, **omit** `mediaPlaybackBaseURL` from `Secrets.local.plist` so Polly hits the proxy.
+
 ## Env (optional cloud)
 
 | Var | Purpose |
 | --- | --- |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Sync LocalStore → Postgres + Storage |
 | `R2_*` | Cloudflare R2 archive (else local `data/objects`) |
 | `CF_STREAM_*` | Stream ingest (Phase B cloud) |
-| `SUPABASE_*` | Sync jobs to Postgres (else LocalStore JSON) |
 | `YT_DLP_BIN` | Default `yt-dlp` |
 | `MEDIA_MAX_DURATION_S` | Default 1200 |
 

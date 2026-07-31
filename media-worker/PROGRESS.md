@@ -18,7 +18,9 @@ Updated as work lands. Source plans: `docs/donwloadplan.md`, `docs/downloadplanP
 - [x] Mic hard-mute while original clip audio unmuted (ASR bleed protection)
 - [x] Phase D start: scene detection (90) + coarse frames (137) on pilot
 - [x] Dense frames around approved segments (boundary-refine prep)
-- [x] Polly tool `show_step_video` + get_current_step.hasTechniqueClip
+- [x] Beef Wellington pilot segments (mustard **77–94** frame-verified; speech lead-in trimmed)
+- [x] Grounding harden: reject talking-head / speech-only windows; brush/coat always refined
+- [x] `scripts/rematerializePilot.js` + `scripts/verifySegmentFrames.js` for window QA
 
 ## Run locally
 
@@ -34,13 +36,14 @@ Simulator: Glutt Beta `-seed` → Eggs Benedict → Cook with Polly. Ham label s
 
 ## Still open
 
-- Cloudflare R2/Stream credentials → cloud archive + signed HLS
-- Apply Supabase migration 0011 + sync LocalStore → Postgres
+- **Apply** `supabase/migrations/0011_media_source_assets.sql` in Supabase SQL editor
+- **Sync pilots:** `cd media-worker && cp .env.example .env` (add service role) → `npm run sync:supabase`
+- **Deploy proxy** so `/api/media/clips` rewrite + `mediaClips.js` are live
+- Cloudflare R2/Stream credentials → archive + signed HLS (Storage MP4s are the interim)
 - ElevenLabs word transcript (worker stub ready; needs `ELEVENLABS_API_KEY`)
 - Auto Gemini segmentation (Phase E) using analysis-proxy + dense frames
 - HLS preload / opportunistic next-step buffering
-- TikTok/Instagram end-to-end tests
-- Promote LocalStore → Supabase when migration applied
+- Drop per-video `NativeClipService.pilots` map once step matches live in Postgres
 
 ## Morning check
 

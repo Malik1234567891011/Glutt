@@ -50,6 +50,7 @@
 		1661179CF6A104D217CAD7F1 /* GroceriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB8FA604EA35D2EE6E94CE4A /* GroceriesView.swift */; };
 		16A900F3A424ABAF1A47B201 /* SegmentedTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE5BFA285767FD229AB9547 /* SegmentedTabs.swift */; };
 		16B9A16071EB1350972B7E98 /* StarterRecipes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3800A614501862AB11EC98A2 /* StarterRecipes.swift */; };
+		16CBBDD788910752EEEAFB3D /* MediaSourceID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 687CBF3B8552E392ECD5AF97 /* MediaSourceID.swift */; };
 		184D5CEC21A6649F6118726E /* PageDots.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5F3EF4D5C770B981E142355 /* PageDots.swift */; };
 		18852B7929DEF332DCDD0D55 /* DiscoverSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EADF6FD77F51E85B3A156E /* DiscoverSaver.swift */; };
 		18A06021F18EFAB77EC116F2 /* GroceryListBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 476DE0FF02A984E39531A7EF /* GroceryListBuilder.swift */; };
@@ -473,6 +474,7 @@
 		6815E861AC272B08314E8EE3 /* PlatesServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesServiceTests.swift; sourceTree = "<group>"; };
 		681E8F39983440A8907907AB /* SubstituteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubstituteSheet.swift; sourceTree = "<group>"; };
 		686B936DCDB29F97AD25509A /* ConversationalGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationalGate.swift; sourceTree = "<group>"; };
+		687CBF3B8552E392ECD5AF97 /* MediaSourceID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaSourceID.swift; sourceTree = "<group>"; };
 		6A6A303457644EB7ED607170 /* CategoryCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryCircle.swift; sourceTree = "<group>"; };
 		6D3533E8376C43D34EDA406C /* FourWeeksScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourWeeksScreen.swift; sourceTree = "<group>"; };
 		6D9F150DFC70660877D485E4 /* SubscriptionGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionGateTests.swift; sourceTree = "<group>"; };
@@ -1083,6 +1085,7 @@
 		AAF5043CDDA0247841F96A96 /* CookClips */ = {
 			isa = PBXGroup;
 			children = (
+				687CBF3B8552E392ECD5AF97 /* MediaSourceID.swift */,
 				9E3A210F8AF35E346B89F89E /* NativeClipModels.swift */,
 				D59AF18366B2E6BA8D74C44A /* NativeClipService.swift */,
 				DCCB97E3E9E973E51DDB56C2 /* StepClipFallbacks.swift */,
@@ -1557,6 +1560,7 @@
 				D41EE3F280E4192C9FB1E6EC /* MacroStrip.swift in Sources */,
 				75229BB601F27BE25B6AD342 /* MaterialSymbol.swift in Sources */,
 				F414351CC012911B4E45E28F /* MealPhotoEstimator.swift in Sources */,
+				16CBBDD788910752EEEAFB3D /* MediaSourceID.swift in Sources */,
 				85CDA7F7003AC6925B7BCBCE /* MiniPhoneFrame.swift in Sources */,
 				C8926002EB7C459C66BECADF /* NativeClipModels.swift in Sources */,
 				3502A104C62676FCDE04A3B0 /* NativeClipPlayerView.swift in Sources */,

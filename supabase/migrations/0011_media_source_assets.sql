@@ -1,5 +1,6 @@
 -- Media ingest control plane (docs/donwloadplan.md §18 + rights_records).
 -- Service role / worker writes; clients never get direct R2/Stream credentials.
+-- Segment/clip IDs are text so LocalStore pilot keys (seg-eggsbenedict-*) sync 1:1.
 
 create extension if not exists pgcrypto;
 
@@ -112,7 +113,7 @@ create index video_scenes_asset_idx
   on public.video_scenes (source_asset_id, start_seconds);
 
 create table public.semantic_segments (
-  id                     uuid primary key default gen_random_uuid(),
+  id                     text primary key,
   source_asset_id        uuid not null references public.source_assets(id) on delete cascade,
   start_seconds          numeric not null,
   end_seconds            numeric not null,
@@ -134,6 +135,7 @@ create table public.semantic_segments (
   model_version          text,
   notice                 text,
   watch_label            text,
+  step_keywords_json     jsonb not null default '[]'::jsonb,
   created_at             timestamptz not null default now(),
   updated_at             timestamptz not null default now()
 );
@@ -145,7 +147,7 @@ create index semantic_segments_review_idx
 
 create table public.segment_crops (
   id               uuid primary key default gen_random_uuid(),
-  segment_id       uuid not null references public.semantic_segments(id) on delete cascade,
+  segment_id       text not null references public.semantic_segments(id) on delete cascade,
   aspect_ratio     text not null,
   crop_track_json  jsonb not null default '{}'::jsonb,
   approved         boolean not null default false,
@@ -153,11 +155,15 @@ create table public.segment_crops (
 );
 
 create table public.clip_assets (
-  id                   uuid primary key default gen_random_uuid(),
-  segment_id           uuid not null references public.semantic_segments(id) on delete cascade,
+  id                   text primary key,
+  segment_id           text not null references public.semantic_segments(id) on delete cascade,
   stream_uid           text,
   object_key           text,
+  vertical_object_key  text,
+  poster_object_key    text,
   aspect_ratio         text,
+  presentation_mode    text,
+  teaching_label       text,
   duration_seconds     numeric,
   captions_json        jsonb not null default '{}'::jsonb,
   thumbnail_url        text,
@@ -166,6 +172,9 @@ create table public.clip_assets (
     check (status in ('pending','ready','failed','revoked')),
   created_at           timestamptz not null default now()
 );
+
+create index clip_assets_segment_idx on public.clip_assets (segment_id);
+create index clip_assets_status_idx on public.clip_assets (status);
 
 create table public.recipe_step_intents (
   id                     uuid primary key default gen_random_uuid(),
@@ -190,7 +199,7 @@ create table public.recipe_step_intents (
 create table public.step_segment_matches (
   id               uuid primary key default gen_random_uuid(),
   step_intent_id   uuid not null references public.recipe_step_intents(id) on delete cascade,
-  segment_id       uuid not null references public.semantic_segments(id) on delete cascade,
+  segment_id       text not null references public.semantic_segments(id) on delete cascade,
   match_type       text,
   action_score     numeric,
   ingredient_score numeric,
@@ -205,6 +214,22 @@ create table public.step_segment_matches (
   unique (step_intent_id, segment_id)
 );
 
+-- Private object store for originals / derivatives / materialized clips.
+-- Bytes live here until Cloudflare R2/Stream credentials land; object_key paths
+-- stay identical so a later R2 cutover is a copy, not a schema rewrite.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'glutt-media',
+  'glutt-media',
+  false,
+  524288000, -- 500 MB
+  array['video/mp4','video/quicktime','audio/mp4','audio/mpeg','image/jpeg','image/png','application/json']
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
 -- Service-role only for media tables (worker + proxy). No anon/authenticated policies.
 alter table public.rights_records enable row level security;
 alter table public.source_assets enable row level security;
@@ -217,14 +242,5 @@ alter table public.clip_assets enable row level security;
 alter table public.recipe_step_intents enable row level security;
 alter table public.step_segment_matches enable row level security;
 
--- Pilot seed: Eggs Benedict Gordon Ramsay (rights assumed cleared by product).
-insert into public.rights_records (id, source_url, platform, external_id, clearance_notes, cleared_by, license_type)
-values (
-  'a1111111-1111-4111-8111-111111111111',
-  'https://www.youtube.com/watch?v=gBJjRYk0yC0',
-  'youtube',
-  'gBJjRYk0yC0',
-  'Pilot clearance for Glutt Eggs Benedict step-clip pipeline (product-confirmed).',
-  'malik',
-  'pilot_cleared'
-) on conflict (id) do nothing;
+-- storage.objects already has RLS on hosted Supabase (postgres is not owner).
+-- Private bucket `glutt-media` + no anon policies; proxy signs with service role.

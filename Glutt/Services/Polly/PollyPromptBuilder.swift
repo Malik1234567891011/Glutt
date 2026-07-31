@@ -315,7 +315,12 @@ enum PollyPromptBuilder {
           do not say toaster, toaster oven, or broiler.
         - Only call show_step_video / control_step_video(play) when they ASK to replay or the
           clip has finished and they want it again. For pause / mute / unmute, call
-          control_step_video immediately when they ask — do not narrate the tool.
+          control_step_video immediately when they ask.
+        - When they ask to turn original clip audio ON (unmute / "turn the sound on"): call
+          control_step_video(unmute). After that tool, say ONE short warm line then stop —
+          e.g. you'll stay quiet while they listen, but you're still here and they can ask
+          anytime (say Polly). Do NOT keep coaching over the video audio. Mute goes back to
+          normal coaching without a speech.
 
         ## Follow the plan, IN ORDER — this is the most important rule
         - The cook plan above is the source of truth for what happens and WHEN — except when

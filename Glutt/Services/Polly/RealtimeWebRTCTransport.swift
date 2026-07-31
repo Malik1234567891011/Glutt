@@ -310,6 +310,27 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         }
     }
 
+    /// Wake word / pill: open the Realtime mic immediately even if the
+    /// greeting is still playing or half-duplex has the track gated.
+    /// Without this, UI shows Listening while the server hears silence —
+    /// the classic "have to say Polly twice" bug.
+    func forceMicOpenForWake() {
+        releaseGreetingHold(reason: "wake")
+        lock.withLock {
+            micMode = .open
+            voiceReopened = true
+            resolveTrackLocked()
+        }
+        PollyDebugLog.shared.log("governor: force open for wake")
+    }
+
+    /// True when wake flipped UI to Listening but the track is still closed.
+    var isMicServerGated: Bool {
+        lock.withLock {
+            !(micMode == .open && !greetingHold && (!assistantSpeaking || voiceReopened))
+        }
+    }
+
     /// The one place track state is computed. Caller must hold `lock`.
     private func resolveTrackLocked() {
         let enabled = micMode == .open && !greetingHold && (!assistantSpeaking || voiceReopened)

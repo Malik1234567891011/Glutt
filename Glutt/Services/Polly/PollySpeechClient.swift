@@ -30,10 +30,15 @@ struct PollySpeechClient {
 
     /// Returns MP3 bytes spoken in Polly's configured voice.
     /// `speed` > 1 makes the trailer feel snappier (proxy clamps 0.25…4).
+    /// - Parameter elevenLabsVoiceID: when the picked chef has a cloned voice,
+    ///   the proxy renders the briefing with it. The proxy falls back to OpenAI
+    ///   TTS if ElevenLabs is unreachable, so the wrong voice is the worst case,
+    ///   never a silent briefing.
     func speak(
         _ text: String,
         instructions: String? = nil,
         speed: Double = 1.2,
+        elevenLabsVoiceID: String? = nil,
         timeout: TimeInterval = 40
     ) async throws -> Data {
         guard isConfigured else { throw SpeechError.notConfigured }
@@ -56,6 +61,9 @@ struct PollySpeechClient {
         var body: [String: Any] = ["text": text, "speed": speed]
         if let instructions, !instructions.isEmpty {
             body["instructions"] = instructions
+        }
+        if let elevenLabsVoiceID, !elevenLabsVoiceID.isEmpty {
+            body["elevenLabsVoiceId"] = elevenLabsVoiceID
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 

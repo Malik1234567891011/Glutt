@@ -142,7 +142,9 @@ final class PollySessionControllerTests: XCTestCase {
     ) -> PollySessionController {
         let mint: () async throws -> PollySessionToken = mintToken ?? { Self.fixtureToken }
         let deps = PollySessionController.Dependencies(
-            mintToken: mint,
+            // The chef's voice now rides the mint, since Realtime pins `voice` at
+            // session creation. Tests don't assert on it, so swallow the argument.
+            mintToken: { _ in try await mint() },
             makeTransport: { transport },
             compilePlan: { _, _ in Self.fixturePlan },
             extractMemories: { _, _ in Self.fixtureExtraction },
@@ -467,7 +469,16 @@ final class PollySessionControllerTests: XCTestCase {
         XCTAssertEqual(controller.phase, .live)
         XCTAssertEqual(controller.listeningMode, .dormant, "the session gates the mic until \"Polly\"")
         XCTAssertTrue(controller.audio.isMuted, "dormant means the Realtime input is muted")
-        XCTAssertFalse(controller.wakeWordAvailable, "no Speech auth in the test host")
+        // This used to assert wakeWordAvailable == false, "no Speech auth in the
+        // test host". It passed for the wrong reason: SFSpeechRecognizer reports
+        // unavailable for a moment after init, and the old code read that once
+        // and believed it for the whole session. Now that availability is
+        // retried the flag settles on whatever the host actually supports, which
+        // is environment, not contract. What matters here is that the session
+        // starts gated either way — a cook with no wake word gets tap-to-talk,
+        // not an open microphone.
+        XCTAssertEqual(controller.listeningMode, .dormant,
+                       "dormant regardless of whether the wake word is available")
 
         await controller.end(context: context, endedEarly: true)
     }

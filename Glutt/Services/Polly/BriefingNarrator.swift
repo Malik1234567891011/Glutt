@@ -27,6 +27,10 @@ final class BriefingNarrator: NSObject, AVAudioPlayerDelegate {
     private var player: AVAudioPlayer?
     private var playContinuation: CheckedContinuation<Void, Never>?
     private var cancelled = false
+    /// The chef picked before this cook. Snapshotted when narration starts so
+    /// the whole briefing speaks in one voice even if the picker changes
+    /// underneath it, and so the briefing matches the live session that follows.
+    private var chef: PollyChefVoice = .default
 
     init(speech: PollySpeechClient = .live) {
         self.speech = speech
@@ -44,6 +48,7 @@ final class BriefingNarrator: NSObject, AVAudioPlayerDelegate {
         didFinishNaturally = false
         isSpeaking = true
         isUsingPollyVoice = speech.isConfigured
+        chef = PollyChefVoice.selected
         playTask = Task { [weak self] in
             await self?.runNarration()
         }
@@ -93,7 +98,9 @@ final class BriefingNarrator: NSObject, AVAudioPlayerDelegate {
         // Prefetch chunk N+1 while N plays so the trailer doesn't stall between beats.
         var pendingAudio: Data?
         if speech.isConfigured, let first = chunks.first {
-            pendingAudio = try? await speech.speak(first, instructions: Self.styleInstructions)
+            pendingAudio = try? await speech.speak(
+                first, instructions: chef.briefingStyle,
+                elevenLabsVoiceID: chef.elevenLabsVoiceID)
         }
 
         for index in chunks.indices {
@@ -110,7 +117,11 @@ final class BriefingNarrator: NSObject, AVAudioPlayerDelegate {
             let prefetch: Task<Data?, Never>? = {
                 guard speech.isConfigured, next < chunks.count else { return nil }
                 let text = chunks[next]
-                return Task { try? await self.speech.speak(text, instructions: Self.styleInstructions) }
+                return Task {
+                    try? await self.speech.speak(
+                        text, instructions: chef.briefingStyle,
+                        elevenLabsVoiceID: chef.elevenLabsVoiceID)
+                }
             }()
 
             if let audio, !cancelled {
@@ -151,12 +162,6 @@ final class BriefingNarrator: NSObject, AVAudioPlayerDelegate {
         let words = max(1, text.split(whereSeparator: \.isWhitespace).count)
         return UInt64(min(6_000, max(1_400, words * 320)))
     }
-
-    private static let styleInstructions = """
-    You are Polly, Glutt's cooking chef. Warm and expert, but brisk — this is a short \
-    trailer, not a lecture. Keep energy up, minimal pauses, clear and conversational. \
-    Not slow, not chirpy, not salesy.
-    """
 
     // MARK: - Playback
 

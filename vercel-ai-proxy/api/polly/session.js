@@ -66,7 +66,16 @@ export default async function handler(req, res) {
   }
 
   const model = (process.env.POLLY_REALTIME_MODEL || "").trim() || "gpt-realtime-2.1";
-  const voice = (process.env.POLLY_VOICE || "").trim() || "marin";
+  // The chef the cook picked before starting. Allowlisted rather than trusted:
+  // an unknown value costs the voice, never the session, and the Realtime API
+  // rejects the whole mint on a bad `voice` so a typo here would mean no cook.
+  // OpenAI recommends marin and cedar for quality; the rest are older.
+  const REALTIME_VOICES = [
+    "marin", "cedar", "alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse",
+  ];
+  const envVoice = (process.env.POLLY_VOICE || "").trim() || "marin";
+  const requestedVoice = typeof req.body?.voice === "string" ? req.body.voice.trim() : "";
+  const voice = REALTIME_VOICES.includes(requestedVoice) ? requestedVoice : envVoice;
   // semantic_vad eagerness is THE turn-taking feel knob (low = patient,
   // echo-safe; auto/high = snappier). Tuned during the soak without app
   // releases — shipped v1 WS clients override this in their own

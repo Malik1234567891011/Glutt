@@ -77,7 +77,8 @@ final class PollyPromptBuilderTests: XCTestCase {
     private func instructions(
         recipe: Recipe,
         memories: [PollyMemory] = [],
-        pastSessions: [CookSession] = []
+        pastSessions: [CookSession] = [],
+        chef: PollyChefVoice = .default
     ) -> String {
         PollyPromptBuilder.instructions(
             recipe: recipe,
@@ -86,8 +87,58 @@ final class PollyPromptBuilderTests: XCTestCase {
             prefs: makePrefs(),
             memories: memories,
             pastSessions: pastSessions,
-            ownedTools: []
+            ownedTools: [],
+            chef: chef
         )
+    }
+
+    // MARK: - Chef voices
+
+    func testDefaultChefAddsNoOverlay() {
+        let recipe = makeRecipe()
+        XCTAssertFalse(instructions(recipe: recipe).contains("Your voice this session"),
+                       "house Polly must be the prompt exactly as it was")
+    }
+
+    func testChefOverlayIsAppendedLastSoItCannotOutrankTheRulesAboveIt() {
+        let recipe = makeRecipe()
+        let prompt = instructions(recipe: recipe, chef: .gordonRamsay)
+
+        XCTAssertTrue(prompt.contains("Your voice this session: Gordon Ramsay"))
+        // Ordering is the safety property, not a style choice. A persona placed
+        // above the run policy would let "how to sound" quietly outrank a
+        // food-safety or dietary rule; placed last it can only colour them, and
+        // it says so itself.
+        let overlayStart = try? XCTUnwrap(prompt.range(of: "Your voice this session"))
+        let rulesStart = try? XCTUnwrap(prompt.range(of: "Be directional, never chatty"))
+        if let overlayStart, let rulesStart {
+            XCTAssertTrue(overlayStart.lowerBound > rulesStart.lowerBound,
+                          "the chef overlay must come after the run policy")
+        }
+        // The dish is still the dish.
+        XCTAssertTrue(prompt.contains("Harissa Chicken Skillet"))
+        XCTAssertTrue(prompt.contains("peanut"), "allergies survive a persona swap")
+    }
+
+    func testRamsayOverlayForbidsTheAbusiveTelevisionPersona() {
+        let overlay = PollyChefVoice.gordonRamsay.personaOverlay
+        XCTAssertTrue(overlay.contains("Never swear"))
+        XCTAssertTrue(overlay.contains("never insult the cook"))
+        XCTAssertTrue(overlay.lowercased().contains("lamb sauce"),
+                      "the catchphrase is named so it can be banned, not used")
+        XCTAssertTrue(overlay.contains("Never claim to be the real person"))
+    }
+
+    func testEveryChefHasAVoiceAndAStableID() {
+        let ids = PollyChefVoice.all.map(\.id)
+        XCTAssertEqual(Set(ids).count, ids.count, "ids are persisted, so they must be unique")
+        for chef in PollyChefVoice.all {
+            XCTAssertFalse(chef.displayName.isEmpty, chef.id)
+            XCTAssertFalse(chef.realtimeVoice.isEmpty, chef.id)
+            XCTAssertFalse(chef.briefingStyle.isEmpty, chef.id)
+        }
+        XCTAssertEqual(PollyChefVoice.named("nope").id, PollyChefVoice.default.id,
+                       "an unknown id falls back rather than crashing a cook")
     }
 
     // MARK: - Tests

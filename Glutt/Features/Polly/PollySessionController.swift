@@ -19,7 +19,9 @@ final class PollySessionController {
     }
 
     struct Dependencies {
-        var mintToken: () async throws -> PollySessionToken
+        /// Voice is threaded in so the chef picked before the cook reaches the
+        /// mint: the Realtime API pins `voice` at session creation.
+        var mintToken: (_ voice: String?) async throws -> PollySessionToken
         var makeTransport: () -> RealtimeTransporting
         var compilePlan: (Recipe, Double) async -> CookPlan
         var extractMemories: (String, String) async throws -> PollyMemoryExtractor.Extraction
@@ -28,7 +30,7 @@ final class PollySessionController {
         var now: () -> Date
 
         static let live = Dependencies(
-            mintToken: { try await PollyTokenService.live.mint() },
+            mintToken: { voice in try await PollyTokenService.live.mint(voice: voice) },
             makeTransport: { RealtimeWebRTCTransport() },
             compilePlan: { await CookPlanCompiler.compile(recipe: $0, scale: $1) },
             extractMemories: { try await PollyMemoryExtractor.extract(transcript: $0, recipeTitle: $1) },
@@ -654,9 +656,16 @@ final class PollySessionController {
             }
         }
 
+        // Snapshot the chef once, BEFORE the mint. Mid-cook changes are not
+        // merely undesirable: the Realtime API refuses a `voice` update once any
+        // audio has been output, so the voice has to travel with the token and
+        // the choice is fixed for the life of the session by design.
+        let chef = PollyChefVoice.selected
+        PollyDebugLog.shared.log("session: chef=\(chef.id) realtimeVoice=\(chef.realtimeVoice)")
+
         let token: PollySessionToken
         do {
-            token = try await deps.mintToken()
+            token = try await deps.mintToken(chef.realtimeVoice)
             PollyDebugLog.shared.log("session: token minted — model=\(token.model) voice=\(token.voice)")
         } catch {
             PollyDebugLog.shared.log("session: token mint FAILED — \(error.localizedDescription)")
@@ -670,7 +679,8 @@ final class PollySessionController {
                 prefs: prefs, memories: memories, pastSessions: pastSessions,
                 ownedTools: ownedTools,
                 heardBriefing: heardBriefing,
-                awaitVerbalGo: awaitVerbalGo),
+                awaitVerbalGo: awaitVerbalGo,
+                chef: chef),
             tools: PollyToolRegistry.toolDefinitions,
             voice: token.voice,
             model: token.model,
@@ -1667,7 +1677,7 @@ final class PollySessionController {
         await dyingTransport?.close()
 
         do {
-            let token = try await deps.mintToken()
+            let token = try await deps.mintToken(PollyChefVoice.selected.realtimeVoice)
             let transport = deps.makeTransport()
             if let webrtc = transport as? RealtimeWebRTCTransport {
                 let wake = wakeWord

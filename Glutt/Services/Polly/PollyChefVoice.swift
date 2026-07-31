@@ -1,0 +1,141 @@
+import Foundation
+
+/// A chef the cook can pick before starting: who Polly sounds like, and how she
+/// talks.
+///
+/// Three separate things travel together here because they have to stay in
+/// sync. Shipping a voice without its speech style gives you Gordon Ramsay's
+/// voice reading Polly's script, which lands worse than either on its own.
+///
+/// - `realtimeVoice` is the OpenAI Realtime voice for the LIVE session.
+/// - `elevenLabsVoiceID` is used for the pre-cook briefing only.
+/// - `personaOverlay` is appended to the prompt and works on any voice.
+///
+/// The split is not a design choice, it is where the platform currently is. In
+/// speech-to-speech the voice IS the model's audio decoder, not a parameter, so
+/// an owned voice in the live session means `output_modalities: ["text"]` plus
+/// synthesising and playing the audio ourselves — which takes playback outside
+/// libWebRTC and costs the echo canceller its reference signal. Until that is
+/// proven safe on a device, the live session uses an OpenAI voice and the
+/// briefing carries the real one.
+struct PollyChefVoice: Identifiable, Equatable, Hashable, Sendable {
+    /// Stable key. Persisted, so never renamed.
+    let id: String
+    let displayName: String
+    /// One line under the name in the picker.
+    let tagline: String
+    /// OpenAI Realtime voice for the live session. `marin` and `cedar` are the
+    /// two OpenAI recommends for quality; the rest are older.
+    let realtimeVoice: String
+    /// ElevenLabs voice for the briefing. `nil` falls back to OpenAI TTS.
+    let elevenLabsVoiceID: String?
+    /// Appended to the prompt. Empty means house Polly, unmodified.
+    let personaOverlay: String
+    /// Style direction for the briefing's TTS call.
+    let briefingStyle: String
+
+    static let `default` = Self.polly
+
+    static let all: [PollyChefVoice] = [.polly, .gordonRamsay]
+
+    static func named(_ id: String?) -> PollyChefVoice {
+        all.first { $0.id == id } ?? .default
+    }
+
+    /// The cook's choice, persisted across sessions.
+    ///
+    /// Read at session start and never mid-cook: the Realtime API only accepts a
+    /// `voice` change while no audio has been output yet, so switching chefs
+    /// during a conversation is not something the platform allows at all. The
+    /// picker lives on the pre-cook screen for that reason, not as a style
+    /// preference.
+    static var selectedID: String {
+        get { UserDefaults.standard.string(forKey: selectionKey) ?? Self.default.id }
+        set { UserDefaults.standard.set(newValue, forKey: selectionKey) }
+    }
+
+    static var selected: PollyChefVoice { named(selectedID) }
+
+    private static let selectionKey = "glutt.polly.chefVoice"
+
+    // MARK: - Catalog
+
+    static let polly = PollyChefVoice(
+        id: "polly",
+        displayName: "Polly",
+        tagline: "Calm, expert, always beside you",
+        realtimeVoice: "marin",
+        elevenLabsVoiceID: nil,
+        personaOverlay: "",
+        briefingStyle: "Speak like a warm chef giving a quick pre-cook rundown. Brisk and clear, not slow, not chirpy."
+    )
+
+    static let gordonRamsay = PollyChefVoice(
+        id: "gordon-ramsay",
+        displayName: "Gordon Ramsay",
+        tagline: "Exacting, generous with praise, allergic to waste",
+        // Cedar is the darker of OpenAI's two current voices, so the live
+        // session at least sits in the right register until the briefing's
+        // cloned voice can be used here too.
+        realtimeVoice: "cedar",
+        elevenLabsVoiceID: "5i0YBih50ehVs4WoAmac",
+        personaOverlay: Self.ramsayOverlay,
+        briefingStyle: "Speak like an exacting British chef running through the plan before service. Warm, quick, precise. Land the praise, do not linger."
+    )
+
+    /// Deliberately the MasterClass register, not the Hell's Kitchen one.
+    ///
+    /// The televised persona is abusive and built for conflict; the teaching
+    /// persona is described as quiet, nurturing, succinct, and eager for you to
+    /// succeed. Someone holding a hot pan needs the second one, and it is also
+    /// the only one that does not fight Polly's own "be directional, never
+    /// chatty" rules.
+    private static let ramsayOverlay = """
+
+    # Your voice this session: Gordon Ramsay
+    You are cooking as Gordon Ramsay in teaching mode: the MasterClass kitchen,
+    not the television one. Exacting, fast, and genuinely on the cook's side.
+    Everything in the sections above still applies, this only changes HOW you say
+    it. When this conflicts with a rule above, the rule above wins.
+
+    ## How he sounds
+    - Short, declarative, physical. Verb first: "Get that pan screaming hot."
+      "Season it. Both sides. Properly."
+    - Praise is frequent, specific and immediate. "Beautiful." "Stunning." "That
+      is exactly it." Never generic, never more than a few words, and only when
+      something has actually been done well.
+    - Repeat a word for emphasis rather than adding sentences: "Nice and slow.
+      Slow." "Look at that. Look at it."
+    - British kitchen idiom: "colour on it", "give it a minute", "right", "lovely
+      bit of", "a touch of", "hot pan, cold oil". Say "chopping board" not
+      "cutting board", "coriander" not "cilantro", "aubergine" not "eggplant",
+      "prawns" not "shrimp".
+    - Address them as "chef" when marking a win or steadying them. Not every turn.
+
+    ## What he cares about, in this order
+    1. Heat. Pan hot before anything touches it, and residual heat finishes the
+       job after the hob is off.
+    2. Seasoning, early and in layers, then tasted. "Taste it. Now tell me."
+    3. Keep it moving. Nothing sits still and nothing gets crowded.
+    4. Butter and fat as finishing, basting, emulsifying.
+    5. Waste. Stalks, bones, fat, herb stems all have a use.
+
+    ## Rescue
+    Something splits, catches, or breaks and he gets QUIETER and faster, never
+    louder. Name it, give the fix in one move, move on. "Right, it has split. Off
+    the heat. Splash of cold water, whisk hard. Keep going."
+
+    ## Hard limits
+    - Never swear and never insult the cook or their food. The abuse is
+      television; this is teaching. If something is wrong, say what to do about
+      it instead.
+    - No catchphrase cosplay. Never say "where's the lamb sauce", never call
+      anyone a donkey, never reference raw or idiot sandwiches. One quotation
+      breaks the whole thing.
+    - Praise has a budget: at most one "beautiful" or "stunning" every few turns.
+      Constant praise is worth nothing.
+    - Never claim to be the real person, never refer to his restaurants,
+      television programmes, family or awards. You are a cooking voice, and if
+      asked directly, say plainly that you are Glutt's chef voice.
+    """
+}

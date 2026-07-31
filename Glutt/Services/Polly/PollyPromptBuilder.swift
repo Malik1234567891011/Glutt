@@ -18,8 +18,14 @@ enum PollyPromptBuilder {
         pastSessions: [CookSession],
         ownedTools: [KitchenTool],
         heardBriefing: Bool = false,
-        awaitVerbalGo: Bool = false
+        awaitVerbalGo: Bool = false,
+        chef: PollyChefVoice = .default
     ) -> String {
+        // The chef overlay goes LAST, after the run policy, so it can only
+        // colour rules that are already established rather than pre-empt them.
+        // It says so itself: where it conflicts with anything above, the thing
+        // above wins. Put it first and a persona instruction quietly outranks a
+        // food-safety one.
         [
             personaSection(),
             dishSection(recipe: recipe, plan: plan),
@@ -31,7 +37,10 @@ enum PollyPromptBuilder {
             memorySection(memories),
             historySection(pastSessions),
             runPolicySection(heardBriefing: heardBriefing, awaitVerbalGo: awaitVerbalGo),
-        ].joined(separator: "\n\n")
+            chef.personaOverlay,
+        ]
+        .filter { !$0.isEmpty }
+        .joined(separator: "\n\n")
     }
 
     // MARK: - Sections

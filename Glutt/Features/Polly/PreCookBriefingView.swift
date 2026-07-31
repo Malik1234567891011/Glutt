@@ -20,6 +20,7 @@ struct PreCookBriefingView: View {
     @State private var didStartNarration = false
     @State private var didHandOff = false
     @State private var isHandingOff = false
+    @State private var selectedChefID = PollyChefVoice.selectedID
 
     private let heroHeight: CGFloat = 300
 
@@ -294,8 +295,63 @@ struct PreCookBriefingView: View {
 
     // MARK: - Bottom bar
 
+    /// Chef picker. Lives here, before the cook, and not in the session's
+    /// overflow menu, because the Realtime API refuses a `voice` change once any
+    /// audio has been produced. Switching chef mid-conversation is not something
+    /// the platform allows, so this is the only moment it can be offered.
+    private var chefPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(PollyChefVoice.all) { chef in
+                    let isSelected = chef.id == selectedChefID
+                    Button {
+                        Haptics.impact(.light)
+                        selectedChefID = chef.id
+                        PollyChefVoice.selectedID = chef.id
+                        // Re-narrate in the new voice so the choice is audible
+                        // immediately rather than a promise about the cook.
+                        if let briefing, narrator.isSpeaking {
+                            narrator.narrate(briefing)
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(chef.displayName)
+                                .font(BrandFont.nunito(14.5, 800))
+                                .foregroundStyle(isSelected ? Theme.Colors.creamText : Theme.Colors.heading)
+                            Text(chef.tagline)
+                                .font(BrandFont.nunito(11.5, 600))
+                                .foregroundStyle(isSelected ? Theme.Colors.creamText.opacity(0.82) : Theme.Colors.muted)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(isSelected ? Theme.Colors.accent : Theme.Colors.card)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(
+                                    isSelected ? Color.clear : Theme.Colors.heading.opacity(0.12),
+                                    lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("preCookBriefing.chef.\(chef.id)")
+                    .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+        .scrollClipDisabled()
+    }
+
     private var bottomBar: some View {
         VStack(spacing: 10) {
+            if PollyChefVoice.all.count > 1 {
+                chefPicker
+                    .padding(.bottom, 2)
+            }
             Button {
                 Haptics.impact(.medium)
                 finish(heard: true, awaitVerbalGo: false)

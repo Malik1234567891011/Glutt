@@ -63,6 +63,58 @@ export default async function handler(req, res) {
   // ai_rates prices this model per 1k input tokens; ~4 chars/token.
   const estimatedInputTokens = Math.ceil((text.length + instructions.length) / 4);
 
+  // ElevenLabs branch: the cook picked a chef whose voice is a cloned one.
+  //
+  // Only the briefing can use it. In the LIVE session the voice is the Realtime
+  // model's audio decoder rather than a parameter, so an owned voice there means
+  // text-only output plus synthesising and playing the audio on device, which
+  // takes playback outside libWebRTC and costs the echo canceller its reference.
+  // Here there is no such constraint: the briefing is a plain request/response
+  // that returns mp3 bytes, so the contract stays byte-identical and the client
+  // needs no change.
+  //
+  // ELEVENLABS_API_KEY is already a production secret (Scribe v2 powers import
+  // transcription), so this adds a vendor call, not a vendor.
+  const elevenVoiceID = typeof req.body?.elevenLabsVoiceId === "string"
+    ? req.body.elevenLabsVoiceId.trim().slice(0, 64)
+    : "";
+  const elevenKey = (process.env.ELEVENLABS_API_KEY || "").trim();
+  if (elevenVoiceID && elevenKey && /^[A-Za-z0-9]+$/.test(elevenVoiceID)) {
+    const elevenModel = (process.env.POLLY_ELEVENLABS_MODEL || "").trim() || "eleven_turbo_v2_5";
+    try {
+      const upstream = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${elevenVoiceID}?output_format=mp3_44100_128`,
+        {
+          method: "POST",
+          headers: { "xi-api-key": elevenKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ text, model_id: elevenModel }),
+          signal: AbortSignal.timeout(45_000),
+        }
+      );
+      if (upstream.ok) {
+        const audio = Buffer.from(await upstream.arrayBuffer());
+        await logUsage({
+          feature: "polly_speak",
+          model: elevenModel,
+          install_id: installIdFrom(req),
+          input_tokens: estimatedInputTokens,
+          duration_ms: Date.now() - startedAt,
+        });
+        res.setHeader("Cache-Control", "no-store");
+        res.setHeader("Content-Type", "audio/mpeg");
+        res.setHeader("x-glutt-polly-voice", elevenVoiceID);
+        res.setHeader("x-glutt-polly-tts-model", elevenModel);
+        return res.status(200).send(audio);
+      }
+      // Fall through to OpenAI rather than failing. A briefing in the wrong
+      // voice is a disappointment; a briefing that 502s blocks the cook.
+      const detail = (await upstream.text()).slice(0, 240);
+      console.warn(`[polly/speak] elevenlabs ${upstream.status}: ${detail}`);
+    } catch (error) {
+      console.warn(`[polly/speak] elevenlabs failed: ${error instanceof Error ? error.message : error}`);
+    }
+  }
+
   try {
     const upstream = await fetch(`${openAIBaseURL}/audio/speech`, {
       method: "POST",

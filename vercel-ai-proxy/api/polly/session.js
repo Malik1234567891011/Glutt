@@ -95,7 +95,12 @@ export default async function handler(req, res) {
   // latency ever crosses the watchdog she starts interrupting herself to
   // apologise. Drop to "medium" if it does.
   const REASONING_EFFORTS = ["minimal", "low", "medium", "high", "xhigh"];
-  const requestedEffort = (process.env.POLLY_REASONING_EFFORT || "").trim() || "high";
+  // Was "high". Dropped to medium after a real cook measured p50 voice-to-voice
+  // at 1817ms with one turn at 4933ms, which tripped
+  // PollyConfig.responseWatchdogSeconds (4s) and made Polly interrupt herself to
+  // apologise for a turn she had simply been slow to answer. Exactly the failure
+  // the comment below warned about. Accuracy is not worth a watchdog strike.
+  const requestedEffort = (process.env.POLLY_REASONING_EFFORT || "").trim() || "medium";
   // "off" is an escape hatch: omit the field entirely and take the server default.
   const effort = REASONING_EFFORTS.includes(requestedEffort) ? requestedEffort : null;
   // What we ACTUALLY minted with, after any fallback. Reported back so a bad
@@ -103,12 +108,21 @@ export default async function handler(req, res) {
   // than as an unexplained drop in answer quality.
   let appliedEffort = effort;
 
+  // Text-only output: the client will speak her words itself with a cloned
+  // voice. In speech-to-speech the voice IS the model's audio decoder, not a
+  // parameter, so this is the only way to own it. Audio INPUT is untouched, so
+  // she still hears natively — far_field noise reduction, semantic VAD and
+  // transcription all still apply. That is the half-cascade: her ears stay
+  // OpenAI's, her mouth becomes ours.
+  const textOnly = req.body?.textOnly === true;
+
   const sessionBody = (withReasoning) => ({
     expires_after: { anchor: "created_at", seconds: 600 },
     session: {
       type: "realtime",
       model,
       ...(withReasoning && effort ? { reasoning: { effort } } : {}),
+      ...(textOnly ? { output_modalities: ["text"] } : {}),
       audio: {
         input: {
           // create_response / interrupt_response OFF: the CLIENT owns when Polly

@@ -144,7 +144,7 @@ final class PollySessionControllerTests: XCTestCase {
         let deps = PollySessionController.Dependencies(
             // The chef's voice now rides the mint, since Realtime pins `voice` at
             // session creation. Tests don't assert on it, so swallow the argument.
-            mintToken: { _ in try await mint() },
+            mintToken: { _, _ in try await mint() },
             makeTransport: { transport },
             compilePlan: { _, _ in Self.fixturePlan },
             extractMemories: { _, _ in Self.fixtureExtraction },

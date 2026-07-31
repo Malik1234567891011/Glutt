@@ -21,7 +21,7 @@ final class PollySessionController {
     struct Dependencies {
         /// Voice is threaded in so the chef picked before the cook reaches the
         /// mint: the Realtime API pins `voice` at session creation.
-        var mintToken: (_ voice: String?) async throws -> PollySessionToken
+        var mintToken: (_ voice: String?, _ textOnly: Bool) async throws -> PollySessionToken
         var makeTransport: () -> RealtimeTransporting
         var compilePlan: (Recipe, Double) async -> CookPlan
         var extractMemories: (String, String) async throws -> PollyMemoryExtractor.Extraction
@@ -30,7 +30,9 @@ final class PollySessionController {
         var now: () -> Date
 
         static let live = Dependencies(
-            mintToken: { voice in try await PollyTokenService.live.mint(voice: voice) },
+            mintToken: { voice, textOnly in
+                try await PollyTokenService.live.mint(voice: voice, textOnly: textOnly)
+            },
             makeTransport: { RealtimeWebRTCTransport() },
             compilePlan: { await CookPlanCompiler.compile(recipe: $0, scale: $1) },
             extractMemories: { try await PollyMemoryExtractor.extract(transcript: $0, recipeTitle: $1) },
@@ -94,6 +96,11 @@ final class PollySessionController {
     /// the hold is released — the bug it replaces was invisible from outside.
     private(set) var micHeldForClipAudio = false
     private var clipMicFailsafeTask: Task<Void, Never>?
+    /// Set when the picked chef has a cloned voice, which means the session was
+    /// minted text-only and `voicePlayer` owns her speech instead of the model.
+    private var clonedVoiceID: String?
+    /// Speaks her words in a cloned voice. Idle unless `clonedVoiceID` is set.
+    let voicePlayer = PollyVoicePlayer()
     /// When the cook stopped talking, for the voice-to-voice timer.
     private var speechStoppedAt: Date?
     /// Every measured speech-end to her-audio-start gap this session, in ms.
@@ -661,11 +668,38 @@ final class PollySessionController {
         // audio has been output, so the voice has to travel with the token and
         // the choice is fixed for the life of the session by design.
         let chef = PollyChefVoice.selected
-        PollyDebugLog.shared.log("session: chef=\(chef.id) realtimeVoice=\(chef.realtimeVoice)")
+        clonedVoiceID = chef.elevenLabsVoiceID
+        PollyDebugLog.shared.log(
+            "session: chef=\(chef.id) realtimeVoice=\(chef.realtimeVoice)"
+            + (chef.elevenLabsVoiceID != nil ? " clonedVoice=YES (text-only output)" : ""))
+
+        // With a cloned voice the model emits text, so the
+        // output_audio_buffer.started/stopped events that normally drive the
+        // half-duplex governor never arrive. The player becomes the source of
+        // truth for "she is audibly speaking" instead — same governor, same
+        // barge-in, different origin.
+        if chef.elevenLabsVoiceID != nil {
+            voicePlayer.onSpeakingChange = { [weak self] speaking in
+                guard let self else { return }
+                self.isPollySpeaking = speaking
+                self.webrtc?.setAssistantSpeaking(speaking)
+                if speaking {
+                    self.noteVoiceToVoiceLatency()
+                    self.isThinking = false
+                    self.watchdogStrikes = 0
+                    self.cancelResponseWatchdog()
+                    self.cancelDormancyTimer()
+                } else {
+                    PollyDebugLog.shared.event(.assistantSpeechEnd)
+                    self.reengageAfterAssistantSpeech(
+                        expectingAnswer: self.lastAssistantAskedQuestion)
+                }
+            }
+        }
 
         let token: PollySessionToken
         do {
-            token = try await deps.mintToken(chef.realtimeVoice)
+            token = try await deps.mintToken(chef.realtimeVoice, chef.elevenLabsVoiceID != nil)
             PollyDebugLog.shared.log("session: token minted — model=\(token.model) voice=\(token.voice)")
         } catch {
             PollyDebugLog.shared.log("session: token mint FAILED — \(error.localizedDescription)")
@@ -797,6 +831,9 @@ final class PollySessionController {
         cancelResponseWatchdog()
         clipMicFailsafeTask?.cancel()
         clipMicFailsafeTask = nil
+        // Her voice is ours now, so nothing else will stop it. Without this she
+        // finishes her sentence over the Cook Recap.
+        voicePlayer.stop()
         wakeInjectionTask?.cancel()
         wakeWord.stop()
         audio.stop()
@@ -886,6 +923,9 @@ final class PollySessionController {
         cancelResponseWatchdog()
         clipMicFailsafeTask?.cancel()
         clipMicFailsafeTask = nil
+        // Her voice is ours now, so nothing else will stop it. Without this she
+        // finishes her sentence over the Cook Recap.
+        voicePlayer.stop()
         wakeInjectionTask?.cancel()
         wakeWord.stop()
         camera.stop()
@@ -1378,6 +1418,11 @@ final class PollySessionController {
         // WebRTC: barge-in truncation / buffer clear is server-side. Cancel the
         // in-flight response and clear the remote output buffer so her voice stops.
         _ = audio.interruptPlayback()
+        // Cloned voice: her audio is OURS, so the server has nothing to clear and
+        // responseCancel would leave her talking. This is the only thing that
+        // shuts her up. It also kills a synthesis still in flight, so a reply the
+        // cook interrupted never arrives late and talks over them.
+        if clonedVoiceID != nil { voicePlayer.stop() }
         try? await transport?.send(.responseCancel)
         try? await transport?.send(.outputAudioBufferClear)
         isPollySpeaking = false
@@ -1516,6 +1561,12 @@ final class PollySessionController {
             let askedQuestion = pendingAssistantLine.contains("?")
                 || pendingAssistantLine.lowercased().contains("do you")
             lastAssistantAskedQuestion = askedQuestion
+            // Cloned voice: the model produced words, not audio, so this is the
+            // moment she actually gets a mouth. A cancelled response means the
+            // cook interrupted, and speaking it anyway would talk over them.
+            if let voiceID = clonedVoiceID, status == "completed", !pendingAssistantLine.isEmpty {
+                voicePlayer.speak(pendingAssistantLine, voiceID: voiceID)
+            }
             // Don't clear isPollySpeaking here — on WebRTC, outputAudioStarted /
             // outputAudioStopped own the audible speaking flags.
             flushPendingAssistantLine()
@@ -1677,7 +1728,9 @@ final class PollySessionController {
         await dyingTransport?.close()
 
         do {
-            let token = try await deps.mintToken(PollyChefVoice.selected.realtimeVoice)
+            let reconnectChef = PollyChefVoice.selected
+            let token = try await deps.mintToken(
+                reconnectChef.realtimeVoice, reconnectChef.elevenLabsVoiceID != nil)
             let transport = deps.makeTransport()
             if let webrtc = transport as? RealtimeWebRTCTransport {
                 let wake = wakeWord

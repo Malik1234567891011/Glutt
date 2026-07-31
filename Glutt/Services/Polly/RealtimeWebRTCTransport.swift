@@ -116,6 +116,18 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
             "audio: software AEC \(enabled ? (mobileMode ? "ON (AECM)" : "ON (AEC3)") : "OFF")")
     }
 
+    /// Tell the governor she is speaking when the audio is NOT coming from the
+    /// model.
+    ///
+    /// With a cloned voice the session is minted text-only, so no
+    /// `output_audio_buffer.started/stopped` events ever arrive and
+    /// `noteAssistantAudio` never fires. Without this the half-duplex gate would
+    /// believe she was silent for the entire cook and leave the mic wide open
+    /// while she talked, feeding her own voice straight back to the server.
+    func setAssistantSpeaking(_ speaking: Bool) {
+        noteAssistantAudio(playing: speaking)
+    }
+
     /// Re-apply the lab toggles mid-session. Shipping them in the overflow menu
     /// is only useful if flipping one takes effect without a rebuild, which
     /// means the transport has to be told.

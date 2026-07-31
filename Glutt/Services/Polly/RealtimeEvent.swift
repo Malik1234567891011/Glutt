@@ -308,7 +308,18 @@ enum RealtimeServerEvent: Equatable {
             guard let itemId = object["item_id"] as? String,
                   let delta = object["delta"] as? String else { return .unhandled(type: type) }
             return .outputAudioDelta(itemId: itemId, base64: delta)
-        case "response.output_audio_transcript.delta":
+        // Three spellings, one meaning: the words she is about to say.
+        //
+        // `output_audio_transcript.delta` is what speech-to-speech emits. In
+        // text-only mode (a cloned voice, where the app synthesises her speech
+        // itself) the model emits text instead, and the API reference and the
+        // cookbook disagree on the name — reference implies
+        // `response.output_text.delta`, cookbook shows `response.text.delta`.
+        // Accepting all three costs two lines; guessing wrong costs a mute Polly
+        // and a long night working out why.
+        case "response.output_audio_transcript.delta",
+             "response.output_text.delta",
+             "response.text.delta":
             guard let itemId = object["item_id"] as? String,
                   let delta = object["delta"] as? String else { return .unhandled(type: type) }
             return .outputTranscriptDelta(itemId: itemId, delta: delta)

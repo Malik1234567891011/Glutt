@@ -49,7 +49,10 @@ struct PollyTokenService {
     ///   falls back to its own default, so an unknown value costs the voice, not
     ///   the session. Sent at mint because the Realtime API refuses a `voice`
     ///   change once any audio has been produced.
-    func mint(voice: String? = nil) async throws -> PollySessionToken {
+    /// - Parameter textOnly: mint with `output_modalities: ["text"]` so the
+    ///   model stops producing audio and the app can speak her words in a cloned
+    ///   voice instead.
+    func mint(voice: String? = nil, textOnly: Bool = false) async throws -> PollySessionToken {
         guard !baseURL.isEmpty else { throw PollyTokenError.notConfigured }
         guard let url = URL(string: "\(baseURL)/polly/session") else {
             throw PollyTokenError.badResponse("Bad URL")
@@ -60,6 +63,7 @@ struct PollyTokenService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         var body: [String: Any] = [:]
         if let voice, !voice.isEmpty { body["voice"] = voice }
+        if textOnly { body["textOnly"] = true }
         request.httpBody = (try? JSONSerialization.data(withJSONObject: body)) ?? Data("{}".utf8)
         if !clientKey.isEmpty {
             request.setValue(clientKey, forHTTPHeaderField: "x-glutt-proxy-key")

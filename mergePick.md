@@ -104,3 +104,18 @@ git checkout 76bef7c
 # Our media-only tip (pre-merge with his voice):
 git checkout feat/background-import-clips
 ```
+
+---
+
+## Post-merge verification fix (2026-07-31)
+
+Found while making sure `main` builds after the push:
+
+| Issue | Cause | Fix |
+|---|---|---|
+| `cannot find 'PollyVoicePlayer' in scope` | File landed in `76bef7c` but was never added to `Glutt.xcodeproj` (xcodegen couldn't regenerate) | Regenerated project after unblocking xcodegen |
+| `xcodegen` failed on GluttShare sources | `project.yml` referenced `ImportProgressViews.swift`, `PantrySnapshot.swift`, `cooking-loop.mp4` that were never committed | Dropped the two missing Swift paths (nothing in GluttShare references them); copied `cooking-loop.mp4` from `design-loading/animation/` into `Glutt/Resources/Animations/` and marked it optional |
+| Prod media clips | Already live | Auth'd `/api/media/clips` returns Eggs Benedict (4), Wellington (6), TikTok scramble (4); signed MP4s `200 video/mp4` |
+
+**Kept:** `IngredientCanonicalizer.swift` on GluttShare (file exists; his intent was correct).  
+**Dropped from project.yml only:** phantom `ImportProgressViews` / `PantrySnapshot` entries — not the features themselves (they were never in git).

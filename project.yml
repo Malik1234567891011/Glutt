@@ -116,11 +116,8 @@ targets:
       - path: Glutt/Services/Import/VideoRecipeCompiler.swift
       - path: Glutt/Services/Import/ImportInbox.swift
       - path: Glutt/Services/Import/ShareImportViewModel.swift
-      # The share sheet's own UI vocabulary and the pantry-coverage line it
-      # shows. Both live in the app target but the extension renders them, so
-      # they have to be compiled into it too.
-      - path: Glutt/Features/Import/ImportProgressViews.swift
-      - path: Glutt/Services/Import/PantrySnapshot.swift
+      # Shared with the app target — extension needs the same canonicalizer for
+      # pantry-coverage lines on the share-sheet preview.
       - path: Glutt/Services/IngredientCanonicalizer.swift
       - path: Glutt/Services/Import/PendingImportStore.swift
       - path: Glutt/Services/AI/LLMClient.swift
@@ -137,15 +134,15 @@ targets:
       - path: Glutt/DesignSystem/Typography.swift
       - path: Glutt/DesignSystem/BrandFonts.swift
       - path: Glutt/DesignSystem/Components/Buttons.swift
-      # The import screen is typeset in the brand faces and carries the cooking
-      # loop, so the extension has to bundle them itself — a target that doesn't
-      # gets a system-font fallback (see BrandFonts.swift) and no animation.
+      # Brand faces for the share-sheet import UI (system-font fallback without them).
       - path: Glutt/Resources/Fonts/BricolageGrotesque-Variable.ttf
         buildPhase: resources
       - path: Glutt/Resources/Fonts/Nunito-Variable.ttf
         buildPhase: resources
+      # Optional until the cooking-loop asset is checked into Resources/Animations.
       - path: Glutt/Resources/Animations/cooking-loop.mp4
         buildPhase: resources
+        optional: true
     info:
       path: GluttShare/Info.plist
       properties:

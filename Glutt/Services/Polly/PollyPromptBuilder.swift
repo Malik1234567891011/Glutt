@@ -18,8 +18,14 @@ enum PollyPromptBuilder {
         pastSessions: [CookSession],
         ownedTools: [KitchenTool],
         heardBriefing: Bool = false,
-        awaitVerbalGo: Bool = false
+        awaitVerbalGo: Bool = false,
+        chef: PollyChefVoice = .default
     ) -> String {
+        // The chef overlay goes LAST, after the run policy, so it can only
+        // colour rules that are already established rather than pre-empt them.
+        // It says so itself: where it conflicts with anything above, the thing
+        // above wins. Put it first and a persona instruction quietly outranks a
+        // food-safety one.
         [
             personaSection(),
             dishSection(recipe: recipe, plan: plan),
@@ -31,7 +37,10 @@ enum PollyPromptBuilder {
             memorySection(memories),
             historySection(pastSessions),
             runPolicySection(heardBriefing: heardBriefing, awaitVerbalGo: awaitVerbalGo),
-        ].joined(separator: "\n\n")
+            chef.personaOverlay,
+        ]
+        .filter { !$0.isEmpty }
+        .joined(separator: "\n\n")
     }
 
     // MARK: - Sections
@@ -59,6 +68,26 @@ enum PollyPromptBuilder {
         - Ignore sizzling, clattering, background chatter, TV, music, and other kitchen noise —
           respond only when the cook is clearly speaking to you (see "Only answer when you're
           being talked to").
+
+        # Unclear audio
+        - Only respond to clear audio.
+        - If the cook's audio is not clear, ask for clarification in one short phrase such as
+          "Say that again, chef?"
+        - Don't repeat the same clarification twice in a row.
+        - Treat audio as unclear if it is ambiguous, noisy, unintelligible, partially cut off, or
+          if you are unsure of the exact words. A kitchen is loud; this will happen often.
+        - Do NOT guess what the cook meant from unclear audio. Guessing wrong at a stove is worse
+          than asking.
+        - Do not reason at length when the audio is unclear, and do not call a tool on it.
+
+        # Silence and background noise
+        - If the latest audio is silence, an extractor fan, a pan, running water, a TV, someone
+          else in the room, or speech that is not addressed to you, call `wait_for_user` and say
+          nothing.
+        - Do not respond conversationally after calling it. Do not say "I'm here", "I didn't catch
+          that", "take your time", or "let me know when you're ready" — those are what make an
+          assistant feel like it is hovering.
+        - Resume normal replies as soon as the cook clearly speaks to you again.
         """
     }
 

@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import LiveKitWebRTC
+import os
 
 /// What the session wants from the mic. The transport's governor combines
 /// this with live playback state (half-duplex + voice-reopen + greeting
@@ -61,6 +62,9 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     /// Fired when the voice-reopen gate detected a real voice during her turn
     /// and reopened the mic for barge-in. Transport thread.
     var onBargeInReopen: (() -> Void)?
+    /// True when the audio session was taken by a call/alarm/Siri, false when it
+    /// came back. Main queue.
+    var onAudioInterrupted: ((Bool) -> Void)?
 
     /// Latest mic-observation RMS, from whichever feed is actually alive
     /// (capture hook, local-track renderer, or the engine tap).
@@ -92,17 +96,54 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
             + " tapB[f=\(engineTap.statsB.frames) rms=\(String(format: "%.3f", engineTap.statsB.rms)) pk=\(String(format: "%.3f", engineTap.statsB.peak))]"
     }
 
-    /// Fallback when the platform (VPIO) echo canceller won't engage: turn on
-    /// libWebRTC's software AEC in mobile mode. Runtime-swappable by design —
-    /// the APM's `config` property applies live.
-    func enableSoftwareAEC() {
+    /// Turn libWebRTC's software echo canceller on or off. Runtime-swappable by
+    /// design — the APM's `config` property applies live, which is what makes an
+    /// in-session A/B possible at all.
+    ///
+    /// `mobileMode` selects AECM, webrtc's legacy mobile canceller, rather than
+    /// AEC3. It defaults to false: AEC3 is the modern one, and the log line that
+    /// used to call the old setting "software AEC3 (mobile)" was simply wrong
+    /// about which canceller it had enabled.
+    func setSoftwareAEC(_ enabled: Bool, mobileMode: Bool = false) {
         guard let apm = lock.withLock({ processingModule }) else { return }
         let config = LKRTCAudioProcessingConfig()
-        config.isEchoCancellationEnabled = true
-        config.isEchoCancellationMobileMode = true
+        config.isEchoCancellationEnabled = enabled
+        config.isEchoCancellationMobileMode = mobileMode
         config.isNoiseSuppressionEnabled = true
         config.isHighpassFilterEnabled = true
         apm.config = config
+        PollyDebugLog.shared.log(
+            "audio: software AEC \(enabled ? (mobileMode ? "ON (AECM)" : "ON (AEC3)") : "OFF")")
+    }
+
+    /// Re-apply the lab toggles mid-session. Shipping them in the overflow menu
+    /// is only useful if flipping one takes effect without a rebuild, which
+    /// means the transport has to be told.
+    func refreshAudioLab() {
+        setSoftwareAEC(PollyAudioLab.stackedAEC)
+        lock.withLock { resolveTrackLocked() }
+        PollyDebugLog.shared.log(PollyAudioLab.summary)
+    }
+
+    /// Apply the audio-lab experiments and then report what the hardware
+    /// actually did. Called from the production connect path, which is the whole
+    /// point: every AEC control in this file used to be reachable only from a
+    /// launch-argument-gated debug screen, so a shipping cook could neither turn
+    /// echo cancellation on nor discover that it was off.
+    func applyAudioLabAndReport() {
+        setSoftwareAEC(PollyAudioLab.stackedAEC)
+        PollyDebugLog.shared.log(PollyAudioLab.summary)
+        // The ADM reports requested-vs-active only once input is configured, so
+        // reading it immediately after connect returns a meaningless NO.
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(1500))
+            guard let self else { return }
+            PollyDebugLog.shared.log(self.audioDiagnostics())
+            if !self.isPlatformAECActive {
+                PollyDebugLog.shared.log(
+                    "audio: WARNING platform AEC (VPIO) is NOT active — software AEC is all that stands between her voice and the mic")
+            }
+        }
     }
 
     private let continuation: AsyncStream<RealtimeServerEvent>.Continuation
@@ -134,6 +175,14 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     private var meterTask: Task<Void, Never>?
     private var greetingFailsafeTask: Task<Void, Never>?
     private var routeObserver: NSObjectProtocol?
+    private var interruptionObserver: NSObjectProtocol?
+
+    /// How many transports exist right now. A healthy cook is 1; a reconnect
+    /// briefly touches 2 and must settle back to 1. Anything that stays above 1
+    /// means a leaked stack — a second audio device module and a second claim on
+    /// the microphone, which is inaudible in code review and unmistakable in a
+    /// kitchen. Logged on every init and deinit so the debug dump proves it.
+    private static let liveCount = OSAllocatedUnfairLock(initialState: 0)
 
     override init() {
         let (stream, continuation) = AsyncStream.makeStream(of: RealtimeServerEvent.self)
@@ -143,6 +192,13 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         self.hook = hook
         self.renderMonitor = PollyRenderMonitor(hook: hook)
         super.init()
+        let n = Self.liveCount.withLock { $0 += 1; return $0 }
+        PollyDebugLog.shared.log("transport: init (live=\(n))")
+    }
+
+    deinit {
+        let n = Self.liveCount.withLock { $0 -= 1; return $0 }
+        PollyDebugLog.shared.log("transport: deinit (live=\(n))")
     }
 
     // MARK: - RealtimeTransporting
@@ -312,7 +368,14 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
 
     /// The one place track state is computed. Caller must hold `lock`.
     private func resolveTrackLocked() {
-        let enabled = micMode == .open && !greetingHold && (!assistantSpeaking || voiceReopened)
+        // Half-duplex: the mic track is closed for Polly's entire utterance, so
+        // echo phantoms are physically impossible — but so is simply talking over
+        // her. Getting back in means clearing an RMS gate, which is why
+        // interrupting her takes a raised voice. Full duplex hands that job to
+        // the echo canceller instead, which is only a good trade if the canceller
+        // is actually running. Hence the toggle, and hence logging AEC state.
+        let duplexAllows = PollyAudioLab.fullDuplex || !assistantSpeaking || voiceReopened
+        let enabled = micMode == .open && !greetingHold && duplexAllows
         micTrack?.isEnabled = enabled
         hook.setServerMuted(!enabled)
     }
@@ -372,6 +435,10 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
             NotificationCenter.default.removeObserver(routeObserver)
             self.routeObserver = nil
         }
+        if let interruptionObserver {
+            NotificationCenter.default.removeObserver(interruptionObserver)
+            self.interruptionObserver = nil
+        }
         meterTask?.cancel()
         meterTask = nil
         greetingFailsafeTask?.cancel()
@@ -404,6 +471,35 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         dc.sendData(LKRTCDataBuffer(data: data, isBinary: false))
     }
 
+    /// A phone call, alarm, Siri or another app took the session, then gave it
+    /// back. On `.began` the input is dead whatever we do; on `.ended` with
+    /// `shouldResume` the session has to be reactivated explicitly, because
+    /// nothing does it for us and libwebrtc's audio unit will not restart on its
+    /// own. Without this the cook went silent and never came back.
+    private func handleInterruption(type: AVAudioSession.InterruptionType, userInfo: [AnyHashable: Any]?) {
+        switch type {
+        case .began:
+            PollyDebugLog.shared.log("audio: INTERRUPTED (call, alarm, Siri or another app took the session)")
+            onAudioInterrupted?(true)
+        case .ended:
+            let options = (userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt)
+                .map(AVAudioSession.InterruptionOptions.init(rawValue:)) ?? []
+            let shouldResume = options.contains(.shouldResume)
+            PollyDebugLog.shared.log("audio: interruption ended shouldResume=\(shouldResume ? 1 : 0)")
+            if shouldResume {
+                do {
+                    try PollyAudioSession.configure(active: true)
+                    PollyDebugLog.shared.log("audio: session resumed \(PollyAudioSession.routeSummary())")
+                } catch {
+                    PollyDebugLog.shared.log("audio: session RESUME FAILED — \(error.localizedDescription)")
+                }
+            }
+            onAudioInterrupted?(false)
+        @unknown default:
+            break
+        }
+    }
+
     /// Shared with the WebSocket engine path: `.videoChat` (speaker-tuned AEC),
     /// Bluetooth HFP allowed for AirPods, speaker override only when no headset.
     private func configureAudioSession() {
@@ -413,11 +509,34 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         webRTCConfig.categoryOptions = PollyAudioSession.categoryOptions
         LKRTCAudioSessionConfiguration.setWebRTC(webRTCConfig)
 
+        // What we are taking the session OVER from. The briefing runs immediately
+        // before this with .playback/.spokenAudio, and a hot category swap on a
+        // still-active session is a plausible reason the voice-processing unit
+        // comes up unhappy. If this line ever reads Playback, the handover did
+        // not happen.
+        let incoming = AVAudioSession.sharedInstance()
+        PollyDebugLog.shared.log(
+            "audio: taking session from category=\(incoming.category.rawValue) mode=\(incoming.mode.rawValue)")
+
         do {
             try PollyAudioSession.configure(active: true)
             PollyDebugLog.shared.log("audio: WebRTC session \(PollyAudioSession.routeSummary())")
         } catch {
             PollyDebugLog.shared.log("audio: WebRTC session configure FAILED — \(error.localizedDescription)")
+        }
+
+        // A phone call, an alarm, Siri, or any other app taking the session used
+        // to be entirely unhandled: nothing observed interruptions on the shipping
+        // path, and DormantReason.audioInterrupted was a declared enum case that
+        // nothing ever emitted. The cook simply went quiet and stayed quiet.
+        if interruptionObserver == nil {
+            interruptionObserver = NotificationCenter.default.addObserver(
+                forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
+            ) { [weak self] note in
+                guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                      let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+                self?.handleInterruption(type: type, userInfo: note.userInfo)
+            }
         }
 
         if routeObserver == nil {

@@ -32,6 +32,10 @@ final class FakeRealtimeTransport: RealtimeTransporting, @unchecked Sendable {
     var connectedModel: String? { lock.withLock { models.last } }
     var connectCount: Int { lock.withLock { tokens.count } }
     var isClosed: Bool { lock.withLock { closeCount > 0 } }
+    /// How many times close() was called. A reconnect must close the dying
+    /// transport before standing up its replacement — skipping that leaked a
+    /// whole WebRTC stack, mic claim included, on every hiccup.
+    var closes: Int { lock.withLock { closeCount } }
 
     /// Sends minus mic audio. The sim test host may or may not deliver mic
     /// chunks — tests must never assert on their presence or absence.
@@ -138,7 +142,9 @@ final class PollySessionControllerTests: XCTestCase {
     ) -> PollySessionController {
         let mint: () async throws -> PollySessionToken = mintToken ?? { Self.fixtureToken }
         let deps = PollySessionController.Dependencies(
-            mintToken: mint,
+            // The chef's voice now rides the mint, since Realtime pins `voice` at
+            // session creation. Tests don't assert on it, so swallow the argument.
+            mintToken: { _ in try await mint() },
             makeTransport: { transport },
             compilePlan: { _, _ in Self.fixturePlan },
             extractMemories: { _, _ in Self.fixtureExtraction },
@@ -189,7 +195,7 @@ final class PollySessionControllerTests: XCTestCase {
         }
         XCTAssertTrue(config.instructions.contains("Creamy Lemon Chicken"),
                       "instructions must embed the recipe")
-        XCTAssertEqual(config.tools.count, 18, "all locked tools advertised")
+        XCTAssertEqual(config.tools.count, 19, "all locked tools advertised")
         XCTAssertEqual(config.voice, "marin")
         XCTAssertEqual(config.model, "gpt-realtime-2")
         XCTAssertTrue(config.transcribeInput)
@@ -334,6 +340,12 @@ final class PollySessionControllerTests: XCTestCase {
         await waitUntil({ transport.connectCount == 2 }, "exactly one silent reconnect")
         await waitUntil({ controller.phase == .live }, "phase returns to .live")
 
+        // The dying transport must be released, not merely dropped on the floor.
+        // Before this, self.transport was overwritten while the old peer
+        // connection, its audio device module and its claim on the microphone
+        // stayed alive, so every reconnect stacked another one on top.
+        XCTAssertEqual(transport.closes, 1, "the dead transport is closed before the new one connects")
+
         XCTAssertTrue(controller.captionText.localizedCaseInsensitiveContains("hiccup"))
         let sessionUpdates = transport.sent.filter {
             if case .sessionUpdate = $0 { return true }
@@ -457,7 +469,16 @@ final class PollySessionControllerTests: XCTestCase {
         XCTAssertEqual(controller.phase, .live)
         XCTAssertEqual(controller.listeningMode, .dormant, "the session gates the mic until \"Polly\"")
         XCTAssertTrue(controller.audio.isMuted, "dormant means the Realtime input is muted")
-        XCTAssertFalse(controller.wakeWordAvailable, "no Speech auth in the test host")
+        // This used to assert wakeWordAvailable == false, "no Speech auth in the
+        // test host". It passed for the wrong reason: SFSpeechRecognizer reports
+        // unavailable for a moment after init, and the old code read that once
+        // and believed it for the whole session. Now that availability is
+        // retried the flag settles on whatever the host actually supports, which
+        // is environment, not contract. What matters here is that the session
+        // starts gated either way — a cook with no wake word gets tap-to-talk,
+        // not an open microphone.
+        XCTAssertEqual(controller.listeningMode, .dormant,
+                       "dormant regardless of whether the wake word is available")
 
         await controller.end(context: context, endedEarly: true)
     }
@@ -588,6 +609,80 @@ final class PollySessionControllerTests: XCTestCase {
         XCTAssertEqual(controller.listeningMode, .dormant)
         controller.forceListen()
         XCTAssertEqual(controller.listeningMode, .listening, "tap-to-talk works once un-muted")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    // MARK: wait_for_user is a silence, not a failure
+
+    /// Every other tool round-trip ends with a response.create so Polly speaks
+    /// the result. wait_for_user must not: she calls it precisely to say "that
+    /// audio was not for me", and answering anyway would put her back to
+    /// replying to the extractor fan. It must also not count toward the reject
+    /// tally that ends the session, because deciding correctly is not a failure.
+    func testWaitForUserStaysSilentAndDoesNotCountAsAReject() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+
+        let before = transport.sentNonAudio.count
+        transport.push(.responseDone(
+            status: "completed",
+            calls: [RealtimeFunctionCall(name: "wait_for_user", callId: "c1", argumentsJSON: "{}")],
+            usage: nil))
+        await waitUntil({ transport.sentNonAudio.count > before }, "tool output sent")
+        // Let any (incorrect) follow-up response.create land before asserting.
+        try? await Task.sleep(for: .milliseconds(120))
+
+        let after = transport.sentNonAudio.dropFirst(before)
+        XCTAssertTrue(after.contains { if case .createFunctionOutput = $0 { return true }; return false },
+                      "the tool result is still reported")
+        XCTAssertFalse(after.contains { $0 == .responseCreate },
+                       "wait_for_user must not be followed by a spoken response")
+        XCTAssertFalse(controller.isThinking, "and must not leave her stuck thinking")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    // MARK: an unmuted technique clip must never strand the mic
+
+    /// Advancing a step while an unmuted clip plays tears the player down, and
+    /// teardown reports `.idle`. That case used to be an unconditional no-op, so
+    /// the mic hold taken for the clip's audio was never released and the cook
+    /// spent the rest of the session talking into a dead microphone with the UI
+    /// still showing Polly as listening.
+    func testUnmutedClipDoesNotStrandTheMicWhenThePlayerIsTornDown() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+
+        controller.updateMediaState(.playing(segmentID: "seg-1", muted: false))
+        XCTAssertTrue(controller.micHeldForClipAudio, "clip audio takes the mic")
+
+        controller.updateMediaState(.idle)          // what player teardown emits
+        XCTAssertFalse(controller.micHeldForClipAudio, "teardown gives the mic back")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    /// The ordinary paths must release it too, and a muted clip must never take
+    /// it in the first place.
+    func testClipMicHoldIsReleasedOnFinishAndNeverTakenWhenMuted() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+
+        controller.updateMediaState(.playing(segmentID: "seg-1", muted: true))
+        XCTAssertFalse(controller.micHeldForClipAudio, "a silent clip needs no mic hold")
+
+        controller.updateMediaState(.playing(segmentID: "seg-1", muted: false))
+        XCTAssertTrue(controller.micHeldForClipAudio)
+
+        controller.updateMediaState(.finished(segmentID: "seg-1"))
+        XCTAssertFalse(controller.micHeldForClipAudio, "finishing gives the mic back")
 
         await controller.end(context: context, endedEarly: true)
     }

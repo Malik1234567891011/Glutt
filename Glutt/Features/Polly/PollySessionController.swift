@@ -19,7 +19,9 @@ final class PollySessionController {
     }
 
     struct Dependencies {
-        var mintToken: () async throws -> PollySessionToken
+        /// Voice is threaded in so the chef picked before the cook reaches the
+        /// mint: the Realtime API pins `voice` at session creation.
+        var mintToken: (_ voice: String?) async throws -> PollySessionToken
         var makeTransport: () -> RealtimeTransporting
         var compilePlan: (Recipe, Double) async -> CookPlan
         var extractMemories: (String, String) async throws -> PollyMemoryExtractor.Extraction
@@ -28,7 +30,7 @@ final class PollySessionController {
         var now: () -> Date
 
         static let live = Dependencies(
-            mintToken: { try await PollyTokenService.live.mint() },
+            mintToken: { voice in try await PollyTokenService.live.mint(voice: voice) },
             makeTransport: { RealtimeWebRTCTransport() },
             compilePlan: { await CookPlanCompiler.compile(recipe: $0, scale: $1) },
             extractMemories: { try await PollyMemoryExtractor.extract(transcript: $0, recipeTitle: $1) },
@@ -86,6 +88,16 @@ final class PollySessionController {
     /// Bumps on every play/restart request so the canvas remounts from the start
     /// even when the clip already finished (AVPlayer won't restart without seek).
     private(set) var clipRestartToken = 0
+    /// True while WE hold the mic muted because a technique clip is playing with
+    /// sound. Deliberately distinct from `isHardMuted`, which is the cook's own
+    /// mute and must survive anything a clip does. Readable so a test can prove
+    /// the hold is released — the bug it replaces was invisible from outside.
+    private(set) var micHeldForClipAudio = false
+    private var clipMicFailsafeTask: Task<Void, Never>?
+    /// When the cook stopped talking, for the voice-to-voice timer.
+    private var speechStoppedAt: Date?
+    /// Every measured speech-end to her-audio-start gap this session, in ms.
+    private var voiceToVoiceMs: [Int] = []
     /// Set by the `end_session` tool; the session view observes it and calls `end`.
     private(set) var wantsEnd = false
     /// Session start — used by the Cook Recap for elapsed time.
@@ -295,30 +307,64 @@ final class PollySessionController {
             clipMuted = muted
             clipPlaybackDesired = true
             if muted {
-                if !isHardMuted { webrtc?.setMicMode(listeningMode == .dormant ? .dormant : .open) }
+                releaseMicAfterClip(reason: "clip muted")
             } else if !isHardMuted {
+                micHeldForClipAudio = true
                 webrtc?.setMicMode(.hardMuted)
+                armClipMicFailsafe()
             }
             PollyDebugLog.shared.log("media: playing muted=\(muted)")
         case .finished:
             if previous == state { break }
             clipPlaybackDesired = false
-            if !isHardMuted {
-                webrtc?.setMicMode(listeningMode == .dormant ? .dormant : .open)
-            }
+            releaseMicAfterClip(reason: "finished")
             PollyDebugLog.shared.log("media: finished")
         case .paused:
             if previous == state { break }
             clipPlaybackDesired = false
-            if !isHardMuted {
-                webrtc?.setMicMode(listeningMode == .dormant ? .dormant : .open)
-            }
+            releaseMicAfterClip(reason: "paused")
             PollyDebugLog.shared.log("media: paused")
         case .idle:
             // Player teardown/remount often reports idle — don't clear a pending play.
-            break
+            //
+            // But DO give the mic back. This used to be an unconditional no-op,
+            // and teardown is exactly what emits .idle: advance a step while an
+            // unmuted clip is playing and the player is destroyed before it can
+            // report .finished, so the mic we hard-muted for its audio was never
+            // released. The cook then spent the rest of the session talking to a
+            // muted microphone, with the UI still showing her as listening.
+            if micHeldForClipAudio {
+                releaseMicAfterClip(reason: "player torn down")
+            }
         case .preparing:
             break
+        }
+    }
+
+    /// Give the mic back after a technique clip stops owning the speaker.
+    /// Never overrides the cook's own hard mute, which is a different thing
+    /// entirely from the hold we take while a clip plays with sound.
+    private func releaseMicAfterClip(reason: String) {
+        clipMicFailsafeTask?.cancel()
+        clipMicFailsafeTask = nil
+        let wasHeld = micHeldForClipAudio
+        micHeldForClipAudio = false
+        guard !isHardMuted else { return }
+        webrtc?.setMicMode(listeningMode == .dormant ? .dormant : .open)
+        if wasHeld { PollyDebugLog.shared.log("media: mic released after clip (\(reason))") }
+    }
+
+    /// Last line of defence for the mic hold. Every path that should hand the mic
+    /// back now does, but a player destroyed at the wrong moment can stop
+    /// emitting states altogether, and the cost of missing one is that the cook
+    /// keeps talking into a dead microphone for the rest of the session. No
+    /// technique clip justifies holding it for minutes, so time it out.
+    private func armClipMicFailsafe() {
+        clipMicFailsafeTask?.cancel()
+        clipMicFailsafeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(PollyConfig.clipMicHoldMaxSeconds))
+            guard let self, !Task.isCancelled, self.micHeldForClipAudio else { return }
+            self.releaseMicAfterClip(reason: "failsafe timeout")
         }
     }
 
@@ -610,9 +656,16 @@ final class PollySessionController {
             }
         }
 
+        // Snapshot the chef once, BEFORE the mint. Mid-cook changes are not
+        // merely undesirable: the Realtime API refuses a `voice` update once any
+        // audio has been output, so the voice has to travel with the token and
+        // the choice is fixed for the life of the session by design.
+        let chef = PollyChefVoice.selected
+        PollyDebugLog.shared.log("session: chef=\(chef.id) realtimeVoice=\(chef.realtimeVoice)")
+
         let token: PollySessionToken
         do {
-            token = try await deps.mintToken()
+            token = try await deps.mintToken(chef.realtimeVoice)
             PollyDebugLog.shared.log("session: token minted — model=\(token.model) voice=\(token.voice)")
         } catch {
             PollyDebugLog.shared.log("session: token mint FAILED — \(error.localizedDescription)")
@@ -626,7 +679,8 @@ final class PollySessionController {
                 prefs: prefs, memories: memories, pastSessions: pastSessions,
                 ownedTools: ownedTools,
                 heardBriefing: heardBriefing,
-                awaitVerbalGo: awaitVerbalGo),
+                awaitVerbalGo: awaitVerbalGo,
+                chef: chef),
             tools: PollyToolRegistry.toolDefinitions,
             voice: token.voice,
             model: token.model,
@@ -641,9 +695,19 @@ final class PollySessionController {
         if let webrtc = transport as? RealtimeWebRTCTransport {
             let wake = wakeWord
             webrtc.onCaptureBuffer = { buffer in wake.append(buffer) }
+            webrtc.onAudioInterrupted = { [weak self] interrupted in
+                Task { @MainActor in self?.handleAudioInterruption(interrupted) }
+            }
         }
         do {
             try await transport.connect(token: token.value, model: token.model)
+            // Echo cancellation, applied and then verified, in the path a real
+            // cook actually takes. Every AEC control used to be reachable only
+            // from the -pollyV2Spike debug screen, so production could neither
+            // enable software AEC nor find out that the platform one had
+            // declined. Silence here is what made "the audio just breaks"
+            // impossible to diagnose.
+            webrtc?.applyAudioLabAndReport()
             try await transport.send(.sessionUpdate(config))
             PollyDebugLog.shared.log("session: WebRTC connected — session.update sent")
         } catch {
@@ -671,8 +735,16 @@ final class PollySessionController {
             self?.wakeUp()
         }
         wakeWord.onPartialTranscript = { [weak self] text in self?.updateLiveTranscript(text) }
+        // Ask unconditionally and let the listener report back when it is really
+        // listening. Gating the start on a single read of `isAvailable` was a coin
+        // flip: SFSpeechRecognizer reports unavailable for a moment after init, and
+        // losing that toss killed the wake word for the whole cook with the UI
+        // still promising "Say Polly to talk".
+        wakeWord.onListeningChange = { [weak self] listening in
+            self?.wakeWordAvailable = listening
+        }
+        wakeWord.start()
         wakeWordAvailable = wakeWord.isAvailable
-        if wakeWordAvailable { wakeWord.start() }
 
         if awaitVerbalGo {
             listeningMode = .listening
@@ -723,6 +795,8 @@ final class PollySessionController {
         eventTask = nil
         cancelDormancyTimer()
         cancelResponseWatchdog()
+        clipMicFailsafeTask?.cancel()
+        clipMicFailsafeTask = nil
         wakeInjectionTask?.cancel()
         wakeWord.stop()
         audio.stop()
@@ -741,13 +815,24 @@ final class PollySessionController {
             // `polly_session_started` with no matching end is a crash, a force
             // quit or a lost network, and the gap between the two counts is
             // worth watching on its own.
-            Analytics.capture(.cookFinished, [
+            var properties: [String: Any] = [
                 "with_polly": true,
                 "duration_s": Int(duration.rounded()),
                 "ended_early": endedEarly,
                 "steps_done": registry?.state.completedStepIDs.count ?? 0,
                 "steps_total": plan?.steps.count ?? 0,
-            ])
+            ]
+            // One event per session, not per turn: the distribution is the
+            // signal and PollyDebugLog cannot hold it (in-memory, capped at 800
+            // lines, and only readable if a human long-presses and pastes).
+            if let p = voiceToVoicePercentiles() {
+                properties["voice_to_voice_p50_ms"] = p.p50
+                properties["voice_to_voice_p95_ms"] = p.p95
+                properties["voice_to_voice_turns"] = voiceToVoiceMs.count
+                PollyDebugLog.shared.log(
+                    "⏱ voice-to-voice p50=\(p.p50)ms p95=\(p.p95)ms over \(voiceToVoiceMs.count) turns")
+            }
+            Analytics.capture(.cookFinished, properties)
         }
 
         flushPendingAssistantLine()
@@ -776,6 +861,41 @@ final class PollySessionController {
         phase = .ended
     }
 
+    /// Release every live resource WITHOUT writing a cook log or extracting
+    /// memories. This is the "Try again" path after a failed connect.
+    ///
+    /// `end()` is the wrong tool there twice over: it would record a zero-step
+    /// cook in the user's history for a session that never started, and it would
+    /// block the retry behind a memory-extraction network call. But the resources
+    /// still have to go — before this existed the view simply nil'd its reference
+    /// to the controller, which left the WebRTC peer connection, its audio device
+    /// module and its claim on the microphone alive while the replacement session
+    /// tried to take the mic for itself.
+    ///
+    /// Deliberately does NOT touch the audio session: the caller is about to start
+    /// a new session that reconfigures it, and a deactivate/reactivate cycle in
+    /// between is exactly the kind of churn that stops VPIO engaging.
+    func abandon() async {
+        guard !isEnding, phase != .ended else { return }
+        isEnding = true
+        watchTask?.cancel()
+        watchTask = nil
+        eventTask?.cancel()
+        eventTask = nil
+        cancelDormancyTimer()
+        cancelResponseWatchdog()
+        clipMicFailsafeTask?.cancel()
+        clipMicFailsafeTask = nil
+        wakeInjectionTask?.cancel()
+        wakeWord.stop()
+        camera.stop()
+        timers.cancelAll()
+        await transport?.close()
+        transport = nil
+        phase = .ended
+        PollyDebugLog.shared.log("session: abandoned (retry) — resources released")
+    }
+
     // MARK: - User actions
 
     /// The "Show Polly" shutter: one frame straight into the conversation,
@@ -789,6 +909,66 @@ final class PollySessionController {
     }
 
     func toggleMute() { audio.isMuted.toggle() }   // haptic lives in the view
+
+    /// Push a flipped audio-lab setting down to the live transport. Flipping one
+    /// mid-cook is the entire point of shipping them.
+    func refreshAudioLab() { webrtc?.refreshAudioLab() }
+
+    // MARK: - Voice-to-voice latency
+
+    /// The cook stopped talking; how long until her voice came out of the
+    /// speaker? This existed only in PollyV2SpikeView, a screen gated behind a
+    /// launch argument that never runs in a shipping cook, so the number has
+    /// never been measured on the path that matters.
+    ///
+    /// It matters more now than it did: `reasoning.effort` is pinned to high on
+    /// the proxy, which buys a real jump in tool-calling accuracy at the cost of
+    /// roughly 240ms, and `PollyConfig.responseWatchdogSeconds` forces a spoken
+    /// "say that again?" repair at 4 seconds. If latency ever crosses that line
+    /// Polly starts interrupting herself to apologise, and the fix is to drop to
+    /// medium. Without this measurement that failure looks like a mystery.
+    private func noteVoiceToVoiceLatency() {
+        guard let started = speechStoppedAt else { return }
+        speechStoppedAt = nil
+        let ms = Int(deps.now().timeIntervalSince(started) * 1000)
+        // Guard against a stale mark from an earlier turn producing nonsense.
+        guard ms >= 0, ms < 60_000 else { return }
+        voiceToVoiceMs.append(ms)
+        PollyDebugLog.shared.log("⏱ voice-to-voice \(ms) ms")
+    }
+
+    /// p50 / p95 over the session, for the one analytics event at the end.
+    /// Per-turn events would be noise; the distribution is the signal.
+    private func voiceToVoicePercentiles() -> (p50: Int, p95: Int)? {
+        guard !voiceToVoiceMs.isEmpty else { return nil }
+        let sorted = voiceToVoiceMs.sorted()
+        func percentile(_ p: Double) -> Int {
+            let index = Int((Double(sorted.count - 1) * p).rounded())
+            return sorted[min(max(index, 0), sorted.count - 1)]
+        }
+        return (percentile(0.50), percentile(0.95))
+    }
+
+    /// A call, alarm, Siri or another app took the microphone and then gave it
+    /// back. Previously nothing observed this at all: `DormantReason
+    /// .audioInterrupted` and `PollyVoiceEvent.audioInterrupted` were both
+    /// declared and never emitted, so a phone call mid-cook simply ended the
+    /// conversation with no explanation on screen and no line in the log.
+    ///
+    /// Go dormant rather than trying to keep talking through it. The mic is gone
+    /// either way, and coming back to a wake word the cook already knows beats a
+    /// session that looks live and hears nothing.
+    private func handleAudioInterruption(_ interrupted: Bool) {
+        guard phase == .live else { return }
+        if interrupted {
+            PollyDebugLog.shared.event(.audioInterrupted)
+            if isEngaged { returnToDormant(reason: .audioInterrupted) }
+            captionText = "Something else took the microphone. Say Polly when you are ready."
+        } else {
+            PollyDebugLog.shared.log("session: audio back after interruption")
+            captionText = pollyCaption
+        }
+    }
 
     // MARK: - Wake-word / follow-up gate
 
@@ -927,7 +1107,9 @@ final class PollySessionController {
             PollyDebugLog.shared.event(.sessionClosed, ["reason": DormantReason.hardMute.rawValue])
             PollyDebugLog.shared.log("gate: HARD MUTED")
         } else {
-            if wakeWordAvailable { wakeWord.start() }
+            // Unconditional for the same reason as at session start: a stale
+            // `wakeWordAvailable` must never be what stops us re-arming.
+            wakeWord.start()
             PollyDebugLog.shared.log("gate: unmuted → dormant")
         }
     }
@@ -1258,6 +1440,7 @@ final class PollySessionController {
             // event). Playback, interruption, and truncation are all handled
             // server-side + by the transport's governor now.
             PollyDebugLog.shared.log("event: assistant audio START")
+            noteVoiceToVoiceLatency()
             isPollySpeaking = true
             isThinking = false
             watchdogStrikes = 0
@@ -1297,6 +1480,7 @@ final class PollySessionController {
             PollyDebugLog.shared.log("event: speech stopped — waiting on transcript + gate")
             isListening = false
             awaitingTranscript = true
+            speechStoppedAt = deps.now()
             noteUserActivity()
             // Never-silent contract: her audio must start within the watchdog
             // window, or a spoken repair is forced.
@@ -1365,6 +1549,21 @@ final class PollySessionController {
                         + "do NOT greet again and do NOT repeat any sentence you just said. "
                         + "Only speak if the tools require a short correction; otherwise stay silent and wait for the cook."))
                 }
+                // wait_for_user is a deliberate silence. Asking for a follow-up
+                // response after it would defeat the entire point: she called it
+                // to say "that audio was not for me", and a response.create would
+                // make her answer the extractor fan anyway.
+                if calls.contains(where: { $0.name == "wait_for_user" }) {
+                    PollyDebugLog.shared.log("gate: wait_for_user — staying silent, turn credited")
+                    isThinking = false
+                    isHoldingForAssistant = false
+                    // Credit the turn. She heard something, judged it, and decided
+                    // correctly; that must not count toward the reject tally that
+                    // ends the session.
+                    consecutiveRejects = 0
+                    noteUserActivity()
+                    return
+                }
                 // ONE response for the whole batch. A response.create per call
                 // queues N spoken replies back to back — Polly repeating herself.
                 try? await transport?.send(.responseCreate)
@@ -1383,7 +1582,16 @@ final class PollySessionController {
             // Only the transport's own failure (code "transport", Task 7) means the
             // socket died. Server protocol errors (e.g. deleting an already-gone
             // item) must not kill a live cook — log them and keep going.
-            if code == "transport" || phase != .live {
+            //
+            // The `|| phase != .live` clause that used to live here was a live-fire
+            // hazard: once a reconnect set phase = .reconnecting, ANY server error
+            // routed here, failed handleTransportError's `guard phase == .live`, and
+            // spoke the offline failure line. The gate itself generates such errors
+            // constantly — it sends conversation.item.delete on every rejected turn,
+            // and a delete of an already-gone item comes back as item_not_found. So
+            // one rejected turn during a reconnect ended the cook. Phase is not a
+            // signal about the socket; only `code` is.
+            if code == "transport" {
                 await handleTransportError(message: message, context: context)
             } else {
                 transcriptLog.append("[error] \(message)")
@@ -1447,16 +1655,36 @@ final class PollySessionController {
         }
         reconnectAttempts += 1
         AudioServicesPlaySystemSound(1057)   // audible: the drop is heard, not guessed
-        captionText = "Connection hiccup — getting Polly back…"
+        captionText = "Connection hiccup. Getting Polly back."
         phase = .reconnecting
+
+        // Tear the dead stack DOWN before building a new one. Skipping this was the
+        // single most damaging bug in the voice layer: the old transport was simply
+        // overwritten at `self.transport = transport`, so its peer connection, its
+        // audio device module, its AVAudioEngine and its VPIO claim on the microphone
+        // all stayed alive and fought the new stack for the rest of the cook. Every
+        // hiccup added another one. close() is also the only thing that removes the
+        // route-change observer and cancels the meter task, both of which were
+        // likewise accumulating.
+        //
+        // Order matters: cancel the event consumer first so we stop reading a stream
+        // that is about to finish, then close, and only then mint. Releasing the mic
+        // before the new ADM asks for it is the whole point.
+        eventTask?.cancel()
+        eventTask = nil
+        let dyingTransport = transport
+        transport = nil
+        await dyingTransport?.close()
+
         do {
-            let token = try await deps.mintToken()
+            let token = try await deps.mintToken(PollyChefVoice.selected.realtimeVoice)
             let transport = deps.makeTransport()
             if let webrtc = transport as? RealtimeWebRTCTransport {
                 let wake = wakeWord
                 webrtc.onCaptureBuffer = { buffer in wake.append(buffer) }
             }
             try await transport.connect(token: token.value, model: token.model)
+            (transport as? RealtimeWebRTCTransport)?.applyAudioLabAndReport()
             if var config = liveConfig {
                 config.voice = token.voice
                 config.model = token.model
@@ -1489,7 +1717,7 @@ final class PollySessionController {
     private func speakOfflineFallback() {
         PollyDebugLog.shared.log("offline voice: speaking the failure line")
         let utterance = AVSpeechUtterance(
-            string: "I've lost my connection, chef — your steps stay right here on the screen.")
+            string: "I have lost my connection, chef. Your steps stay right here on the screen.")
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
         offlineVoice.speak(utterance)
     }

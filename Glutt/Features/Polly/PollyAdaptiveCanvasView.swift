@@ -405,7 +405,7 @@ struct PollyAdaptiveCanvasView: View {
                 Haptics.impact(.medium)
                 controller.dismissPreflight()
             } label: {
-                Text("Got it — let’s cook")
+                Text("Got it, let’s cook")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(CookCanvasTheme.mainBlack)
                     .frame(maxWidth: .infinity)

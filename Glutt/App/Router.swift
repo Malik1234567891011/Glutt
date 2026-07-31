@@ -77,6 +77,12 @@ final class Router {
     /// Dev/testing hook (`-openChef <slug>`): pushes a chef page on launch. Slug is
     /// optional and defaults to the first chef in the rail.
     var chefToOpenOnLaunch: String?
+    /// Dev/testing hook (`-pollyCook`): opens a live Polly session for the first
+    /// library recipe on launch. Without this the cook screen's connecting,
+    /// failed and mic-denied states could not be reached in the simulator at all,
+    /// which is how they came to be drawn in the LIGHT app palette on a black
+    /// canvas without anyone noticing.
+    var pollyCookOnLaunch = false
 
     init() {
         // Launch-argument hooks for UI tests and tooling: `-tab recipes`, `-importURL https://...`
@@ -93,6 +99,7 @@ final class Router {
             selectedTab = .recipes
         }
         demoCookOnLaunch = arguments.contains("-demoCook")
+        pollyCookOnLaunch = arguments.contains("-pollyCook")
         forceOnboarding = arguments.contains("-onboarding")
         openFirstRecipeOnLaunch = arguments.contains("-openRecipe")
         if ChefContent.isEnabled, let flagIndex = arguments.firstIndex(of: "-openChef") {

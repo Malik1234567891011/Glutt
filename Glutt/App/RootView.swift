@@ -104,6 +104,15 @@ struct RootView: View {
                 CookModeView(recipe: recipe)
             }
         }
+        .task(id: router.pollyCookOnLaunch) {
+            // `-pollyCook`: jump straight into a live Polly session so the cook
+            // screen's connecting / failed / mic-denied states are reachable in
+            // the simulator. Routed through pollyLaunch rather than a separate
+            // cover so it exercises the real presentation path.
+            guard router.pollyCookOnLaunch, let recipe = recipes.first else { return }
+            router.pollyCookOnLaunch = false
+            router.pollyLaunch = PollyLaunch(recipe: recipe, scale: 1, heardBriefing: false, awaitVerbalGo: false)
+        }
         .fullScreenCover(item: $router.pollyLaunch) { launch in
             PollySessionView(
                 recipe: launch.recipe,

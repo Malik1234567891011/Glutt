@@ -35,6 +35,14 @@ enum PollyConfig {
     /// and truncate her opening line at ~0ms (symptom: caption shows, no sound).
     /// Long enough to cover time-to-first-audio plus the onset adaptation window.
     static let greetingMicHoldSeconds: TimeInterval = 2.5
+    /// Hard ceiling on how long a technique clip may keep the microphone muted.
+    /// The mic is held while a clip plays with sound so its audio can't feed
+    /// itself back into the session, and every path that should release it now
+    /// does. This is the backstop for the one that gets missed: a player
+    /// destroyed at the wrong instant can stop emitting states altogether, and
+    /// the cost is a cook who spends the rest of the session talking into a dead
+    /// microphone. Longer than any technique clip, far shorter than a cook.
+    static let clipMicHoldMaxSeconds: TimeInterval = 120
     /// Frames are downscaled so the longest side is at most this, then JPEG-compressed.
     static let frameMaxDimension: CGFloat = 1024
     static let frameJPEGQuality: CGFloat = 0.6

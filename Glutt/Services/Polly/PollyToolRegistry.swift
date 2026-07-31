@@ -368,7 +368,18 @@ final class PollyToolRegistry {
     }
 
     private func markStepDone() -> String {
-        guard !plan.steps.isEmpty else { return Self.json(["done": true]) }
+        if completeCurrentStep() {
+            return Self.json(["done": true])
+        }
+        return Self.json(stepPayload(at: state.stepIndex))
+    }
+
+    /// Mark the current step complete and advance. Returns `true` when that was
+    /// the final step (cook is done) — UI uses this to open the recap; voice
+    /// tools get `{"done":true}` from `mark_step_done`.
+    @discardableResult
+    func completeCurrentStep() -> Bool {
+        guard !plan.steps.isEmpty else { return true }
         let current = clampedIndex(state.stepIndex)
         let step = plan.steps[current]
         // Checking the whole step off also clears its checklist rows.
@@ -378,10 +389,10 @@ final class PollyToolRegistry {
         state.completedStepIDs.insert(step.id)
         guard current + 1 < plan.steps.count else {
             state.stepIndex = current
-            return Self.json(["done": true])
+            return true
         }
         state.stepIndex = current + 1
-        return Self.json(stepPayload(at: state.stepIndex))
+        return false
     }
 
     private func checkStepActions(_ args: [String: Any]) -> String {

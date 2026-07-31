@@ -180,6 +180,19 @@ final class PollySessionController {
         goToStep(stepIndex + 1)
     }
 
+    /// Green "Mark done" / "End recipe" from the step sheet. Advances like the
+    /// `mark_step_done` tool; on the last step sets `wantsEnd` so the recap opens
+    /// (bare `goToNextStep` clamps and looks like a no-op).
+    func completeCurrentStepFromUI() {
+        guard let registry else { return }
+        let finished = registry.completeCurrentStep()
+        publishSessionUI()
+        if finished {
+            wantsEnd = true
+            PollyDebugLog.shared.log("ui: last step marked done — opening recap")
+        }
+    }
+
     func toggleChecklistItem(_ id: String) {
         registry?.toggleActionChecked(id)
         publishSessionUI()

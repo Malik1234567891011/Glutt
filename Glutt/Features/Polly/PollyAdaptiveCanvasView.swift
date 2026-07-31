@@ -34,28 +34,54 @@ struct PollyAdaptiveCanvasView: View {
     }
 
     var body: some View {
-        ZStack {
-            canvas
-            topScrim
-            VStack(spacing: 0) {
-                topNav
-                progressLine
-                Spacer(minLength: 0)
-                if controller.isPollySpeaking || controller.isThinking {
-                    pollyBubble
+        // GeometryReader MUST own the canvas. Discover/import recipes store big
+        // JPEGs in `imageData`; an unconstrained `scaledToFill()` background
+        // expands this ZStack to the image's pixel size and shoves the step
+        // sheet off-screen (clipped mid-sentence). Chef-pack dishes use catalog
+        // assets / no imageData, so they looked fine — same view, different data.
+        GeometryReader { geo in
+            let bottomSafe = geo.safeAreaInsets.bottom
+            let topChrome: CGFloat = 78
+            let dockBlock: CGFloat = CookCanvasTheme.dockHeight + 16 + max(bottomSafe, 8)
+            let bubbleReserve: CGFloat =
+                (!showingPreflight && (controller.isPollySpeaking || controller.isThinking))
+                ? 96 : 0
+            let sheetMax = max(
+                160,
+                geo.size.height - topChrome - dockBlock - bubbleReserve - 24
+            )
+
+            ZStack {
+                canvas
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+                topScrim
+
+                VStack(spacing: 0) {
+                    topNav
+                    progressLine
+                    Spacer(minLength: 8)
+
+                    if !showingPreflight, controller.isPollySpeaking || controller.isThinking {
+                        pollyBubble
+                            .padding(.horizontal, CookCanvasTheme.margin)
+                            .padding(.bottom, 10)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+
+                    stepSheet(maxHeight: sheetMax)
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 12)
+
+                    pollyDock
                         .padding(.horizontal, CookCanvasTheme.margin)
-                        .padding(.bottom, 10)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.bottom, max(bottomSafe, 8))
                 }
-                stepSheet
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 12)
-                pollyDock
-                    .padding(.horizontal, CookCanvasTheme.margin)
-                    .padding(.bottom, 8)
+                .padding(.top, 8)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
             }
-            .padding(.top, 8)
         }
+        .ignoresSafeArea(edges: .bottom)
         .animation(.easeInOut(duration: 0.22), value: clipPlaying)
         .animation(.easeInOut(duration: 0.22), value: controller.isPollySpeaking)
         .animation(.easeInOut(duration: 0.22), value: sheetExpanded)
@@ -272,32 +298,52 @@ struct PollyAdaptiveCanvasView: View {
     }
 
     private func poster(for clip: NativeStepClip) -> some View {
-        Group {
-            if let url = clip.thumbnailURL {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    default:
-                        CookCanvasTheme.elevated
+        GeometryReader { geo in
+            Group {
+                if let url = clip.thumbnailURL {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().scaledToFill()
+                        default:
+                            CookCanvasTheme.elevated
+                        }
                     }
+                } else {
+                    CookCanvasTheme.elevated
                 }
-            } else {
-                CookCanvasTheme.elevated
             }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
         }
-        .ignoresSafeArea()
     }
 
+    /// Full-bleed recipe photo behind no-clip steps / preflight.
+    /// Same sources as `RecipeImageView`, but MUST be size-bounded — see body.
     private var recipeFallbackPoster: some View {
-        Group {
-            if let data = recipe.imageData, let ui = UIImage(data: data) {
-                Image(uiImage: ui).resizable().scaledToFill()
-            } else {
-                CookCanvasTheme.elevated
+        GeometryReader { geo in
+            Group {
+                if let assetName = recipe.imageAssetName, UIImage(named: assetName) != nil {
+                    Image(assetName).resizable().scaledToFill()
+                } else if let data = recipe.imageData, let ui = UIImage(data: data) {
+                    Image(uiImage: ui).resizable().scaledToFill()
+                } else if let urlString = recipe.imageURL, let url = URL(string: urlString) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().scaledToFill()
+                        default:
+                            CookCanvasTheme.elevated
+                        }
+                    }
+                } else {
+                    CookCanvasTheme.elevated
+                }
             }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
+            .allowsHitTesting(false)
         }
-        .ignoresSafeArea()
         .overlay(Color.black.opacity(0.35))
     }
 
@@ -314,12 +360,13 @@ struct PollyAdaptiveCanvasView: View {
     private var topNav: some View {
         HStack(spacing: 12) {
             circleButton(system: "chevron.down", action: onMinimize)
-            Spacer(minLength: 0)
             VStack(spacing: 2) {
                 Text(recipe.title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(CookCanvasTheme.primaryText)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .multilineTextAlignment(.center)
                 if showingPreflight {
                     Text("Before you start")
                         .font(.system(size: 13, weight: .medium))
@@ -330,7 +377,7 @@ struct PollyAdaptiveCanvasView: View {
                         .foregroundStyle(CookCanvasTheme.secondaryText)
                 }
             }
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity)
             circleButton(system: "ellipsis", action: { showOverflow = true })
         }
         .padding(.horizontal, CookCanvasTheme.margin)
@@ -365,21 +412,35 @@ struct PollyAdaptiveCanvasView: View {
 
     // MARK: - Step sheet
 
-    private var stepSheet: some View {
+    @ViewBuilder
+    private func stepSheet(maxHeight: CGFloat) -> some View {
+        let minH: CGFloat = {
+            if showingPreflight { return 220 }
+            if sheetMini { return 96 }
+            if sheetExpanded { return 260 }
+            // No-video steps: slightly taller instruction card (newDesign §No-video),
+            // still capped by `maxHeight` so the dock stays on screen.
+            return hasClip ? 190 : 210
+        }()
+        let height = min(max(minH, min(maxHeight, sheetMini ? 120 : maxHeight)), maxHeight)
+
         VStack(alignment: .leading, spacing: 0) {
             if showingPreflight {
                 preflightSheet
             } else if sheetMini, let step {
                 miniSheet(step)
             } else if sheetExpanded, let step {
-                expandedSheet(for: step)
+                ScrollView(showsIndicators: false) {
+                    expandedSheet(for: step)
+                }
             } else if let step {
                 defaultSheet(step)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(20)
-        .frame(minHeight: sheetMini && !showingPreflight ? 96 : (sheetExpanded || showingPreflight ? 320 : 210))
+        .frame(maxWidth: .infinity)
+        .frame(height: height, alignment: .top)
         .background(
             RoundedRectangle(cornerRadius: CookCanvasTheme.sheetRadius, style: .continuous)
                 .fill(CookCanvasTheme.stepSheet.opacity(0.96))
@@ -396,7 +457,7 @@ struct PollyAdaptiveCanvasView: View {
 
     private var preflightSheet: some View {
         let missing = controller.missingIngredients
-        return VStack(alignment: .leading, spacing: 14) {
+        return VStack(alignment: .leading, spacing: 12) {
             Text("BEFORE YOU START")
                 .font(.system(size: 12, weight: .semibold))
                 .tracking(0.8)
@@ -405,15 +466,17 @@ struct PollyAdaptiveCanvasView: View {
             Text(missing.count == 1
                  ? "You're missing 1 thing"
                  : "You're missing \(missing.count) things")
-                .font(.system(size: 28, weight: .semibold))
+                .font(.system(size: 26, weight: .semibold))
                 .foregroundStyle(CookCanvasTheme.primaryText)
+                .fixedSize(horizontal: false, vertical: true)
 
             Text("Polly’s walking through these with you. Sub out what you can, or grab what’s easy.")
                 .font(.system(size: 16))
                 .foregroundStyle(CookCanvasTheme.secondaryText)
                 .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
 
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(missing, id: \.self) { name in
                         HStack(spacing: 10) {
@@ -423,12 +486,14 @@ struct PollyAdaptiveCanvasView: View {
                             Text(name)
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundStyle(CookCanvasTheme.primaryText)
+                                .fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 0)
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxHeight: missing.count > 6 ? 200 : nil)
+            .frame(maxHeight: .infinity)
 
             Button {
                 Haptics.impact(.medium)
@@ -442,7 +507,6 @@ struct PollyAdaptiveCanvasView: View {
                     .background(CookCanvasTheme.green, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .buttonStyle(.plain)
-            .padding(.top, 4)
         }
     }
 
@@ -520,7 +584,7 @@ struct PollyAdaptiveCanvasView: View {
                 Haptics.impact(.medium)
                 markStepDone(step: step, items: items)
             } label: {
-                Label(isSetup ? "All set — next" : "Mark done", systemImage: "checkmark")
+                Label(doneButtonTitle(isSetup: isSetup), systemImage: isLastStep ? "flag.checkered" : "checkmark")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(CookCanvasTheme.mainBlack)
                     .frame(maxWidth: .infinity)
@@ -538,6 +602,17 @@ struct PollyAdaptiveCanvasView: View {
                     .padding(.top, 6)
             }
         }
+    }
+
+    private var isLastStep: Bool {
+        guard let plan, !plan.steps.isEmpty else { return false }
+        return controller.stepIndex >= plan.steps.count - 1
+    }
+
+    private func doneButtonTitle(isSetup: Bool) -> String {
+        if isLastStep { return "End recipe" }
+        if isSetup { return "All set — next" }
+        return "Mark done"
     }
 
     @ViewBuilder
@@ -773,6 +848,7 @@ struct PollyAdaptiveCanvasView: View {
             .font(.system(size: 17))
             .foregroundStyle(CookCanvasTheme.primaryText)
             .lineLimit(3)
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
             .background(
@@ -951,12 +1027,13 @@ struct PollyAdaptiveCanvasView: View {
     }
 
     /// One tap finishes the step. Setup lists can still be checked off one-by-one;
-    /// the green button means "I'm done with this step."
+    /// the green button means "I'm done with this step." On the last step it ends
+    /// the cook and opens the recap (label reads "End recipe").
     private func markStepDone(step: CookPlan.PlanStep, items: [StepActionChecklist.Item]) {
         for item in items where !controller.checkedActionIDs.contains(item.id) {
             controller.toggleChecklistItem(item.id)
         }
-        controller.goToNextStep()
+        controller.completeCurrentStepFromUI()
     }
 
     private func ingredientLine(_ ingredient: RecipeIngredient) -> String {

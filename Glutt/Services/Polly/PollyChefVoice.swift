@@ -7,27 +7,24 @@ import Foundation
 /// sync. Shipping a voice without its speech style gives you Gordon Ramsay's
 /// voice reading Polly's script, which lands worse than either on its own.
 ///
-/// - `realtimeVoice` is the OpenAI Realtime voice for the LIVE session.
-/// - `elevenLabsVoiceID` is used for the pre-cook briefing only.
+/// - `realtimeVoice` is the OpenAI Realtime voice when there is no clone
+///   (Polly), and the mint still carries it as a fallback label.
+/// - `elevenLabsVoiceID` when set (Gordon) means BOTH the briefing AND the live
+///   cook use ElevenLabs: the session is minted `textOnly`, remote WebRTC audio
+///   is muted, and `PollyVoicePlayer` speaks the model's words. `nil` = OpenAI
+///   speech-to-speech for the live cook.
 /// - `personaOverlay` is appended to the prompt and works on any voice.
-///
-/// The split is not a design choice, it is where the platform currently is. In
-/// speech-to-speech the voice IS the model's audio decoder, not a parameter, so
-/// an owned voice in the live session means `output_modalities: ["text"]` plus
-/// synthesising and playing the audio ourselves — which takes playback outside
-/// libWebRTC and costs the echo canceller its reference signal. Until that is
-/// proven safe on a device, the live session uses an OpenAI voice and the
-/// briefing carries the real one.
 struct PollyChefVoice: Identifiable, Equatable, Hashable, Sendable {
     /// Stable key. Persisted, so never renamed.
     let id: String
     let displayName: String
     /// One line under the name in the picker.
     let tagline: String
-    /// OpenAI Realtime voice for the live session. `marin` and `cedar` are the
-    /// two OpenAI recommends for quality; the rest are older.
+    /// OpenAI Realtime voice. Used for live audio when `elevenLabsVoiceID` is
+    /// nil; otherwise the mint still asks for it but output is text-only.
+    /// `marin` / `cedar` are the two OpenAI recommends for quality.
     let realtimeVoice: String
-    /// ElevenLabs voice for the briefing. `nil` falls back to OpenAI TTS.
+    /// ElevenLabs clone for briefing + live cook. `nil` = OpenAI voices only.
     let elevenLabsVoiceID: String?
     /// Appended to the prompt. Empty means house Polly, unmodified.
     let personaOverlay: String
@@ -74,9 +71,8 @@ struct PollyChefVoice: Identifiable, Equatable, Hashable, Sendable {
         id: "gordon-ramsay",
         displayName: "Gordon Ramsay",
         tagline: "Exacting, generous with praise, allergic to waste",
-        // Cedar is the darker of OpenAI's two current voices, so the live
-        // session at least sits in the right register until the briefing's
-        // cloned voice can be used here too.
+        // Cedar remains the mint fallback; live audio is the ElevenLabs clone
+        // via text-only output (see PollySessionController.start).
         realtimeVoice: "cedar",
         elevenLabsVoiceID: "5i0YBih50ehVs4WoAmac",
         personaOverlay: Self.ramsayOverlay,

@@ -21,8 +21,9 @@ async function pilotEggsBenedict() {
   console.log("[pilot] asset=", asset.id);
   console.log("[pilot] job=", job.id);
   console.log("[pilot] running full ingest (download → archive → normalize → manual segments)…");
-  const ready = await runFullIngest(job);
+  const { asset: ready, clipCount } = await runFullIngest(job);
   console.log("[pilot] status=", ready.status);
+  console.log("[pilot] clips=", clipCount);
   console.log("[pilot] original=", ready.original_object_key);
   console.log("[pilot] normalized=", ready.normalized_object_key);
   console.log("[pilot] duration=", ready.duration_seconds);
@@ -59,8 +60,8 @@ async function ingestOnce(url) {
   await ensureDirs();
   const { asset, job } = await createIngestJob({ sourceUrl: url });
   console.log("asset", asset.id, "job", job.id);
-  const ready = await runFullIngest(job);
-  console.log(JSON.stringify(ready, null, 2));
+  const { asset: ready, clipCount } = await runFullIngest(job);
+  console.log(JSON.stringify({ ...ready, clipCount }, null, 2));
 }
 
 async function evidenceOnce(assetId) {

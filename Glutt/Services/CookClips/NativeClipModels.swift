@@ -56,6 +56,9 @@ struct NativePilotClipsResponse: Codable, Equatable, Sendable {
     let durationSeconds: Double?
     let title: String?
     let clips: [NativeStepClip]
+    /// Lifetime of the signed playback URLs above, in seconds. Absent for the
+    /// local media-worker, whose URLs never expire.
+    let expiresIn: Double?
 
     enum CodingKeys: String, CodingKey {
         case sourceAssetID = "source_asset_id"
@@ -63,6 +66,7 @@ struct NativePilotClipsResponse: Codable, Equatable, Sendable {
         case durationSeconds = "duration_seconds"
         case title
         case clips
+        case expiresIn = "expires_in"
     }
 }
 

@@ -1,0 +1,5 @@
+# The Vercel project's Root Directory is `vercel-ai-proxy`, but the CLI still
+# uploads from the repo root — which is an iOS app, so it blows past the 15k
+# file limit on Xcode build output alone. Ship only the proxy.
+/*
+!/vercel-ai-proxy

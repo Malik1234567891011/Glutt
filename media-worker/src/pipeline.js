@@ -13,7 +13,13 @@ import {
   normalizeMezzanine,
   summarizeProbe,
   extractThumbnail,
+  makeVerticalBlurFill,
 } from "./ffmpeg.js";
+
+const PILOT_FIXTURES = {
+  gBJjRYk0yC0: () => import("../fixtures/eggsBenedictSegments.js").then((m) => m.eggsBenedictSegments),
+  Cyskqnp1j64: () => import("../fixtures/beefWellingtonSegments.js").then((m) => m.beefWellingtonSegments),
+};
 
 async function setProgress(jobId, assetId, { stage, progress, status }) {
   if (jobId) {
@@ -157,49 +163,19 @@ export async function runFullIngest(job) {
       status: "review_required",
     });
 
-    // Seed manual pilot segments for known technique videos.
-    const pilotFixtures = {
-      gBJjRYk0yC0: () => import("../fixtures/eggsBenedictSegments.js").then((m) => m.eggsBenedictSegments),
-      Cyskqnp1j64: () => import("../fixtures/beefWellingtonSegments.js").then((m) => m.beefWellingtonSegments),
-    };
-    const fixtureLoader = pilotFixtures[asset.external_id]
-      || Object.entries(pilotFixtures).find(([id]) => asset.source_url?.includes(id))?.[1];
+    // Hand-authored windows for the two launch pilots. Everything else relies on
+    // segments written by the Gemini index (see mirrorApprovedSegments).
+    const fixtureLoader = PILOT_FIXTURES[asset.external_id]
+      || Object.entries(PILOT_FIXTURES).find(([id]) => asset.source_url?.includes(id))?.[1];
     if (fixtureLoader) {
       await setProgress(job.id, asset.id, { stage: "REVIEW_SEGMENTS", progress: 0.85, status: "running" });
-      const segments = await fixtureLoader();
-      await store.upsertSegments(asset.id, segments);
-      await materializePilotClips(asset.id, keys.normalized, workRoot);
-      // Prefer blur-fill 9:16 canvases for Adaptive Video Canvas.
-      try {
-        const { makeVerticalBlurFill, extractThumbnail } = await import("./ffmpeg.js");
-        for (const seg of segments) {
-          const landscapeKey = `source_assets/${asset.id}/clips/${seg.id}.mp4`;
-          const verticalKey = landscapeKey.replace(/\.mp4$/i, ".vertical.mp4");
-          const posterKey = landscapeKey.replace(/\.mp4$/i, ".poster.jpg");
-          if (!(await objectExists(verticalKey))) {
-            const landscapePath = await localObjectPath(landscapeKey);
-            const tmpVert = path.join(workRoot, `${seg.id}.vertical.mp4`);
-            const tmpPoster = path.join(workRoot, `${seg.id}.poster.jpg`);
-            await makeVerticalBlurFill(landscapePath, tmpVert);
-            await putObject(verticalKey, tmpVert);
-            const mid = Math.max(0.4, (Number(seg.end_seconds) - Number(seg.start_seconds)) * 0.45);
-            await extractThumbnail(tmpVert, tmpPoster, mid);
-            await putObject(posterKey, tmpPoster);
-          }
-          await store.load();
-          const clip = store.data.clip_assets[seg.id];
-          if (clip) {
-            clip.vertical_object_key = verticalKey;
-            clip.poster_object_key = posterKey;
-            clip.presentation_mode = "blurFill";
-            if (seg.teaching_label) clip.teaching_label = seg.teaching_label;
-            if (seg.visual_cue) clip.visual_cue = seg.visual_cue;
-            await store.save();
-          }
-        }
-      } catch (vertErr) {
-        console.warn("[pipeline] vertical blur-fill skipped:", vertErr.message);
-      }
+      await store.upsertSegments(asset.id, await fixtureLoader());
+    }
+
+    await setProgress(job.id, asset.id, { stage: "MATERIALIZE_CLIPS", progress: 0.85, status: "running" });
+    const clipCount = await materializeApprovedSegments(asset.id, keys.normalized, workRoot);
+
+    if (clipCount > 0) {
       try {
         const { runEvidencePackage } = await import("./evidence.js");
         await setProgress(job.id, asset.id, { stage: "DETECT_SCENES", progress: 0.92, status: "running" });
@@ -219,7 +195,7 @@ export async function runFullIngest(job) {
       lease_expires_at: null,
     });
 
-    return store.getSourceAsset(asset.id);
+    return { asset: await store.getSourceAsset(asset.id), clipCount };
   } catch (err) {
     await store.updateSourceAsset(asset.id, {
       status: "failed",
@@ -238,42 +214,106 @@ export async function runFullIngest(job) {
   }
 }
 
-async function materializePilotClips(sourceAssetId, normalizedKey, workRoot) {
+/**
+ * Cut every approved segment of an asset into a playable clip: landscape master,
+ * 9:16 blur-fill canvas for the Adaptive Video Canvas, and a poster frame.
+ * Idempotent — re-running skips objects that already exist. Returns clip count.
+ */
+export async function materializeApprovedSegments(sourceAssetId, normalizedKey, workRoot) {
   const segments = await store.listApprovedSegments(sourceAssetId);
+  if (!segments.length) return 0;
+  await fs.mkdir(workRoot, { recursive: true });
   const input = await localObjectPath(normalizedKey);
+  const asset = await store.getSourceAsset(sourceAssetId);
+  const assetDuration = Number(asset?.duration_seconds) || null;
+  let count = 0;
+
   for (const seg of segments) {
-    const dur = Number(seg.end_seconds) - Number(seg.start_seconds);
-    if (dur <= 0) continue;
+    const start = Number(seg.start_seconds);
+    let end = Number(seg.end_seconds);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0) continue;
+    // A window past the end of the video seeks to nothing, and ffmpeg fails the
+    // whole run on the empty encode. One bad model guess is not worth the job.
+    if (assetDuration && start >= assetDuration - 1) {
+      console.warn(
+        `[pipeline] segment ${seg.id} starts at ${start}s past duration ${assetDuration}s — skipped`
+      );
+      continue;
+    }
+    if (assetDuration) end = Math.min(end, assetDuration);
+    const dur = end - start;
+    if (dur < 1) continue;
+
     const clipRel = `source_assets/${sourceAssetId}/clips/${seg.id}.mp4`;
     const thumbRel = `source_assets/${sourceAssetId}/clips/${seg.id}.jpg`;
-    if (!(await objectExists(clipRel))) {
-      const out = path.join(workRoot, `clip-${seg.id}.mp4`);
-      await materializeClip(input, out, Number(seg.start_seconds), dur);
-      await putObject(clipRel, out);
+    const verticalRel = clipRel.replace(/\.mp4$/i, ".vertical.mp4");
+    const posterRel = clipRel.replace(/\.mp4$/i, ".poster.jpg");
+
+    try {
+      if (!(await objectExists(clipRel))) {
+        const out = path.join(workRoot, `clip-${seg.id}.mp4`);
+        await materializeClip(input, out, start, dur);
+        if ((await fs.stat(out)).size < 1024) {
+          throw new Error("clip encode produced an empty file");
+        }
+        await putObject(clipRel, out);
+      }
+    } catch (err) {
+      console.warn(`[pipeline] segment ${seg.id} could not be cut:`, err.message);
+      continue;
     }
+
+    // Poster and blur-fill are presentation niceties — never lose a playable
+    // clip because one of them failed.
     if (!(await objectExists(thumbRel))) {
-      const thumb = path.join(workRoot, `thumb-${seg.id}.jpg`);
-      const mid = Number(seg.start_seconds) + dur / 2;
-      await extractThumbnail(input, thumb, mid);
-      await putObject(thumbRel, thumb);
+      try {
+        const thumb = path.join(workRoot, `thumb-${seg.id}.jpg`);
+        await extractThumbnail(input, thumb, start + dur / 2);
+        await putObject(thumbRel, thumb);
+      } catch (err) {
+        console.warn(`[pipeline] thumbnail skipped for ${seg.id}:`, err.message);
+      }
     }
-    // store clip asset row
+
+    let hasVertical = await objectExists(verticalRel);
+    if (!hasVertical) {
+      try {
+        const landscapePath = await localObjectPath(clipRel);
+        const tmpVert = path.join(workRoot, `${seg.id}.vertical.mp4`);
+        const tmpPoster = path.join(workRoot, `${seg.id}.poster.jpg`);
+        await makeVerticalBlurFill(landscapePath, tmpVert);
+        await putObject(verticalRel, tmpVert);
+        await extractThumbnail(tmpVert, tmpPoster, Math.max(0.4, dur * 0.45));
+        await putObject(posterRel, tmpPoster);
+        hasVertical = true;
+      } catch (err) {
+        console.warn(`[pipeline] vertical blur-fill skipped for ${seg.id}:`, err.message);
+      }
+    }
+
     await store.load();
     store.data.clip_assets[seg.id] = {
+      ...(store.data.clip_assets[seg.id] || {}),
       id: seg.id,
       segment_id: seg.id,
       stream_uid: null,
       object_key: clipRel,
+      vertical_object_key: hasVertical ? verticalRel : null,
+      poster_object_key: hasVertical ? posterRel : null,
       aspect_ratio: "source",
+      presentation_mode: hasVertical ? "blurFill" : "landscape",
+      teaching_label: seg.teaching_label || seg.watch_label || null,
       duration_seconds: dur,
       captions_json: { notice: seg.notice, watch_label: seg.watch_label },
       thumbnail_url: `/media/objects/${thumbRel}`,
       requires_signed_url: false,
       status: "ready",
-      created_at: new Date().toISOString(),
+      created_at: store.data.clip_assets[seg.id]?.created_at || new Date().toISOString(),
     };
     await store.save();
+    count += 1;
   }
+  return count;
 }
 
 export async function createIngestJob({ sourceUrl, rightsRecordId, clearanceNotes }) {

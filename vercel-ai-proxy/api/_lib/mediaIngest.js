@@ -156,14 +156,21 @@ async function enqueueIngest(sourceUrl, body) {
   };
 }
 
-async function persistGeminiClips(asset, clips) {
+async function persistGeminiClips(asset, clips, durationSeconds) {
   const now = new Date().toISOString();
   const segments = [];
+  // Gemini occasionally returns windows past the end of the video. Cutting
+  // those yields an empty or frozen clip, so drop them at the source.
+  const limit = Number(durationSeconds) > 0 ? Number(durationSeconds) : null;
   for (const c of clips || []) {
     if (c.recommended === false) continue;
     const start = Number(c.start_seconds);
     const end = Number(c.end_seconds);
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+    if (start < 0) continue;
+    if (limit && start >= limit) continue;
+    const clampedEnd = limit ? Math.min(end, limit) : end;
+    if (clampedEnd - start < 2) continue;
     const stepId = String(c.step_id || "").trim() || `t${start}`;
     const id = `seg-${asset.external_id}-${stepId}`.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 120);
     const keywords = [
@@ -178,7 +185,7 @@ async function persistGeminiClips(asset, clips) {
       id,
       source_asset_id: asset.id,
       start_seconds: start,
-      end_seconds: end,
+      end_seconds: clampedEnd,
       primary_action: c.primary_action || null,
       secondary_actions_json: [],
       ingredients_json: Array.isArray(c.ingredients) ? c.ingredients : [],
@@ -205,14 +212,24 @@ async function persistGeminiClips(asset, clips) {
 
 async function statusByExternal(externalId) {
   const rows = await sb(
-    `source_assets?external_id=eq.${encodeURIComponent(externalId)}&status=neq.revoked&select=*&order=created_at.desc&limit=1`
+    `source_assets?external_id=eq.${encodeURIComponent(externalId)}&status=neq.revoked&select=*&order=created_at.desc`
   );
-  const asset = rows?.[0] || null;
-  if (!asset) return { ok: true, found: false, external_id: externalId };
+  if (!rows?.length) return { ok: true, found: false, external_id: externalId };
+  // Must agree with mediaClips.js on which row wins, or the app polls a row
+  // that says "queued" while playback reads one that is ready (and vice versa).
+  let asset = rows[0];
+  let segs = [];
+  for (const candidate of rows) {
+    const found = await sb(
+      `semantic_segments?source_asset_id=eq.${encodeURIComponent(candidate.id)}&review_status=eq.approved&select=id`
+    );
+    if (found?.length) {
+      asset = candidate;
+      segs = found;
+      break;
+    }
+  }
   const job = await latestJobForAsset(asset.id);
-  const segs = await sb(
-    `semantic_segments?source_asset_id=eq.${encodeURIComponent(asset.id)}&review_status=eq.approved&select=id`
-  );
   const approvedCount = segs?.length || 0;
   let readyClips = 0;
   if (approvedCount > 0) {
@@ -351,7 +368,10 @@ export async function handleMediaIngest(req, res) {
           await sb(`ingestion_jobs?id=eq.${encodeURIComponent(job.id)}`, {
             method: "PATCH",
             body: {
-              status: "running",
+              // Stays `queued`: `status` tracks the media worker, and marking it
+              // running here hides the job from the claim query forever, so the
+              // native clips are never cut. Indexing progress lives in `stage`.
+              status: "queued",
               stage: "gemini_index",
               progress: 0.35,
               updated_at: new Date().toISOString(),
@@ -372,7 +392,11 @@ export async function handleMediaIngest(req, res) {
         force: Boolean(body.force),
         durationSeconds: body.duration_seconds,
       });
-      const count = await persistGeminiClips(asset, indexed.clips || []);
+      const count = await persistGeminiClips(
+        asset,
+        indexed.clips || [],
+        indexed.duration_seconds ?? asset.duration_seconds
+      );
       await sb(`source_assets?id=eq.${encodeURIComponent(asset.id)}`, {
         method: "PATCH",
         body: {
@@ -387,7 +411,7 @@ export async function handleMediaIngest(req, res) {
         await sb(`ingestion_jobs?id=eq.${encodeURIComponent(job.id)}`, {
           method: "PATCH",
           body: {
-            status: "running",
+            status: "queued",
             stage: "indexed_awaiting_native",
             progress: 0.55,
             updated_at: new Date().toISOString(),

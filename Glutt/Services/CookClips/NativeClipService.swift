@@ -31,8 +31,20 @@ actor NativeClipService {
         "7333706662634704161": "/v1/pilot/tiktok-scrambled-eggs",
     ]
 
+    /// v2: v1 entries held signed URLs with no expiry and are not salvageable.
     private func cacheKey(for mediaID: String) -> String {
-        "glutt.nativeClips.\(mediaID).v1"
+        "glutt.nativeClips.\(mediaID).v2"
+    }
+
+    /// Re-sign this long before the URLs lapse — a cook can sit on one step for
+    /// a while, and a clip that 403s mid-session looks like the feature broke.
+    private static let signatureSafetyMargin: TimeInterval = 10 * 60
+    private static let fallbackTTL: TimeInterval = 55 * 60
+
+    private struct CachedClips: Codable {
+        var fetchedAt: Date
+        var expiresIn: Double?
+        var response: NativePilotClipsResponse
     }
 
     /// Fetch clips for any media id. Throws on network/404 — caller falls back.
@@ -48,7 +60,13 @@ actor NativeClipService {
         }
 
         let decoded = try await fetchProxyClips(externalID: mediaID)
-        saveCache(decoded, key: key)
+        // Never cache an empty pilot — a transient 200/empty (or a bad deploy)
+        // would pin "no clips" until the app was deleted.
+        if !decoded.clips.isEmpty {
+            saveCache(decoded, key: key)
+        } else {
+            defaults.removeObject(forKey: key)
+        }
         return decoded
     }
 
@@ -191,17 +209,28 @@ actor NativeClipService {
             status: response.status,
             durationSeconds: response.durationSeconds,
             title: response.title,
-            clips: clips
+            clips: clips,
+            expiresIn: response.expiresIn
         )
     }
 
     private func loadCache(key: String) -> NativePilotClipsResponse? {
-        guard let data = defaults.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(NativePilotClipsResponse.self, from: data)
+        guard let data = defaults.data(forKey: key),
+              let cached = try? JSONDecoder().decode(CachedClips.self, from: data) else { return nil }
+        // Playback URLs are signed and short-lived, so a cache hit past their
+        // lifetime hands back links that 403. Drop it and re-sign.
+        let ttl = cached.expiresIn ?? Self.fallbackTTL
+        let usableFor = max(60, ttl - Self.signatureSafetyMargin)
+        guard Date.now.timeIntervalSince(cached.fetchedAt) < usableFor else {
+            defaults.removeObject(forKey: key)
+            return nil
+        }
+        return cached.response
     }
 
     private func saveCache(_ value: NativePilotClipsResponse, key: String) {
-        guard let data = try? JSONEncoder().encode(value) else { return }
+        let envelope = CachedClips(fetchedAt: .now, expiresIn: value.expiresIn, response: value)
+        guard let data = try? JSONEncoder().encode(envelope) else { return }
         defaults.set(data, forKey: key)
     }
 }

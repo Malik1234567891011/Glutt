@@ -93,7 +93,6 @@ export class YouTubeDownloader extends BaseDownloader {
     validateSourceUrl(url.href);
     await fs.mkdir(destinationDirectory, { recursive: true });
     const outTemplate = path.join(destinationDirectory, "source.%(ext)s");
-    // Subs are best-effort: a 429 on fr/es must not fail the master download.
     await runCommand(config.ytDlpBin, [
       "--no-playlist",
       "--extractor-args", "youtube:player_client=android,ios,web",
@@ -101,13 +100,32 @@ export class YouTubeDownloader extends BaseDownloader {
       "--merge-output-format", "mp4",
       "--write-info-json",
       "--write-thumbnail",
-      "--write-auto-subs",
-      "--sub-langs", "en.*",
       "--ignore-no-formats-error",
       "--retries", "5",
       "-o", outTemplate,
       url.href,
     ], { timeoutMs: 20 * 60 * 1000 });
+
+    // Captions are a separate pass on purpose. In one invocation yt-dlp exits
+    // non-zero when any requested track 429s — which throws away a master that
+    // downloaded fine. Nothing downstream requires them.
+    try {
+      await runCommand(config.ytDlpBin, [
+        "--no-playlist",
+        "--extractor-args", "youtube:player_client=android,ios,web",
+        "--skip-download",
+        "--write-auto-subs",
+        "--write-subs",
+        // Not "en.*" — that pulls the auto-translated en-pt/en-de tracks too,
+        // which is where the rate limiting starts.
+        "--sub-langs", "en,en-orig,en-US",
+        "--retries", "3",
+        "-o", outTemplate,
+        url.href,
+      ], { timeoutMs: 5 * 60 * 1000 });
+    } catch (err) {
+      console.warn("[downloader] subtitles skipped:", err.message?.split("\n")[0]);
+    }
 
     const files = await fs.readdir(destinationDirectory);
     const media = files.find((f) => /^source\.(mp4|mkv|webm|mov)$/i.test(f));

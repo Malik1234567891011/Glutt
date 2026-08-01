@@ -139,10 +139,15 @@ export async function makeVerticalBlurFill(inputPath, outputPath, {
     "-map", "0:a:0?",
     "-c:v", "libx264",
     "-preset", "medium",
-    "-crf", "18",
+    // These stream to a phone mid-cook. crf 18 put a 75s clip at 42MB (~4.5Mbps),
+    // which stalls on cellular; most of the frame is blurred backdrop that does
+    // not need those bits. The cap bounds the worst case for busy pan footage.
+    "-crf", "24",
+    "-maxrate", "2500k",
+    "-bufsize", "5000k",
     "-pix_fmt", "yuv420p",
     "-c:a", "aac",
-    "-b:a", "160k",
+    "-b:a", "128k",
     "-movflags", "+faststart",
     outputPath,
   ], { timeoutMs: 20 * 60 * 1000 });

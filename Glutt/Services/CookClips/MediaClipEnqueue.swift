@@ -5,6 +5,12 @@ import SwiftData
 /// Import UI is never blocked; Recipe detail / Polly poll status while cooking stays available.
 enum MediaClipEnqueue {
 
+    /// Analyze is a long Gemini call against a 60s function ceiling, so timeouts
+    /// are routine. Retries are driven by the detail-view poll; this throttles
+    /// them to something the proxy can absorb.
+    private static let analyzeRetryCooldown: TimeInterval = 120
+    private static var lastAnalyzeAttempt: [String: Date] = [:]
+
     /// YouTube / TikTok recipes with a resolvable media id.
     static func shouldEnqueue(_ recipe: Recipe) -> Bool {
         switch recipe.sourcePlatform {
@@ -51,10 +57,22 @@ enum MediaClipEnqueue {
             return
         }
 
-        // Gemini index in background (YouTube). TikTok waits for media-worker.
-        let steps: [(id: String, title: String, instruction: String)] = recipe.sortedSteps.enumerated().map { idx, step in
-            ("step-\(idx)", "Step \(idx + 1)", step.text)
-        }
+        await runAnalyze(for: recipe, sourceURL: sourceURL, externalID: externalID, in: context)
+    }
+
+    /// Gemini index in background (YouTube). TikTok waits for media-worker.
+    @MainActor
+    private static func runAnalyze(
+        for recipe: Recipe,
+        sourceURL: String,
+        externalID: String,
+        in context: ModelContext
+    ) async {
+        lastAnalyzeAttempt[externalID] = .now
+        let steps: [(id: String, title: String, instruction: String)] = recipe.sortedSteps
+            .enumerated()
+            .map { idx, step in ("step-\(idx)", "Step \(idx + 1)", step.text) }
+        guard !steps.isEmpty else { return }
         do {
             let analyzed = try await MediaIngestClient.shared.analyze(
                 sourceURL: sourceURL,
@@ -68,30 +86,49 @@ enum MediaClipEnqueue {
             if let id = analyzed.sourceAssetID { recipe.mediaSourceAssetID = id }
             try? context.save()
         } catch {
-            // Enqueue succeeded; analyze can retry on next detail open.
             recipe.mediaStatusDetail = "Queued — indexing will continue"
             try? context.save()
         }
     }
 
     /// Poll server and refresh Recipe fields. Safe to call from detail `.task`.
+    ///
+    /// Also re-drives the pipeline: an import whose enqueue or analyze failed
+    /// would otherwise sit at "queued" forever, because nothing else retries.
     @MainActor
     static func refreshStatus(for recipe: Recipe, in context: ModelContext) async {
+        let sourceURL = recipe.sourceURL?.trimmingCharacters(in: .whitespacesAndNewlines)
         let external = recipe.mediaExternalID
-            ?? recipe.sourceURL.flatMap { MediaSourceID.from(sourceURL: $0) }
+            ?? sourceURL.flatMap { MediaSourceID.from(sourceURL: $0) }
         guard let external else { return }
+
+        var status: MediaIngestClient.StatusResult
         do {
-            let status = try await MediaIngestClient.shared.status(externalID: external)
-            guard status.found else { return }
-            recipe.mediaExternalID = status.externalID
-            recipe.mediaSourceAssetID = status.sourceAssetID ?? recipe.mediaSourceAssetID
-            recipe.mediaJobID = status.jobID ?? recipe.mediaJobID
-            recipe.mediaStatus = status.mediaStatus
-            recipe.mediaProgress = status.progress
-            recipe.mediaStatusDetail = status.detail
-            try? context.save()
+            status = try await MediaIngestClient.shared.status(externalID: external)
         } catch {
-            // Soft fail — keep last known status.
+            return // Soft fail — keep last known status.
         }
+
+        // Never enqueued (or the enqueue call failed): start it now.
+        if !status.found {
+            await ensure(for: recipe, in: context)
+            return
+        }
+
+        recipe.mediaExternalID = status.externalID
+        recipe.mediaSourceAssetID = status.sourceAssetID ?? recipe.mediaSourceAssetID
+        recipe.mediaJobID = status.jobID ?? recipe.mediaJobID
+        recipe.mediaStatus = status.mediaStatus
+        recipe.mediaProgress = status.progress
+        recipe.mediaStatusDetail = status.detail
+        try? context.save()
+
+        guard status.approvedSegments == 0,
+              status.mediaStatus != "ready",
+              status.mediaStatus != "failed",
+              let sourceURL, YouTubeEmbed.videoId(from: sourceURL) != nil else { return }
+        let last = lastAnalyzeAttempt[external]
+        guard last == nil || Date.now.timeIntervalSince(last!) > analyzeRetryCooldown else { return }
+        await runAnalyze(for: recipe, sourceURL: sourceURL, externalID: external, in: context)
     }
 }

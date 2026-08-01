@@ -56,11 +56,14 @@ export async function handleMediaClips(req, res) {
   }
 
   try {
+    // One video can end up with more than one asset row (control-plane enqueue
+    // plus a worker sync). An unordered `limit=1` then resolves to a different
+    // row run to run, so clips flicker in and out between launches. Take the
+    // newest row that actually has segments.
     const assets = await sb(
-      `source_assets?external_id=eq.${encodeURIComponent(externalId)}&status=neq.revoked&select=*&limit=1`
+      `source_assets?external_id=eq.${encodeURIComponent(externalId)}&status=neq.revoked&select=*&order=created_at.desc`
     );
-    const asset = assets?.[0];
-    if (!asset) {
+    if (!assets?.length) {
       return res.status(404).json({
         error: "source asset not found",
         external_id: externalId,
@@ -68,13 +71,22 @@ export async function handleMediaClips(req, res) {
       });
     }
 
-    const segments = await sb(
-      `semantic_segments?source_asset_id=eq.${encodeURIComponent(asset.id)}&review_status=eq.approved&order=start_seconds.asc&select=*`
-    );
-    if (!segments?.length) {
+    let asset = null;
+    let segments = null;
+    for (const candidate of assets) {
+      const rows = await sb(
+        `semantic_segments?source_asset_id=eq.${encodeURIComponent(candidate.id)}&review_status=eq.approved&order=start_seconds.asc&select=*`
+      );
+      if (rows?.length) {
+        asset = candidate;
+        segments = rows;
+        break;
+      }
+    }
+    if (!asset) {
       return res.status(404).json({
         error: "no approved segments",
-        source_asset_id: asset.id,
+        source_asset_id: assets[0].id,
         external_id: externalId,
       });
     }

@@ -467,7 +467,7 @@ final class PollySessionControllerTests: XCTestCase {
         await controller.start(context: context, requireMic: false)
 
         XCTAssertEqual(controller.phase, .live)
-        XCTAssertEqual(controller.listeningMode, .dormant, "the session gates the mic until \"Polly\"")
+        XCTAssertEqual(controller.listeningMode, .dormant, "the session gates the mic until \"Hey Chef\"")
         XCTAssertTrue(controller.audio.isMuted, "dormant means the Realtime input is muted")
         // This used to assert wakeWordAvailable == false, "no Speech auth in the
         // test host". It passed for the wrong reason: SFSpeechRecognizer reports
@@ -503,7 +503,7 @@ final class PollySessionControllerTests: XCTestCase {
 
         // She must wake AGAIN after the window closed — not just the first time.
         controller.wakeUp()
-        XCTAssertEqual(controller.listeningMode, .listening, "a second \"Polly\" re-opens the mic")
+        XCTAssertEqual(controller.listeningMode, .listening, "a second \"Hey Chef\" re-opens the mic")
         XCTAssertFalse(controller.audio.isMuted)
 
         await controller.end(context: context, endedEarly: true)

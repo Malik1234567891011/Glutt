@@ -46,7 +46,7 @@ enum CookRecapBuilder {
             previousBest: input.previousBestOverall
         )
         let best = saves.first?.moment
-            ?? (input.stepsCompleted > 0 ? "Made it through \(input.stepsCompleted) steps with Polly" : nil)
+            ?? (input.stepsCompleted > 0 ? "Made it through \(input.stepsCompleted) steps with Chef" : nil)
 
         return CookRecap(
             overallScore: overall,
@@ -117,7 +117,7 @@ enum CookRecapBuilder {
         } else if completion >= 0.95 {
             note = "Technique: \(fmt(score)) — cleared the plan (\(stepsCompleted)/\(total) steps)."
         } else {
-            note = "Technique: \(fmt(score)) — \(stepsCompleted) of \(total) steps done with Polly."
+            note = "Technique: \(fmt(score)) — \(stepsCompleted) of \(total) steps done with Chef."
         }
         return (score, note)
     }
@@ -189,7 +189,7 @@ enum CookRecapBuilder {
             return "Sauce Saver"
         }
         if saves.count >= 2 {
-            return "Polly Saved It"
+            return "Chef Saved It"
         }
         if !endedEarly, stepsCompleted >= max(1, stepsTotal) {
             return "First Clear"

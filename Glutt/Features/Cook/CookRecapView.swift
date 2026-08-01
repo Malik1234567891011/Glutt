@@ -231,7 +231,7 @@ struct CookRecapView: View {
     private func savesSection(_ recap: CookRecap) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Polly Saves")
+                Text("Chef Saves")
                     .font(BrandFont.nunito(12, 800))
                     .foregroundStyle(Theme.Colors.muted)
                     .textCase(.uppercase)
@@ -243,7 +243,7 @@ struct CookRecapView: View {
             }
 
             if recap.saves.isEmpty {
-                Text("Clean run — Polly didn’t need to pull an emergency save. Nice.")
+                Text("Clean run — Chef didn’t need to pull an emergency save. Nice.")
                     .font(BrandFont.nunito(14, 600))
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .padding(14)

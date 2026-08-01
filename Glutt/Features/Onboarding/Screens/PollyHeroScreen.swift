@@ -35,7 +35,7 @@ struct PollyHeroScreen: View {
 
             ratingBadge
 
-            Text("Polly guides you through recipes, completely hands-free")
+            Text("Chef guides you through recipes, completely hands-free")
                 .font(OnboardingFonts.bricolage(28, 700)).kerning(-0.6)
                 .lineSpacing(3)
                 .multilineTextAlignment(.center)

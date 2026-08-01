@@ -76,7 +76,7 @@ final class ConversationalGateTests: XCTestCase {
             ConversationalGate.classify("that's all", context: warm),
             .explicitEnd)
         XCTAssertEqual(
-            ConversationalGate.classify("Thanks Polly", context: warm),
+            ConversationalGate.classify("Thanks Chef", context: warm),
             .explicitEnd)
         XCTAssertEqual(
             ConversationalGate.classify("stop listening", context: warm),
@@ -88,7 +88,7 @@ final class ConversationalGateTests: XCTestCase {
             ConversationalGate.classify("hmm interesting", context: cold),
             .uncertain)
         XCTAssertEqual(
-            ConversationalGate.classify("Polly", context: warm),
+            ConversationalGate.classify("Chef", context: warm),
             .nameOnly,
             "wake-only should extend listen, not speak or reject")
     }
@@ -129,10 +129,13 @@ final class ConversationalGateTests: XCTestCase {
     }
 
     func testClearInterruption() {
-        XCTAssertTrue(ConversationalGate.isClearInterruption("Polly, wait"))
+        XCTAssertTrue(ConversationalGate.isClearInterruption("Chef, wait"))
+        XCTAssertTrue(ConversationalGate.isClearInterruption("Hey Chef"))
         XCTAssertTrue(ConversationalGate.isClearInterruption("stop"))
         XCTAssertTrue(ConversationalGate.isClearInterruption("Should I flip it now?"))
         XCTAssertFalse(ConversationalGate.isClearInterruption("hmm"))
+        XCTAssertFalse(ConversationalGate.isClearInterruption("Beautiful, chef."),
+                       "her own praise leaking through the speaker is not a barge-in")
     }
 
     func testLooksUnfinished() {

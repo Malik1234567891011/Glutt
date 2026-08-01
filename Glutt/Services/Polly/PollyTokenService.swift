@@ -26,8 +26,8 @@ enum PollyTokenError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .notConfigured: "Polly isn't available in this build."
-        case .badResponse(let detail): "Couldn't start a Polly session: \(detail)"
+        case .notConfigured: "Chef isn't available in this build."
+        case .badResponse(let detail): "Couldn't start a Chef session: \(detail)"
         }
     }
 }
@@ -74,7 +74,7 @@ struct PollyTokenService {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
             if code == 429 {
-                throw PollyTokenError.badResponse("This device hit its monthly Polly limit.")
+                throw PollyTokenError.badResponse("This device hit its monthly Chef limit.")
             }
             throw PollyTokenError.badResponse("HTTP \(code)")
         }

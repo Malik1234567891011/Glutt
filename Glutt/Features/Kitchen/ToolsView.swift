@@ -43,7 +43,7 @@ struct ToolsView: View {
             Text("What's in your kitchen?")
                 .font(.gluttHeadline)
                 .foregroundStyle(Theme.Colors.textPrimary)
-            Text("Check off the gear you own. Polly uses it while you cook, and recipes flag when they need something you don't have.")
+            Text("Check off the gear you own. Chef uses it while you cook, and recipes flag when they need something you don't have.")
                 .font(.caption2)
                 .foregroundStyle(Theme.Colors.textSecondary)
         }

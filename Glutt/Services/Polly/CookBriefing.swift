@@ -1,7 +1,7 @@
 import Foundation
 
 /// A short pre-cook "trailer" — visual storyboard beats + a shallow spoken rundown
-/// so cooks aren't going in blind when they hit Cook with Polly.
+/// so cooks aren't going in blind when they hit Cook with Chef.
 struct CookBriefing: Equatable {
     struct Beat: Identifiable, Equatable {
         let id: String

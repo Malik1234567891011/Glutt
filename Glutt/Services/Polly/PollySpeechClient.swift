@@ -13,9 +13,9 @@ struct PollySpeechClient {
 
         var errorDescription: String? {
             switch self {
-            case .notConfigured: "Polly speech isn’t available in this build."
-            case .badURL: "Bad Polly speech endpoint."
-            case .upstream(let detail): "Couldn’t synthesize Polly speech: \(detail)"
+            case .notConfigured: "Chef speech isn’t available in this build."
+            case .badURL: "Bad Chef speech endpoint."
+            case .upstream(let detail): "Couldn’t synthesize Chef speech: \(detail)"
             }
         }
     }

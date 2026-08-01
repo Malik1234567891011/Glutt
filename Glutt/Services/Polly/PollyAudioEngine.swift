@@ -275,7 +275,7 @@ final class PollyAudioEngine {
             let level = Self.rms(of: buffer)
             Task { @MainActor [weak self] in self?.smoothLevel(level) }
             // Wake-word listener hears the raw mic even while the socket is muted
-            // (dormant), so "Polly" can un-gate the Realtime input.
+            // (dormant), so "Hey Chef" can un-gate the Realtime input.
             forwardBuffer?(buffer)
             guard !muted.withLock({ $0 }) else { return }
             // Utterance-onset gate: drop chunks while the echo canceller is

@@ -7,7 +7,7 @@ enum RealtimeTransportError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .notConnected: "Polly isn't connected yet."
+        case .notConnected: "Chef isn't connected yet."
         case .badURL: "Couldn't build the realtime session URL."
         case .nonTextFrame: "Received an unreadable frame from the realtime session."
         }

@@ -4,7 +4,7 @@ import Foundation
 import Observation
 import SwiftData
 
-/// The session brain for one "Cook with Polly" session.
+/// The session brain for one "Cook with Chef" session.
 ///
 /// Orchestrates four isolated units — the realtime transport, the audio
 /// engine, the camera controller, and the tool registry — plus plan
@@ -63,7 +63,7 @@ final class PollySessionController {
         case dormant
         /// Engaged: capturing a user turn (after wake or mid-exchange).
         case listening
-        /// Soft listen after Polly answered — no "Polly" needed until timeout.
+        /// Soft listen after Polly answered — no "Hey Chef" needed until timeout.
         case followUp
     }
     private(set) var listeningMode: ListeningMode = .dormant
@@ -259,7 +259,7 @@ final class PollySessionController {
             var payload = clipControlPayload(clip, action: "unmute")
             payload["requires_spoken_ack"] = true
             payload["speak_after"] =
-                "Say ONE short warm sentence: you'll stay quiet while they listen to the video, but you're still here — they can ask anytime (say Polly). Then wait. Do not keep talking over the clip."
+                "Say ONE short warm sentence: you'll stay quiet while they listen to the video, but you're still here — they can ask anytime (say Hey Chef). Then wait. Do not keep talking over the clip."
             return payload
         default:
             return ["ok": false, "reason": "unknown action — use play|pause|mute|unmute"]
@@ -278,7 +278,7 @@ final class PollySessionController {
             """
             Original technique-clip audio was just turned ON. Say ONE short warm sentence only — \
             something like you'll stay quiet while they listen, but you're still here and they can \
-            ask anytime (say Polly). Do not keep coaching over the video. Then wait.
+            ask anytime (say Hey Chef). Do not keep coaching over the video. Then wait.
             """
         ))
         isThinking = true
@@ -346,7 +346,7 @@ final class PollySessionController {
         let previous = mediaState
         mediaState = state
         // Native clip uses AVPlayer (not Realtime). Risk is speaker→mic bleed /
-        // wake-word on source audio saying "Polly". Mute default; if cook unmutes
+        // wake-word on source audio saying "Hey Chef". Mute default; if cook unmutes
         // original audio, hard-mute the mic path until the clip ends or remutes.
         //
         // Do NOT call publishSessionUI() here. That bumps sessionUIEpoch, which
@@ -361,7 +361,7 @@ final class PollySessionController {
                 releaseMicAfterClip(reason: "clip muted")
             } else if !isHardMuted {
                 // His clip-mic hold + our engaged-wake guard: remount churn must
-                // not re-hard-mute after "Polly" and swallow the first utterance.
+                // not re-hard-mute after "Hey Chef" and swallow the first utterance.
                 if listeningMode == .dormant {
                     micHeldForClipAudio = true
                     webrtc?.setMicMode(.hardMuted)
@@ -598,7 +598,7 @@ final class PollySessionController {
     /// never the outcome, including airplane mode. (Marin-voiced bundled
     /// lines are the post-soak polish; the guarantee ships now.)
     private let offlineVoice = AVSpeechSynthesizer()
-    /// Wake-question rescue: words spoken in the same breath as "Polly" are
+    /// Wake-question rescue: words spoken in the same breath as "Hey Chef" are
     /// lost while the server mic is still closed (device log: the cook
     /// learned to say the wake word LAST). The on-device recognizer already
     /// transcribed the whole sentence — if server VAD hears nothing shortly
@@ -730,7 +730,7 @@ final class PollySessionController {
             let granted = await AVAudioApplication.requestRecordPermission()
             guard granted else {
                 PollyDebugLog.shared.log("session: mic permission DENIED")
-                phase = .failed("Polly needs the microphone to cook with you. Enable it in Settings, or cook without Polly.")
+                phase = .failed("Chef needs the microphone to cook with you. Enable it in Settings, or cook without Chef.")
                 return
             }
         }
@@ -837,7 +837,7 @@ final class PollySessionController {
         startSessionClock(context: context)
 
         // Wake-word gate: normally start dormant (Realtime input muted) and listen
-        // on-device for "Polly". Trailer handoff is different — open listening so
+        // on-device for "Hey Chef". Trailer handoff is different — open listening so
         // the cook can say "let's cook" without saying her name first.
         wakeWord.onWake = { [weak self] in
             PollyDebugLog.shared.event(.wakeDetected)
@@ -849,7 +849,7 @@ final class PollySessionController {
         // listening. Gating the start on a single read of `isAvailable` was a coin
         // flip: SFSpeechRecognizer reports unavailable for a moment after init, and
         // losing that toss killed the wake word for the whole cook with the UI
-        // still promising "Say Polly to talk".
+        // still promising "Say Hey Chef to talk".
         wakeWord.onListeningChange = { [weak self] listening in
             self?.wakeWordAvailable = listening
         }
@@ -1014,7 +1014,7 @@ final class PollySessionController {
 
     // MARK: - User actions
 
-    /// The "Show Polly" shutter: one frame straight into the conversation,
+    /// The "Show Chef" shutter: one frame straight into the conversation,
     /// then ask her to react to it.
     func sendShowPolly() async {
         guard phase == .live, let jpeg = await camera.captureFrame() else { return }
@@ -1079,7 +1079,7 @@ final class PollySessionController {
         if interrupted {
             PollyDebugLog.shared.event(.audioInterrupted)
             if isEngaged { returnToDormant(reason: .audioInterrupted) }
-            captionText = "Something else took the microphone. Say Polly when you are ready."
+            captionText = "Something else took the microphone. Say Hey Chef when you are ready."
         } else {
             PollyDebugLog.shared.log("session: audio back after interruption")
             captionText = pollyCaption
@@ -1099,11 +1099,11 @@ final class PollySessionController {
         case manual
     }
 
-    /// Un-gate: "Polly" was heard (or the pill tapped). Opens the Realtime input,
+    /// Un-gate: "Hey Chef" was heard (or the pill tapped). Opens the Realtime input,
     /// shows the Listening UI, and arms a longer initial listen window.
     func wakeUp() {
         guard phase == .live, !isHardMuted else { return }
-        // "Polly" spoken over her = interrupt her, even if already listening.
+        // "Hey Chef" spoken over her = interrupt her, even if already listening.
         if isPollySpeaking {
             PollyDebugLog.shared.log("gate: wake during her turn — cancelling her response")
             Task {
@@ -1112,7 +1112,7 @@ final class PollySessionController {
             }
         }
         // Already Listening but mic still gated (greeting hold / half-duplex):
-        // re-arm instead of ignoring the second "Polly".
+        // re-arm instead of ignoring the second "Hey Chef".
         if listeningMode != .dormant {
             if webrtc?.isMicServerGated == true {
                 PollyDebugLog.shared.log("gate: re-arm wake while Listening but server-deaf")
@@ -1145,7 +1145,7 @@ final class PollySessionController {
     }
 
     /// If server VAD hasn't heard anything ~1.6s after the wake, the words
-    /// were spoken in the same breath as "Polly" and are gone — inject the
+    /// were spoken in the same breath as "Hey Chef" and are gone — inject the
     /// on-device transcript as a text turn so the question still lands.
     private func armWakeInjection() {
         speechSinceWake = false
@@ -1156,9 +1156,11 @@ final class PollySessionController {
             guard phase == .live, listeningMode == .listening,
                   !speechSinceWake, !isPollySpeaking else { return }
             let question = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard question.split(separator: " ").count >= 3,
-                  !WakeWordMatcher.containsWake(question) || question.split(separator: " ").count >= 4
-            else { return }
+            // `strippedQuestion` hands back the whole transcript when nothing
+            // followed the wake phrase, so allow for those two extra words
+            // before deciding there are enough real ones to be a question.
+            let minimumWords = WakeWordMatcher.containsWake(question) ? 5 : 3
+            guard question.split(separator: " ").count >= minimumWords else { return }
             PollyDebugLog.shared.log("wake: injecting transcribed question — \"\(question.prefix(60))\"")
             try? await transport?.send(.createUserText(question))
             try? await transport?.send(.responseCreate)
@@ -1186,7 +1188,7 @@ final class PollySessionController {
         }
     }
 
-    /// Re-gate: mute the Realtime input and return to waiting for "Polly".
+    /// Re-gate: mute the Realtime input and return to waiting for "Hey Chef".
     func returnToDormant(reason: DormantReason = .manual) {
         unfinishedHoldTask?.cancel()
         unfinishedHoldTask = nil
@@ -1200,7 +1202,7 @@ final class PollySessionController {
         consecutiveRejects = 0
         liveTranscript = ""
         enterDormant()
-        // Fresh recognition segment so the next "Polly" wakes her — the running
+        // Fresh recognition segment so the next "Hey Chef" wakes her — the running
         // transcript still holds the last one, which would otherwise block it.
         wakeWord.restart()
         PollyDebugLog.shared.event(.sessionClosed, ["reason": reason.rawValue])
@@ -1220,7 +1222,7 @@ final class PollySessionController {
     }
 
     /// The mic button: hard-mute everything, including the wake word. Un-mute
-    /// returns to dormant (wake-word armed), not open — you still say "Polly".
+    /// returns to dormant (wake-word armed), not open — you still say "Hey Chef".
     func toggleHardMute() {
         isHardMuted.toggle()
         unfinishedHoldTask?.cancel()
@@ -1733,7 +1735,7 @@ final class PollySessionController {
                         """
                         Original clip audio is now ON. Say ONE short warm sentence only — you'll stay \
                         quiet while they listen, but you're still here and they can ask anytime \
-                        (say Polly). Do not keep talking over the video. Then wait.
+                        (say Hey Chef). Do not keep talking over the video. Then wait.
                         """
                     ))
                 } else {
@@ -1811,7 +1813,7 @@ final class PollySessionController {
         watchdogStrikes += 1
         PollyDebugLog.shared.log("watchdog: no reply \(Int(PollyConfig.responseWatchdogSeconds))s after user turn (strike \(watchdogStrikes))")
         if watchdogStrikes >= 2, let context = sessionContext {
-            await handleTransportError(message: "Polly stopped responding", context: context)
+            await handleTransportError(message: "Chef stopped responding", context: context)
         } else {
             try? await transport?.send(.responseCreateWithInstructions(
                 "You did not respond to what the cook just said. In one short sentence, apologize and ask them to say it again."))
@@ -1824,7 +1826,7 @@ final class PollySessionController {
     /// audible chime marks the drop, the new session gets the recent
     /// conversation back, and Polly acknowledges the recovery out loud.
     /// After the attempts run out the session fails visibly and the view
-    /// offers "Cook without Polly".
+    /// offers "Cook without Chef".
     private func handleTransportError(message: String, context: ModelContext) async {
         guard !isEnding, phase != .ended else { return }
         let wasMidCook = phase == .live || phase == .reconnecting
@@ -1835,7 +1837,7 @@ final class PollySessionController {
         }
         reconnectAttempts += 1
         AudioServicesPlaySystemSound(1057)   // audible: the drop is heard, not guessed
-        captionText = "Connection hiccup. Getting Polly back."
+        captionText = "Connection hiccup. Getting Chef back."
         phase = .reconnecting
 
         // Tear the dead stack DOWN before building a new one. Skipping this was the

@@ -85,7 +85,7 @@ struct CookRecapCardView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("Polly Saves")
+                    Text("Chef Saves")
                         .font(BrandFont.nunito(12, 800))
                         .foregroundStyle(Theme.Colors.accent)
                         .textCase(.uppercase)

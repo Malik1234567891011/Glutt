@@ -70,7 +70,7 @@ struct PaywallGateOverlay: View {
                     .foregroundStyle(OnboardingTheme.textHeading)
                     .padding(.bottom, 10)
 
-                Text("Glutt Pro unlocks every recipe, Polly your live AI chef, and the smart kitchen.")
+                Text("Glutt Pro unlocks every recipe, your live AI chef, and the smart kitchen.")
                     .font(OnboardingFonts.nunito(15, 600))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(OnboardingTheme.mutedWarm)

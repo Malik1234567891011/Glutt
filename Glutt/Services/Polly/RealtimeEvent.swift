@@ -124,7 +124,7 @@ enum RealtimeClientEvent: Equatable {
     case responseCreateWithInstructions(String)
     case responseCancel
     /// WebRTC-only: stop client playback NOW (clears the remote audio
-    /// buffer). Paired with responseCancel when "Polly" is spoken over her.
+    /// buffer). Paired with responseCancel when "Hey Chef" is spoken over her.
     case outputAudioBufferClear
     case truncateItem(itemId: String, audioEndMs: Int)
 

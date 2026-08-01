@@ -75,10 +75,10 @@ enum PollyConfig {
     /// person while staying far below a raised voice.
     static let bargeReopenSoftRMS: Float = 0.09
     /// After Polly answers, keep listening this long for a natural follow-up
-    /// without requiring "Polly" again. Activity-based: speech during the window
+    /// without requiring "Hey Chef" again. Activity-based: speech during the window
     /// extends the deadline until the turn completes.
     static let followUpWindowSeconds: TimeInterval = 7
-    /// Right after wake ("Polly"), give the cook longer to form the first ask
+    /// Right after wake ("Hey Chef"), give the cook longer to form the first ask
     /// before re-gating — saying the name then thinking is normal at the stove.
     static let initialListenWindowSeconds: TimeInterval = 15
     /// When Polly's last line asked a question, keep the session open longer and

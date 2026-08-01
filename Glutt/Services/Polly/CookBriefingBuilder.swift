@@ -130,7 +130,7 @@ enum CookBriefingBuilder {
         let trimmed = instruction
             .replacingOccurrences(of: "\n", with: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return "Follow along with Polly" }
+        guard !trimmed.isEmpty else { return "Follow along with Chef" }
         if trimmed.count <= 72 { return trimmed }
         // Break on a word boundary near 70 chars.
         let limit = trimmed.index(trimmed.startIndex, offsetBy: 70, limitedBy: trimmed.endIndex)

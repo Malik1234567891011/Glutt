@@ -15,7 +15,7 @@ enum AppTab: String, CaseIterable, Identifiable {
     }
 }
 
-/// A "Cook with Polly" request: the recipe plus the serving scale chosen on
+/// A "Cook with Chef" request: the recipe plus the serving scale chosen on
 /// the detail screen. Identifiable so RootView can present the session with
 /// `.fullScreenCover(item:)` — a fresh `id` per tap means re-launching the
 /// same recipe always starts a fresh session.
@@ -59,7 +59,7 @@ final class Router {
     private var importedThisSession: [UUID: PersistentIdentifier] = [:]
     /// Import uuid requested by a "View recipe" deep link, awaiting its drain.
     private var pendingOpenImportID: UUID?
-    /// Set by the "Cook with Polly" button on recipe detail. RootView presents
+    /// Set by the "Cook with Chef" button on recipe detail. RootView presents
     /// the live session (a fullScreenCover) whenever this is non-nil; carries the
     /// serving scale the user chose so Polly cooks the right amounts.
     var pollyLaunch: PollyLaunch?

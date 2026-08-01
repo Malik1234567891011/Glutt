@@ -3,11 +3,11 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-/// Live "Cook with Polly" session, redesigned to `Glutt Polly.dc.html`: a
+/// Live "Cook with Chef" session, redesigned to `Glutt Polly.dc.html`: a
 /// full-bleed camera feed under a top→bottom scrim, a top bar, a centered state
-/// pill ("Say Polly to talk" ↔ "Listening"), a big spoken caption, and a bottom
+/// pill ("Say Hey Chef to talk" ↔ "Listening"), a big spoken caption, and a bottom
 /// cluster with the current-step card and call-style controls (mute · red hang-up
-/// · camera). Saying "Polly" un-gates the mic (Listening); an animated edge border
+/// · camera). Saying "Hey Chef" un-gates the mic (Listening); an animated edge border
 /// and live transcription show she's hearing you. Presented as a fullScreenCover.
 struct PollySessionView: View {
     @Environment(\.dismiss) private var dismiss
@@ -72,7 +72,7 @@ struct PollySessionView: View {
             cookRecapSheet
                 .interactiveDismissDisabled()
         }
-        .confirmationDialog("End cooking with Polly?", isPresented: $isConfirmingExit, titleVisibility: .visible) {
+        .confirmationDialog("End cooking with Chef?", isPresented: $isConfirmingExit, titleVisibility: .visible) {
             Button("Keep cooking", role: .cancel) {}
             Button("Finish") {
                 isShowingFinish = true
@@ -132,7 +132,7 @@ struct PollySessionView: View {
             awaitVerbalGo: awaitVerbalGo
         )
         controller = session
-        // On-device wake word ("Polly") needs Speech auth. Requested here so the
+        // On-device wake word ("Hey Chef") needs Speech auth. Requested here so the
         // controller can decide whether to arm voice waking or fall back to
         // tap-to-talk. A denial never blocks the session.
         _ = await session.wakeWord.requestAuthorization()
@@ -334,8 +334,8 @@ struct PollySessionView: View {
     private func pillText(for controller: PollySessionController) -> String {
         if controller.isHardMuted { return "Muted, tap the mic to turn on" }
         if controller.isThinking { return "Thinking…" }
-        if controller.isPollySpeaking { return "Polly is talking" }
-        return controller.wakeWordAvailable ? "Say \u{201C}Polly\u{201D} to talk" : "Tap to talk"
+        if controller.isPollySpeaking { return "Chef is talking" }
+        return controller.wakeWordAvailable ? "Say \u{201C}Hey Chef\u{201D} to talk" : "Tap to talk"
     }
 
     private func engagedPillLabel(for controller: PollySessionController) -> String {
@@ -526,7 +526,7 @@ struct PollySessionView: View {
                               size: 52, bg: Theme.Colors.tabBar, bordered: true)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(controller.isHardMuted ? "Unmute Polly" : "Mute Polly")
+            .accessibilityLabel(controller.isHardMuted ? "Unmute Chef" : "Mute Chef")
 
             Button {
                 Haptics.impact(.medium); isConfirmingExit = true
@@ -586,9 +586,9 @@ struct PollySessionView: View {
     private func phaseOverlay(for controller: PollySessionController) -> some View {
         switch controller.phase {
         case .idle, .compiling:
-            statusCard("Polly is reading the recipe…")
+            statusCard("Chef is reading the recipe…")
         case .connecting:
-            statusCard("Calling Polly…")
+            statusCard("Calling Chef…")
         case .reconnecting:
             VStack {
                 Text("One sec, reconnecting…")
@@ -651,7 +651,7 @@ struct PollySessionView: View {
     private func failedCard(message: String, controller: PollySessionController) -> some View {
         cookCard(maxWidth: 320) {
             MS.graphicEqFill.sized(30).foregroundStyle(CookCanvasTheme.green)
-            Text("Polly couldn't pick up")
+            Text("Chef couldn't pick up")
                 .font(.gluttTitle).foregroundStyle(CookCanvasTheme.primaryText)
             Text(message).font(.gluttBody).foregroundStyle(CookCanvasTheme.secondaryText)
                 .multilineTextAlignment(.center)
@@ -668,7 +668,7 @@ struct PollySessionView: View {
                 }
             }
             .buttonStyle(.gluttPrimary)
-            Button("Cook without Polly") {
+            Button("Cook without Chef") {
                 Haptics.impact(.light)
                 isCookingWithoutPolly = true
                 router.isPollySessionActive = false
@@ -681,12 +681,12 @@ struct PollySessionView: View {
     private var micDeniedCard: some View {
         cookCard(maxWidth: 320) {
             MS.micOffFill.sized(30).foregroundStyle(CookCanvasTheme.green)
-            Text("Polly can't hear you")
+            Text("Chef can't hear you")
                 .font(.gluttTitle).foregroundStyle(CookCanvasTheme.primaryText)
-            Text("Polly needs the microphone to cook with you. You can enable it in Settings, or cook without her.")
+            Text("Chef needs the microphone to cook with you. You can enable it in Settings, or cook from the written steps.")
                 .font(.gluttBody).foregroundStyle(CookCanvasTheme.secondaryText)
                 .multilineTextAlignment(.center)
-            Button("Cook without Polly") {
+            Button("Cook without Chef") {
                 Haptics.impact(.light)
                 isCookingWithoutPolly = true
                 router.isPollySessionActive = false

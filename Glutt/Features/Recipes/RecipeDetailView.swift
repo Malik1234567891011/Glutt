@@ -14,7 +14,7 @@ struct ScrollOffsetKey: PreferenceKey {
 /// Recipe detail, redesigned to `Glutt Screens.dc.html` (screen "Recipe detail"):
 /// a tall hero, a rounded cream content sheet with title, stats, nutrition for
 /// the current serving count, tags, an adapt row, Ingredients/Steps, versions of
-/// this recipe, and a pinned "Cook with Polly" bar. Extras (tools, notes, rating,
+/// this recipe, and a pinned "Cook with Chef" bar. Extras (tools, notes, rating,
 /// history) live in the more_horiz "More details" sheet.
 struct RecipeDetailView: View {
     @Environment(\.modelContext) private var context
@@ -336,7 +336,7 @@ struct RecipeDetailView: View {
             if recipe.mediaStatus != "failed" {
                 ProgressView(value: progress)
                     .tint(Theme.Colors.accent)
-                Text("You can cook with Polly or the written steps anytime.")
+                Text("You can cook with Chef or the written steps anytime.")
                     .font(.caption)
                     .foregroundStyle(Theme.Colors.textSecondary)
             }
@@ -662,7 +662,7 @@ struct RecipeDetailView: View {
                 } label: {
                     HStack(spacing: 10) {
                         MS.graphicEqFill.sized(22).foregroundStyle(Theme.Colors.brightAccent)
-                        Text(recipe.isCookingBasic ? "Learn with Polly" : "Cook with Polly")
+                        Text(recipe.isCookingBasic ? "Learn with Chef" : "Cook with Chef")
                             .font(BrandFont.nunito(16.5, 800)).foregroundStyle(Theme.Colors.creamText)
                     }
                     .frame(maxWidth: .infinity)

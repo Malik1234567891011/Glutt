@@ -29,9 +29,9 @@ enum ConversationalGate {
 
     /// Clear stop / leave-me-alone phrases (normalized: no apostrophes).
     private static let explicitEndPhrases: [String] = [
-        "stop listening", "thats all", "thanks polly", "thank you polly",
+        "stop listening", "thats all", "thanks chef", "thank you chef",
         "go away", "never mind", "nevermind", "im good", "were good", "were good",
-        "all good", "that is all", "bye polly", "sleep", "shut up",
+        "all good", "that is all", "bye chef", "sleep", "shut up",
     ]
 
     /// Bare acks — normally no spoken reply unless Polly asked a question.
@@ -58,13 +58,15 @@ enum ConversationalGate {
 
     /// Interrupt-while-speaking commands (stricter barge-in).
     private static let interruptPhrases: [String] = [
-        "polly wait", "wait polly", "stop", "hold on", "hang on", "no stop",
+        "chef wait", "wait chef", "stop", "hold on", "hang on", "no stop",
         "cancel", "shut up", "quiet",
     ]
 
-    /// ASR often hears "Paula" / "poly" / etc. for the wake name mid-sentence.
+    /// How the cook addresses her mid-sentence, plus the mis-hears ASR returns.
+    /// Bare "chef" is fine to list here because these only classify a turn that
+    /// already reached the gate; waking her still needs the full "hey chef".
     private static let nameMishears: Set<String> = [
-        "paula", "polly", "pollie", "poly", "paulie", "pauly", "pally", "paul a",
+        "chef", "chefs", "shef", "sheff", "chief",
     ]
 
     static func classify(_ raw: String, context: Context) -> Decision {
@@ -133,7 +135,9 @@ enum ConversationalGate {
         let text = normalize(raw)
         guard !text.isEmpty else { return false }
         if matchesAnyPhrase(text, interruptPhrases) { return true }
-        if text.hasPrefix("polly") || text.hasPrefix("paula") { return true }
+        // The full wake phrase, not a bare "chef": she calls the cook "chef"
+        // herself, and speaker leak must not read as the cook barging in.
+        if WakeWordMatcher.containsWake(text) { return true }
         if hadQuestionMark || looksLikeDirectFollowUp(text) { return true }
         return false
     }
@@ -178,7 +182,7 @@ enum ConversationalGate {
     private static func isNameOnly(_ text: String) -> Bool {
         let tokens = text.split(separator: " ").map(String.init)
         guard tokens.count <= 2 else { return false }
-        return tokens.allSatisfy { nameMishears.contains($0) || $0 == "hey" || $0 == "hi" }
+        return tokens.allSatisfy { nameMishears.contains($0) || WakeWordMatcher.leadIns.contains($0) }
     }
 
     private static func isAcknowledgment(_ text: String) -> Bool {

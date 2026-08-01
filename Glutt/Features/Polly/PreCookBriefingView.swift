@@ -276,10 +276,10 @@ struct PreCookBriefingView: View {
     }
 
     private var statusLabel: String {
-        if isHandingOff { return "Polly’s listening" }
+        if isHandingOff { return "Chef’s listening" }
         if briefing == nil { return "Getting ready" }
         if narrator.isSpeaking {
-            return narrator.isUsingPollyVoice ? "Polly’s rundown" : "Rundown"
+            return narrator.isUsingPollyVoice ? "Chef’s rundown" : "Rundown"
         }
         return "Rundown ready"
     }
@@ -393,8 +393,8 @@ struct PreCookBriefingView: View {
     }
 
     private var primaryCTATitle: String {
-        if isHandingOff { return "Connecting Polly…" }
-        return recipe.isCookingBasic ? "Learn with Polly" : "Cook with Polly"
+        if isHandingOff { return "Connecting Chef…" }
+        return recipe.isCookingBasic ? "Learn with Chef" : "Cook with Chef"
     }
 
     // MARK: - Logic

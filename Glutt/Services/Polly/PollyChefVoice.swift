@@ -1,11 +1,11 @@
 import Foundation
 
-/// A chef the cook can pick before starting: who Polly sounds like, and how she
-/// talks.
+/// A chef the cook can pick before starting: who the chef voice sounds like, and
+/// how it talks.
 ///
 /// Three separate things travel together here because they have to stay in
 /// sync. Shipping a voice without its speech style gives you Gordon Ramsay's
-/// voice reading Polly's script, which lands worse than either on its own.
+/// voice reading the house script, which lands worse than either on its own.
 ///
 /// - `realtimeVoice` is the OpenAI Realtime voice when there is no clone
 ///   (Polly), and the mint still carries it as a fallback label.
@@ -57,9 +57,11 @@ struct PollyChefVoice: Identifiable, Equatable, Hashable, Sendable {
 
     // MARK: - Catalog
 
+    /// The house voice. `id` stays "polly" because it is the persisted selection
+    /// key; only the name the cook reads changed.
     static let polly = PollyChefVoice(
         id: "polly",
-        displayName: "Polly",
+        displayName: "Chef",
         tagline: "Calm, expert, always beside you",
         realtimeVoice: "marin",
         elevenLabsVoiceID: nil,

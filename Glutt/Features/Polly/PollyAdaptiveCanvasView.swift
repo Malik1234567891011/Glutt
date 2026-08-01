@@ -483,7 +483,7 @@ struct PollyAdaptiveCanvasView: View {
                 .foregroundStyle(CookCanvasTheme.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text("Polly’s walking through these with you. Sub out what you can, or grab what’s easy.")
+            Text("Chef’s walking through these with you. Sub out what you can, or grab what’s easy.")
                 .font(.system(size: 16))
                 .foregroundStyle(CookCanvasTheme.secondaryText)
                 .lineSpacing(4)
@@ -806,7 +806,7 @@ struct PollyAdaptiveCanvasView: View {
                     )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isCamera ? "Back to step video" : "Show Polly your pan")
+            .accessibilityLabel(isCamera ? "Back to step video" : "Show Chef your pan")
         }
         .padding(.horizontal, 14)
         .frame(height: CookCanvasTheme.dockHeight)
@@ -848,11 +848,11 @@ struct PollyAdaptiveCanvasView: View {
         if hasClip && clipPlaying { return "Playing example" }
         if controller.isHardMuted { return "Mic muted — tap to talk" }
         if controller.isThinking { return "Thinking…" }
-        if controller.isPollySpeaking { return "Polly is helping" }
+        if controller.isPollySpeaking { return "Chef is helping" }
         switch controller.listeningMode {
         case .listening: return "Listening…"
         case .followUp: return "Listening…"
-        case .dormant: return controller.wakeWordAvailable ? "Say “Polly” or tap to talk" : "Tap to talk"
+        case .dormant: return controller.wakeWordAvailable ? "Say “Hey Chef” or tap to talk" : "Tap to talk"
         }
     }
 

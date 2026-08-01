@@ -10,7 +10,7 @@ enum PollyMicMode: Equatable {
     /// Conversation window open — Polly hears the cook (subject to the
     /// half-duplex gate while she's speaking).
     case open
-    /// Asleep, waiting for "Polly" — the server hears nothing; the wake feed
+    /// Asleep, waiting for "Hey Chef" — the server hears nothing; the wake feed
     /// (capture tap) keeps hearing the room.
     case dormant
     /// The mic button — nothing reaches the server, wake word is off too
@@ -30,7 +30,7 @@ enum PollyMicMode: Equatable {
 /// voice-processing capture (VPIO exclusivity — vetting doc §"coexistence").
 /// Instead `PollyCaptureHook` is injected as the audio-processing module's
 /// capture-post delegate; it keeps receiving real mic frames even while the
-/// track is disabled (dormant), which is what lets "say Polly" work mid-call.
+/// track is disabled (dormant), which is what lets "say Hey Chef" work mid-call.
 final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked Sendable {
     nonisolated let events: AsyncStream<RealtimeServerEvent>
 
@@ -385,7 +385,7 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
     /// Wake word / pill: open the Realtime mic immediately even if the
     /// greeting is still playing or half-duplex has the track gated.
     /// Without this, UI shows Listening while the server hears silence —
-    /// the classic "have to say Polly twice" bug.
+    /// the classic "have to say Hey Chef twice" bug.
     func forceMicOpenForWake() {
         releaseGreetingHold(reason: "wake")
         lock.withLock {
@@ -846,7 +846,7 @@ final class PollyCaptureHook: NSObject, LKRTCAudioCustomProcessingDelegate, @unc
         lock.withLock { _latestRMS = rms }
 
         // Wake-word feed gets the RAW frames, before any server-side gating —
-        // "Polly" must be hearable even while she's talking or gated.
+        // "Hey Chef" must be hearable even while she's talking or gated.
         if let onBuffer, let format = lock.withLock({ format }),
            let pcm = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frames)) {
             pcm.frameLength = AVAudioFrameCount(frames)

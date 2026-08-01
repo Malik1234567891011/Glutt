@@ -24,10 +24,12 @@ struct PollyAdaptiveCanvasView: View {
         return plan.steps[controller.stepIndex]
     }
     private var nativeClip: NativeStepClip? { controller.nativeClipForCurrentStep() }
-    private var hasClip: Bool { nativeClip != nil }
+    private var youtubeClip: StepClip? { controller.clipForCurrentStep() }
+    /// Native MP4 or YouTube window — either counts as "this step has a clip".
+    private var hasClip: Bool { nativeClip != nil || youtubeClip != nil }
     private var isCamera: Bool { controller.camera.isRunning }
-    /// Shrink the step card only while a real clip is playing — never on Tools/Prep.
-    private var sheetMini: Bool { hasClip && clipPlaying && !isCamera }
+    /// Shrink the step card only while a native clip is playing — never on Tools/Prep.
+    private var sheetMini: Bool { nativeClip != nil && clipPlaying && !isCamera }
     /// Missing-ingredients screen Polly talks through before Tools.
     private var showingPreflight: Bool {
         !controller.preflightDismissed && !controller.missingIngredients.isEmpty
@@ -202,6 +204,17 @@ struct PollyAdaptiveCanvasView: View {
                     .ignoresSafeArea()
             } else if let clip = nativeClip {
                 canvasClip(clip)
+            } else if let yt = youtubeClip {
+                // Gemini / seeded YouTube windows — used when native Supabase
+                // clips aren't matched yet. Adaptive canvas used to ignore these
+                // entirely, so pilots looked "clip-less" on keyword misses.
+                YouTubePlayerView(
+                    videoId: yt.youtubeVideoID,
+                    startSeconds: yt.startSeconds,
+                    endSeconds: yt.endSeconds,
+                    mute: true
+                )
+                .ignoresSafeArea()
             } else {
                 recipeFallbackPoster
             }

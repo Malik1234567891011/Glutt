@@ -452,10 +452,17 @@ final class PollySessionController {
 
     private func startStepClipIndexingIfNeeded(plan: CookPlan) {
         guard !didStartClipIndex else { return }
-        guard let sourceURL = recipe.sourceURL,
-              let mediaID = MediaSourceID.from(sourceURL: sourceURL) else { return }
+        guard let sourceURL = recipe.sourceURL?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !sourceURL.isEmpty,
+              let mediaID = MediaSourceID.from(sourceURL: sourceURL) else {
+            PollyDebugLog.shared.log(
+                "clips: skipped — recipe has no parseable sourceURL (title=\(recipe.title))"
+            )
+            return
+        }
         didStartClipIndex = true
         isIndexingStepClips = true
+        PollyDebugLog.shared.log("clips: indexing mediaID=\(mediaID) from \(sourceURL)")
         Task { [weak self] in
             guard let self else { return }
             defer { self.isIndexingStepClips = false }
@@ -464,7 +471,8 @@ final class PollySessionController {
             do {
                 let pilot = try await NativeClipService.shared.clips(forMediaID: mediaID)
                 var nativeMap: [String: NativeStepClip] = [:]
-                for step in plan.steps where !CookPlan.isSetupStep(step) {
+                let cookSteps = plan.steps.filter { !CookPlan.isSetupStep($0) }
+                for step in cookSteps {
                     if let clip = await NativeClipService.shared.clipMatching(
                         stepTitle: step.title,
                         instruction: step.instruction,
@@ -473,8 +481,23 @@ final class PollySessionController {
                         nativeMap[step.id] = clip
                     }
                 }
+                // Keyword match can miss when the cook-plan LLM renames steps
+                // ("Brown the fillet" vs "sear"). Pilots ship ordered technique
+                // windows — fall back to 1:1 by order so Wellington/Eggs don't
+                // go silent on a wording drift.
+                if nativeMap.isEmpty, !pilot.clips.isEmpty, !cookSteps.isEmpty {
+                    for (index, step) in cookSteps.enumerated() where index < pilot.clips.count {
+                        nativeMap[step.id] = pilot.clips[index]
+                    }
+                    PollyDebugLog.shared.log(
+                        "clips: native \(mediaID) keyword miss — positional fallback \(nativeMap.count)/\(pilot.clips.count)"
+                    )
+                } else {
+                    PollyDebugLog.shared.log(
+                        "clips: native \(mediaID) matched \(nativeMap.count)/\(cookSteps.count) steps (pilot=\(pilot.clips.count))"
+                    )
+                }
                 self.nativeClipsByStepID = nativeMap
-                PollyDebugLog.shared.log("clips: native \(mediaID) matched \(nativeMap.count) steps")
                 self.publishSessionUI()
                 if self.nativeClipForCurrentStep() != nil {
                     self.syncClipPlaybackForCurrentStep()

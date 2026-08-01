@@ -96,7 +96,10 @@ enum ChefContent {
     /// 2: real dish photos replaced the stand-in stock food art.
     /// 3: Eggs Benedict + YouTube source URLs on Gordon clip pilots.
     /// 4: Scrambled Eggs TikTok technique source (vt → canonical /video/id).
-    private static let contentVersion = 4
+    /// 5: Re-stamp pilot sourceURLs (Beef Wellington / Eggs Benedict / scramble)
+    ///    — some library rows lost them across bundle-id / version churn and
+    ///    Polly's canvas then had nothing to fetch clips for.
+    private static let contentVersion = 5
     private static let contentVersionKey = "glutt.chefContent.contentVersion"
 
     /// Idempotent: inserts missing chef dishes and refreshes their copy when

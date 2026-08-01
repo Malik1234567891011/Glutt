@@ -15,10 +15,13 @@ enum IngredientCanonicalizer {
             name = String(name[..<commaIndex])
         }
 
-        // Strip common prep/quality words anywhere in the name.
+        // Strip common prep/quality words anywhere in the name. "ground" is
+        // deliberately absent: it distinguishes real ingredients rather than
+        // describing prep, so stripping it made ground beef indistinguishable
+        // from a beef fillet.
         let noiseWords: Set<String> = [
             "fresh", "freshly", "large", "small", "medium", "chopped", "diced", "minced",
-            "sliced", "grated", "shredded", "ground", "boneless", "skinless", "organic",
+            "sliced", "grated", "shredded", "boneless", "skinless", "organic",
             "whole", "raw", "cooked", "frozen", "canned", "dried", "ripe", "of",
         ]
         name = name

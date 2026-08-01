@@ -20,6 +20,15 @@ final class IngredientCanonicalizerTests: XCTestCase {
         XCTAssertTrue(IngredientCanonicalizer.matches("Tomatoes", "tomato"))
         XCTAssertFalse(IngredientCanonicalizer.matches("Chicken breast", "chicken thigh"))
     }
+
+    /// "Ground" names a different ingredient rather than describing prep, so it
+    /// has to survive canonicalization. It also makes the mince synonyms agree.
+    func testGroundIsNotTreatedAsPrepNoise() {
+        XCTAssertEqual(IngredientCanonicalizer.canonicalize("Ground beef"), "ground beef")
+        XCTAssertEqual(IngredientCanonicalizer.canonicalize("Beef mince"), "ground beef")
+        XCTAssertEqual(IngredientCanonicalizer.canonicalize("Ground coriander"), "ground coriander")
+        XCTAssertFalse(IngredientCanonicalizer.matches("Ground beef", "Beef fillet"))
+    }
 }
 
 final class UnitConverterTests: XCTestCase {
@@ -350,6 +359,66 @@ final class PantryMatcherTests: XCTestCase {
         let pantry = [PantryItem(name: "Chicken thighs", roughQuantity: .out)]
         let result = PantryMatcher.match(recipe: makeRecipe(), pantry: pantry)
         XCTAssertTrue(result.missing.contains { $0.name == "Chicken thighs" })
+    }
+
+    /// A narrowing modifier in front of the same head noun is still the same
+    /// ingredient, so a generic pantry row should cover it.
+    func testPantryItemCoversNarrowedVariant() {
+        let pantry = [PantryItem(name: "Butter", category: .dairy)]
+        XCTAssertNotNil(PantryMatcher.item(covering: "unsalted butter", in: pantry))
+        XCTAssertNotNil(PantryMatcher.item(covering: "salted butter", in: pantry))
+    }
+
+    /// Sharing a leading word does not make two ingredients the same thing.
+    /// Owning ground beef never means owning beef broth or a beef fillet.
+    func testPantryItemDoesNotCoverDifferentHeadNoun() {
+        let pantry = [
+            PantryItem(name: "Ground beef", category: .meat),
+            PantryItem(name: "Eggs", category: .dairy),
+            PantryItem(name: "Rice", category: .pantry),
+            PantryItem(name: "Potatoes", category: .produce),
+            PantryItem(name: "Garlic", category: .produce),
+        ]
+        for ingredient in ["beef broth", "beef fillet", "egg yolk", "egg white",
+                           "rice vinegar", "potato bun", "garlic sauce"] {
+            XCTAssertNil(PantryMatcher.item(covering: ingredient, in: pantry),
+                         "\(ingredient) should not be covered")
+        }
+    }
+
+    /// Regression: a pantry row whose name canonicalizes to nothing used to be a
+    /// subset of every ingredient, silently marking a whole recipe as owned.
+    func testBlankPantryNameCoversNothing() {
+        let pantry = [PantryItem(name: "  ", category: .other)]
+        XCTAssertNil(PantryMatcher.item(covering: "puff pastry", in: pantry))
+        XCTAssertNil(PantryMatcher.item(covering: "prosciutto", in: pantry))
+
+        let recipe = Recipe(title: "Beef Wellington")
+        recipe.ingredients = [
+            RecipeIngredient(name: "Beef fillet", sortIndex: 0),
+            RecipeIngredient(name: "Puff pastry", sortIndex: 1),
+            RecipeIngredient(name: "Prosciutto", sortIndex: 2),
+        ]
+        XCTAssertEqual(PantryMatcher.match(recipe: recipe, pantry: pantry).ownedCount, 0)
+    }
+
+    /// Checking off one ingredient must not check off the rest of the recipe.
+    func testOwningOneIngredientDoesNotSatisfyOthers() {
+        let recipe = Recipe(title: "Beef Wellington")
+        recipe.ingredients = [
+            RecipeIngredient(name: "Beef fillet", sortIndex: 0),
+            RecipeIngredient(name: "Chestnut mushrooms", sortIndex: 1),
+            RecipeIngredient(name: "Prosciutto", sortIndex: 2),
+            RecipeIngredient(name: "Puff pastry", sortIndex: 3),
+            RecipeIngredient(name: "English mustard", sortIndex: 4),
+            RecipeIngredient(name: "Egg yolks", sortIndex: 5),
+            RecipeIngredient(name: "Thyme", sortIndex: 6),
+            RecipeIngredient(name: "Olive oil", sortIndex: 7),
+        ]
+        let pantry = [PantryItem(name: "Puff pastry", category: .pantry)]
+        let result = PantryMatcher.match(recipe: recipe, pantry: pantry)
+        XCTAssertEqual(result.owned.map(\.name), ["Puff pastry"])
+        XCTAssertEqual(result.ownedCount, 1)
     }
 }
 

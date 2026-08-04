@@ -78,6 +78,7 @@ struct ImportedRecipeDraft: Identifiable, Codable {
         if host.contains("instagram") { return .instagram }
         if host.contains("youtube") || host.contains("youtu.be") { return .youtube }
         if host.contains("reddit.com") || host.contains("redd.it") { return .reddit }
+        if host.contains("pinterest") || host == "pin.it" || host.hasSuffix(".pin.it") { return .pinterest }
         return .website
     }
 }

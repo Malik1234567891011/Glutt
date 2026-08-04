@@ -194,7 +194,7 @@ enum RecipeHTMLParser {
         return cleaned.trimmingCharacters(in: .whitespaces)
     }
 
-    private static func decodeEntities(_ text: String) -> String {
+    static func decodeEntities(_ text: String) -> String {
         text
             .replacingOccurrences(of: "&amp;", with: "&")
             .replacingOccurrences(of: "&quot;", with: "\"")

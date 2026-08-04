@@ -26,7 +26,15 @@ enum ImportInboxDrainer {
             Analytics.capture(.recipeCreated, ["source": "import_share"])
         }
         for (_, recipe) in inserted {
-            Task { await MediaClipEnqueue.ensure(for: recipe, in: context) }
+            Task {
+                // Eagerly, not on the next foreground sweep. Social platforms
+                // hand out signed image URLs that expire — Instagram's carry an
+                // `oe=` stamp days out — so a shared import that waits for a
+                // sweep can find its own cover image already dead. In-app import
+                // has always done this; the share sheet was the gap.
+                await RecipeImageBackfill.ensure(for: recipe, in: context)
+                await MediaClipEnqueue.ensure(for: recipe, in: context)
+            }
         }
         var map: [UUID: PersistentIdentifier] = [:]
         for (id, recipe) in inserted {

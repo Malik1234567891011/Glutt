@@ -48,9 +48,12 @@ enum DraftCleanup {
         guard LLMClient.isConfigured else { return false }
         if draft.ingredientLines.isEmpty || draft.stepTexts.isEmpty { return true }
         if draft.confidence < 0.85 { return true }
-        // Captions / Reddit prose aren't structured — always worth a pass.
+        // Captions / Reddit prose aren't structured — always worth a pass. Pin
+        // descriptions belong in the same bucket: hashtags, emoji and marketing
+        // copy wrapped around an ingredient list.
         if draft.platform == .tiktok || draft.platform == .instagram
-            || draft.platform == .screenshot || draft.platform == .reddit {
+            || draft.platform == .screenshot || draft.platform == .reddit
+            || draft.platform == .pinterest {
             return true
         }
         return false

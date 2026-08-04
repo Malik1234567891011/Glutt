@@ -7,6 +7,7 @@ enum ImportError: LocalizedError {
     case nothingFound
     case instagramBlocked
     case redditNeedsPost
+    case pinterestNeedsPin
 
     var errorDescription: String? {
         switch self {
@@ -18,6 +19,8 @@ enum ImportError: LocalizedError {
             "Instagram doesn't let apps read captions. Screenshot the caption (or the recipe) and use the screenshot import instead — it works great."
         case .redditNeedsPost:
             "Open a specific Reddit recipe post (not the whole subreddit), then share that link into Glutt."
+        case .pinterestNeedsPin:
+            "Open a single pin (not a board or a profile), then share that link into Glutt."
         }
     }
 }
@@ -42,6 +45,23 @@ enum RecipeImportService {
         // Reddit's SPA HTML is empty of recipe text — use the JSON/post path.
         if RedditImport.canHandle(url) {
             return try await RedditImport.importFrom(url: url)
+        }
+
+        // Pinterest's pin page is a JS shell, so there is nothing to scrape. Its
+        // own web API is the only route, and when the pin links out to a real
+        // recipe site that importer re-enters this function for the better source.
+        if PinterestImport.canHandle(url) {
+            return try await PinterestImport.importFrom(url: url)
+        }
+
+        // Instagram's embed route carries the full caption and a live image URL.
+        // The og: scrape below only ever sees a truncated caption, so this is
+        // tried first and falls through on failure rather than throwing.
+        if InstagramImport.canHandle(url) {
+            if let draft = try? await InstagramImport.importFrom(url: url),
+               draft.title != nil || draft.caption != nil {
+                return draft
+            }
         }
 
         // Video platforms: the recipe is in the caption/description, which

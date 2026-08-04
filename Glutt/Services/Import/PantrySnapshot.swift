@@ -13,7 +13,7 @@ import Foundation
 /// different from an empty kitchen: the first tells you not to make the claim,
 /// the second tells you the honest answer is zero.
 enum PantrySnapshot {
-    static let appGroupID = "group.com.omarlahmimi.glutt"
+    static let appGroupID = "group.com.malik.glutt"
     private static let key = "pantrySnapshotCanonicalNames"
 
     /// Called by the app with the canonical names of every pantry row that isn't

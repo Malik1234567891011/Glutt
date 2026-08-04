@@ -22,12 +22,12 @@ import Security
 /// both targets — is used as the cross-target channel: the Keychain provides
 /// durability across reinstalls, the app group provides reach.
 enum InstallID {
-    private static let service = "com.omarlahmimi.glutt.install"
+    private static let service = "com.malik.glutt.install"
     private static let account = "install-id"
     /// The pre-existing UserDefaults key, minted for Polly's abuse cap.
     private static let legacyDefaultsKey = "glutt.device.id"
     private static let sharedKey = "glutt.install.id"
-    private static let appGroupID = "group.com.omarlahmimi.glutt"
+    private static let appGroupID = "group.com.malik.glutt"
 
     private static var shared: UserDefaults? { UserDefaults(suiteName: appGroupID) }
 

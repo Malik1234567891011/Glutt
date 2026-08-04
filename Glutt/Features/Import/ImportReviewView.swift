@@ -163,9 +163,21 @@ struct ImportReviewView: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
     }
 
+    /// Bytes first, then a URL.
+    ///
+    /// Bytes are what the share sheet hands over when the page wouldn't give up a
+    /// thumbnail — an Instagram reel being the usual case. Reading only
+    /// `imageURL` here meant those imports reviewed as though they had no
+    /// picture, even though the picture was already in hand.
     @ViewBuilder
     private var previewCard: some View {
-        if let imageURL = draft.imageURL, let url = URL(string: imageURL) {
+        if let bytes = draft.imageData, let image = UIImage(data: bytes) {
+            Image(uiImage: image)
+                .resizable().aspectRatio(contentMode: .fill)
+                .frame(height: 180)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        } else if let imageURL = draft.imageURL, let url = URL(string: imageURL) {
             AsyncImage(url: url) { image in
                 image.resizable().aspectRatio(contentMode: .fill)
             } placeholder: {

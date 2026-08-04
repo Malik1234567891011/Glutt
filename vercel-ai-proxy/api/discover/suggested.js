@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     return handleCookClips(req, res);
   }
 
-  res.setHeader("x-glutt-proxy-version", "discover-2026-06-20-1");
+  res.setHeader("x-glutt-proxy-version", "discover-2026-08-02-variety");
 
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET, POST");
@@ -73,14 +73,19 @@ export default async function handler(req, res) {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  const dayIndex = Math.floor(Date.now() / 86400000);
+  const rotating = ROTATING_QUERIES[dayIndex % ROTATING_QUERIES.length];
   let q;
   if (tags.length > 0) {
-    q = tags.slice(0, 2).join(" ");
+    // Pair ONE taste tag with the rotating angle rather than pinning the query
+    // to the top two tags. Those two are the most frequent tags across saved
+    // recipes, so they essentially never change — which meant anyone with a
+    // cookbook got one fixed query, forever, and the day rotation below never
+    // applied to them at all. Which tag leads also walks with the day.
+    const tag = tags[dayIndex % tags.length];
+    q = `${tag} ${rotating}`;
   } else {
-    // Rotate the default query by day so the open-feed feels fresh, while
-    // staying highly cacheable within any given day.
-    const dayIndex = Math.floor(Date.now() / 86400000);
-    q = ROTATING_QUERIES[dayIndex % ROTATING_QUERIES.length];
+    q = rotating;
   }
 
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
@@ -91,7 +96,10 @@ export default async function handler(req, res) {
   url.searchParams.set("videoDuration", "short");
   url.searchParams.set("videoEmbeddable", "true");
   url.searchParams.set("safeSearch", "moderate");
-  url.searchParams.set("maxResults", "10");
+  // search.list bills 100 quota units per call regardless of how many results
+  // come back, so asking for 10 was paying full price for a fifth of the pool.
+  // The client shuffles and de-dupes, so a bigger pool is straight variety.
+  url.searchParams.set("maxResults", "50");
   url.searchParams.set("relevanceLanguage", "en");
 
   // Edge-cached for 6h -- rows are cache MISSES, each costing 100 YouTube quota

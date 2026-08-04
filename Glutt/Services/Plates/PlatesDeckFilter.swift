@@ -9,9 +9,11 @@ enum PlatesDeckFilter {
         _ cards: [PlateCard],
         rules: [DietaryRule],
         allergies: [String],
-        savedSourceURLs: Set<String>
+        savedSourceURLs: Set<String>,
+        seenIDs: Set<String> = []
     ) -> [PlateCard] {
         cards.filter { card in
+            if seenIDs.contains(card.id) { return false }
             if let url = card.sourceURL, savedSourceURLs.contains(url) { return false }
             return card.ingredients.allSatisfy { ing in
                 let name = ing.name ?? ing.raw

@@ -21,6 +21,37 @@ final class DiscoverFeedViewModelTests: XCTestCase {
         XCTAssertEqual(vm.current?.videoId, "a")
     }
 
+    /// The suggested page is one edge-cached response held for hours, so the
+    /// order has to be dealt fresh locally or every open starts on the same clip.
+    func testSuggestedFeedIsShuffled() async {
+        let deps = DiscoverFeedViewModel.Dependencies(
+            search: { _, _ in DiscoverResponse(videos: [], nextPageToken: nil) },
+            suggested: { _ in
+                DiscoverResponse(videos: [self.video("a"), self.video("b")], nextPageToken: nil)
+            },
+            save: { v, _ in Recipe(title: v.title) },
+            shuffle: { $0.reversed() }
+        )
+        let vm = DiscoverFeedViewModel(deps: deps)
+        await vm.loadSuggested(tags: [])
+        XCTAssertEqual(vm.videos.map(\.videoId), ["b", "a"])
+    }
+
+    /// A search result's order IS its relevance ranking.
+    func testSearchResultsKeepTheirRanking() async {
+        let deps = DiscoverFeedViewModel.Dependencies(
+            search: { _, _ in
+                DiscoverResponse(videos: [self.video("a"), self.video("b")], nextPageToken: nil)
+            },
+            suggested: { _ in DiscoverResponse(videos: [], nextPageToken: nil) },
+            save: { v, _ in Recipe(title: v.title) },
+            shuffle: { $0.reversed() }
+        )
+        let vm = DiscoverFeedViewModel(deps: deps)
+        await vm.search("tofu")
+        XCTAssertEqual(vm.videos.map(\.videoId), ["a", "b"])
+    }
+
     func testEmptyResultsSetEmptyPhase() async {
         let deps = DiscoverFeedViewModel.Dependencies(
             search: { _, _ in DiscoverResponse(videos: [], nextPageToken: nil) },

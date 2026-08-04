@@ -93,6 +93,7 @@ struct PlatesTabView: View {
                         )
                         .scaleEffect(0.985)
                         .allowsHitTesting(false)
+                        .id(next.id)
                     }
                     topCard(card)
                 } else {
@@ -146,6 +147,12 @@ struct PlatesTabView: View {
             reduceMotion: reduceMotion
         )
         .frame(maxHeight: .infinity)
+        // One view per card, rather than one view reused for every card. Without
+        // this SwiftUI kept a single FeedCardView alive across the whole deck, so
+        // the incoming card inherited the outgoing one's AsyncImage and its
+        // @State servings — the previous recipe's photo stayed on screen until
+        // the new one finished loading, which is the flicker after a swipe.
+        .id(card.id)
         .offset(x: flipped ? 0 : dragX, y: flipped ? 0 : dragY)
         .rotationEffect(.degrees(flipped ? 0 : Double(dragX / 22)))
         .overlay(swipeStamp)
@@ -203,17 +210,20 @@ struct PlatesTabView: View {
         Task {
             try? await Task.sleep(for: .seconds(0.22))
             flippedID = nil
-            if save {
-                await model.save(card, into: context)
-                PlatesStreak.addSaved(1)
-            } else {
-                model.skip(card)
-            }
+            // Advancing the deck and re-centring have to land in ONE transaction.
+            // Awaiting the save first put the index change on a later frame than
+            // the offset reset, so the incoming card was rendered once at the
+            // outgoing card's position before snapping back.
             var t = Transaction()
             t.disablesAnimations = true
             withTransaction(t) {
+                if save { model.acceptSavedCard(card) } else { model.skip(card) }
                 dragX = 0
                 dragY = 0
+            }
+            if save {
+                await model.persistSave(card, into: context)
+                PlatesStreak.addSaved(1)
             }
             await model.loadMoreIfNeeded(currentIndex: model.index)
         }

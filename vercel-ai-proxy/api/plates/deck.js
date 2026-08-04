@@ -3,27 +3,32 @@ import { logUsage, installIdFrom } from "../_lib/usage.js";
 // Discover feed: an endless, paginated stream of photo recipes from
 // Spoonacular. Each page is one complexSearch call (photo + macros +
 // ingredients + steps + servings) normalized into Glutt's PlateCard contract.
-// `pageToken` is a simple integer page cursor; we rotate the query and advance
-// the Spoonacular offset per page so the cook can swipe forever with variety.
-// Every page is edge-cached (by page + UTC day) so repeat opens cost ~0 points.
+// `pageToken` is a simple integer page cursor; each page is an independent
+// random draw from the main-course corpus, so the cook can swipe forever with
+// variety. Every page is edge-cached so repeat opens cost ~0 points, and the
+// client shuffles, de-dupes and remembers what's been swiped on top of that.
+//
+// Quota is the binding constraint here, not latency: the free plan is 50
+// points/day TOTAL across all users, and a page of 20 measures at 3.2 — so the
+// whole product gets ~15 uncached pages a day. The cache is what makes the
+// feature viable; treat any change that multiplies distinct cache keys as a
+// change that multiplies the bill, and watch the quota headers set below.
 
 function resolveSpoonacularKey() {
   // Accept either env var name so setup mismatches don't silently 500.
   return (process.env.SPOONACULAR_API_KEY || process.env.SPOONACULAR_API || "").trim();
 }
 
-const ROTATING_QUERIES = [
-  "high protein dinner",
-  "easy weeknight dinner",
-  "healthy meal prep",
-  "30 minute dinner",
-  "one pan dinner",
-  "chicken dinner",
-  "vegetarian dinner",
-  "comfort food dinner",
-  "mediterranean dinner",
-  "budget family dinner",
-];
+// No query rotation, deliberately. A page is ONE upstream call, so any query
+// narrow enough to add variety between pages also makes every card WITHIN a
+// page share its theme — a rotation through "casserole", "salmon", "tacos"
+// deals twenty casseroles in a row, which reads as broken even though the
+// recipes differ. Narrow queries also underfill: "street food" was measured
+// returning 3 usable cards for a full page's spend.
+//
+// `sort=random` over the whole main-course corpus does the job the query list
+// was trying to do, and does it within the page as well as between pages.
+const DISH_TYPE = "main course";
 
 function nutrient(nutrition, name) {
   const list = (nutrition && nutrition.nutrients) || [];
@@ -89,7 +94,7 @@ function imageWorthy(card) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("x-glutt-proxy-version", "plates-2026-06-26-1");
+  res.setHeader("x-glutt-proxy-version", "plates-2026-08-02-variety");
 
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
@@ -105,26 +110,35 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const PAGE_SIZE = 12;
-  const dayIndex = Math.floor(Date.now() / 86400000);
-  // page cursor: 0, 1, 2, … Each page rotates to a different query and, once a
-  // full lap of queries is done, steps the Spoonacular offset so pages stay
-  // fresh. Day-seeded start so the feed differs day to day.
+  // Bigger pages are CHEAPER per recipe, not more expensive: the 1-point base
+  // is charged per request and amortizes, while each recipe costs a measured
+  // 0.11 either way. 20 works out at 0.16/recipe against 12's 0.19, and refills
+  // the deck less often, so it also means fewer requests.
+  const PAGE_SIZE = 20;
   const page = Math.max(0, parseInt((req.query.pageToken || "0").toString(), 10) || 0);
-  const queryIndex = (dayIndex + page) % ROTATING_QUERIES.length;
-  const query = ROTATING_QUERIES[queryIndex];
-  const offset = Math.floor(page / ROTATING_QUERIES.length) * PAGE_SIZE;
-
   const url = new URL("https://api.spoonacular.com/recipes/complexSearch");
   url.searchParams.set("apiKey", apiKey);
-  url.searchParams.set("query", query);
+  url.searchParams.set("type", DISH_TYPE);
   url.searchParams.set("number", String(PAGE_SIZE));
-  url.searchParams.set("offset", String(offset));
-  url.searchParams.set("addRecipeInformation", "true");
+  // No offset. It used to be the variety mechanism and was broken — it only
+  // moved after a full lap of every query, some 480 cards in — but under a
+  // random sort it is also meaningless, since every request reshuffles and
+  // offset N is just another random slice.
+  //
+  // The upstream URL is now identical for every page. That is fine and
+  // intended: pages are cached separately by the incoming pageToken, so each
+  // one is its own upstream call and its own random draw.
+  //
+  // NOT setting addRecipeInformation: addRecipeNutrition turns it on implicitly.
+  // (Measured cost is unchanged at 0.11/recipe either way, so it is billed
+  // through the implicit enable — no saving, but no reason to ask twice.)
   url.searchParams.set("addRecipeNutrition", "true");
   url.searchParams.set("fillIngredients", "true");
   url.searchParams.set("instructionsRequired", "true");
-  url.searchParams.set("sort", "popularity");
+  // Spoonacular's own docs point here rather than at the random-recipes
+  // endpoint when you also need filtering. `popularity` is a stable ranking,
+  // which is what made the old deck return an identical handful every time.
+  url.searchParams.set("sort", "random");
 
   // NOTE: this response is edge-cached for 12h, so the function does not run on
   // a cache hit. Every row logged below is therefore a cache MISS -- i.e. real
@@ -146,6 +160,15 @@ export default async function handler(req, res) {
     }
     const data = await upstream.json();
     const recipes = (data.results || []).map(normalizeRecipe).filter(imageWorthy);
+
+    // The free plan is 50 points/day and Vercel keeps no runtime logs at this
+    // tier, so these headers are the only way to know what a page actually
+    // costs and how close to the ceiling the day is. Spoonacular starts
+    // returning 402 the moment it runs out.
+    const pointsForRequest = upstream.headers.get("x-api-quota-request") || "";
+    const pointsUsedToday = upstream.headers.get("x-api-quota-used") || "";
+    if (pointsForRequest) res.setHeader("x-glutt-spoonacular-points", pointsForRequest);
+    if (pointsUsedToday) res.setHeader("x-glutt-spoonacular-used-today", pointsUsedToday);
 
     await logUsage({
       feature: "plates_deck",

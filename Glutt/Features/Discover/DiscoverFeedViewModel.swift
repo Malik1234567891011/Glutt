@@ -14,6 +14,8 @@ final class DiscoverFeedViewModel {
         var search: (_ query: String, _ pageToken: String?) async throws -> DiscoverResponse
         var suggested: (_ tags: [String]) async throws -> DiscoverResponse
         var save: (_ video: DiscoverVideo, _ context: ModelContext) async throws -> Recipe
+        /// Seam for the shuffle, so tests can assert on a stable order.
+        var shuffle: ([DiscoverVideo]) -> [DiscoverVideo] = { $0.shuffled() }
 
         static let live = Dependencies(
             search: { try await DiscoverService.live.search(query: $0, pageToken: $1) },
@@ -95,7 +97,11 @@ final class DiscoverFeedViewModel {
     }
 
     private func apply(firstPage page: DiscoverResponse, isSuggested: Bool) {
-        videos = page.videos
+        // Suggested only. A search result's order is its relevance ranking and
+        // scrambling that would be actively worse, but the suggested feed is one
+        // edge-cached page held for six hours, so without a shuffle every open in
+        // that window opens on the same video.
+        videos = isSuggested ? deps.shuffle(page.videos) : page.videos
         currentIndex = 0
         // Suggested feed is short by design and must not paginate — force no token.
         nextPageToken = isSuggested ? nil : page.nextPageToken

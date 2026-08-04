@@ -5,6 +5,8 @@ import SwiftData
 struct DiscoverView: View {
     @Bindable var model: DiscoverFeedViewModel
     let tasteTags: [String]
+    /// Passed down so the card can keep its action buttons on screen.
+    var playerMaxHeight: CGFloat = 420
     @Environment(\.modelContext) private var context
 
     private var saveErrorBinding: Binding<Bool> {
@@ -36,7 +38,8 @@ struct DiscoverView: View {
                         isSaving: model.savingVideoID == video.videoId,
                         isSaved: model.savedVideoIDs.contains(video.videoId),
                         onSave: { Task { await model.save(video, into: context) } },
-                        onNext: { Task { await model.showNext() } }
+                        onNext: { Task { await model.showNext() } },
+                        playerMaxHeight: playerMaxHeight
                     )
                 }
             }

@@ -16,11 +16,14 @@ struct DiscoverTabView: View {
     @Query(sort: \Recipe.createdAt, order: .reverse) private var recipes: [Recipe]
     @State private var mode: Mode = .deck
     @State private var videosModel = DiscoverFeedViewModel()
+    @State private var videoQuery = ""
+    @FocusState private var videoSearchFocused: Bool
 
     private var tasteTags: [String] {
         let counts = recipes
-            // Bundled chef dishes are everyone's, so they say nothing about taste.
-            .filter { $0.parentRecipe == nil && !$0.isChefRecipe }
+            // Bundled chef and restaurant dishes are everyone's, so they say
+            // nothing about this cook's taste.
+            .filter { $0.parentRecipe == nil && !$0.isCuratedRecipe }
             .flatMap { $0.tags }
             .reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
         return counts.sorted { $0.value > $1.value }.prefix(5).map(\.key)
@@ -87,10 +90,75 @@ struct DiscoverTabView: View {
     // MARK: Videos
 
     private var videosSurface: some View {
-        ScrollView {
-            DiscoverView(model: videosModel, tasteTags: tasteTags)
+        // Outside the ScrollView on purpose: a proxy inside one measures the
+        // content, which is exactly the runaway height being corrected here.
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 14) {
+                    videoSearchField
+                    DiscoverView(
+                        model: videosModel,
+                        tasteTags: tasteTags,
+                        playerMaxHeight: playerMaxHeight(viewport: proxy.size.height)
+                    )
+                }
                 .padding(.top, 12)
                 .padding(.bottom, GluttTabBar.reservedHeight)
+            }
+            .scrollDismissesKeyboard(.interactively)
+        }
+    }
+
+    /// Height left for the player once everything that must stay visible with it
+    /// is accounted for: the search field, the title and creator lines, the
+    /// button row, the gaps between them, and the tab bar the scroll view runs
+    /// underneath. The floor keeps the player watchable on the smallest phones,
+    /// where scrolling a little is the better trade.
+    private func playerMaxHeight(viewport: CGFloat) -> CGFloat {
+        let chrome: CGFloat = 50 + 76 + 44 + 70 + GluttTabBar.reservedHeight
+        return max(260, viewport - chrome)
+    }
+
+    private var videoSearchField: some View {
+        HStack(spacing: 10) {
+            MS.search.sized(20).foregroundStyle(Theme.Colors.muted)
+            TextField("miso salmon, birria tacos…", text: $videoQuery)
+                .font(BrandFont.nunito(15, 600))
+                .foregroundStyle(Theme.Colors.heading)
+                .tint(Theme.Colors.accent)
+                .focused($videoSearchFocused)
+                .submitLabel(.search)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .onSubmit { runVideoSearch() }
+            if !videoQuery.trimmingCharacters(in: .whitespaces).isEmpty {
+                Button {
+                    videoQuery = ""
+                    videoSearchFocused = false
+                    Task { await videosModel.loadSuggested(tags: tasteTags) }
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.Colors.muted)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 17)
+        .frame(height: 50)
+        .background(Capsule().fill(Theme.Colors.card))
+        .overlay(Capsule().strokeBorder(Theme.Colors.textPrimary.opacity(0.07), lineWidth: 1.5))
+        .padding(.horizontal, Theme.Spacing.md)
+    }
+
+    private func runVideoSearch() {
+        let trimmed = videoQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        videoSearchFocused = false
+        Task {
+            if trimmed.isEmpty {
+                await videosModel.loadSuggested(tags: tasteTags)
+            } else {
+                await videosModel.search(trimmed)
+            }
         }
     }
 }

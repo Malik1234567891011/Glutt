@@ -7,11 +7,19 @@ struct DiscoverCardView: View {
     let onSave: () -> Void
     let onNext: () -> Void
 
+    /// Ceiling on the player, so Save and Show me next stay on screen.
+    ///
+    /// These clips are vertical, and a 9:16 player told only to fit the width is
+    /// taller than the phone — 430pt wide becomes 764pt tall — which pushed both
+    /// buttons below the fold. Capping the height makes the player narrow instead
+    /// of overflowing, and the whole card fits in the viewport.
+    var playerMaxHeight: CGFloat = 420
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             YouTubePlayerView(videoId: video.videoId)
                 .aspectRatio(9.0 / 16.0, contentMode: .fit)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: playerMaxHeight)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.segment, style: .continuous))
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {

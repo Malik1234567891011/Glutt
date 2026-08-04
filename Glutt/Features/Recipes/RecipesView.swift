@@ -70,11 +70,11 @@ struct RecipesView: View {
     // MARK: - Derived data
 
     /// Top-level, non-lesson recipes (versions + Cooking Basics stay out of the
-    /// feed). Bundled chef dishes stay out too until you favorite one from its
-    /// detail screen, which is what saves it to your library.
+    /// feed). Bundled chef and restaurant dishes stay out too until you favorite
+    /// one from its detail screen, which is what saves it to your library.
     private var libraryRecipes: [Recipe] {
         allRecipes.filter {
-            $0.parentRecipe == nil && !$0.isCookingBasic && (!$0.isChefRecipe || $0.isFavorite)
+            $0.parentRecipe == nil && !$0.isCookingBasic && (!$0.isCuratedRecipe || $0.isFavorite)
         }
     }
 
@@ -217,6 +217,7 @@ struct RecipesView: View {
                     .zoomedFrom(zoomSource.card(for: recipe.persistentModelID))
             }
             .navigationDestination(for: Chef.self) { ChefDetailView(chef: $0) }
+            .navigationDestination(for: Restaurant.self) { RestaurantDetailView(restaurant: $0) }
             .navigationDestination(for: RecipeCollection.self) { CollectionDetailView(collection: $0) }
             .onChange(of: searchText) {
                 if trimmedQuery != aiQuery { aiResults = nil; aiHeadline = nil }
@@ -246,9 +247,17 @@ struct RecipesView: View {
                     router.openFirstRecipeOnLaunch = false
                     open(first)
                 }
+                // Deferred a runloop turn: a path set while the stack is still
+                // laying itself out gets discarded, which is why these hooks
+                // silently did nothing.
                 if let slug = router.chefToOpenOnLaunch, let chef = ChefContent.chef(id: slug) {
                     router.chefToOpenOnLaunch = nil
-                    navPath = NavigationPath([chef])
+                    Task { @MainActor in navPath = NavigationPath([chef]) }
+                }
+                if let slug = router.restaurantToOpenOnLaunch,
+                   let restaurant = RestaurantContent.restaurant(id: slug) {
+                    router.restaurantToOpenOnLaunch = nil
+                    Task { @MainActor in navPath = NavigationPath([restaurant]) }
                 }
             }
             .alert("New collection", isPresented: $isNamingCollection) {
@@ -394,6 +403,9 @@ struct RecipesView: View {
                 heroCard(hero)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 6)
+            }
+            if RestaurantContent.isEnabled {
+                RestaurantRail()
             }
             if ChefContent.isEnabled {
                 ChefRail()

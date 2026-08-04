@@ -1,0 +1,479 @@
+[![StarChefs - Chef Alejandra Espinoza of Cotoa | Miami](https://images.openai.com/static-rsc-4/PpHy5Akfxlfn7jhjy9jPuw2emNIKFQ-hHi7iDQpr5IyUNX5c-wH1XJ4uj2lqGH3QwzUWDSuPYQZPxW8d9H605sQP9cycBqMiWZEV9ODOlm6gIiNSqQ3Tz1Q0mGlZ4OWjbH4U2kwdOLyKDIkGO5njW4THI_ff_2enw56gzkywZGs?purpose=inline)](https://www.starchefs.com/on-the-ground/alejandra-espinoza?utm_source=chatgpt.com)
+
+I dug through Cotoa’s current website, recent menu listings, interviews, restaurant reviews, Instagram descriptions, and photographs. The five below are **confirmed Cotoa dishes**, not guesses. They are also among the restaurant’s most repeatedly praised or prominently featured plates.
+
+One important distinction: **these are not leaked or official Cotoa recipes.** Chef Alejandra Espinoza has not publicly published the exact formulas for most of them. I reconstructed each recipe from confirmed menu descriptions, visible plating, Ecuadorian cooking traditions, and reviewers’ detailed tasting notes. The goal is to reproduce the dish’s structure and flavor—not pretend we know her proprietary measurements.
+
+Cotoa describes its food as “Ecuadorian born, globally inspired,” combining traditional Ecuadorian ingredients with contemporary techniques. It is currently located in North Miami and received a Michelin Bib Gourmand designation in 2026. ([Cotoa][1])
+
+# The five dishes
+
+## 1. Mahi Mahi Manicero
+
+### What Cotoa’s dish actually is
+
+This is a raw mahi-mahi ceviche inspired by **Jipijapa-style Ecuadorian ceviche**, whose defining feature is peanuts. Cotoa places the fish in a creamy salprieta–coconut sauce with cucumber, avocado, red onion, pickled ají, toasted peanuts, watermelon radish and chives. Other descriptions mention ginger and characterize the sauce as sweet, deep, roasted, nutty and coconut-forward. ([StarChefs][2])
+
+It is not a sharply acidic Peruvian-style ceviche swimming in lime juice. The sauce appears thicker and creamier—almost halfway between leche de tigre, coconut milk and a loose peanut sauce.
+
+### Reconstructed recipe
+
+**Serves:** 4 as an appetizer
+**Time:** about 45 minutes
+
+#### Fish
+
+* 1 pound very fresh, previously frozen mahi-mahi
+* ¾ teaspoon kosher salt
+* ⅓ cup fresh lime juice
+* 1 tablespoon fresh orange juice
+
+Use fish specifically suitable for raw consumption. Freezing reduces parasite risk but does not eliminate all food-safety risks.
+
+#### Peanut-coconut sauce
+
+* ½ cup unsweetened coconut milk
+* ⅓ cup unsalted roasted peanuts
+* 2 tablespoons lime juice
+* 1 tablespoon orange juice
+* 1 teaspoon finely grated fresh ginger
+* ½ small garlic clove
+* 1 teaspoon ground toasted coriander
+* ¼ teaspoon ground cumin
+* ¼ teaspoon smoked paprika
+* ½ teaspoon achiote oil or neutral oil
+* ½ teaspoon brown sugar or panela
+* ½ teaspoon kosher salt
+* 2–4 tablespoons cold water
+* Optional: 1 tablespoon toasted cornmeal or finely ground toasted corn, to evoke salprieta
+
+#### Pickled ají and onion
+
+* ½ red onion, very thinly sliced
+* 1 small red Fresno pepper or mild red chili, thinly sliced
+* ¼ cup lime juice
+* ¼ cup warm water
+* 1 teaspoon sugar
+* ½ teaspoon salt
+
+#### Garnishes
+
+* ½ cucumber, diced
+* 1 avocado, diced
+* 3 tablespoons toasted peanuts, roughly crushed
+* 2 watermelon radishes, very thinly sliced
+* 2 tablespoons finely sliced chives
+* Cilantro leaves
+* Cilantro oil, optional
+* Plantain chips
+
+### Method
+
+1. **Make the quick pickle.** Mix the lime juice, water, sugar and salt. Add the onion and chili. Let stand for at least 25 minutes.
+
+2. **Make the sauce.** Blend the coconut milk, peanuts, lime, orange, ginger, garlic, coriander, cumin, paprika, achiote oil, sugar, salt and optional toasted corn. Add enough cold water to produce a smooth sauce resembling pourable heavy cream.
+
+3. **Balance it carefully.** It should taste nutty and coconut-rich first, then citrusy, lightly spicy and gently sweet. Add lime for brightness or water if the peanut flavor is too concentrated.
+
+4. **Prepare the fish.** Cut the mahi-mahi into clean ½-inch cubes. Keep it refrigerated until the last moment.
+
+5. **Marinate briefly.** Toss the fish with salt, lime and orange juice for approximately 8–12 minutes. Cotoa’s fish still looks clean and tender rather than fully opaque and “cooked” by acid.
+
+6. **Assemble.** Spread the cold peanut-coconut sauce across shallow bowls. Drain the fish and pile it in the center with cucumber, avocado and some pickled onion and chili.
+
+7. Finish with watermelon radish, crushed peanuts, chives, cilantro and small drops of herb oil. Serve with plantain chips.
+
+### The detail that matters most
+
+Do not turn this into ordinary coconut ceviche with a spoonful of peanut butter. **Freshly blended roasted peanuts** create a cleaner, toastier flavor and a less sticky texture.
+
+---
+
+# 2. El Pincho — Grilled Hanger Steak
+
+### What Cotoa’s dish actually is
+
+El Pincho is inspired by Ecuadorian street skewers. The confirmed menu describes grilled hanger steak with smoked chimichurri, papa chaucha potatoes and crunchy cucumber. Reviews describe a large, shareable steak topped with an abundant green sauce resembling a smoky, herb-heavy relative of tomatillo salsa. The potatoes are extremely crisp outside and almost puréed inside. ([OpenTable][3])
+
+Some restaurant coverage also mentions charred ají peppers in the chimichurri and cinnamon in the steak marinade. ([Instagram][4])
+
+### Reconstructed recipe
+
+**Serves:** 4
+**Time:** 1½ hours, plus optional overnight marinating
+
+#### Steak
+
+* 2 pounds hanger steak, center membrane removed
+* 2 teaspoons kosher salt
+* 1 teaspoon ground cumin
+* 1 teaspoon ground coriander
+* ½ teaspoon freshly ground black pepper
+* ¼ teaspoon ground cinnamon
+* 2 garlic cloves, grated
+* 1 tablespoon Worcestershire sauce
+* 1 tablespoon lime juice
+* 1 tablespoon neutral oil
+
+#### Smoked ají chimichurri
+
+* 2 poblano peppers
+* 1 jalapeño
+* 1 cup packed cilantro
+* ½ cup flat-leaf parsley
+* 2 scallions
+* 1 small garlic clove
+* 1 tablespoon capers
+* 2 tablespoons red-wine vinegar
+* 2 tablespoons lime juice
+* ½ teaspoon ground cumin
+* ⅓ cup extra-virgin olive oil
+* Salt
+* Optional: ½ tomatillo for extra acidity
+* Optional: a small pinch of smoked salt
+
+#### Crispy potatoes
+
+* 1½ pounds small Yukon Gold potatoes
+* 1 tablespoon kosher salt for boiling water
+* ½ teaspoon baking soda
+* 3 tablespoons neutral oil
+* Salt
+
+#### Crunchy cucumber
+
+* 1 English cucumber
+* 1 tablespoon lime juice
+* 1 teaspoon rice vinegar
+* ½ teaspoon sugar
+* ½ teaspoon salt
+* 1 tablespoon thinly sliced red onion
+
+### Method
+
+1. **Marinate the steak.** Combine salt, cumin, coriander, pepper, cinnamon, garlic, Worcestershire, lime and oil. Rub it over the hanger steak. Refrigerate for at least one hour and preferably 4–8 hours.
+
+2. **Char the peppers.** Place the poblanos and jalapeño directly over a gas flame, beneath a broiler or in a very hot dry skillet. Blacken most of their surfaces.
+
+3. Cover the peppers for 10 minutes, then remove loose black skin. Leaving a little char creates the smoky quality.
+
+4. **Make the chimichurri.** Pulse the peppers with cilantro, parsley, scallions, garlic, capers, vinegar, lime, cumin and optional tomatillo. Slowly mix in olive oil. Keep it textured rather than completely smooth.
+
+5. **Parboil the potatoes.** Heat the oven to **450°F/232°C**. Boil the potatoes in salted water with baking soda until completely tender, approximately 15–20 minutes.
+
+6. Drain them and let them steam-dry. Shake the pot vigorously so their exteriors become roughed up. Toss with oil and roast for 35–50 minutes, turning occasionally, until deeply crisp.
+
+7. **Prepare the cucumber.** Cut it into thin ribbons or smashed chunks. Toss with lime, vinegar, sugar, salt and red onion shortly before serving.
+
+8. **Cook the steak.** Remove it from the refrigerator 30 minutes beforehand. Grill or sear over very high heat until heavily browned and approximately:
+
+   * 125–130°F for medium-rare before resting
+   * 135°F for medium before resting
+
+9. Rest for 8–10 minutes, then slice against the grain.
+
+10. Spoon a generous amount of smoked chimichurri over the steak. Serve the potatoes and acidic cucumber alongside.
+
+### The detail that matters most
+
+Hanger steak has a pronounced grain. If you slice with it, the meat will seem far tougher than it is. Separate the two lobes around the center membrane, inspect the grain direction and slice each piece across it.
+
+---
+
+# 3. Cangrejada con Patacón
+
+### What Cotoa’s dish actually is
+
+Cotoa’s cangrejada is inspired by Ecuador’s communal crab-eating tradition. Its version uses blue crab in a rich tomato preparation with **cocolón**—crisp rice from the bottom of the pot—sweet plantains and preserved black lemon. Photographs and reviews show the components layered almost like a composed casserole: seasoned rice, deeply browned plantain, crab and a bright reddish-orange tomato sauce. ([Instagram][5])
+
+One restaurant description calls the crab “ceviche-style,” suggesting that fresh onion, tomato, herbs and acidity are folded through the cooked crab rather than simmering it until heavy. ([Instagram][6])
+
+### Reconstructed recipe
+
+**Serves:** 4
+**Time:** about 1 hour 15 minutes
+
+#### Tomato crab sauce
+
+* 1 pound lump blue crabmeat, checked carefully for shells
+* 2 tablespoons neutral oil or achiote oil
+* ½ red onion, finely diced
+* 1 red bell pepper, finely diced
+* 3 garlic cloves, minced
+* 1 teaspoon ground cumin
+* ½ teaspoon ground coriander
+* ½ teaspoon smoked paprika
+* 2 tablespoons tomato paste
+* 1 cup crushed tomatoes
+* ¾ cup seafood or chicken stock
+* ½ cup coconut milk
+* 1 teaspoon brown sugar or panela
+* 2 tablespoons lime juice
+* 2 tablespoons orange juice
+* ¼ cup chopped cilantro
+* Salt and black pepper
+
+#### Fresh crab topping
+
+* ½ cup reserved crabmeat
+* ¼ cup finely diced tomato
+* 2 tablespoons finely diced red onion
+* 1 tablespoon chopped cilantro
+* 1 tablespoon lime juice
+* Pinch of salt
+
+#### Cocolón-style rice
+
+* 1 cup long-grain white rice
+* 1½ cups water or light stock
+* 1 tablespoon oil
+* ¾ teaspoon salt
+
+#### Plantains
+
+* 1 very ripe sweet plantain
+* 1 green plantain
+* Neutral oil
+* Salt
+
+#### Black-lime finish
+
+* ¼–½ teaspoon ground black lime, also sold as loomi
+* Or substitute: finely grated lime zest plus a tiny pinch of ground dried lemon
+
+### Method
+
+1. **Cook the rice.** Rinse the rice, then cook it with the water, oil and salt. When tender, leave it untouched over low heat for another 8–12 minutes so a golden crust forms underneath.
+
+2. For a more reliable home version, spread cooked rice onto an oiled sheet pan and bake at **425°F/218°C** until its bottom and edges become crisp.
+
+3. **Cook the sweet plantain.** Slice the ripe plantain into thick diagonal pieces. Pan-fry until deeply caramelized on both sides.
+
+4. **Make patacones.** Cut the green plantain into 1-inch pieces. Fry at approximately 325°F until pale gold and tender. Flatten each piece, then fry again at 375°F until crisp. Salt immediately.
+
+5. **Build the tomato base.** Cook onion and bell pepper in oil for 6–8 minutes. Add garlic, cumin, coriander and paprika.
+
+6. Add tomato paste and cook until brick-red. Add crushed tomato, stock, coconut milk and sugar. Simmer for 12–15 minutes until rich but still spoonable.
+
+7. Fold approximately three-quarters of the crab gently into the sauce. Heat for only 2–3 minutes. Crab becomes stringy and loses sweetness when overcooked.
+
+8. Remove from the heat and add lime, orange and cilantro. Season with salt, pepper and a restrained amount of black lime. Black lime is powerful; the dish should taste intriguingly citrusy, not dusty or medicinal.
+
+9. Combine the reserved crab with diced tomato, onion, cilantro, lime and salt.
+
+10. **Plate in layers.** Place a round of rice in the center, including pieces of crisp cocolón. Add caramelized sweet plantain, spoon over the warm tomato crab mixture and finish with the cool crab salad. Serve patacones alongside or beneath portions of the crab.
+
+### The detail that matters most
+
+The plate needs three distinct textures:
+
+* Soft seasoned rice
+* Crunchy cocolón and patacón
+* Moist, delicately heated crab
+
+Mixing everything together in the pot would flatten the dish.
+
+---
+
+# 4. Tortellinis con Seco de Pollo
+
+### What Cotoa’s dish actually is
+
+This may be Cotoa’s cleverest transformation. Traditional **seco de pollo**, an Ecuadorian chicken stew normally served with rice and fried plantain, becomes a pasta dish. Cotoa’s menu confirms sweet-plantain tortellini with chicken stew, crispy cheese and avocado. Reviews describe a tomato-forward sauce, pieces of chicken, plantain incorporated into the pasta and bright avocado balancing the richness. ([OpenTable][3])
+
+The exact restaurant construction is ambiguous: “sweet plantain tortellini” could mean plantain in the dough, filling, or both. For a dependable home recipe, I would put roasted plantain in the filling while using conventional pasta dough. That keeps the tortellini structurally sound while preserving the central flavor.
+
+### Reconstructed recipe
+
+**Serves:** 4 as a main
+**Time:** approximately 2½ hours
+
+## Chicken seco
+
+* 1½ pounds boneless skinless chicken thighs
+* 1½ teaspoons kosher salt
+* 1 teaspoon ground cumin
+* ½ teaspoon ground coriander
+* Black pepper
+* 1 tablespoon achiote oil or neutral oil
+* 1 medium yellow onion, diced
+* 1 red bell pepper, diced
+* 4 garlic cloves, minced
+* 2 tablespoons tomato paste
+* 1 cup crushed tomatoes
+* ¾ cup beer or chicken stock
+* ½ cup fresh orange juice
+* 1 cup cilantro leaves and tender stems
+* ¼ cup parsley
+* ½ teaspoon dried oregano
+
+## Tortellini dough
+
+* 300 grams “00” flour or all-purpose flour
+* 3 large eggs
+* 1 egg yolk
+* 1 teaspoon olive oil
+* Pinch of salt
+
+## Filling
+
+* 1 very ripe plantain
+* ¾ cup finely shredded cooked chicken from the stew
+* ½ cup ricotta, drained
+* ⅓ cup finely grated Parmesan
+* 1 egg yolk
+* ½ teaspoon ground cumin
+* ½ teaspoon lime zest
+* Salt and pepper
+
+## Crispy cheese and garnish
+
+* 1 cup finely grated Parmesan or aged Cotija
+* 1 ripe avocado
+* Lime juice
+* Cilantro leaves
+* Optional: pickled red onion
+
+### Method
+
+1. **Season the chicken** with salt, cumin, coriander and pepper.
+
+2. Brown the thighs in achiote oil over medium-high heat. Remove them temporarily.
+
+3. Cook the onion and bell pepper until soft. Add garlic and tomato paste; cook until concentrated.
+
+4. Add crushed tomato, beer or stock, orange juice and oregano. Blend cilantro and parsley with ½ cup of the cooking liquid, then return that green mixture to the pot.
+
+5. Return the chicken and simmer gently for approximately 35 minutes, until tender.
+
+6. Remove the chicken. Shred it finely. Simmer the sauce until glossy and moderately thick. Blend it for a smoother restaurant-style presentation, then strain if desired.
+
+7. **Roast the plantain.** Bake it in its skin at **400°F/204°C** for 25–35 minutes until extremely soft and caramelized. Cool and mash.
+
+8. Mix mashed plantain with shredded chicken, ricotta, Parmesan, egg yolk, cumin and lime zest. Season assertively. Refrigerate the filling.
+
+9. **Make the pasta dough.** Knead flour, eggs, yolk, oil and salt for approximately 10 minutes. Wrap and rest for at least 30 minutes.
+
+10. Roll the pasta very thin—setting 6 or 7 on many machines. Cut into approximately 3-inch squares.
+
+11. Put about 1 teaspoon filling in the center. Fold into a triangle, expel all air, seal the edges and wrap the corners together to make tortellini.
+
+12. **Make cheese crisps.** Place small mounds of grated cheese on parchment. Bake at 375°F/190°C for 6–9 minutes until golden. Cool completely.
+
+13. Boil the tortellini in generously salted water for 3–5 minutes depending on thickness.
+
+14. Warm the seco sauce in a broad pan. Transfer the tortellini directly into it with a splash of pasta water and gently glaze them.
+
+15. Plate with pieces of avocado dressed with lime, shards of crispy cheese, cilantro and optional pickled onion.
+
+### Easier version
+
+Use fresh store-bought wonton wrappers rather than making pasta dough. The texture will not be identical, but the filling and sauce will still communicate the idea clearly.
+
+### The detail that matters most
+
+Do not make the filling primarily sweet plantain. It should taste like **seco de pollo concentrated inside pasta**, with plantain acting as a sweet, earthy accent.
+
+---
+
+# 5. Snapper Encocado
+
+### What Cotoa’s dish actually is
+
+Encocado is an Ecuadorian coconut preparation associated especially with the coastal regions. Cotoa serves local snapper with coconut milk, turmeric, makrut lime and sumac, accompanied by ginger rice with sweet plantains. A recent review also detected peanut in the sauce and described it as related to the restaurant’s peanut-coconut ceviche sauce, but warmer, deeper and pushed in a more savory direction. ([OpenTable][3])
+
+This is an excellent example of Cotoa’s style: fundamentally Ecuadorian, but using makrut lime and sumac as globally inspired aromatic and acidic accents.
+
+### Reconstructed recipe
+
+**Serves:** 4
+**Time:** approximately 1 hour
+
+## Snapper
+
+* Four 6-ounce skin-on snapper fillets
+* 1½ teaspoons kosher salt
+* ½ teaspoon ground cumin
+* ¼ teaspoon turmeric
+* Black pepper
+* 1 tablespoon neutral oil
+
+## Coconut sauce
+
+* 1 tablespoon achiote oil or neutral oil
+* ½ yellow onion, finely diced
+* ½ red bell pepper, finely diced
+* 3 garlic cloves, minced
+* 1 tablespoon grated ginger
+* 1 teaspoon turmeric
+* ½ teaspoon ground cumin
+* 1 tablespoon tomato paste
+* 1½ cups full-fat coconut milk
+* ½ cup fish or chicken stock
+* 2 makrut lime leaves, lightly crushed
+* 2 tablespoons roasted peanuts or 1 tablespoon natural peanut butter
+* 1 tablespoon lime juice
+* ½ teaspoon sumac, plus more for finishing
+* 1 teaspoon brown sugar
+* Salt
+
+## Ginger and sweet-plantain rice
+
+* 1 cup jasmine or long-grain rice
+* 1½ cups water
+* 1 tablespoon grated ginger
+* ¾ teaspoon salt
+* 1 ripe plantain
+* Neutral oil
+* 2 tablespoons chopped cilantro
+
+### Method
+
+1. **Make the rice.** Rinse it, then combine with water, ginger and salt. Cook until tender and rest covered for 10 minutes.
+
+2. Dice the ripe plantain and fry until dark golden. Fold it gently into the cooked rice with cilantro.
+
+3. **Start the sauce.** Cook onion and bell pepper in achiote oil until soft. Add garlic, ginger, turmeric and cumin.
+
+4. Add tomato paste and cook for 1–2 minutes. Pour in coconut milk and stock. Add makrut lime leaves and brown sugar.
+
+5. Simmer gently for 12–15 minutes. Do not boil aggressively, which can make coconut milk greasy.
+
+6. Blend the sauce with the peanuts until smooth, then strain it back into the pan. The peanut should contribute roasted depth without turning this into satay sauce.
+
+7. Add lime juice, sumac and salt. The sauce should be creamy and aromatic, with citrus appearing at the finish.
+
+8. **Prepare the snapper.** Pat it extremely dry and lightly score the skin. Season with salt, cumin, turmeric and pepper.
+
+9. Heat a skillet over medium-high heat. Add oil and place the fish skin-side down. Press gently for 20–30 seconds to prevent curling.
+
+10. Cook mostly on the skin side for approximately 4–6 minutes until crisp and nearly cooked through. Flip and cook another 30–90 seconds depending on thickness.
+
+11. Spoon the coconut sauce into shallow bowls. Add ginger-plantain rice and place the fish over or beside it, keeping the crispy skin above the liquid.
+
+12. Finish with sumac, cilantro and a few drops of achiote or herb oil.
+
+### The detail that matters most
+
+The sauce needs acidity despite all the coconut richness. Use **lime for fresh acidity and sumac for a dry, berry-like tartness**. Without both, it can taste flat and heavy.
+
+---
+
+# Which one best represents Cotoa?
+
+For understanding the restaurant and chef Alejandra Espinoza’s style, I would rank them:
+
+1. **Mahi Mahi Manicero** — clearest combination of Ecuadorian identity and modern execution
+2. **Tortellinis con Seco de Pollo** — most creative reinterpretation
+3. **Cangrejada con Patacón** — strongest storytelling and Ecuadorian cultural connection
+4. **Snapper Encocado** — sophisticated but still realistically reproducible
+5. **El Pincho** — probably the easiest crowd-pleaser, though less distinctively Ecuadorian at first glance
+
+For the meeting you mentioned with someone who admires this chef, the **Mahi Mahi Manicero** is the smartest dish to learn intellectually. The **Snapper Encocado** is the smartest one to actually cook for someone: it showcases the same coconut, peanut, plantain, citrus and Ecuadorian coastal flavor vocabulary without the food-safety and sourcing complications of serving raw fish.
+
+[1]: https://cotoa.rest/?utm_source=chatgpt.com "Cotoa – Ecuadorian Born. Globally Inspired"
+[2]: https://www.starchefs.com/on-the-ground/alejandra-espinoza "StarChefs - Chef Alejandra Espinoza of Cotoa | Miami"
+[3]: https://www.opentable.com/r/cotoa-ecuadorian-restaurant-miami?utm_source=chatgpt.com "COTOA - Ecuadorian Restaurant - North Miami, FL"
+[4]: https://www.instagram.com/reel/DFNwfSXur_8/?utm_source=chatgpt.com "Experience the taste of Ecuador like never before! Located at ..."
+[5]: https://www.instagram.com/p/DJ-ALJqSyvh/?utm_source=chatgpt.com "Cangrejada at Cotoa is more than a dish, it's a tradition ✨. ..."
+[6]: https://www.instagram.com/reel/DOUbB1qjsRI/?utm_source=chatgpt.com "Cotoa Restaurant on Instagram: \"Cotoa is a little piece of ..."

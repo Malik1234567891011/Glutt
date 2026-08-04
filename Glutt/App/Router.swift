@@ -77,6 +77,9 @@ final class Router {
     /// Dev/testing hook (`-openChef <slug>`): pushes a chef page on launch. Slug is
     /// optional and defaults to the first chef in the rail.
     var chefToOpenOnLaunch: String?
+    /// Dev/testing hook (`-openRestaurant <slug>`): pushes a restaurant page on
+    /// launch. Slug is optional and defaults to the first in the rail.
+    var restaurantToOpenOnLaunch: String?
     /// Dev/testing hook (`-pollyCook`): opens a live Polly session for the first
     /// library recipe on launch. Without this the cook screen's connecting,
     /// failed and mic-denied states could not be reached in the simulator at all,
@@ -105,6 +108,11 @@ final class Router {
         if ChefContent.isEnabled, let flagIndex = arguments.firstIndex(of: "-openChef") {
             let next = arguments.indices.contains(flagIndex + 1) ? arguments[flagIndex + 1] : nil
             chefToOpenOnLaunch = (next?.hasPrefix("-") == false ? next : nil) ?? ChefContent.chefs.first?.id
+        }
+        if RestaurantContent.isEnabled, let flagIndex = arguments.firstIndex(of: "-openRestaurant") {
+            let next = arguments.indices.contains(flagIndex + 1) ? arguments[flagIndex + 1] : nil
+            restaurantToOpenOnLaunch =
+                (next?.hasPrefix("-") == false ? next : nil) ?? RestaurantContent.restaurants.first?.id
         }
     }
 

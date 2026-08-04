@@ -84,6 +84,10 @@ struct GluttApp: App {
             if ChefContent.isEnabled {
                 ChefContent.install(context: container.mainContext)
             }
+            // Restaurant packs, on the same terms as the chefs above.
+            if RestaurantContent.isEnabled {
+                RestaurantContent.install(context: container.mainContext)
+            }
             return container
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")

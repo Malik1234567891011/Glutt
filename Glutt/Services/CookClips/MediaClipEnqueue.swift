@@ -11,8 +11,10 @@ enum MediaClipEnqueue {
     private static let analyzeRetryCooldown: TimeInterval = 120
     private static var lastAnalyzeAttempt: [String: Date] = [:]
 
-    /// YouTube / TikTok recipes with a resolvable media id.
+    /// YouTube / TikTok recipes with a resolvable media id, when clip generation
+    /// is switched on at all.
     static func shouldEnqueue(_ recipe: Recipe) -> Bool {
+        guard MediaClipConfig.generatesClipsForImports else { return false }
         switch recipe.sourcePlatform {
         case .youtube, .tiktok: break
         default: return false
@@ -97,6 +99,10 @@ enum MediaClipEnqueue {
     /// would otherwise sit at "queued" forever, because nothing else retries.
     @MainActor
     static func refreshStatus(for recipe: Recipe, in context: ModelContext) async {
+        // With generation off this would otherwise still write clip state onto a
+        // user's import — the pipeline is keyed by media id, so a video another
+        // user already processed reports `ready` for everyone.
+        guard MediaClipConfig.clipsAllowed(for: recipe) else { return }
         let sourceURL = recipe.sourceURL?.trimmingCharacters(in: .whitespacesAndNewlines)
         let external = recipe.mediaExternalID
             ?? sourceURL.flatMap { MediaSourceID.from(sourceURL: $0) }

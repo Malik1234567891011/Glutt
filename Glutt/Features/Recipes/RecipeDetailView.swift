@@ -302,6 +302,10 @@ struct RecipeDetailView: View {
     }
 
     private var showsClipProgressBanner: Bool {
+        // Recipes imported before clip generation was switched off still carry a
+        // persisted "queued" status. Without this they'd show a spinner that can
+        // never finish, because nothing is left to drive it.
+        guard MediaClipConfig.clipsAllowed(for: recipe) else { return false }
         switch recipe.mediaStatus {
         case "queued", "analysing", "indexed", "downloading", "probing",
              "normalizing", "uploaded", "failed":
@@ -395,11 +399,16 @@ struct RecipeDetailView: View {
         .background(Capsule().fill(bg))
     }
 
+    private func isDisplayableTag(_ tag: String) -> Bool {
+        !tag.hasPrefix(ChefContent.tagPrefix) && !tag.hasPrefix(RestaurantContent.tagPrefix)
+    }
+
     private var tagRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 7) {
-                // The `chef:` discriminator is plumbing, not a tag to show.
-                ForEach(recipe.tags.filter { !$0.hasPrefix(ChefContent.tagPrefix) }, id: \.self) { tag in
+                // The `chef:` and `restaurant:` discriminators are plumbing, not
+                // tags to show.
+                ForEach(recipe.tags.filter(isDisplayableTag), id: \.self) { tag in
                     Text(tag)
                         .font(BrandFont.nunito(12.5, 700))
                         .foregroundStyle(Color(hex: 0x3A342C))

@@ -22,7 +22,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.omarlahmimi.glutt</string>
+			<string>com.malik.glutt</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>glutt</string>
@@ -42,11 +42,11 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSCameraUsageDescription</key>
-	<string>Glutt uses the camera to scan your fridge or pantry, to estimate meals you log from photos, and to let Polly watch the pan during live cooking sessions.</string>
+	<string>Glutt uses the camera to scan your fridge or pantry, to estimate meals you log from photos, and to let Chef watch the pan during live cooking sessions.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Glutt uses the microphone so you can tell it what’s in your kitchen, and so Polly can guide you hands-free while you cook.</string>
+	<string>Glutt uses the microphone so you can tell it what’s in your kitchen, and so Chef can guide you hands-free while you cook.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Glutt recognizes speech on-device so you can list kitchen ingredients out loud, and so Polly only wakes when you say her name — not to background chatter.</string>
+	<string>Glutt recognizes speech on-device so you can list kitchen ingredients out loud, and so Chef only wakes when you say “Chef” — not to background chatter.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>BricolageGrotesque-Variable.ttf</string>

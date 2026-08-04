@@ -18,6 +18,9 @@ Two questions we currently cannot answer:
 
 ## Scope guard — what this does NOT do
 
+> Superseded 2026-07-31 for recipes: see `plan-recipe-sync.md`. Accounts now
+> exist, which was the prerequisite this section was waiting on.
+
 **Recipes, Kitchen and cook history stay in local SwiftData.** Nothing syncs to
 Supabase. A user who reinstalls or switches phones still loses their data.
 
@@ -627,6 +630,51 @@ Needs a real iPhone, in one sitting:
 - **`entitled`** never gets registered on a bypassed dev build (`-seed` /
   `-unlockPremium` return before the gate reports), so it is verified by code
   path only.
+
+## Deleting an account now deletes the PostHog person (2026-07-31)
+
+`delete-account` removed the `auth.users` row and left PostHog untouched. That
+was defensible for everything *except* the email: `ai_usage` rows survive
+because they are keyed to a random install UUID that points at nobody once the
+links cascade away, and the same argument would cover PostHog if PostHog held
+only UUIDs. It does not — the email and display name ride along as person
+properties, in a US installation, and the app offers an in-app "delete my
+account" button that Apple requires. Leaving the address behind made that button
+a half-truth.
+
+The function now calls `persons/bulk_delete` with `delete_events: true` after
+the Supabase deletion. Three things are load-bearing:
+
+- **`delete_events` is not optional.** This project runs person-on-events, which
+  stamps person properties onto every event at ingest. Deleting the person row
+  alone leaves the email on all of their history — a known and unfixable-after
+  the-fact complaint on PostHog's own forum. The accepted cost is that `identify`
+  merged the install's pre-account history into the person at sign-in, so a
+  deletion also takes that person's onboarding and paywall funnel with it.
+- **Both letter cases of the id are sent.** Swift's `UUID.uuidString` is
+  UPPERCASE, so every `distinct_id` the app has ever written is `05C46670-…`,
+  while Postgres and the Edge Function runtime produce `05c46670-…`. PostHog
+  distinct ids are case-sensitive strings and `bulk_delete` answers 202 whether
+  or not it matched anything, so sending only Supabase's form would have been a
+  deletion that permanently deleted nobody, with no signal that it hadn't.
+- **Supabase deletes first, and PostHog is best-effort.** The account going away
+  is the promise; a PostHog outage must not surface as a failed deletion. Every
+  non-success is `console.error`'d with the id, because a silent failure here is
+  orphaned PII nobody knows about.
+
+Needs one secret, set outside this repo: `POSTHOG_PERSONAL_API_KEY`, a personal
+API key scoped to the Glutt project with `person:write` and nothing else. With
+it unset the function logs `posthog delete skipped` and behaves exactly as
+before.
+
+Note for the privacy copy: PostHog *queues* deletions and runs the batch
+off-peak, so 202 means accepted, not done. Do not promise "immediately".
+
+**This explains the three persons sharing one email.** Every delete-and-recreate
+minted a fresh Supabase UUID, PostHog saw an unrelated new person, and the old
+one stayed forever with the email on it. All three were bulk-deleted on
+2026-07-31; the `persons` table is now empty, because anonymous installs never
+create a profile and those three were the only identified people it ever held.
 
 ## Open decisions
 

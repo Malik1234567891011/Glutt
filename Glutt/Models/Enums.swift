@@ -50,6 +50,7 @@ enum SourcePlatform: String, Codable, CaseIterable {
         case host.contains("tiktok."):               self = .tiktok
         case host.contains("youtube."), host.contains("youtu.be"): self = .youtube
         case host.contains("reddit."), host.contains("redd.it"):   self = .reddit
+        case host.contains("pinterest"), host.hasSuffix("pin.it"): self = .pinterest
         default:                                     self = .website
         }
     }

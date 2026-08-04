@@ -105,8 +105,8 @@ final class ShareImportViewModel {
     /// actually identifies one. "Back to Website" would name nothing.
     var returnActionLabel: String {
         switch platform {
-        case .instagram, .tiktok, .youtube, .reddit: "Back to \(platform.label)"
-        case .website, .manual, .screenshot:         "Done"
+        case .instagram, .tiktok, .youtube, .reddit, .pinterest: "Back to \(platform.label)"
+        case .website, .manual, .screenshot:                     "Done"
         }
     }
 

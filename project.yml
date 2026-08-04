@@ -50,14 +50,10 @@ targets:
     type: application
     platform: iOS
     sources:
-      # ImportSheet / ImportProgressViews are a half-landed design-loading UI that
-      # still references APIs ShareImportViewModel / ImportPipeline do not have
-      # (headerLabel, abandon, ImportPipeline.Stage). ShareRootView does not use
-      # them — keep the sources on disk, exclude until the ViewModel catches up.
-      - path: Glutt
-        excludes:
-          - Features/Import/ImportSheet.swift
-          - Features/Import/ImportProgressViews.swift
+      # ImportSheet / ImportProgressViews were excluded while the design-loading
+      # UI was half-landed. ShareImportViewModel now has the API they expect, so
+      # they compile into both targets again.
+      - Glutt
     info:
       path: Glutt/Info.plist
       properties:
@@ -131,9 +127,12 @@ targets:
       - path: Glutt/Services/Import/ShareImportViewModel.swift
       # App-group pantry coverage for the share-sheet confirmation line.
       - path: Glutt/Services/Import/PantrySnapshot.swift
+      # The share sheet's own UI vocabulary. Both files live in the app target
+      # but the extension is what renders them, so they compile into it too.
+      - path: Glutt/Features/Import/ImportProgressViews.swift
+      - path: Glutt/Features/Import/ImportSheet.swift
       # Shared with the app target — extension needs the same canonicalizer for
       # pantry-coverage lines on the share-sheet preview.
-      # (ImportSheet / ImportProgressViews excluded — see Glutt target excludes.)
       - path: Glutt/Services/IngredientCanonicalizer.swift
       - path: Glutt/Services/Import/PendingImportStore.swift
       - path: Glutt/Services/AI/LLMClient.swift

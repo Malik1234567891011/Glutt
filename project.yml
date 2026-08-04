@@ -1,8 +1,6 @@
 name: Glutt
 options:
-  # Personal-team local IDs. App Store / Omar paid-team shipping stays on
-  # com.omarlahmimi.* — flip these back (or use a paid-team login) before archive.
-  bundleIdPrefix: com.malik
+  bundleIdPrefix: com.omarlahmimi
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -11,8 +9,10 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.10"
-    # Malik personal team (OU on Apple Development: malik.shourbaji@gmail.com).
-    DEVELOPMENT_TEAM: K8MRHHZ85N
+    # Omar's paid team. This is what ships, and the app group
+    # (group.com.omarlahmimi.glutt) only provisions under it. Signing on another
+    # team is a local-only change — keep it out of commits.
+    DEVELOPMENT_TEAM: Q7ZLXMG4SB
     CODE_SIGN_STYLE: Automatic
 
 packages:
@@ -75,7 +75,7 @@ targets:
         NSSpeechRecognitionUsageDescription: Glutt recognizes speech on-device so you can list kitchen ingredients out loud, and so Chef only wakes when you say “Chef” — not to background chatter.
         ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:
-          - CFBundleURLName: com.malik.glutt
+          - CFBundleURLName: com.omarlahmimi.glutt
             CFBundleURLSchemes:
               - glutt
           # Google sign-in callback. Must be the iOS client id reversed, exactly;
@@ -86,7 +86,7 @@ targets:
               - com.googleusercontent.apps.326973383718-tmur4tp76aicsnvih43tkn36u7aj44tk
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.malik.glutt
+        PRODUCT_BUNDLE_IDENTIFIER: com.omarlahmimi.glutt
         TARGETED_DEVICE_FAMILY: "1"
         CURRENT_PROJECT_VERSION: 12
         MARKETING_VERSION: "1.2"
@@ -176,7 +176,7 @@ targets:
               NSExtensionActivationSupportsWebURLWithMaxCount: 1
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.malik.glutt.share
+        PRODUCT_BUNDLE_IDENTIFIER: com.omarlahmimi.glutt.share
         CODE_SIGN_ENTITLEMENTS: GluttShare/GluttShare.entitlements
         CURRENT_PROJECT_VERSION: 12
         MARKETING_VERSION: "1.2"

@@ -1480,15 +1480,15 @@
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					51F0E9D9CAFC3FF8EC182851 = {
-						DevelopmentTeam = K8MRHHZ85N;
+						DevelopmentTeam = Q7ZLXMG4SB;
 						ProvisioningStyle = Automatic;
 					};
 					78E449F1B7F92FE7B4997C4F = {
-						DevelopmentTeam = K8MRHHZ85N;
+						DevelopmentTeam = Q7ZLXMG4SB;
 						ProvisioningStyle = Automatic;
 					};
 					E09B0FD3B99CB91DF3A88489 = {
-						DevelopmentTeam = K8MRHHZ85N;
+						DevelopmentTeam = Q7ZLXMG4SB;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -1956,7 +1956,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.2;
-				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt.share;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarlahmimi.glutt.share;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1973,7 +1973,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.malik.GluttTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarlahmimi.GluttTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Glutt.app/Glutt";
@@ -1994,7 +1994,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.2;
-				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarlahmimi.glutt;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -2010,7 +2010,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.malik.GluttTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarlahmimi.GluttTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Glutt.app/Glutt";
@@ -2029,7 +2029,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.2;
-				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt.share;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarlahmimi.glutt.share;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2072,7 +2072,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = K8MRHHZ85N;
+				DEVELOPMENT_TEAM = Q7ZLXMG4SB;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -2130,7 +2130,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = K8MRHHZ85N;
+				DEVELOPMENT_TEAM = Q7ZLXMG4SB;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -2173,7 +2173,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.2;
-				PRODUCT_BUNDLE_IDENTIFIER = com.malik.glutt;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omarlahmimi.glutt;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};

@@ -18,6 +18,13 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      # Secrets.local.plist is gitignored. `optional: true` in project.yml only
+      # lets generation succeed without it — the file reference is still written,
+      # so xcodebuild fails on a missing build input. The example's placeholder
+      # key is enough to compile; nothing here calls the proxy.
+      - name: Stand in for local secrets
+        run: cp Glutt/Services/AI/Secrets.local.example.plist Glutt/Services/AI/Secrets.local.plist
+
       - name: Generate project
         run: xcodegen generate
 

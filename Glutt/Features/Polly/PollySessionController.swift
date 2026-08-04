@@ -482,38 +482,22 @@ final class PollySessionController {
             // Prefer native Supabase clips whenever ready for this media id.
             do {
                 let pilot = try await NativeClipService.shared.clips(forMediaID: mediaID)
-                var nativeMap: [String: NativeStepClip] = [:]
                 let cookSteps = plan.steps.filter { !CookPlan.isSetupStep($0) }
-                for step in cookSteps {
-                    if let clip = await NativeClipService.shared.clipMatching(
-                        stepTitle: step.title,
-                        instruction: step.instruction,
-                        in: pilot
-                    ) {
-                        nativeMap[step.id] = clip
-                    }
-                }
-                // Keyword match can miss when the cook-plan LLM renames steps
-                // ("Brown the fillet" vs "sear"). Pilots ship ordered technique
-                // windows — fall back to 1:1 by order so Wellington/Eggs don't
-                // go silent on a wording drift.
-                if nativeMap.isEmpty, !pilot.clips.isEmpty, !cookSteps.isEmpty {
-                    for (index, step) in cookSteps.enumerated() where index < pilot.clips.count {
-                        nativeMap[step.id] = pilot.clips[index]
-                    }
-                    PollyDebugLog.shared.log(
-                        "clips: native \(mediaID) keyword miss — positional fallback \(nativeMap.count)/\(pilot.clips.count)"
-                    )
-                } else {
-                    PollyDebugLog.shared.log(
-                        "clips: native \(mediaID) matched \(nativeMap.count)/\(cookSteps.count) steps (pilot=\(pilot.clips.count))"
-                    )
-                }
+                // Unique assignment — shared dessert words used to pin the same
+                // clip onto three steps; assignClips never reuses a segment.
+                let nativeMap = await NativeClipService.shared.assignClips(
+                    to: cookSteps.map { (id: $0.id, title: $0.title, instruction: $0.instruction) },
+                    from: pilot
+                )
+                let uniqueSegments = Set(nativeMap.values.map(\.segmentID))
+                PollyDebugLog.shared.log(
+                    "clips: native \(mediaID) assigned \(nativeMap.count)/\(cookSteps.count) steps, \(uniqueSegments.count) unique segments (pilot=\(pilot.clips.count))"
+                )
                 self.nativeClipsByStepID = nativeMap
                 self.publishSessionUI()
-                if self.nativeClipForCurrentStep() != nil {
-                    self.syncClipPlaybackForCurrentStep()
-                }
+                // Always sync — even when the current step is Tools/Prep with no
+                // clip, so advancing onto the first matched step autoplays.
+                self.syncClipPlaybackForCurrentStep()
                 await self.injectTechniqueClipContext(nativeMap)
                 if !nativeMap.isEmpty { return }
             } catch {

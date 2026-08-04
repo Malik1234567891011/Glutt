@@ -86,6 +86,7 @@ actor StepClipService {
         switch YouTubeEmbed.videoId(from: youtubeURL) {
         case "gBJjRYk0yC0": return 274
         case "Cyskqnp1j64": return 471
+        case "6tSdlo0r0Io": return 481
         default: return nil
         }
     }

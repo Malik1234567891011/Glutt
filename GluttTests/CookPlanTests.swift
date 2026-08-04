@@ -227,6 +227,38 @@ final class CookPlanTests: XCTestCase {
         XCTAssertEqual(once, twice)
     }
 
+    /// Cold technique steps arrive as `kind: prep`. Dropping them (old behavior)
+    /// left Crème Brûlée with only heat steps — and no clip targets for scrape /
+    /// whisk / strain. They must survive as numbered cook steps.
+    func testEnsuringLeadingPrepKeepsColdTechniqueSteps() throws {
+        let json = """
+        {"title":"Crème Brûlée","servings":6,
+         "mise":[{"name":"vanilla bean","prep":"split and scrape"}],
+         "equipment":["saucepan","ramekins","torch"],
+         "steps":[
+           {"id":"step1","index":0,"title":"Prepare vanilla bean","instruction":"Split and scrape the vanilla bean.","kind":"prep","dependsOn":[]},
+           {"id":"step2","index":1,"title":"Heat cream with vanilla","instruction":"Simmer the cream with the vanilla.","kind":"active","dependsOn":["step1"]},
+           {"id":"step3","index":2,"title":"Whisk yolks","instruction":"Whisk egg yolks with sugar.","kind":"prep","dependsOn":["step2"]},
+           {"id":"step4","index":3,"title":"Torch the top","instruction":"Torch the sugar until amber.","kind":"active","dependsOn":["step3"]}
+         ]}
+        """
+        let plan = try JSONDecoder().decode(CookPlan.self, from: Data(json.utf8)).ensuringLeadingPrep()
+
+        XCTAssertEqual(plan.leadingSetupCount, 2, "Tools + Prep only")
+        XCTAssertEqual(plan.steps.count, 6, "Tools + Prep + 4 cook steps — none dropped")
+        XCTAssertFalse(CookPlan.isSetupStep(plan.steps[2]))
+        XCTAssertEqual(plan.steps[2].id, "step1")
+        XCTAssertEqual(plan.steps[2].kind, .active, "cold prep promoted so clips/UI treat it as a cook step")
+        XCTAssertEqual(plan.steps[3].id, "step2")
+        XCTAssertEqual(plan.steps[4].id, "step3")
+        XCTAssertEqual(plan.steps[4].kind, .active)
+        XCTAssertEqual(plan.steps[5].id, "step4")
+
+        let cookSteps = plan.steps.filter { !CookPlan.isSetupStep($0) }
+        XCTAssertEqual(cookSteps.count, 4)
+        XCTAssertEqual(cookSteps.map(\.id), ["step1", "step2", "step3", "step4"])
+    }
+
     func testLinearFallbackClampsServingsToAtLeastOne() throws {
         let recipe = Recipe(title: "Tiny Batch", servings: 1)
         container.mainContext.insert(recipe)

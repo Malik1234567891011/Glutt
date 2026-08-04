@@ -26,11 +26,13 @@ final class ChefContentTests: XCTestCase {
     }
 
     func testEveryChefHasFiveDishes() {
-        XCTAssertEqual(ChefContent.chefs.count, 3)
+        XCTAssertEqual(ChefContent.chefs.count, 4)
         for chef in ChefContent.chefs {
             let count = ChefContent.dishes(for: chef).count
             if chef.id == "gordon-ramsay" {
                 XCTAssertEqual(count, 6, "Gordon should ship six (Wellington + Eggs Benedict pilots)")
+            } else if chef.id == "preppy-kitchen" {
+                XCTAssertEqual(count, 1, "Preppy Kitchen should ship the Crème Brûlée pilot")
             } else {
                 XCTAssertEqual(count, 5, "\(chef.name) should ship five")
             }
@@ -42,7 +44,7 @@ final class ChefContentTests: XCTestCase {
         ChefContent.install(context: context)
 
         let recipes = try context.fetch(FetchDescriptor<Recipe>())
-        XCTAssertEqual(recipes.count, 16)
+        XCTAssertEqual(recipes.count, 17)
 
         let wellington = recipes.first { $0.title == "Beef Wellington" }
         XCTAssertEqual(wellington?.chefSlug, "gordon-ramsay")
@@ -57,6 +59,13 @@ final class ChefContentTests: XCTestCase {
         let eggs = recipes.first { $0.title == "Eggs Benedict" }
         XCTAssertEqual(eggs?.chefSlug, "gordon-ramsay")
         XCTAssertEqual(eggs?.sourceURL, "https://www.youtube.com/watch?v=gBJjRYk0yC0")
+
+        let creme = recipes.first { $0.title == "Crème Brûlée" }
+        XCTAssertEqual(creme?.chefSlug, "preppy-kitchen")
+        XCTAssertEqual(creme?.sourceCreator, "Preppy Kitchen")
+        XCTAssertEqual(creme?.sourceURL, "https://www.youtube.com/watch?v=6tSdlo0r0Io")
+        XCTAssertFalse(creme?.ingredients.isEmpty ?? true)
+        XCTAssertEqual(creme?.steps.count, 6)
     }
 
     func testInstallIsIdempotent() throws {
@@ -65,7 +74,7 @@ final class ChefContentTests: XCTestCase {
         ChefContent.install(context: context)
 
         let recipes = try context.fetch(FetchDescriptor<Recipe>())
-        XCTAssertEqual(recipes.count, 16)
+        XCTAssertEqual(recipes.count, 17)
     }
 
     func testRankedReturnsTheFiveInPackOrder() throws {

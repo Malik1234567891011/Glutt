@@ -112,14 +112,17 @@ const server = http.createServer(async (req, res) => {
     if (
       url.pathname === "/v1/pilot/eggs-benedict"
       || url.pathname === "/v1/pilot/beef-wellington"
+      || url.pathname === "/v1/pilot/creme-brulee"
       || url.pathname === "/v1/pilot/tiktok-scrambled-eggs"
     ) {
       await store.load();
       const externalId = url.pathname.endsWith("beef-wellington")
         ? "Cyskqnp1j64"
-        : url.pathname.endsWith("tiktok-scrambled-eggs")
-          ? "7333706662634704161"
-          : "gBJjRYk0yC0";
+        : url.pathname.endsWith("creme-brulee")
+          ? "6tSdlo0r0Io"
+          : url.pathname.endsWith("tiktok-scrambled-eggs")
+            ? "7333706662634704161"
+            : "gBJjRYk0yC0";
       const asset = Object.values(store.data.source_assets).find(
         (a) => a.external_id === externalId && a.status !== "revoked"
       );
@@ -217,6 +220,6 @@ await store.load();
 server.listen(config.localPlaybackPort, "0.0.0.0", () => {
   console.log(`[local-playback] http://127.0.0.1:${config.localPlaybackPort}`);
   console.log(
-    `[local-playback] pilots: /v1/pilot/eggs-benedict · /v1/pilot/beef-wellington · /v1/pilot/tiktok-scrambled-eggs`
+    `[local-playback] pilots: /v1/pilot/eggs-benedict · /v1/pilot/beef-wellington · /v1/pilot/creme-brulee · /v1/pilot/tiktok-scrambled-eggs`
   );
 });

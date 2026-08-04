@@ -15,12 +15,13 @@ import { materializeClip, extractThumbnail, makeVerticalBlurFill } from "../src/
 const FIXTURES = {
   gBJjRYk0yC0: () => import("../fixtures/eggsBenedictSegments.js").then((m) => m.eggsBenedictSegments),
   Cyskqnp1j64: () => import("../fixtures/beefWellingtonSegments.js").then((m) => m.beefWellingtonSegments),
+  "6tSdlo0r0Io": () => import("../fixtures/cremeBruleeSegments.js").then((m) => m.cremeBruleeSegments),
 };
 
 async function main() {
   const externalId = process.argv[2];
   if (!externalId || !FIXTURES[externalId]) {
-    console.error("usage: node scripts/finishPilot.js <gBJjRYk0yC0|Cyskqnp1j64>");
+    console.error("usage: node scripts/finishPilot.js <gBJjRYk0yC0|Cyskqnp1j64|6tSdlo0r0Io>");
     process.exit(1);
   }
   await store.load();
@@ -91,8 +92,8 @@ async function main() {
 
   await store.updateSourceAsset(asset.id, {
     status: "ready",
-    creator_name: asset.creator_name || "Gordon Ramsay",
-    title: asset.title || "Beef Wellington",
+    creator_name: asset.creator_name || (externalId === "6tSdlo0r0Io" ? "Preppy Kitchen" : "Gordon Ramsay"),
+    title: asset.title || (externalId === "6tSdlo0r0Io" ? "Crème Brûlée" : "Beef Wellington"),
   });
   console.log(`[finish] ready — asset ${asset.id}`);
 }

@@ -28,6 +28,7 @@ actor NativeClipService {
     private static let localPaths: [String: String] = [
         "gBJjRYk0yC0": "/v1/pilot/eggs-benedict",
         "Cyskqnp1j64": "/v1/pilot/beef-wellington",
+        "6tSdlo0r0Io": "/v1/pilot/creme-brulee",
         "7333706662634704161": "/v1/pilot/tiktok-scrambled-eggs",
     ]
 
@@ -94,7 +95,16 @@ actor NativeClipService {
 
     /// Score keyword hits — longer / more specific tokens win.
     /// Word-boundary matching avoids "seared"→sear and "unwrap"→wrap.
-    func clipMatching(stepTitle: String, instruction: String, in response: NativePilotClipsResponse) -> NativeStepClip? {
+    ///
+    /// - Parameter excluding: segment ids already given to another step. Without
+    ///   this, shared words ("vanilla", "cream", "sugar", "custard") make the
+    ///   same clip win for three steps in a row on desserts like Crème Brûlée.
+    func clipMatching(
+        stepTitle: String,
+        instruction: String,
+        in response: NativePilotClipsResponse,
+        excluding: Set<String> = []
+    ) -> NativeStepClip? {
         let hay = "\(stepTitle) \(instruction)".lowercased()
         var best: (clip: NativeStepClip, score: Int)?
         let bonus = [
@@ -102,8 +112,10 @@ actor NativeClipService {
             "sear", "fillet", "mustard", "horseradish", "mushroom", "duxelle", "pastry", "puff",
             "wellington", "wrap", "score", "egg wash",
             "crack", "cold", "stir", "custard", "creme", "fraiche", "chive", "scramble",
+            "torch", "brulee", "ramekin", "vanilla", "caramel", "water bath",
         ]
         for clip in response.clips {
+            guard !excluding.contains(clip.segmentID) else { continue }
             var score = 0
             for raw in clip.stepKeywords {
                 let key = raw.lowercased()
@@ -116,6 +128,39 @@ actor NativeClipService {
             }
         }
         return best?.clip
+    }
+
+    /// One clip per cook step, never reused. Keyword match first (skipping
+    /// already-taken segments), then fill gaps from leftover clips in pilot order.
+    func assignClips(
+        to cookSteps: [(id: String, title: String, instruction: String)],
+        from response: NativePilotClipsResponse
+    ) -> [String: NativeStepClip] {
+        var map: [String: NativeStepClip] = [:]
+        var used = Set<String>()
+        for step in cookSteps {
+            guard let clip = clipMatching(
+                stepTitle: step.title,
+                instruction: step.instruction,
+                in: response,
+                excluding: used
+            ) else { continue }
+            map[step.id] = clip
+            used.insert(clip.segmentID)
+        }
+        if response.clips.isEmpty || cookSteps.isEmpty { return map }
+        var next = 0
+        for step in cookSteps where map[step.id] == nil {
+            while next < response.clips.count, used.contains(response.clips[next].segmentID) {
+                next += 1
+            }
+            guard next < response.clips.count else { break }
+            let clip = response.clips[next]
+            map[step.id] = clip
+            used.insert(clip.segmentID)
+            next += 1
+        }
+        return map
     }
 
     private func hayContainsKeyword(_ hay: String, _ key: String) -> Bool {

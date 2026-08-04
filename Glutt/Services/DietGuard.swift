@@ -63,6 +63,17 @@ enum DietGuard {
         "milk", "butter", "cheese", "cream", "yogurt", "ghee",
         "mozzarella", "parmesan", "cheddar", "feta", "ricotta", "mascarpone",
     ]
+    /// Plant milks / creams / yogurts — "soy milk" must not trip `milk`.
+    private static let plantDairyBases: Set<String> = [
+        "soy", "soya", "oat", "almond", "coconut", "cashew", "rice", "hemp",
+        "pea", "flax", "macadamia", "hazelnut", "pistachio", "walnut",
+        "quinoa", "banana", "potato", "sesame", "sunflower",
+    ]
+    /// "Butter" that isn't dairy (nut/seed butters, cocoa butter, etc.).
+    private static let nonDairyButterModifiers: Set<String> = [
+        "peanut", "almond", "cashew", "sunflower", "seed", "cookie",
+        "pumpkin", "walnut", "hazelnut", "cocoa", "cacao", "shea", "apple",
+    ]
     private static let eggWords: Set<String> = ["egg", "eggs", "mayonnaise", "mayo"]
     private static let glutenWords: Set<String> = [
         "flour", "wheat", "bread", "pasta", "noodle", "couscous", "barley",
@@ -159,12 +170,36 @@ enum DietGuard {
         dislikes: [String]
     ) -> Conflict.Severity? {
         let lowered = name.lowercased()
+        let plantLabeled = isExplicitlyPlantBased(lowered)
+        let plantDairy = isPlantDairyAlternative(lowered)
 
-        if let _ = allergies.first(where: { matches(lowered, word: $0.lowercased()) }) {
-            return .allergy
+        if let allergy = allergies.first(where: { matches(lowered, word: $0.lowercased()) }) {
+            // "soy milk" shouldn't count as a milk allergy hit.
+            let allergyWord = allergy.lowercased()
+            let allergyIsDairy = allergyWord == "dairy"
+                || allergyWord == "lactose"
+                || dairyWords.contains(where: { matches(allergyWord, word: $0) || allergyWord == $0 })
+            if !(plantDairy && allergyIsDairy) {
+                return .allergy
+            }
         }
+        // Plant labels only clear animal-product hits — not carbs/gluten/nuts.
+        let animalWords = meatWords
+            .union(seafoodWords)
+            .union(gelatinWords)
+            .union(dairyWords)
+            .union(eggWords)
+            .union(["honey"])
+
         if let rule = rules.first(where: { rule in
-            forbiddenWords(for: rule).contains { matches(lowered, word: $0) }
+            forbiddenWords(for: rule).contains { word in
+                guard matches(lowered, word: word) else { return false }
+                // "vegan butter", "plant-based sausage" — labeled plant products.
+                if plantLabeled && animalWords.contains(word) { return false }
+                // "soy milk", "coconut cream", "peanut butter" — not animal dairy.
+                if dairyWords.contains(word) && plantDairy { return false }
+                return true
+            }
         }) {
             return .rule(rule)
         }
@@ -174,11 +209,47 @@ enum DietGuard {
         return nil
     }
 
+    /// "vegan …", "plant-based …", "dairy-free …", "non-dairy …".
+    private static func isExplicitlyPlantBased(_ text: String) -> Bool {
+        let tokens = letterTokens(text)
+        if tokens.contains("vegan") || tokens.contains("plantbased") { return true }
+        if tokens.contains("plant") && tokens.contains("based") { return true }
+        if tokens.contains("dairyfree") || tokens.contains("nondairy") { return true }
+        if tokens.contains("dairy") && tokens.contains("free") { return true }
+        if tokens.contains("non") && tokens.contains("dairy") { return true }
+        if tokens.contains("egg") && tokens.contains("free") { return true }
+        if tokens.contains("eggfree") { return true }
+        return false
+    }
+
+    /// Plant milks/creams/yogurts/cheeses and non-dairy butters.
+    private static func isPlantDairyAlternative(_ text: String) -> Bool {
+        if isExplicitlyPlantBased(text) { return true }
+        let tokens = Set(letterTokens(text))
+        let hasDairyToken = dairyWords.contains { word in
+            tokens.contains(word) || tokens.contains(word + "s")
+        }
+        guard hasDairyToken else { return false }
+        if !plantDairyBases.isDisjoint(with: tokens) { return true }
+        // peanut butter, cocoa butter, apple butter, …
+        if tokens.contains("butter") && !nonDairyButterModifiers.isDisjoint(with: tokens) {
+            return true
+        }
+        return false
+    }
+
+    private static func letterTokens(_ text: String) -> [String] {
+        let normalized = text
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+        return normalized.split { !$0.isLetter }.map(String.init)
+    }
+
     /// Word-boundary-ish match: "ham" must not match "shawarma" or "graham".
     private static func matches(_ text: String, word: String) -> Bool {
         guard !word.isEmpty else { return false }
         if word.contains(" ") { return text.contains(word) }
-        let tokens = text.split { !$0.isLetter }.map(String.init)
+        let tokens = letterTokens(text)
         // Cover simple plurals both ways ("egg" rule vs "eggs" ingredient).
         return tokens.contains { token in
             token == word || token == word + "s" || token + "s" == word

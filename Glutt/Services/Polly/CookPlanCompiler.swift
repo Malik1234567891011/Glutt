@@ -18,6 +18,11 @@ enum CookPlanCompiler {
 
     // MARK: - Cache
 
+    /// Bump when `ensuringLeadingPrep` / setup-step semantics change so a
+    /// previously cached plan (e.g. one that dropped cold `kind: prep` steps
+    /// and left Crème Brûlée without clip targets) is not reused.
+    private static let cacheEpoch = 2
+
     /// Content hash of everything that shapes a plan: title, step texts,
     /// ingredient names, and the serving scale. Stable across launches
     /// (unlike persistentModelID) and changes whenever the recipe does.
@@ -26,7 +31,8 @@ enum CookPlanCompiler {
             .sorted { $0.sortIndex < $1.sortIndex }
             .map(\.name)
             .joined(separator: "|")
-        let material = recipe.title
+        let material = "v\(cacheEpoch)|"
+            + recipe.title
             + "|" + recipe.sortedSteps.map(\.text).joined(separator: "|")
             + "|" + ingredientNames
             + "|" + String(format: "%.2f", scale)

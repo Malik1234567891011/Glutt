@@ -159,23 +159,28 @@ struct CookPlan: Codable, Equatable {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
 
-        // Drop any existing leading setup steps — we rebuild them cleanly.
+        // Drop only the dedicated Tools/Prep rows — we rebuild those cleanly.
+        // Do NOT drop every `kind == .prep` step: the compiler tags cold technique
+        // work (scrape vanilla, whisk yolks, strain custard) as prep, and wiping
+        // those removed the steps clips are keyed to — Crème Brûlée cooked with
+        // a static poster and no video.
         let cookSteps = steps.filter { step in
-            step.id != Self.toolsStepID
-                && step.id != Self.prepStepID
-                && step.kind != .prep
+            step.id != Self.toolsStepID && step.id != Self.prepStepID
         }
 
         guard !cleanedMise.isEmpty || !gear.isEmpty else {
-            if cleanedMise == mise, cookSteps.count == steps.count { return self }
+            let remapped = cookSteps.enumerated().map { i, s in
+                promoteColdPrep(
+                    rewrittenStep(s, newIndex: i, ensureDependsOn: nil)
+                )
+            }
+            if cleanedMise == mise, remapped == steps { return self }
             return CookPlan(
                 title: title,
                 servings: servings,
                 mise: cleanedMise,
                 equipment: gear,
-                steps: cookSteps.enumerated().map { i, s in
-                    rewrittenStep(s, newIndex: i, ensureDependsOn: nil)
-                },
+                steps: remapped,
                 isFallback: isFallback
             )
         }
@@ -209,10 +214,12 @@ struct CookPlan: Codable, Equatable {
 
         let lastSetupID = leading.last?.id
         let rest = cookSteps.enumerated().map { offset, step in
-            rewrittenStep(
-                step,
-                newIndex: leading.count + offset,
-                ensureDependsOn: offset == 0 ? lastSetupID : nil
+            promoteColdPrep(
+                rewrittenStep(
+                    step,
+                    newIndex: leading.count + offset,
+                    ensureDependsOn: offset == 0 ? lastSetupID : nil
+                )
             )
         }
         return CookPlan(
@@ -234,9 +241,7 @@ struct CookPlan: Codable, Equatable {
     var leadingSetupCount: Int {
         var n = 0
         for step in steps {
-            if step.kind == .prep
-                || step.id == Self.toolsStepID
-                || step.id == Self.prepStepID {
+            if step.id == Self.toolsStepID || step.id == Self.prepStepID {
                 n += 1
             } else {
                 break
@@ -245,14 +250,36 @@ struct CookPlan: Codable, Equatable {
         return n
     }
 
-    /// Tools or Prep — not numbered cook steps.
+    /// The rebuilt Tools / Prep rows only — not every step the LLM tagged `prep`.
+    /// Cold technique steps keep `kind: prep` in the compiler JSON but they are
+    /// still real cook steps and must receive clips / numbering.
     static func isSetupStep(_ step: PlanStep) -> Bool {
-        step.kind == .prep
-            || step.id == toolsStepID
-            || step.id == prepStepID
+        step.id == toolsStepID || step.id == prepStepID
     }
 
     // MARK: - Prep helpers
+
+    /// Cold technique steps arrive from the compiler as `kind: prep`. Promote
+    /// them to `.active` so they stay numbered cook steps with clips. The
+    /// dedicated Tools/Prep rows keep `.prep` and are identified by id.
+    private func promoteColdPrep(_ step: PlanStep) -> PlanStep {
+        guard step.kind == .prep,
+              step.id != Self.toolsStepID,
+              step.id != Self.prepStepID else { return step }
+        return PlanStep(
+            id: step.id,
+            index: step.index,
+            title: step.title,
+            instruction: step.instruction,
+            kind: .active,
+            estimatedSeconds: step.estimatedSeconds,
+            timerSeconds: step.timerSeconds,
+            dependsOn: step.dependsOn,
+            visualCheck: step.visualCheck,
+            recovery: step.recovery,
+            ingredientNames: step.ingredientNames
+        )
+    }
 
     private func rewrittenStep(
         _ step: PlanStep,

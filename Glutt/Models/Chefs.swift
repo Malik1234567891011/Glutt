@@ -20,7 +20,8 @@ struct Chef: Identifiable, Hashable {
     }
 }
 
-/// The three chefs and their signature dishes (Gordon ships six; others five).
+/// Guest chefs and their signature dishes (Gordon ships six; Nick and Joshua
+/// five; Preppy Kitchen ships the Crème Brûlée clip pilot).
 ///
 /// Chef dishes are real `Recipe` rows (so pantry match, Cook Mode and Polly all
 /// work unchanged) tagged `chef:<slug>` and filtered out of the personal
@@ -61,6 +62,13 @@ enum ChefContent {
             credit: "Cookbook author, Austin",
             portraitAsset: "chefJoshuaWeissman"
         ),
+        Chef(
+            id: "preppy-kitchen",
+            name: "Preppy Kitchen",
+            credit: "John Kanell",
+            // No licensed headshot yet — rail falls back to initials.
+            portraitAsset: nil
+        ),
     ]
 
     static func chef(id: String) -> Chef? {
@@ -99,7 +107,8 @@ enum ChefContent {
     /// 5: Re-stamp pilot sourceURLs (Beef Wellington / Eggs Benedict / scramble)
     ///    — some library rows lost them across bundle-id / version churn and
     ///    Polly's canvas then had nothing to fetch clips for.
-    private static let contentVersion = 5
+    /// 6: Preppy Kitchen + Crème Brûlée YouTube clip pilot.
+    private static let contentVersion = 6
     private static let contentVersionKey = "glutt.chefContent.contentVersion"
 
     /// Idempotent: inserts missing chef dishes and refreshes their copy when
@@ -207,6 +216,7 @@ enum ChefContent {
         "gordon-ramsay": gordonRamsay,
         "nick-digiovanni": nickDiGiovanni,
         "joshua-weissman": joshuaWeissman,
+        "preppy-kitchen": preppyKitchen,
     ]
 
     // MARK: Gordon Ramsay
@@ -661,6 +671,36 @@ enum ChefContent {
                 ("Sear the chicken in a hot pan for 6 minutes a side until charred at the edges, rest for 5, then chop it roughly on the board so it catches the juices.", 720),
                 ("Warm the beans and corn. Build the bowls: rice, chicken, beans, corn, pico, sour cream and cheese.", nil),
             ]
+        ),
+    ]
+
+    // MARK: Preppy Kitchen
+
+    private static let preppyKitchen: [Dish] = [
+        Dish(
+            title: "Crème Brûlée",
+            summary: "Silky vanilla custard under a crackly caramelized sugar top",
+            servings: 6, prepMinutes: 20, cookMinutes: 40,
+            difficulty: .intermediate,
+            tags: ["Signature", "Dessert", "French"],
+            imageAsset: "chefCremeBrulee",
+            ingredients: [
+                ("Heavy cream", 3, "cup"),
+                ("Vanilla bean", 1, nil),
+                ("Egg yolks", 5, nil),
+                ("Granulated sugar", 0.5, "cup"),
+                ("Salt", 0.125, "tsp"),
+                ("Sugar for topping", nil, nil),
+            ],
+            steps: [
+                ("Split the vanilla bean lengthwise and scrape out every seed. Keep the pod — it goes in the cream too.", 120),
+                ("In a saucepan, bring the cream with the vanilla seeds and pod just to a simmer over medium heat. Kill the heat and let it steep for 15 minutes so the cream cools and the flavor goes in.", 900),
+                ("Separate five egg yolks into a large bowl. Whisk in the sugar and a pinch of salt until combined — you are not whipping air in, just dissolving the sugar.", 180),
+                ("Strain the warm cream through a fine mesh sieve into the yolks, stirring as you go. Strain the custard a second time so no pod pieces or foam make it into the ramekins.", 300),
+                ("Set six 6-ounce ramekins in a deep roasting pan. Divide the custard among them, then carefully pour boiling water into the pan until it comes halfway up the sides. Bake at 325°F (160°C) for 30 to 40 minutes, until the edges are set and the centers still wobble. Cool in the bath, then chill several hours.", 2400),
+                ("When you are ready to serve, blot any moisture off the tops, sprinkle a thin even layer of sugar to the edges, and torch with sweeping motions until amber. Serve immediately so the crust stays crisp.", 180),
+            ],
+            sourceURL: "https://www.youtube.com/watch?v=6tSdlo0r0Io"
         ),
     ]
 }

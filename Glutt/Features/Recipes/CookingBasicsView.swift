@@ -6,8 +6,16 @@ struct CookingBasicsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Recipe.createdAt) private var allRecipes: [Recipe]
 
-    /// Opens a freshly generated lesson in the parent Recipes stack.
-    var onOpenLesson: ((Recipe) -> Void)? = nil
+    /// Opens a lesson in the parent Recipes stack.
+    ///
+    /// Not optional, and not a `NavigationLink`. This screen is presented as a
+    /// sheet wrapping its own bare `NavigationStack`, and the
+    /// `navigationDestination(for: Recipe.self)` that resolves a recipe lives in
+    /// the Recipes stack outside the sheet. A `NavigationLink(value:)` with no
+    /// matching destination in its own stack renders inert, which is why every
+    /// lesson row here was unpressable. Requiring the closure means a future
+    /// caller can't reintroduce a dead row by omitting it.
+    var onOpenLesson: (Recipe) -> Void
 
     @State private var isRequestingHowTo = false
 
@@ -60,11 +68,13 @@ struct CookingBasicsView: View {
                 }
 
                 ForEach(lessons) { lesson in
-                    NavigationLink(value: lesson) {
+                    Button {
+                        Haptics.impact(.light)
+                        onOpenLesson(lesson)
+                    } label: {
                         lessonCard(lesson)
                     }
                     .buttonStyle(.plain)
-                    .hapticTap()
                 }
             }
             .padding(.vertical, Theme.Spacing.md)
@@ -75,7 +85,7 @@ struct CookingBasicsView: View {
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $isRequestingHowTo) {
             RequestHowToSheet { recipe in
-                onOpenLesson?(recipe)
+                onOpenLesson(recipe)
             }
         }
     }

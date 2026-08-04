@@ -44,43 +44,64 @@ final class ShareImportViewModelTests: XCTestCase {
         var draft = ImportedRecipeDraft()
         draft.title = "Peanut Noodles"
         draft.servings = 4
-        let vm = ShareImportViewModel(urlString: "x", deps: deps(returning: draft),
-                                      inbox: ImportInbox(defaults: defaults))
-        await vm.start()
-
-        guard case .preview = vm.state else { return XCTFail("expected preview, got \(vm.state)") }
-        XCTAssertEqual(vm.editableTitle, "Peanut Noodles")
-        XCTAssertEqual(vm.editableServings, 4)
-    }
-
-    func testSaveAppliesEditsWritesToInboxAndReturnsID() async {
-        var draft = ImportedRecipeDraft()
-        draft.title = "Original"
-        draft.servings = 2
         let inbox = ImportInbox(defaults: defaults)
         let vm = ShareImportViewModel(urlString: "x", deps: deps(returning: draft), inbox: inbox)
         await vm.start()
 
-        vm.editableTitle = "My Better Title"
-        vm.editableServings = 6
-        let id = vm.save()
-
-        guard case .saved = vm.state else { return XCTFail("expected saved, got \(vm.state)") }
-        XCTAssertNotNil(id)
+        // No review step: a finished import is already in the inbox.
+        guard case .saved(let saved) = vm.state else { return XCTFail("expected saved, got \(vm.state)") }
+        XCTAssertEqual(saved.title, "Peanut Noodles")
+        XCTAssertEqual(vm.dishTitle, "Peanut Noodles")
         let queued = inbox.drain()
         XCTAssertEqual(queued.count, 1)
-        XCTAssertEqual(queued.first?.title, "My Better Title")
-        XCTAssertEqual(queued.first?.servings, 6)
+        XCTAssertEqual(queued.first?.title, "Peanut Noodles")
+        XCTAssertEqual(queued.first?.servings, 4)
+        XCTAssertEqual(queued.first?.id, saved.id)
+    }
+
+    func testKeepLinkQueuesAStubCarryingTheSourceURL() async {
+        let inbox = ImportInbox(defaults: defaults)
+        let vm = ShareImportViewModel(urlString: "https://www.instagram.com/reel/abc",
+                                      deps: deps(throwing: ImportError.nothingFound), inbox: inbox)
+        await vm.start()
+        let id = vm.keepLink()
+
+        let queued = inbox.drain()
+        XCTAssertEqual(queued.count, 1)
         XCTAssertEqual(queued.first?.id, id)
+        XCTAssertEqual(queued.first?.sourceURL, "https://www.instagram.com/reel/abc")
+        XCTAssertEqual(queued.first?.platform, .instagram)
+    }
+
+    func testHeaderNeverNamesTheSourceButTheReturnActionDoes() {
+        let vm = ShareImportViewModel(urlString: "https://vm.tiktok.com/ZGabc/",
+                                      deps: deps(returning: ImportedRecipeDraft()),
+                                      inbox: ImportInbox(defaults: defaults))
+        XCTAssertEqual(vm.platform, .tiktok)
+        XCTAssertEqual(vm.headerLabel, "Saving a recipe")
+        XCTAssertEqual(vm.returnActionLabel, "Back to TikTok")
+    }
+
+    /// "Back to Website" would name nothing, so a plain link gets a plain label.
+    func testReturnActionStaysGenericWhenTheLinkNamesNoApp() {
+        let vm = ShareImportViewModel(urlString: "https://smittenkitchen.com/soup",
+                                      deps: deps(returning: ImportedRecipeDraft()),
+                                      inbox: ImportInbox(defaults: defaults))
+        XCTAssertEqual(vm.platform, .website)
+        XCTAssertEqual(vm.returnActionLabel, "Done")
     }
 
     func testFailedImportLandsInFailedState() async {
         let vm = ShareImportViewModel(urlString: "x", deps: deps(throwing: ImportError.fetchFailed),
                                       inbox: ImportInbox(defaults: defaults))
         await vm.start()
-        guard case .failed(let message) = vm.state else { return XCTFail("expected failed, got \(vm.state)") }
-        XCTAssertEqual(message, ImportError.fetchFailed.errorDescription)
+        guard case .failed(let reason) = vm.state else { return XCTFail("expected failed, got \(vm.state)") }
+        XCTAssertEqual(reason, ImportPipeline.failureReason(for: ImportError.fetchFailed))
+        XCTAssertEqual(vm.headerLabel, "Could not read it")
+        XCTAssertTrue(inbox().drain().isEmpty, "a failed import must not queue anything on its own")
     }
+
+    private func inbox() -> ImportInbox { ImportInbox(defaults: defaults) }
 
     func testSharedImageUsedWhenNoScrapedThumbnail() async {
         var draft = ImportedRecipeDraft()

@@ -8,7 +8,10 @@ final class ShareViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 0.98, green: 0.96, blue: 0.93, alpha: 1)
+        // The import UI is a sheet over the dimmed host app, so the extension's
+        // own backdrop must be transparent — the dimming is drawn in SwiftUI.
+        view.backgroundColor = .clear
+        view.isOpaque = false
         // Flatten attachments across ALL shared items — some apps split the URL
         // and a preview image into separate NSExtensionItems.
         let attachments = (extensionContext?.inputItems as? [NSExtensionItem])?
@@ -65,16 +68,12 @@ final class ShareViewController: UIViewController {
         let viewModel = ShareImportViewModel(urlString: urlString, sharedImageData: imageData)
         let root = ShareRootView(
             viewModel: viewModel,
-            sourceURLString: urlString,
             onViewRecipe: { [weak self] id in self?.openApp(path: "recipe?import=\(id.uuidString)") },
-            onClose: { [weak self] in self?.close() },
-            onOpenInApp: { [weak self] url in
-                PendingImportStore.save(urlString: url)
-                self?.openApp(path: "import?url=\(url.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? url)")
-            }
+            onClose: { [weak self] in self?.close() }
         )
 
         let hosting = UIHostingController(rootView: root)
+        hosting.view.backgroundColor = .clear
         addChild(hosting)
         hosting.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(hosting.view)

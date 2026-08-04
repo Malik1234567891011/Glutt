@@ -40,6 +40,19 @@ enum SourcePlatform: String, Codable, CaseIterable {
         case .screenshot: "Screenshot"
         }
     }
+
+    /// Best guess straight from the shared link, so the import screen can name
+    /// the source ("SAVING FROM INSTAGRAM") before the page has been fetched.
+    init(urlString: String) {
+        let host = URLComponents(string: urlString)?.host?.lowercased() ?? ""
+        switch true {
+        case host.contains("instagram."):            self = .instagram
+        case host.contains("tiktok."):               self = .tiktok
+        case host.contains("youtube."), host.contains("youtu.be"): self = .youtube
+        case host.contains("reddit."), host.contains("redd.it"):   self = .reddit
+        default:                                     self = .website
+        }
+    }
 }
 
 /// Culinary role of an ingredient. Nullable on ingredients; AI fills this in later phases.

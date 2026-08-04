@@ -11,7 +11,7 @@ struct ImportRecipeView: View {
 
     enum Phase {
         case input
-        case loading(String)
+        case loading(ImportPipeline.Progress)
         case failed(String)
         case review(ImportedRecipeDraft)
     }
@@ -27,10 +27,10 @@ struct ImportRecipeView: View {
                 switch phase {
                 case .input:
                     inputView
-                case .loading(let message):
-                    loadingView(message)
-                case .failed(let message):
-                    failureView(message)
+                case .loading(let progress):
+                    loadingView(progress)
+                case .failed(let reason):
+                    failureView(reason)
                 case .review(let draft):
                     ImportReviewView(draft: draft) {
                         dismiss()
@@ -169,35 +169,55 @@ struct ImportRecipeView: View {
         .buttonStyle(.plain)
     }
 
-    private func loadingView(_ message: String) -> some View {
-        VStack(spacing: Theme.Spacing.md) {
-            ProgressView()
-                .controlSize(.large)
-            Text(message)
-                .font(.gluttBody)
-                .foregroundStyle(Theme.Colors.textSecondary)
-                .contentTransition(.opacity)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    /// The same wait the share sheet shows — one visual, the dish name as soon
+    /// as it's known, one status line. See `ImportProgressViews`.
+    private func loadingView(_ progress: ImportPipeline.Progress) -> some View {
+        ImportingContent(stage: progress.stage)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func failureView(_ message: String) -> some View {
-        VStack(spacing: Theme.Spacing.md) {
-            EmptyStateView(
-                icon: "exclamationmark.triangle",
-                title: "Import failed",
-                message: message,
-                actionLabel: "Try again",
-                action: { phase = .input }
+    private func failureView(_ reason: String) -> some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            ImportOutcomeContent(
+                outcome: .failed,
+                imageData: nil,
+                imageURLString: nil,
+                title: "No recipe in this one",
+                message: keptLinkOffer(after: reason)
             )
+            Spacer(minLength: 0)
+            VStack(spacing: 0) {
+                if !trimmedURL.isEmpty {
+                    ImportPrimaryButton(title: "Keep the link anyway") {
+                        var stub = ImportedRecipeDraft()
+                        stub.sourceURL = trimmedURL
+                        stub.platform = SourcePlatform(urlString: trimmedURL)
+                        phase = .review(stub)
+                    }
+                }
+                ImportTextButton(title: "Try again") { phase = .input }
+            }
+            .padding(.horizontal, ImportSheetMetrics.horizontal)
+            .padding(.bottom, Theme.Spacing.md)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Only offer to keep something there is something to keep.
+    private func keptLinkOffer(after reason: String) -> String {
+        trimmedURL.isEmpty
+            ? reason
+            : "\(reason) Keep the link and it lands in your recipes, ready for you to finish."
+    }
+
+    private var trimmedURL: String {
+        urlText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Actions
 
     private func startLinkImport() {
-        phase = .loading("Reading the recipe…")
+        phase = .loading(ImportPipeline.Progress(stage: .reading))
         let urlString = urlText
         // Success has no event of its own: a start with no `recipe_created`
         // behind it is the drop-off, and reaching review is not the same as
@@ -205,21 +225,21 @@ struct ImportRecipeView: View {
         Analytics.capture(.importStarted, ["source": "link"])
         Task {
             do {
-                let draft = try await ImportPipeline.run(urlString: urlString) { message in
-                    phase = .loading(message)
+                let draft = try await ImportPipeline.run(urlString: urlString) { progress in
+                    phase = .loading(progress)
                 }
                 Haptics.notify(.success)
                 phase = .review(draft)
             } catch {
                 Haptics.notify(.error)
                 Analytics.capture(.importFailed, ["source": "link", "reason": error.localizedDescription])
-                phase = .failed(error.localizedDescription)
+                phase = .failed(ImportPipeline.failureReason(for: error))
             }
         }
     }
 
     private func startPhotoImport() {
-        phase = .loading("Reading the screenshot…")
+        phase = .loading(ImportPipeline.Progress(stage: .reading))
         Analytics.capture(.importStarted, ["source": "screenshot"])
         Task {
             do {
@@ -228,11 +248,11 @@ struct ImportRecipeView: View {
                 }
                 var draft = try await RecipeImportService.importFrom(imageData: data)
                 if DraftCleanup.wouldImprove(draft) {
-                    phase = .loading("Cleaning it up with AI…")
+                    phase = .loading(ImportPipeline.Progress(stage: .cleaning, title: draft.title))
                     draft = await DraftCleanup.cleanUp(draft)
                 }
                 if draft.stepTexts.isEmpty, !draft.ingredientLines.isEmpty {
-                    phase = .loading("No method listed — drafting the steps…")
+                    phase = .loading(ImportPipeline.Progress(stage: .steps, title: draft.title))
                     draft = await DraftCleanup.inferSteps(draft)
                 }
                 Haptics.notify(.success)
@@ -240,7 +260,7 @@ struct ImportRecipeView: View {
             } catch {
                 Haptics.notify(.error)
                 Analytics.capture(.importFailed, ["source": "screenshot", "reason": error.localizedDescription])
-                phase = .failed(error.localizedDescription)
+                phase = .failed(ImportPipeline.failureReason(for: error))
             }
             photoItem = nil
         }

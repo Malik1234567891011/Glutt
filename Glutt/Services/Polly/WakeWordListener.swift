@@ -5,37 +5,58 @@ import Speech
 
 // MARK: - Pure wake-word matching (unit-testable, no audio/Speech deps)
 
-/// Detects the "Hey Chef" wake phrase in a transcript and strips it for display.
+/// Detects the "Chef" wake word in a transcript and strips it for display.
 /// Pure string logic so the gate's core can be tested without Speech/audio.
 enum WakeWordMatcher {
-    /// The wake phrase is two words on purpose.
+    /// Optional lead-ins. "Hey chef" and a bare "chef" both wake her, because
+    /// having to prefix every request got annoying fast in a real cook.
     ///
-    /// "Chef" alone cannot be the trigger: it is a word cooks say constantly to
-    /// each other, and it is what the chef voice calls the cook — Ramsay is told
-    /// to address them as "chef", and the unclear-audio reply is literally "Say
-    /// that again, chef?". The mic stays live while she talks so the cook can
-    /// barge in, so a bare "chef" would wake her off her own speaker output, and
-    /// worst of all in a loud kitchen where that reply fires most. Requiring a
-    /// lead-in word closes that: she never opens a line with "hey chef".
+    /// The reason a lead-in was once mandatory is worth remembering: the mic
+    /// stays live while she talks so the cook can barge in, and she used to be
+    /// told to address the cook as "chef" — so her own voice came back through
+    /// the speaker and woke her, most often in a loud kitchen where the
+    /// unclear-audio reply fires. That hole is now closed at the source instead:
+    /// nothing in her prompt says the word, and `setSuppressed` makes the
+    /// listener deaf while she is audibly speaking. Barge-in classification is
+    /// deliberately stricter — see `containsWakePhrase`.
     static let leadIns: Set<String> = ["hey", "hay", "hi", "yo"]
 
     /// "Chef" plus the mis-hears an on-device recognizer commonly returns for it.
-    /// These can be loose because a lead-in has to precede them.
     static let names: Set<String> = ["chef", "chefs", "shef", "sheff", "chief"]
+
+    /// "Chef knife" is a tool, not a summons.
+    private static let notASummonsWhenFollowedBy: Set<String> = ["knife", "knives"]
 
     private static func words(_ transcript: String) -> [String] {
         transcript.lowercased().split { !$0.isLetter }.map(String.init)
     }
 
-    /// Positions of the name token in every "<lead-in> <name>" pair.
+    /// Positions of every name token that counts as a wake.
     private static func wakeEndIndices(_ tokens: [String]) -> [Int] {
+        tokens.indices.filter { index in
+            guard names.contains(tokens[index]) else { return false }
+            let next = index + 1
+            if next < tokens.count, notASummonsWhenFollowedBy.contains(tokens[next]) { return false }
+            return true
+        }
+    }
+
+    /// Positions of the name token in every "<lead-in> <name>" pair.
+    private static func wakePhraseEndIndices(_ tokens: [String]) -> [Int] {
         guard tokens.count >= 2 else { return [] }
         return (1..<tokens.count).filter { names.contains(tokens[$0]) && leadIns.contains(tokens[$0 - 1]) }
     }
 
-    /// True if the transcript contains the wake phrase.
+    /// True if the transcript contains the wake word, with or without a lead-in.
     static func containsWake(_ transcript: String) -> Bool {
         !wakeEndIndices(words(transcript)).isEmpty
+    }
+
+    /// True only for the full "hey chef" form. Used where a false positive costs
+    /// more than a missed one: cutting her off mid-sentence. Her own "Beautiful,
+    /// chef." leaking through the speaker must never read as the cook barging in.
+    static func containsWakePhrase(_ transcript: String) -> Bool {
+        !wakePhraseEndIndices(words(transcript)).isEmpty
     }
 
     /// How many times the wake phrase appears. A continuous recognizer keeps every
@@ -78,8 +99,13 @@ protocol WakeWordListening: AnyObject {
     func start()
     func stop()
     /// Begins a fresh recognition segment (clears the running transcript so the
-    /// next "Hey Chef" wakes). Called each time the session returns to dormant.
+    /// next "Chef" wakes). Called each time the session returns to dormant.
     func restart()
+    /// Go deaf while the assistant is audibly speaking, and hear again shortly
+    /// after she stops. The mic stays live through her turns so the cook can
+    /// barge in, which means a one-word wake would otherwise fire on her own
+    /// voice coming back through the speaker.
+    func setSuppressed(_ suppressed: Bool)
     /// Feed a raw mic buffer. Safe to call from the audio render thread.
     nonisolated func append(_ buffer: AVAudioPCMBuffer)
 }
@@ -119,7 +145,8 @@ final class WakeWordListener: WakeWordListening {
     /// render thread in `append` — guarded by `requestLock`.
     @ObservationIgnored private let requestLock = NSLock()
     @ObservationIgnored nonisolated(unsafe) private var activeRequest: SFSpeechAudioBufferRecognitionRequest?
-    /// The format of the first buffer this segment accepted. `append` is fanned
+    /// The format of the first buffer THIS SEGMENT accepted — cleared on every
+    /// `beginTask`, so a format change costs at most one segment. `append` is fanned
     /// out to three candidate mic feeds (APM capture-post, local track renderer,
     /// ADM engine tap) and nothing enforces that only one is live. They can carry
     /// different sample rates and commonFormats, and interleaving those into a
@@ -130,6 +157,9 @@ final class WakeWordListener: WakeWordListening {
     /// `start()` was asked for, regardless of whether the recognizer was ready.
     @ObservationIgnored private var wantsToRun = false
     @ObservationIgnored private var availabilityRetryTask: Task<Void, Never>?
+    /// True while the assistant is speaking, plus a tail after she stops.
+    @ObservationIgnored private var isSuppressed = false
+    @ObservationIgnored private var suppressionTailTask: Task<Void, Never>?
 
     var isAvailable: Bool {
         guard let recognizer, recognizer.isAvailable, recognizer.supportsOnDeviceRecognition else { return false }
@@ -166,6 +196,9 @@ final class WakeWordListener: WakeWordListening {
         wantsToRun = false
         availabilityRetryTask?.cancel()
         availabilityRetryTask = nil
+        suppressionTailTask?.cancel()
+        suppressionTailTask = nil
+        isSuppressed = false
         isRunning = false
         generation &+= 1   // ignore any in-flight callbacks
         task?.cancel()
@@ -210,6 +243,28 @@ final class WakeWordListener: WakeWordListening {
         guard isRunning else { return }
         swapInFreshSegment()
         PollyDebugLog.shared.log("wake: segment restarted (rearmed)")
+    }
+
+    func setSuppressed(_ suppressed: Bool) {
+        suppressionTailTask?.cancel()
+        suppressionTailTask = nil
+        guard !suppressed else {
+            if !isSuppressed { PollyDebugLog.shared.log("wake: suppressed (she is speaking)") }
+            isSuppressed = true
+            return
+        }
+        // Her last words are still working through the recognizer when playback
+        // stops — partials lag the audio. Dropping the segment they landed in is
+        // what actually stops a late "chef" from surfacing and waking her; the
+        // tail covers whatever is still in flight.
+        if isRunning { swapInFreshSegment() }
+        suppressionTailTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(PollyConfig.wakeSuppressionTailSeconds))
+            guard let self, !Task.isCancelled else { return }
+            self.isSuppressed = false
+            self.suppressionTailTask = nil
+            PollyDebugLog.shared.log("wake: listening again")
+        }
     }
 
     /// Install a new recognition segment BEFORE letting the old one go.
@@ -268,6 +323,16 @@ final class WakeWordListener: WakeWordListening {
         req.taskHint = .search
         requestLock.lock()
         activeRequest = req
+        // Re-open the format election for the new segment. The lock is only
+        // meant to stop two feeds interleaving WITHIN one request, but it used to
+        // outlive every restart, so the first format of the cook became the
+        // format of the cook. Anything that changes it afterwards — plugging in
+        // AirPods, a route change, the WebRTC engine restarting with a different
+        // sample rate — then failed the comparison in `append` on every buffer
+        // forever, and the wake word was silently dead for the rest of the
+        // session while the UI still promised "Say Chef". Per-segment, the worst
+        // case self-heals at the next rotation instead.
+        acceptedFormat = nil
         requestLock.unlock()
 
         task = recognizer.recognitionTask(with: req) { [weak self] result, error in
@@ -285,11 +350,14 @@ final class WakeWordListener: WakeWordListening {
 
     private func handle(_ transcript: String, gen: Int) {
         guard gen == generation else { return }   // stale task
+        // Almost certainly her own voice off the speaker, so it is neither a wake
+        // nor something to caption as the cook's words.
+        guard !isSuppressed else { return }
         onPartialTranscript?(transcript)
         let count = WakeWordMatcher.wakeCount(transcript)
         guard count > firedWakeCount else { return }
         firedWakeCount = count
-        PollyDebugLog.shared.log("wake: heard \"Hey Chef\" in \"\(transcript.suffix(40))\"")
+        PollyDebugLog.shared.log("wake: heard \"Chef\" in \"\(transcript.suffix(40))\"")
         onWake?()
     }
 

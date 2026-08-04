@@ -234,7 +234,7 @@ final class PollyToolRegistry {
         ),
         RealtimeToolDefinition(
             name: "control_step_video",
-            description: "Control the on-screen technique clip: play (replay), pause, mute, or unmute. Call only when the cook asks (\"pause the video\", \"unmute\", \"hear the original\", \"play it again\"). Unmute: after the tool, say one short line that you'll stay quiet while they listen but they're free to ask (say Hey Chef) — then wait. Do not offer these — the clip autoplays on step entry.",
+            description: "Control the on-screen technique clip: play (replay), pause, mute, or unmute. Call only when the cook asks (\"pause the video\", \"unmute\", \"hear the original\", \"play it again\"). Unmute: after the tool, say one short line that you'll stay quiet while they listen but they're free to ask any time — then wait. Do not offer these — the clip autoplays on step entry.",
             parameters: schema(
                 properties: [
                     "action": .object([
@@ -369,6 +369,12 @@ final class PollyToolRegistry {
 
     private func markStepDone() -> String {
         if completeCurrentStep() {
+            // Same ending as the green button in the step sheet. Reporting
+            // `done` to the model isn't enough on its own: the recap only opens
+            // when something sets `wantsEnd`, so finishing the last step by
+            // voice used to leave the cook sitting on a completed recipe unless
+            // the model happened to also call `end_session`.
+            onEndSession?()
             return Self.json(["done": true])
         }
         return Self.json(stepPayload(at: state.stepIndex))

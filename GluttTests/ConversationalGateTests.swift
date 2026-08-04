@@ -55,6 +55,34 @@ final class ConversationalGateTests: XCTestCase {
             "short answers count when Polly asked a question")
     }
 
+    /// A cook reporting progress must never be filed as a throwaway "mhm" — an
+    /// acknowledgment gets its turn deleted, so nothing advances and she looks
+    /// deaf to the one thing the cook most wants a reply to.
+    func testProgressReportsAreNotThrowawayAcknowledgments() {
+        XCTAssertNotEqual(
+            ConversationalGate.classify("done", context: warm),
+            .acknowledgment,
+            #""done" at a stove means the step is finished, not "mhm""#)
+        XCTAssertNotEqual(
+            ConversationalGate.classify("okay done", context: warm),
+            .acknowledgment)
+    }
+
+    /// Every phrasing of "give me the next step". These are the least ambiguous
+    /// things a cook says, and each one must reach the model.
+    func testAdvancementRequestsAlwaysReachHer() {
+        for phrase in [
+            "whats next", "what's next?", "okay whats next", "next step",
+            "lets move on", "moving on", "keep going", "im ready",
+            "alright I got the color on it, lets move on",
+        ] {
+            XCTAssertEqual(
+                ConversationalGate.classify(phrase, context: warm),
+                .directFollowUp,
+                "\"\(phrase)\" must not be dropped")
+        }
+    }
+
     func testToolsReadyIsDirectOnSetup() {
         XCTAssertEqual(
             ConversationalGate.classify("All the tools are on the counter.", context: onTools),
@@ -120,6 +148,40 @@ final class ConversationalGateTests: XCTestCase {
                 "What's the point of doing all this ahead of time, can't I just do it during the recipe?",
                 context: warm),
             .directFollowUp)
+    }
+
+    /// From a real Beef Wellington session: the cook confirmed progress and
+    /// asked to advance, and the gate answered `background` because the line is
+    /// exactly 12 words with no topic overlap. She then said nothing, and the
+    /// watchdog made her apologise for not hearing it.
+    func testAdvancementRequestIsNotBackgroundChatter() {
+        let searing = ConversationalGate.Context(
+            expectsAnswer: false,
+            pollySpokeRecently: true,
+            onSetupStep: false,
+            topicWords: ["beef", "wellington", "fillet", "prosciutto"]
+        )
+        XCTAssertEqual(
+            ConversationalGate.classify(
+                "That's perfect. Alright, I got the color on it, let's move on.",
+                context: searing),
+            .directFollowUp)
+        XCTAssertEqual(
+            ConversationalGate.classify("Alright, keep going.", context: searing),
+            .directFollowUp)
+        XCTAssertEqual(
+            ConversationalGate.classify("I'm ready for the next step.", context: searing),
+            .directFollowUp)
+        XCTAssertEqual(
+            ConversationalGate.classify("Is that enough colour?", context: cold),
+            .directFollowUp,
+            "the British spelling has to read as cook-related too")
+        XCTAssertEqual(
+            ConversationalGate.classify(
+                "Did you see what happened at the game last night with my brother and his friends",
+                context: searing),
+            .background,
+            "long chatter with no kitchen words is still not for her")
     }
 
     func testContinuityAfterPollySpeaks() {

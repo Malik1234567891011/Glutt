@@ -38,6 +38,12 @@ final class PollyVoicePlayer: NSObject, AVAudioPlayerDelegate {
     /// same half-duplex governor it used for model audio.
     var onSpeakingChange: ((Bool) -> Void)?
 
+    /// Fired when a turn produced words but no sound — synthesis or playback
+    /// failed. The controller stops watching a turn once the model replies, so
+    /// this is the only thing standing between a broken mouth and dead air.
+    /// Barge-in does not fire it: a cancelled generation was never owed audio.
+    var onSilentTurn: (() -> Void)?
+
     private let speech: PollySpeechClient
     private var player: AVAudioPlayer?
     private var currentTask: Task<Void, Never>?
@@ -64,7 +70,7 @@ final class PollyVoicePlayer: NSObject, AVAudioPlayerDelegate {
     /// or two sentences by design, so sentence-level pipelining would add
     /// complexity for a few hundred milliseconds. If replies get longer, split
     /// on sentence boundaries and queue.
-    func speak(_ text: String, voiceID: String) {
+    func speak(_ text: String, voiceID: String, delivery: PollySpeechClient.Delivery? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         stop()
@@ -73,25 +79,34 @@ final class PollyVoicePlayer: NSObject, AVAudioPlayerDelegate {
         currentTask = Task { [weak self] in
             guard let self else { return }
             let startedAt = Date()
+            // A line with its own delivery is deliberately unlike the ones
+            // around it, so it is generated cold. Stitching would average it
+            // back toward the calm lines before it, and then carry its energy
+            // forward into the calm ones after.
+            let standalone = delivery != nil
             let spoken = try? await speech.speakWithContinuity(
                 trimmed,
                 elevenLabsVoiceID: voiceID,
-                previousText: self.lastSpokenText,
-                previousRequestIds: self.recentRequestIDs)
+                previousText: standalone ? nil : self.lastSpokenText,
+                previousRequestIds: standalone ? [] : self.recentRequestIDs,
+                delivery: delivery)
             guard !Task.isCancelled, gen == self.generation else { return }
             guard let spoken, !spoken.audio.isEmpty else {
                 // Silence is the one outcome a cooking assistant must never
                 // produce, so say so loudly in the log rather than just stopping.
                 PollyDebugLog.shared.log("voice: SYNTHESIS FAILED — she will be silent this turn")
+                self.onSilentTurn?()
                 return
             }
             // Only chain from lines that actually reached the speaker. Stitching
             // onto a generation the cook never heard would carry over prosody
             // from a turn that, as far as they are concerned, never happened.
-            self.lastSpokenText = trimmed
-            if let id = spoken.requestID {
-                self.recentRequestIDs.append(id)
-                if self.recentRequestIDs.count > 3 { self.recentRequestIDs.removeFirst() }
+            if !standalone {
+                self.lastSpokenText = trimmed
+                if let id = spoken.requestID {
+                    self.recentRequestIDs.append(id)
+                    if self.recentRequestIDs.count > 3 { self.recentRequestIDs.removeFirst() }
+                }
             }
             let ms = Int(Date().timeIntervalSince(startedAt) * 1000)
             PollyDebugLog.shared.log(
@@ -123,10 +138,12 @@ final class PollyVoicePlayer: NSObject, AVAudioPlayerDelegate {
             if !player.play() {
                 PollyDebugLog.shared.log("voice: play() refused")
                 setSpeaking(false)
+                onSilentTurn?()
             }
         } catch {
             PollyDebugLog.shared.log("voice: unplayable audio — \(error.localizedDescription)")
             setSpeaking(false)
+            onSilentTurn?()
         }
     }
 

@@ -19,7 +19,7 @@ function resolveOpenAIKey() {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("x-glutt-proxy-version", "polly-speak-2026-07-31-eleven");
+  res.setHeader("x-glutt-proxy-version", "polly-speak-2026-08-01-delivery");
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -91,7 +91,11 @@ export default async function handler(req, res) {
     else if (!/^[A-Za-z0-9]+$/.test(elevenVoiceID)) ttsFallback = "bad-voice-id-format";
   }
   if (elevenVoiceID && elevenKey && /^[A-Za-z0-9]+$/.test(elevenVoiceID)) {
-    const elevenModel = (process.env.POLLY_ELEVENLABS_MODEL || "").trim() || "eleven_turbo_v2_5";
+    // multilingual_v2 over turbo: the clone is noticeably more faithful on it.
+    // It is the slower model and this endpoint serves every live-cook turn, so
+    // POLLY_ELEVENLABS_MODEL is the escape hatch if latency becomes the
+    // bigger problem.
+    const elevenModel = (process.env.POLLY_ELEVENLABS_MODEL || "").trim() || "eleven_multilingual_v2";
 
     // Continuity. Each request is otherwise an independent generation with no
     // memory of the last, so tone and energy drift line to line and the cook
@@ -116,10 +120,17 @@ export default async function handler(req, res) {
       const n = Number(value);
       return Number.isFinite(n) ? n : fallback;
     };
+    // A caller may override the two expressive knobs for a single line — a
+    // shouted line needs low stability and high style, and pinning that on the
+    // whole session would make every calm instruction sound unhinged.
+    const unit = (value, fallback) => {
+      const n = Number(value);
+      return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
+    };
     const voiceSettings = {
-      stability: num(process.env.POLLY_ELEVENLABS_STABILITY, 0.55),
+      stability: unit(req.body?.stability, num(process.env.POLLY_ELEVENLABS_STABILITY, 0.55)),
       similarity_boost: num(process.env.POLLY_ELEVENLABS_SIMILARITY, 0.8),
-      style: num(process.env.POLLY_ELEVENLABS_STYLE, 0),
+      style: unit(req.body?.style, num(process.env.POLLY_ELEVENLABS_STYLE, 0)),
       use_speaker_boost: true,
     };
 

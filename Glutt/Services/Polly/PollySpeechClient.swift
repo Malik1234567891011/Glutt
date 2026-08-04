@@ -34,6 +34,16 @@ struct PollySpeechClient {
     ///   the proxy renders the briefing with it. The proxy falls back to OpenAI
     ///   TTS if ElevenLabs is unreachable, so the wrong voice is the worst case,
     ///   never a silent briefing.
+    /// Per-line ElevenLabs delivery overrides. Nil — which is every ordinary
+    /// line — leaves the proxy's pinned settings alone, so one shouted line
+    /// can't drag the rest of the session with it.
+    struct Delivery: Equatable {
+        /// Lower is more expressive and less predictable between generations.
+        let stability: Double
+        /// Higher exaggerates the delivery. Costs a little latency.
+        let style: Double
+    }
+
     /// Audio plus the id needed to stitch the NEXT line onto this one.
     struct Spoken {
         let audio: Data
@@ -70,6 +80,7 @@ struct PollySpeechClient {
         elevenLabsVoiceID: String? = nil,
         previousText: String? = nil,
         previousRequestIds: [String] = [],
+        delivery: Delivery? = nil,
         timeout: TimeInterval = 40
     ) async throws -> Spoken {
         guard isConfigured else { throw SpeechError.notConfigured }
@@ -89,7 +100,10 @@ struct PollySpeechClient {
         // device for cost accounting, never a person.
         request.setValue(InstallID.current, forHTTPHeaderField: "x-glutt-device-id")
 
-        var body: [String: Any] = ["text": text, "speed": speed]
+        // Every caller funnels through here — the live cloned voice and the
+        // pre-cook briefing both — so this is the one place recipe shorthand has
+        // to become words. "2 tbsp" otherwise reaches the voice as "t-b-s-p".
+        var body: [String: Any] = ["text": SpokenText.forSpeech(text), "speed": speed]
         if let instructions, !instructions.isEmpty {
             body["instructions"] = instructions
         }
@@ -97,10 +111,15 @@ struct PollySpeechClient {
             body["elevenLabsVoiceId"] = elevenLabsVoiceID
         }
         if let previousText, !previousText.isEmpty {
-            body["previousText"] = previousText
+            // Conditioned on what was actually spoken, not what was written.
+            body["previousText"] = SpokenText.forSpeech(previousText)
         }
         if !previousRequestIds.isEmpty {
             body["previousRequestIds"] = previousRequestIds
+        }
+        if let delivery {
+            body["stability"] = delivery.stability
+            body["style"] = delivery.style
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 

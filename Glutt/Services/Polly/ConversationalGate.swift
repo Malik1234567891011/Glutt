@@ -35,11 +35,16 @@ enum ConversationalGate {
     ]
 
     /// Bare acks — normally no spoken reply unless Polly asked a question.
+    ///
+    /// "done" is deliberately NOT here. At a stove it is a progress report — the
+    /// cook's way of saying they finished the step and want the next one — and
+    /// treating it as a throwaway "mhm" deleted the turn and left them waiting on
+    /// an assistant that had decided their news was not worth answering.
     private static let acknowledgmentExact: Set<String> = [
         "ok", "okay", "k", "kk", "alright", "all right", "got it", "gotcha",
         "perfect", "thanks", "thank you", "cool", "great", "nice", "yep", "yup",
         "yeah", "yea", "yes", "sure", "mm", "mmm", "mmhmm", "uh huh", "uh-huh",
-        "right", "sounds good", "will do", "copy", "roger", "bet", "done",
+        "right", "sounds good", "will do", "copy", "roger", "bet",
     ]
 
     /// Strong openers that almost always mean the cook is talking to Polly.
@@ -63,8 +68,7 @@ enum ConversationalGate {
     ]
 
     /// How the cook addresses her mid-sentence, plus the mis-hears ASR returns.
-    /// Bare "chef" is fine to list here because these only classify a turn that
-    /// already reached the gate; waking her still needs the full "hey chef".
+    /// These only classify a turn that already reached the gate.
     private static let nameMishears: Set<String> = [
         "chef", "chefs", "shef", "sheff", "chief",
     ]
@@ -135,9 +139,10 @@ enum ConversationalGate {
         let text = normalize(raw)
         guard !text.isEmpty else { return false }
         if matchesAnyPhrase(text, interruptPhrases) { return true }
-        // The full wake phrase, not a bare "chef": she calls the cook "chef"
-        // herself, and speaker leak must not read as the cook barging in.
-        if WakeWordMatcher.containsWake(text) { return true }
+        // The full phrase, not a bare "chef". Waking her by name is cheap to get
+        // wrong; cutting her off mid-sentence is not, so barge-in keeps the
+        // stricter test even though the wake word itself no longer needs it.
+        if WakeWordMatcher.containsWakePhrase(text) { return true }
         if hadQuestionMark || looksLikeDirectFollowUp(text) { return true }
         return false
     }
@@ -220,17 +225,26 @@ enum ConversationalGate {
     }
 
     /// Progress / readiness reports cooks say mid-recipe.
+    ///
+    /// The advancement cues ("move on", "keep going") are here because a real
+    /// cook said "That's perfect. Alright, I got the color on it, let's move on."
+    /// and the gate called it `background`: it is exactly 12 words, so it hit the
+    /// long-chatter rule in `looksLikeBackground` while matching nothing here.
+    /// Asking to advance is the single least ambiguous thing a cook says to her.
+    private static let cookProgressCues = [
+        "finished", "whats left", "what left", "whats next",
+        "what next", "ready", "we can start", "lets start",
+        "i have everything", "have everything", "can start",
+        "can go into", "go into it", "cutting the", "cut the", "done with",
+        "done cutting", "all set", "missing", "on the counter", "tools are",
+        "got my tools", "tools ready", "board is ready", "prep is done",
+        "done prep", "knife work", "mise",
+        "move on", "moving on", "keep going", "carry on", "next step",
+        "got the color", "got the colour",
+    ]
+
     private static func looksLikeCookProgress(_ text: String) -> Bool {
-        let cues = [
-            "finished", "whats left", "what left", "whats next",
-            "what next", "ready", "we can start", "lets start",
-            "i have everything", "have everything", "can start",
-            "can go into", "go into it", "cutting the", "cut the", "done with",
-            "done cutting", "all set", "missing", "on the counter", "tools are",
-            "got my tools", "tools ready", "board is ready", "prep is done",
-            "done prep", "knife work", "mise",
-        ]
-        return cues.contains { text.contains($0) }
+        cookProgressCues.contains { text.contains($0) }
     }
 
     private static func looksLikeSetupComplete(_ text: String) -> Bool {
@@ -253,6 +267,9 @@ enum ConversationalGate {
             "chicken", "onion", "garlic", "timer", "flip", "stir", "salt",
             "ahead", "mise", "board", "knife", "tools", "ingredient", "spice",
             "rice", "sauce", "oil", "simmer", "sear", "boil", "bake",
+            // Both spellings: the British personas coach in "colour", and the
+            // cook echoes back whichever one ASR heard.
+            "color", "colour",
         ]
         if cookWords.contains(where: { text.contains($0) }) { return true }
         // Strong cook-shaped openers even without a recipe noun.

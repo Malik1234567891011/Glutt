@@ -57,6 +57,11 @@ enum PollyConfig {
     /// Never-silent contract: if Polly's audio hasn't started this long after
     /// the cook stopped talking, force a spoken repair ("say that again?").
     static let responseWatchdogSeconds: TimeInterval = 4
+    /// How long the wake listener stays deaf after her audio stops. The wake word
+    /// is one word now, so her own voice off the speaker could trigger it; the
+    /// segment is dropped when she finishes and this covers the on-device
+    /// recognizer's partial-result lag on top of that.
+    static let wakeSuppressionTailSeconds: TimeInterval = 1.2
     /// Never-silent contract: silent reconnect attempts before failing loud.
     /// (v1 allowed exactly one.)
     static let reconnectAttempts = 2

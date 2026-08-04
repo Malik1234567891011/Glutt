@@ -13,6 +13,7 @@ struct PollySessionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(Router.self) private var router
+    @Environment(\.scenePhase) private var scenePhase
 
     let recipe: Recipe
     var scale: Double = 1
@@ -52,6 +53,20 @@ struct PollySessionView: View {
             if let controller, controller.phase == .live || controller.phase == .reconnecting {
                 Task { await controller.end(context: context, endedEarly: true) }
             }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Backgrounding closed the mic only as a side effect of the OS
+            // suspending us — nothing here stood down, so returning found a
+            // session still nominally engaged with its watchdogs already dead
+            // and the pill still reading "Listening".
+            //
+            // Only `.background`, deliberately. `.inactive` fires for a
+            // notification banner or a Control Centre swipe, and dropping the
+            // cook out of Listening mid-sentence for those would be worse than
+            // the bug. The session is not ended either: glancing at a text
+            // message should not lose your place in the recipe.
+            guard phase == .background else { return }
+            controller?.leaveCookScreen()
         }
         .onChange(of: controller?.phase) { _, phase in
             guard phase == .ended, !isShowingFinish, !isEndingWithoutSaving, !isCookingWithoutPolly else { return }
@@ -335,7 +350,7 @@ struct PollySessionView: View {
         if controller.isHardMuted { return "Muted, tap the mic to turn on" }
         if controller.isThinking { return "Thinking…" }
         if controller.isPollySpeaking { return "Chef is talking" }
-        return controller.wakeWordAvailable ? "Say \u{201C}Hey Chef\u{201D} to talk" : "Tap to talk"
+        return controller.wakeWordAvailable ? "Say \u{201C}Chef\u{201D} to talk" : "Tap to talk"
     }
 
     private func engagedPillLabel(for controller: PollySessionController) -> String {

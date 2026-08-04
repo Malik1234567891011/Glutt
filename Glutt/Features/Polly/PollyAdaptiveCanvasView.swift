@@ -852,7 +852,7 @@ struct PollyAdaptiveCanvasView: View {
         switch controller.listeningMode {
         case .listening: return "Listening…"
         case .followUp: return "Listening…"
-        case .dormant: return controller.wakeWordAvailable ? "Say “Hey Chef” or tap to talk" : "Tap to talk"
+        case .dormant: return controller.wakeWordAvailable ? "Say “Chef” or tap to talk" : "Tap to talk"
         }
     }
 

@@ -9,7 +9,7 @@ final class PollyIconAssetTests: XCTestCase {
 
     /// Tests run hosted inside the Glutt app, so the app's compiled asset
     /// catalog lives in the app bundle — not in the test bundle.
-    private let appBundle = Bundle(identifier: "com.omarlahmimi.glutt") ?? .main
+    private let appBundle = Bundle(identifier: "com.malik.glutt") ?? .main
 
     private let expectedImagesets = [
         "chef-hat", "chef-hat-fill",

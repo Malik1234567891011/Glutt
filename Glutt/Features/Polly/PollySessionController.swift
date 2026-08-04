@@ -51,7 +51,15 @@ final class PollySessionController {
     /// cook can glance and confirm they didn't miss anything. Persists until her
     /// next utterance — the user's own speech never overwrites it.
     private(set) var pollyCaption = ""
-    private(set) var isPollySpeaking = false
+    private(set) var isPollySpeaking = false {
+        didSet {
+            guard isPollySpeaking != oldValue else { return }
+            // One flag, many origins (model audio events, the cloned-voice
+            // player, barge-in cancellation), so the wake listener is muted from
+            // here rather than from each of them.
+            wakeWord.setSuppressed(isPollySpeaking)
+        }
+    }
     private(set) var isListening = false
     /// True from any response.create until the first audio delta / response.done —
     /// drives the "thinking" state.
@@ -259,7 +267,7 @@ final class PollySessionController {
             var payload = clipControlPayload(clip, action: "unmute")
             payload["requires_spoken_ack"] = true
             payload["speak_after"] =
-                "Say ONE short warm sentence: you'll stay quiet while they listen to the video, but you're still here — they can ask anytime (say Hey Chef). Then wait. Do not keep talking over the clip."
+                "Say ONE short warm sentence: you'll stay quiet while they listen to the video, but you're still here — they can just ask any time. Then wait. Do not keep talking over the clip."
             return payload
         default:
             return ["ok": false, "reason": "unknown action — use play|pause|mute|unmute"]
@@ -278,7 +286,7 @@ final class PollySessionController {
             """
             Original technique-clip audio was just turned ON. Say ONE short warm sentence only — \
             something like you'll stay quiet while they listen, but you're still here and they can \
-            ask anytime (say Hey Chef). Do not keep coaching over the video. Then wait.
+            just ask any time. Do not keep coaching over the video. Then wait.
             """
         ))
         isThinking = true
@@ -452,6 +460,10 @@ final class PollySessionController {
 
     private func startStepClipIndexingIfNeeded(plan: CookPlan) {
         guard !didStartClipIndex else { return }
+        guard MediaClipConfig.clipsAllowed(for: recipe) else {
+            PollyDebugLog.shared.log("clips: skipped — generation off for imports (title=\(recipe.title))")
+            return
+        }
         guard let sourceURL = recipe.sourceURL?.trimmingCharacters(in: .whitespacesAndNewlines),
               !sourceURL.isEmpty,
               let mediaID = MediaSourceID.from(sourceURL: sourceURL) else {
@@ -605,6 +617,13 @@ final class PollySessionController {
     /// after a wake, the transcript is injected as a text turn instead.
     private var speechSinceWake = false
     private var wakeInjectionTask: Task<Void, Never>?
+    /// DEMO ONLY (remove with DemoScript) — cooldown anchor for scripted cues.
+    private var lastDemoCueFiredAt: Date?
+    /// DEMO ONLY (remove with DemoScript) — true from the moment a scripted line
+    /// is handed to the synthesiser until its audio ends, so the cook's own
+    /// transcript cannot take the caption back during the second it takes to
+    /// synthesise.
+    private var scriptedLineInFlight = false
 
     // Deviation from the brief's signature (documented in the report): the brief
     // declares `audio: PollyAudioEngine = PollyAudioEngine()` /
@@ -763,9 +782,18 @@ final class PollySessionController {
                     self.cancelDormancyTimer()
                 } else {
                     PollyDebugLog.shared.event(.assistantSpeechEnd)
+                    self.scriptedLineInFlight = false   // DEMO ONLY
                     self.reengageAfterAssistantSpeech(
                         expectingAnswer: self.lastAssistantAskedQuestion)
                 }
+            }
+            // Her reply arriving stops the watchdog, so a mouth that then fails
+            // would be uncovered dead air. Re-arming hands the turn back to the
+            // existing repair-then-reconnect ladder.
+            voicePlayer.onSilentTurn = { [weak self] in
+                guard let self, self.phase == .live else { return }
+                PollyDebugLog.shared.log("voice: no audio for a finished reply — re-arming the watchdog")
+                self.armResponseWatchdog()
             }
         }
 
@@ -844,7 +872,15 @@ final class PollySessionController {
             Analytics.capture(.pollyWakeWord)
             self?.wakeUp()
         }
-        wakeWord.onPartialTranscript = { [weak self] text in self?.updateLiveTranscript(text) }
+        wakeWord.onPartialTranscript = { [weak self] text in
+            guard let self else { return }
+            // DEMO ONLY — remove with DemoScript. Hooked here as well as on the
+            // Realtime transcript because the scripted cue has to fire even while
+            // dormant, when the Realtime input is muted and the on-device
+            // recognizer is the only thing still hearing the kitchen.
+            self.fireDemoCueIfHeard(in: text)
+            self.updateLiveTranscript(text)
+        }
         // Ask unconditionally and let the listener report back when it is really
         // listening. Gating the start on a single read of `isAvailable` was a coin
         // flip: SFSpeechRecognizer reports unavailable for a moment after init, and
@@ -1079,7 +1115,7 @@ final class PollySessionController {
         if interrupted {
             PollyDebugLog.shared.event(.audioInterrupted)
             if isEngaged { returnToDormant(reason: .audioInterrupted) }
-            captionText = "Something else took the microphone. Say Hey Chef when you are ready."
+            captionText = "Something else took the microphone. Say Chef when you are ready."
         } else {
             PollyDebugLog.shared.log("session: audio back after interruption")
             captionText = pollyCaption
@@ -1106,6 +1142,12 @@ final class PollySessionController {
         // "Hey Chef" spoken over her = interrupt her, even if already listening.
         if isPollySpeaking {
             PollyDebugLog.shared.log("gate: wake during her turn — cancelling her response")
+            // With a cloned voice her audio is OUR player, so the server has
+            // nothing to clear and the cancels below left her talking straight
+            // over the cook who had just interrupted her. Shut the mouth we
+            // actually own, and do it synchronously — this is the one moment
+            // where a hop to the next actor tick is audible.
+            if clonedVoiceID != nil { voicePlayer.stop() }
             Task {
                 try? await transport?.send(.responseCancel)
                 try? await transport?.send(.outputAudioBufferClear)
@@ -1157,9 +1199,16 @@ final class PollySessionController {
                   !speechSinceWake, !isPollySpeaking else { return }
             let question = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
             // `strippedQuestion` hands back the whole transcript when nothing
-            // followed the wake phrase, so allow for those two extra words
-            // before deciding there are enough real ones to be a question.
-            let minimumWords = WakeWordMatcher.containsWake(question) ? 5 : 3
+            // followed the wake word, so allow for the wake itself — one word or
+            // two — before deciding there are enough real ones to be a question.
+            let minimumWords: Int
+            if WakeWordMatcher.containsWakePhrase(question) {
+                minimumWords = 5
+            } else if WakeWordMatcher.containsWake(question) {
+                minimumWords = 4
+            } else {
+                minimumWords = 3
+            }
             guard question.split(separator: " ").count >= minimumWords else { return }
             PollyDebugLog.shared.log("wake: injecting transcribed question — \"\(question.prefix(60))\"")
             try? await transport?.send(.createUserText(question))
@@ -1194,6 +1243,9 @@ final class PollySessionController {
         unfinishedHoldTask = nil
         cancelDormancyTimer()
         wakeInjectionTask?.cancel()
+        // Backstop for every path that closes the session without committing a
+        // turn. An apology is only ever owed to a cook who is still listening.
+        cancelResponseWatchdog()
         followUpDeadline = nil
         expectsAnswer = false
         bargeInCandidate = false
@@ -1228,6 +1280,7 @@ final class PollySessionController {
         unfinishedHoldTask?.cancel()
         unfinishedHoldTask = nil
         cancelDormancyTimer()
+        cancelResponseWatchdog()
         followUpDeadline = nil
         expectsAnswer = false
         awaitingTranscript = false
@@ -1237,6 +1290,11 @@ final class PollySessionController {
         webrtc?.setMicMode(isHardMuted ? .hardMuted : .dormant)
         if isHardMuted {
             wakeWord.stop()
+            // Closing the mic only stops her hearing you. Muting while she's
+            // mid-sentence has to stop her talking too, or the button reads as
+            // broken — and with a cloned voice the audio is ours, so nothing
+            // else will ever cut it off.
+            Task { await cancelAssistantPlayback() }
             PollyDebugLog.shared.event(.sessionClosed, ["reason": DormantReason.hardMute.rawValue])
             PollyDebugLog.shared.log("gate: HARD MUTED")
         } else {
@@ -1250,6 +1308,39 @@ final class PollySessionController {
     private func updateLiveTranscript(_ text: String) {
         guard isEngaged else { return }
         liveTranscript = WakeWordMatcher.strippedQuestion(text)
+    }
+
+    // MARK: - DEMO ONLY (remove with DemoScript)
+
+    /// Speaks a scripted line when its keyword is heard. Returns whether it
+    /// fired, so the caller can skip the normal gate for that turn.
+    @discardableResult
+    private func fireDemoCueIfHeard(in transcript: String) -> Bool {
+        guard phase == .live, let cue = DemoScript.cue(for: transcript) else { return false }
+        // Partial transcripts arrive many times a second and keep the keyword in
+        // view, so without this the line would stutter over itself.
+        if let last = lastDemoCueFiredAt,
+           deps.now().timeIntervalSince(last) < DemoScript.cooldown { return false }
+        lastDemoCueFiredAt = deps.now()
+        PollyDebugLog.shared.log("demo: scripted cue fired")
+        Task { await speakScriptedLine(cue) }
+        return true
+    }
+
+    private func speakScriptedLine(_ cue: DemoScript.Cue) async {
+        let line = cue.line
+        if isPollySpeaking { await cancelAssistantPlayback() }
+        captionText = line
+        pollyCaption = line
+        transcriptLog.append("POLLY: \(line)")
+        if let voiceID = clonedVoiceID {
+            scriptedLineInFlight = true
+            voicePlayer.speak(line, voiceID: voiceID, delivery: cue.delivery)
+        } else {
+            try? await transport?.send(.responseCreateWithInstructions(
+                "Say this line exactly, word for word, and nothing else: \"\(line)\""))
+            isThinking = true
+        }
     }
 
     /// Opens / refreshes the activity-based follow-up deadline.
@@ -1397,6 +1488,17 @@ final class PollySessionController {
         unfinishedHoldTask = nil
         PollyDebugLog.shared.event(.followUpSpeech, ["len": "\(trimmed.count)"])
 
+        // DEMO ONLY — remove with DemoScript. The scripted line replaces the
+        // model's answer entirely, so the item is deleted and the turn never
+        // reaches the gate. Returning unconditionally matters: the on-device
+        // recognizer almost always fires the cue first, and falling through here
+        // on the cooldown would have the model answer the same sentence too.
+        if DemoScript.cue(for: trimmed) != nil {
+            if let itemId { try? await transport?.send(.deleteItem(itemId: itemId)) }
+            fireDemoCueIfHeard(in: trimmed)
+            return
+        }
+
         // Trailer handoff — first words always open a real turn.
         if isAwaitingVerbalGo {
             isAwaitingVerbalGo = false
@@ -1413,6 +1515,7 @@ final class PollySessionController {
             consecutiveRejects = 0
             PollyDebugLog.shared.event(.explicitEnd)
             if isPollySpeaking { await cancelAssistantPlayback() }
+            cancelResponseWatchdog()
             returnToDormant(reason: .explicitEnd)
 
         case .nameOnly:
@@ -1421,6 +1524,7 @@ final class PollySessionController {
             noteUserActivity()
             lastValidInteractionAt = deps.now()
             if let itemId { try? await transport?.send(.deleteItem(itemId: itemId)) }
+            cancelResponseWatchdog()
             PollyDebugLog.shared.log("gate: name-only — extend listen, no speak")
 
         case .acknowledgment:
@@ -1429,6 +1533,13 @@ final class PollySessionController {
             lastValidInteractionAt = deps.now()
             PollyDebugLog.shared.event(.acknowledgment)
             if let itemId { try? await transport?.send(.deleteItem(itemId: itemId)) }
+            // No turn was committed, so nothing is owed. This was the single
+            // worst-feeling bug in the session: "okay" is the most common thing a
+            // cook says, the grace window closes it after 2.5s, and the watchdog
+            // armed back at `speechStopped` then fired at 4s — so she apologised
+            // and asked them to repeat "okay", usually after already going
+            // dormant. Two in a row escalated to the reconnect chime.
+            cancelResponseWatchdog()
             // Stay available briefly, then quietly close if nothing else comes.
             openFollowUpWindow(
                 seconds: PollyConfig.acknowledgmentGraceSeconds,
@@ -1464,6 +1575,13 @@ final class PollySessionController {
                 "n": "\(consecutiveRejects)",
             ])
             PollyDebugLog.shared.log("gate: rejected (\(decision.rawValue)) rejects=\(consecutiveRejects)")
+            // Staying quiet here is a decision, not a failure, so the
+            // never-silent watchdog must stand down. Leaving it armed reversed
+            // that decision four seconds later with "sorry, I didn't catch
+            // that" — about a turn she had heard perfectly and chose to ignore,
+            // which is the same "she feels deaf" failure the `.uncertain` case
+            // above was rewritten to avoid.
+            cancelResponseWatchdog()
             if isPollySpeaking, bargeInCandidate {
                 PollyDebugLog.shared.event(.bargeInIgnored, ["reason": decision.rawValue])
             }
@@ -1649,7 +1767,10 @@ final class PollySessionController {
             PollyDebugLog.shared.log("heard: \"\(text)\"")
             // Transcription lands ~0.5s after speech ends — sometimes after
             // her reply already started streaming. Don't stomp her caption.
-            if !isPollySpeaking { captionText = text }
+            // A scripted demo line counts as hers even before playback begins,
+            // because synthesis takes about a second and this would land inside
+            // that window and replace it with the cook's own words.
+            if !isPollySpeaking, !scriptedLineInFlight { captionText = text }
             transcriptLog.append("USER: \(text)")
             await handleGatedTranscript(itemId: itemId, text: text)
 
@@ -1675,6 +1796,24 @@ final class PollySessionController {
             let askedQuestion = pendingAssistantLine.contains("?")
                 || pendingAssistantLine.lowercased().contains("do you")
             lastAssistantAskedQuestion = askedQuestion
+            // Never-silent contract: the model REPLYING satisfies it. Waiting
+            // for her audio instead turned the watchdog into a latency alarm on
+            // the cloned-voice path, where a finished reply still has to clear
+            // ElevenLabs — a device log has her real answer starting playback
+            // 0.34s AFTER the watchdog had forced "sorry, say that again", so
+            // she apologised for a turn she had just answered correctly. From
+            // here the voice player owns getting the words audible, and reports
+            // back via `onSilentTurn` if it can't.
+            if status == "completed" {
+                if alreadySpoke {
+                    watchdogStrikes = 0
+                    cancelResponseWatchdog()
+                } else if !calls.isEmpty {
+                    // A tool round-trip proves she's alive but still owes words,
+                    // and a three-call chain alone can outlast the whole window.
+                    armResponseWatchdog()
+                }
+            }
             // Cloned voice: the model produced words, not audio, so this is the
             // moment she actually gets a mouth. A cancelled response means the
             // cook interrupted, and speaking it anyway would talk over them.
@@ -1717,6 +1856,13 @@ final class PollySessionController {
                     PollyDebugLog.shared.log("gate: wait_for_user — staying silent, turn credited")
                     isThinking = false
                     isHoldingForAssistant = false
+                    // Chose silence on purpose, so nothing is owed and nothing is
+                    // watching. A tool-only response normally re-arms the watchdog
+                    // because the model still owes words — this is the one case
+                    // where it doesn't, and leaving it armed made her apologise
+                    // four seconds later for ignoring exactly what she should have.
+                    watchdogStrikes = 0
+                    cancelResponseWatchdog()
                     // Credit the turn. She heard something, judged it, and decided
                     // correctly; that must not count toward the reject tally that
                     // ends the session.
@@ -1734,8 +1880,8 @@ final class PollySessionController {
                     try? await transport?.send(.responseCreateWithInstructions(
                         """
                         Original clip audio is now ON. Say ONE short warm sentence only — you'll stay \
-                        quiet while they listen, but you're still here and they can ask anytime \
-                        (say Hey Chef). Do not keep talking over the video. Then wait.
+                        quiet while they listen, but you're still here and they can just ask any \
+                        time. Do not keep talking over the video. Then wait.
                         """
                     ))
                 } else {
@@ -1810,6 +1956,19 @@ final class PollySessionController {
     /// off to the reconnect ladder. Silence is never the outcome.
     private func responseWatchdogFired() async {
         guard phase == .live, !isPollySpeaking, !isEnding else { return }
+        // Apologising into a closed session is worse than saying nothing: the
+        // cook has moved on, and from the counter it sounds like she woke
+        // herself up to complain. Every close cancels this now, so reaching
+        // here while dormant means a cancel was raced — drop it either way.
+        guard isEngaged else {
+            PollyDebugLog.shared.log("watchdog: fired while dormant — ignored")
+            return
+        }
+        // The transcript that never arrived is the reason this fires at all on a
+        // turn that was never committed. Leaving the flag set holds the dormancy
+        // watcher open forever and strands the session engaged for the rest of
+        // the cook.
+        awaitingTranscript = false
         watchdogStrikes += 1
         PollyDebugLog.shared.log("watchdog: no reply \(Int(PollyConfig.responseWatchdogSeconds))s after user turn (strike \(watchdogStrikes))")
         if watchdogStrikes >= 2, let context = sessionContext {
@@ -1901,7 +2060,7 @@ final class PollySessionController {
     private func speakOfflineFallback() {
         PollyDebugLog.shared.log("offline voice: speaking the failure line")
         let utterance = AVSpeechUtterance(
-            string: "I have lost my connection, chef. Your steps stay right here on the screen.")
+            string: "I have lost my connection. Your steps stay right here on the screen.")
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
         offlineVoice.speak(utterance)
     }

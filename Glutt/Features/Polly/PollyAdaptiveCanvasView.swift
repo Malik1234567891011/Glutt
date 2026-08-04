@@ -109,6 +109,12 @@ struct PollyAdaptiveCanvasView: View {
             // Both apply to the live transport immediately, which is the point:
             // neither behaviour is reproducible off a device, so the only useful
             // test is flipping them mid-cook and listening.
+            //
+            // Debug-only: these are engineering controls, and a cook on the App
+            // Store should never be offered the mic duplex switch. Run from
+            // Xcode to get them back — TestFlight and App Store builds are
+            // Release, so they are gone there.
+            #if DEBUG
             Button("Copy debug log") {
                 UIPasteboard.general.string = PollyDebugLog.shared.dump()
                 Haptics.notify(.success)
@@ -127,6 +133,7 @@ struct PollyAdaptiveCanvasView: View {
                 controller.refreshAudioLab()
                 Haptics.impact(.light)
             }
+            #endif
             Button("End cooking session", role: .destructive, action: onRequestEnd)
             Button("Cancel", role: .cancel) {}
         }

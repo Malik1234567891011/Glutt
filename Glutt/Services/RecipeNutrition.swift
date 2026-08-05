@@ -12,9 +12,12 @@ struct RecipeNutrition: Equatable {
     var carbGrams: Int?
     var fatGrams: Int?
     var fiberGrams: Int?
-    /// Per-serving (one plate), before multiplying by `servings`.
+    /// Per-serving (one plate), before multiplying by `servings`. This is what the
+    /// nutrition banner leads with — the batch totals above are the subtext.
     var perServingCalories: Int
     var perServingProtein: Int
+    var perServingCarbs: Int?
+    var perServingFat: Int?
     var perServingFiber: Int?
     var isEstimated: Bool
     var servings: Int
@@ -75,6 +78,8 @@ struct RecipeNutrition: Equatable {
             fiberGrams: perFiber.map(batch),
             perServingCalories: perCal,
             perServingProtein: perProtein,
+            perServingCarbs: perCarbs,
+            perServingFat: perFat,
             perServingFiber: perFiber,
             isEstimated: estimatedFlag,
             servings: display

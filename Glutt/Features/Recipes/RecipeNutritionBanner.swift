@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// Compact nutrition header for recipe detail: totals for the current serving
-/// count, with an honest "for N servings" label and optional fiber callout.
+/// Compact nutrition header for recipe detail. The big numbers are ONE serving,
+/// which is what a cook wants when they glance at a recipe; the batch totals for
+/// however many they're making are the subtext underneath, plus an optional
+/// fiber callout.
 struct RecipeNutritionBanner: View {
     let nutrition: RecipeNutrition
 
@@ -10,9 +12,9 @@ struct RecipeNutritionBanner: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 18) {
-                metric(value: "\(prefix)\(nutrition.calories)", unit: "cal")
-                metric(value: "\(prefix)\(nutrition.proteinGrams)g", unit: "protein")
-                if let carbs = nutrition.carbGrams, let fat = nutrition.fatGrams {
+                metric(value: "\(prefix)\(nutrition.perServingCalories)", unit: "cal")
+                metric(value: "\(prefix)\(nutrition.perServingProtein)g", unit: "protein")
+                if let carbs = nutrition.perServingCarbs, let fat = nutrition.perServingFat {
                     metric(value: "\(prefix)\(carbs)g", unit: "carbs")
                     metric(value: "\(prefix)\(fat)g", unit: "fat")
                 }
@@ -50,12 +52,16 @@ struct RecipeNutritionBanner: View {
         )
     }
 
-    private var servingLabel: String {
+    /// The big numbers are one plate. When the cook is making more than one, say
+    /// what the whole batch comes to as well, so neither number can mislead.
+    /// Internal so the units are unit-testable — mixing up "per serving" and
+    /// "whole batch" here is the exact bug this line exists to prevent.
+    var servingLabel: String {
         let n = nutrition.servings
         if n == 1 {
-            return "for 1 serving"
+            return "per serving · makes 1 serving"
         }
-        return "for \(n) servings · \(prefix)\(nutrition.perServingCalories) each"
+        return "per serving · makes \(n) servings, \(prefix)\(nutrition.calories) cal"
     }
 
     private func metric(value: String, unit: String) -> some View {

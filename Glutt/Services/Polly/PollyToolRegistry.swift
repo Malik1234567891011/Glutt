@@ -100,7 +100,7 @@ final class PollyToolRegistry {
         ),
         RealtimeToolDefinition(
             name: "go_to_step",
-            description: "Jump to a step by zero-based index. Out-of-range indexes clamp to the first or last step.",
+            description: "MOVE the cook to a step by zero-based index. Call only when they ask to go somewhere. To ANSWER a question about a later step, read the cook plan in your instructions instead — never call this just to look something up. Out-of-range indexes clamp to the first or last step.",
             parameters: schema(
                 properties: ["index": .object([
                     "type": .string("integer"),

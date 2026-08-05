@@ -27,9 +27,35 @@ struct PollyAdaptiveCanvasView: View {
     private var youtubeClip: StepClip? { controller.clipForCurrentStep() }
     /// Native MP4 or YouTube window — either counts as "this step has a clip".
     private var hasClip: Bool { nativeClip != nil || youtubeClip != nil }
-    private var isCamera: Bool { controller.camera.isRunning }
+    /// Chef has a picture from somewhere. Drives the control, not the canvas.
+    private var chefCanSee: Bool { controller.visualSource.isStreaming }
+    /// The picture is coming from the cook's glasses.
+    private var usingGlasses: Bool {
+        chefCanSee && controller.visuals.activeKind == .metaGlasses
+    }
+    /// Whether the canvas gives the whole screen over to the camera.
+    ///
+    /// Only the phone earns that. A cook wearing glasses is already looking at
+    /// the pan with their own eyes, so mirroring it back would spend the entire
+    /// screen on the one thing they can see, and bury the step and the technique
+    /// clip, which are the things they cannot. When the glasses are the source
+    /// the canvas behaves as though no camera were on.
+    private var showsCameraFeed: Bool { chefCanSee && !usingGlasses }
+
+    /// The camera control has to say which eye is open. A cook who thinks Chef
+    /// is watching through their glasses when she is actually watching a phone
+    /// on the counter will keep asking about a pan she cannot see.
+    private var cameraButtonSymbol: String {
+        if usingGlasses { return "eyeglasses" }
+        return showsCameraFeed ? "video.fill" : "camera.fill"
+    }
+
+    private var cameraButtonLabel: String {
+        if usingGlasses { return "Stop Chef seeing through your glasses" }
+        return showsCameraFeed ? "Back to step video" : "Show Chef your pan"
+    }
     /// Shrink the step card only while a native clip is playing — never on Tools/Prep.
-    private var sheetMini: Bool { nativeClip != nil && clipPlaying && !isCamera }
+    private var sheetMini: Bool { nativeClip != nil && clipPlaying && !showsCameraFeed }
     /// Missing-ingredients screen Polly talks through before Tools.
     private var showingPreflight: Bool {
         !controller.preflightDismissed && !controller.missingIngredients.isEmpty
@@ -61,6 +87,7 @@ struct PollyAdaptiveCanvasView: View {
 
                 VStack(spacing: 0) {
                     topNav
+                    glassesIndicator
                     progressLine
                     Spacer(minLength: 8)
 
@@ -199,8 +226,8 @@ struct PollyAdaptiveCanvasView: View {
     private var canvas: some View {
         ZStack {
             CookCanvasTheme.mainBlack.ignoresSafeArea()
-            if isCamera {
-                CameraPreviewView(previewLayer: controller.camera.previewLayer)
+            if showsCameraFeed {
+                PollyVisualPreviewView(preview: controller.visualSource.preview)
                     .ignoresSafeArea()
             } else if let clip = nativeClip {
                 canvasClip(clip)
@@ -393,6 +420,34 @@ struct PollyAdaptiveCanvasView: View {
             .frame(maxWidth: .infinity)
             circleButton(system: "ellipsis", action: { showOverflow = true })
         }
+        .padding(.horizontal, CookCanvasTheme.margin)
+    }
+
+    /// The whole of the glasses UI, by design. With no preview on screen, this
+    /// is the only thing telling the cook whether Chef still has eyes, so it has
+    /// to be honest about the glasses going away as well as arriving.
+    @ViewBuilder
+    private var glassesIndicator: some View {
+        if usingGlasses {
+            glassesPill(symbol: "eyeglasses", text: "Chef can see", tint: CookCanvasTheme.green)
+        } else if let dropped = controller.visuals.lastGlassesDropReason {
+            glassesPill(symbol: "eyeglasses.slash", text: dropped, tint: .orange)
+        }
+    }
+
+    private func glassesPill(symbol: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+            Text(text)
+                .font(.system(size: 13, weight: .medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(Color.black.opacity(0.45)))
         .padding(.horizontal, CookCanvasTheme.margin)
     }
 
@@ -788,25 +843,25 @@ struct PollyAdaptiveCanvasView: View {
             Button {
                 Haptics.selection()
                 Task {
-                    if controller.camera.isRunning {
-                        controller.camera.stop()
+                    if chefCanSee {
+                        controller.visualSource.stop()
                         clipPlaying = false
                     } else {
                         clipPlaying = false
-                        _ = await controller.camera.start()
+                        await controller.visualSource.start()
                     }
                 }
             } label: {
-                Image(systemName: isCamera ? "video.fill" : "camera.fill")
+                Image(systemName: cameraButtonSymbol)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(isCamera ? CookCanvasTheme.mainBlack : CookCanvasTheme.primaryText)
+                    .foregroundStyle(chefCanSee ? CookCanvasTheme.mainBlack : CookCanvasTheme.primaryText)
                     .frame(width: 44, height: 44)
                     .background(
-                        Circle().fill(isCamera ? CookCanvasTheme.green : Color.white.opacity(0.12))
+                        Circle().fill(chefCanSee ? CookCanvasTheme.green : Color.white.opacity(0.12))
                     )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isCamera ? "Back to step video" : "Show Chef your pan")
+            .accessibilityLabel(cameraButtonLabel)
         }
         .padding(.horizontal, 14)
         .frame(height: CookCanvasTheme.dockHeight)

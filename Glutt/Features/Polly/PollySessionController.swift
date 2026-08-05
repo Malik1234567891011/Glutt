@@ -126,6 +126,14 @@ final class PollySessionController {
 
     let audio: PollyAudioEngine
     let camera: PollyCameraController
+    /// What Polly is actually looking through. Everything that wants a frame or
+    /// a preview goes through here, never through `camera` directly — `camera`
+    /// is now just the phone hardware one of the sources happens to wrap.
+    var visualSource: any PollyVisualSource
+    /// The same object, concretely typed, for the things that genuinely need to
+    /// know there is more than one source: choosing glasses over phone, and
+    /// telling the cook when the glasses went away.
+    let visuals: PollyVisualSourceCoordinator
     let wakeWord: WakeWordListening
     let timers = TimerManager()
     var registry: PollyToolRegistry?
@@ -634,7 +642,12 @@ final class PollySessionController {
         self.isAwaitingVerbalGo = awaitVerbalGo
         self.deps = deps
         self.audio = audio ?? PollyAudioEngine()
-        self.camera = camera ?? PollyCameraController()
+        let cameraController = camera ?? PollyCameraController()
+        self.camera = cameraController
+        self.visuals = PollyVisualSourceCoordinator(
+            phone: PhoneCameraVisualSource(camera: cameraController)
+        )
+        self.visualSource = self.visuals
         self.wakeWord = wakeWord ?? WakeWordListener()
     }
 
@@ -678,14 +691,49 @@ final class PollySessionController {
         let registry = PollyToolRegistry(
             plan: plan, recipe: recipe, pantry: pantry, prefs: prefs,
             timers: timers, context: context)
-        registry.onRequestFrame = { [weak self] in
-            guard let self, let jpeg = await self.camera.captureFrame() else { return false }
-            let dataURI = "data:image/jpeg;base64,\(jpeg.base64EncodedString())"
+        registry.onRequestFrame = { [weak self] request in
+            guard let self else { return .unavailable }
+            let capture = await self.visuals.preparedFrame(
+                maxAge: request.maxAge,
+                highDetail: request.highDetail
+            )
+            guard let jpeg = capture.jpeg else {
+                PollyDebugLog.shared.log(
+                    "visual: request refused (\(capture.rejection?.rawValue ?? "no source")) for \"\(request.reason)\"")
+                return PollyFrameOutcome(
+                    captured: false,
+                    source: capture.source?.toolName,
+                    failureReason: capture.rejection?.rawValue ?? "camera_unavailable",
+                    // A glasses session that died under us is the one failure the
+                    // cook can actually fix, so say that rather than the generic
+                    // "no picture".
+                    suggestion: self.visuals.lastGlassesDropReason
+                        ?? capture.rejection?.suggestion
+                        ?? PollyFrameOutcome.unavailable.suggestion
+                )
+            }
+            let dataURI = VisualFramePipeline.dataURI(for: jpeg)
             do {
+                // itemId stays nil until there is a watch mode that needs to
+                // delete stale frames. The Realtime API takes a client-assigned
+                // id here, but an unvalidated format would fail the whole
+                // conversation item, and nothing yet reads it back.
                 try await self.transport?.send(.createUserImage(dataURI: dataURI, itemId: nil))
-                return true
+                PollyDebugLog.shared.log(
+                    "visual: sent \(capture.source?.toolName ?? "?") frame for \"\(request.reason)\"")
+                return PollyFrameOutcome(
+                    captured: true,
+                    source: capture.source?.toolName,
+                    frameID: capture.frameID,
+                    ageMillis: capture.ageMillis
+                )
             } catch {
-                return false
+                return PollyFrameOutcome(
+                    captured: false,
+                    source: capture.source?.toolName,
+                    failureReason: "send_failed",
+                    suggestion: "Tell the cook the picture did not go through, and carry on without it."
+                )
             }
         }
         registry.onEndSession = { [weak self] in self?.wantsEnd = true }
@@ -915,7 +963,7 @@ final class PollySessionController {
         isEnding = true
 
         // Grab a plate frame while the camera is still live (Cook Recap).
-        if camera.isRunning, let jpeg = await camera.captureFrame() {
+        if visualSource.isStreaming, let jpeg = await visualSource.captureFrame() {
             plateJPEG = jpeg
         }
 
@@ -933,7 +981,7 @@ final class PollySessionController {
         wakeInjectionTask?.cancel()
         wakeWord.stop()
         audio.stop()
-        camera.stop()
+        visualSource.stop()
         timers.cancelAll()
         await transport?.close()
         transport = nil
@@ -1024,7 +1072,7 @@ final class PollySessionController {
         voicePlayer.stop()
         wakeInjectionTask?.cancel()
         wakeWord.stop()
-        camera.stop()
+        visualSource.stop()
         timers.cancelAll()
         await transport?.close()
         transport = nil
@@ -1037,8 +1085,8 @@ final class PollySessionController {
     /// The "Show Chef" shutter: one frame straight into the conversation,
     /// then ask her to react to it.
     func sendShowPolly() async {
-        guard phase == .live, let jpeg = await camera.captureFrame() else { return }
-        let dataURI = "data:image/jpeg;base64,\(jpeg.base64EncodedString())"
+        guard phase == .live, let jpeg = await visualSource.captureFrame() else { return }
+        let dataURI = VisualFramePipeline.dataURI(for: jpeg)
         try? await transport?.send(.createUserImage(dataURI: dataURI, itemId: nil))
         try? await transport?.send(.responseCreate)
         isThinking = true
@@ -1657,7 +1705,7 @@ final class PollySessionController {
         isThinking = true
     }
 
-    func flipCamera() { camera.flip() }
+    func flipCamera() { visualSource.flip() }
 
     // MARK: - Event loop
 

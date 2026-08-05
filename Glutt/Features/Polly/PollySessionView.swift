@@ -191,8 +191,8 @@ struct PollySessionView: View {
     private var background: some View {
         ZStack {
             Color(hex: 0x141310).ignoresSafeArea()
-            if let controller, controller.camera.isRunning {
-                CameraPreviewView(previewLayer: controller.camera.previewLayer)
+            if let controller, controller.visualSource.isStreaming {
+                PollyVisualPreviewView(preview: controller.visualSource.preview)
                     .ignoresSafeArea()
             }
             LinearGradient(
@@ -220,7 +220,7 @@ struct PollySessionView: View {
         VStack(spacing: 0) {
             topBar(for: controller)
             statePill(for: controller).padding(.top, 14)
-            if let plan = controller.plan, !plan.steps.isEmpty, !controller.camera.isRunning {
+            if let plan = controller.plan, !plan.steps.isEmpty, !controller.visualSource.isStreaming {
                 // Camera off: the guide IS the step UI (cream card is hidden).
                 PollyStepGuidePanel(
                     plan: plan,
@@ -246,7 +246,7 @@ struct PollySessionView: View {
             speechLine(for: controller).padding(.horizontal, 22).padding(.top, 10)
             bottomCluster(for: controller)
         }
-        .animation(.easeInOut(duration: 0.25), value: controller.camera.isRunning)
+        .animation(.easeInOut(duration: 0.25), value: controller.visualSource.isStreaming)
     }
 
     // MARK: - Top bar
@@ -403,7 +403,7 @@ struct PollySessionView: View {
             // Cream step card only when the camera is on (feed is the hero and
             // the guide panel is hidden). With camera off the dark checklist
             // owns step UI — a second cream card was just dead weight.
-            if controller.camera.isRunning, let step = currentStep(of: controller) {
+            if controller.visualSource.isStreaming, let step = currentStep(of: controller) {
                 stepCard(step: step, controller: controller)
             }
             controlsRow(for: controller)
@@ -556,17 +556,17 @@ struct PollySessionView: View {
 
             Button {
                 Haptics.impact(.light)
-                if controller.camera.isRunning {
-                    controller.camera.stop()
+                if controller.visualSource.isStreaming {
+                    controller.visualSource.stop()
                 } else {
-                    Task { await controller.camera.start() }
+                    Task { await controller.visualSource.start() }
                 }
             } label: {
                 controlCircle(MS.videocamFill, glyph: Theme.Colors.brightAccent,
                               size: 52, bg: Theme.Colors.tabBar, bordered: true)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(controller.camera.isRunning ? "Turn camera off" : "Turn camera on")
+            .accessibilityLabel(controller.visualSource.isStreaming ? "Turn camera off" : "Turn camera on")
         }
     }
 

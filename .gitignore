@@ -51,3 +51,6 @@ media-worker/data/
 media-worker/work/
 media-worker/node_modules/
 media-worker/bin/yt-dlp
+
+# Agent worktrees. Real git worktrees, never content to commit.
+.claude/worktrees/

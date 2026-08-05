@@ -38,6 +38,31 @@ struct CameraPreviewView: UIViewRepresentable {
     }
 }
 
+/// Draws whichever visual source is live. The phone camera hands over a capture
+/// layer; the glasses only ever have decoded frames, so they get an `Image` that
+/// replaces itself as frames land. `.resizeAspectFill` on one and `.fill` on the
+/// other keeps both full-bleed, so switching source does not resize the canvas.
+struct PollyVisualPreviewView: View {
+    let preview: PollyVisualPreview
+
+    var body: some View {
+        switch preview {
+        case .none:
+            Color.clear
+        case .captureLayer(let layer):
+            CameraPreviewView(previewLayer: layer)
+        case .image(let image):
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                // Frames arrive several times a second. Without this the
+                // implicit animations elsewhere in the canvas try to tween
+                // between them and the preview smears.
+                .animation(nil, value: image)
+        }
+    }
+}
+
 // MARK: - Preflight card
 
 /// Missing-ingredients checklist shown while Polly talks through the preflight

@@ -72,23 +72,10 @@ final class PollyCameraController: NSObject {
     func captureFrame() async -> Data? {
         guard isRunning, let buffer = frameSink.latestPixelBuffer() else { return nil }
         let sink = frameSink
-        let maxDimension = PollyConfig.frameMaxDimension
-        let quality = PollyConfig.frameJPEGQuality
 
         return await Task.detached { () -> Data? in
             guard let image = sink.image(from: buffer) else { return nil }
-            let largestSide = max(image.size.width, image.size.height)
-            guard largestSide > 0 else { return nil }
-
-            let scale = min(1, maxDimension / largestSide)
-            let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-
-            let format = UIGraphicsImageRendererFormat()
-            format.scale = 1
-            let resized = UIGraphicsImageRenderer(size: newSize, format: format).image { _ in
-                image.draw(in: CGRect(origin: .zero, size: newSize))
-            }
-            return resized.jpegData(compressionQuality: quality)
+            return VisualFramePipeline.prepare(image)
         }.value
     }
 

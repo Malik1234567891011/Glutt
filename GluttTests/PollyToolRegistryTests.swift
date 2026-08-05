@@ -391,19 +391,70 @@ final class PollyToolRegistryTests: XCTestCase {
     func testRequestCameraFrameAndEndSessionHooks() async throws {
         let registry = makeRegistry()
 
-        let noCamera = try result(of: await registry.handle(name: "request_camera_frame", argumentsJSON: "{}"))
+        let args = #"{"reason":"check the onions","detail_level":"fast"}"#
+
+        let noCamera = try result(of: await registry.handle(name: "request_camera_frame", argumentsJSON: args))
         XCTAssertEqual(noCamera["captured"] as? Bool, false)
         XCTAssertEqual(noCamera["reason"] as? String, "camera unavailable")
 
-        registry.onRequestFrame = { true }
-        let captured = try result(of: await registry.handle(name: "request_camera_frame", argumentsJSON: "{}"))
+        registry.onRequestFrame = { _ in
+            PollyFrameOutcome(captured: true, source: "meta_glasses", frameID: "g42", ageMillis: 180)
+        }
+        let captured = try result(of: await registry.handle(name: "request_camera_frame", argumentsJSON: args))
         XCTAssertEqual(captured["captured"] as? Bool, true)
+        XCTAssertEqual(captured["source"] as? String, "meta_glasses")
+        XCTAssertEqual(captured["frame_id"] as? String, "g42")
+        XCTAssertEqual(captured["age_ms"] as? Int, 180)
 
-        registry.onRequestFrame = { false }
-        let failed = try result(of: await registry.handle(name: "request_camera_frame", argumentsJSON: "{}"))
+        registry.onRequestFrame = { _ in
+            PollyFrameOutcome(
+                captured: false,
+                source: "meta_glasses",
+                failureReason: "frame_blurred",
+                suggestion: "Ask the cook to hold still for a second."
+            )
+        }
+        let failed = try result(of: await registry.handle(name: "request_camera_frame", argumentsJSON: args))
         XCTAssertEqual(failed["captured"] as? Bool, false)
-        XCTAssertEqual(failed["reason"] as? String,
-                       "camera is off or no frame yet — ask the cook to tap the camera button to show you")
+        XCTAssertEqual(failed["reason"] as? String, "frame_blurred")
+        XCTAssertEqual(failed["suggested_instruction"] as? String, "Ask the cook to hold still for a second.")
+    }
+
+    /// The model must be able to ask for a better picture, and to say how recent
+    /// it needs to be, or the whole point of buffering frames is lost.
+    func testRequestCameraFramePassesDetailAndAge() async throws {
+        let registry = makeRegistry()
+        var seen: PollyFrameRequest?
+        registry.onRequestFrame = { request in
+            seen = request
+            return PollyFrameOutcome(captured: true, source: "meta_glasses")
+        }
+
+        _ = await registry.handle(
+            name: "request_camera_frame",
+            argumentsJSON: #"{"reason":"read the thermometer","detail_level":"high_detail","required_view":"the probe","max_age_ms":400}"#
+        )
+
+        XCTAssertEqual(seen?.reason, "read the thermometer")
+        XCTAssertEqual(seen?.highDetail, true)
+        XCTAssertEqual(seen?.requiredView, "the probe")
+        XCTAssertEqual(seen?.maxAge ?? 0, 0.4, accuracy: 0.001)
+    }
+
+    /// A model that asks for an impossible window must not get zero frames back.
+    func testRequestCameraFrameClampsMaxAge() {
+        XCTAssertEqual(
+            PollyFrameRequest(reason: "", highDetail: false, requiredView: nil, maxAgeMillis: 5).maxAge,
+            0.2, accuracy: 0.001
+        )
+        XCTAssertEqual(
+            PollyFrameRequest(reason: "", highDetail: false, requiredView: nil, maxAgeMillis: 999_999).maxAge,
+            10, accuracy: 0.001
+        )
+    }
+
+    func testEndSessionHook() async throws {
+        let registry = makeRegistry()
 
         var ended = false
         registry.onEndSession = { ended = true }

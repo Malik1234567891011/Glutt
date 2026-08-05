@@ -585,6 +585,9 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
                 PollyDebugLog.shared.log(
                     "audio: ROUTE CHANGE reason=\(reason) \(PollyAudioSession.routeSummary())")
                 // AirPods in/out: clear or restore speaker override so HFP can win.
+                // Glasses that connect or drop mid-cook have to be picked
+                // up here, not only at session start.
+                PollyAudioSession.applyPreferredInput()
                 PollyAudioSession.applyPreferredOutputPort()
             }
         }

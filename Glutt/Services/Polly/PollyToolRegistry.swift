@@ -24,8 +24,10 @@ final class PollyToolRegistry {
     // MARK: - State
 
     private(set) var state: CookState
-    /// Controller hook: capture + send a camera frame; true on success.
-    var onRequestFrame: (() async -> Bool)?
+    /// Controller hook: capture + send a frame from whichever source is live.
+    /// Returns enough about a failure that Polly can tell the cook what to do
+    /// about it rather than assuming every picture arrived.
+    var onRequestFrame: ((PollyFrameRequest) async -> PollyFrameOutcome)?
     /// Controller hook: the model asked to end the session.
     var onEndSession: (() -> Void)?
     /// Controller hook: the model decided the audio was not for her and chose to
@@ -208,8 +210,29 @@ final class PollyToolRegistry {
         ),
         RealtimeToolDefinition(
             name: "request_camera_frame",
-            description: "Request a fresh photo from the cook's camera when you need to see the food before answering.",
-            parameters: emptySchema
+            description: "Look at what the cook is doing, through their glasses if they are wearing them, otherwise their phone. Call this when you need to see the food before answering, or to judge whether a step is actually done. The result tells you whether you got a usable picture, so check it before describing anything.",
+            parameters: schema(
+                properties: [
+                    "reason": .object([
+                        "type": .string("string"),
+                        "description": .string("What you are trying to see, e.g. 'check whether the onions have browned'"),
+                    ]),
+                    "detail_level": .object([
+                        "type": .string("string"),
+                        "description": .string("fast for a normal look. high_detail only when you must read a thermometer, a label, or judge fine texture, since it is slower."),
+                        "enum": .array([.string("fast"), .string("high_detail")]),
+                    ]),
+                    "required_view": .object([
+                        "type": .string("string"),
+                        "description": .string("Optional. What has to be in shot, e.g. 'the pan' or 'the cutting board'"),
+                    ]),
+                    "max_age_ms": .object([
+                        "type": .string("integer"),
+                        "description": .string("Optional. How recent the picture must be, in milliseconds. Defaults to 1500."),
+                    ]),
+                ],
+                required: ["reason", "detail_level"]
+            )
         ),
         RealtimeToolDefinition(
             name: "end_session",
@@ -287,7 +310,7 @@ final class PollyToolRegistry {
         case "adjust_servings": return adjustServings(args)
         case "remember_fact": return rememberFact(args)
         case "record_polly_save": return recordPollySave(args)
-        case "request_camera_frame": return await requestCameraFrame()
+        case "request_camera_frame": return await requestCameraFrame(args)
         case "end_session": return endSession()
         case "wait_for_user": return waitForUser()
         case "show_step_video": return showStepVideo()
@@ -599,14 +622,31 @@ final class PollyToolRegistry {
 
     // MARK: - Camera + session
 
-    private func requestCameraFrame() async -> String {
+    private func requestCameraFrame(_ args: [String: Any]) async -> String {
         guard let onRequestFrame else {
             return Self.json(["captured": false, "reason": "camera unavailable"])
         }
-        let captured = await onRequestFrame()
-        return captured
-            ? Self.json(["captured": true])
-            : Self.json(["captured": false, "reason": "camera is off or no frame yet — ask the cook to tap the camera button to show you"])
+        let request = PollyFrameRequest(
+            reason: (args["reason"] as? String) ?? "",
+            highDetail: (args["detail_level"] as? String) == "high_detail",
+            requiredView: (args["required_view"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+            maxAgeMillis: (args["max_age_ms"] as? NSNumber)?.intValue ?? 1500
+        )
+        let outcome = await onRequestFrame(request)
+
+        var payload: [String: Any] = ["captured": outcome.captured]
+        if let source = outcome.source { payload["source"] = source }
+        if outcome.captured {
+            if let frameID = outcome.frameID { payload["frame_id"] = frameID }
+            if let age = outcome.ageMillis { payload["age_ms"] = age }
+            // Echoed so the model can check the picture against its own request
+            // rather than assuming it got what it asked for.
+            if let view = request.requiredView { payload["required_view"] = view }
+        } else {
+            payload["reason"] = outcome.failureReason ?? "no_frame"
+            if let suggestion = outcome.suggestion { payload["suggested_instruction"] = suggestion }
+        }
+        return Self.json(payload)
     }
 
     private func endSession() -> String {

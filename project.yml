@@ -4,7 +4,9 @@ options:
   # com.omarlahmimi.* — flip these back (or use a paid-team login) before archive.
   bundleIdPrefix: com.malik
   deploymentTarget:
-    iOS: "17.0"
+    # 17.2 is the floor for Meta's Device Access Toolkit 0.9.0 (raised from 15.2
+    # in that release). Nothing else here needs it.
+    iOS: "17.2"
   createIntermediateGroups: true
   xcodeVersion: "26.2"
 
@@ -37,6 +39,15 @@ packages:
   Supabase:
     url: https://github.com/supabase/supabase-swift
     from: "2.54.0"
+  # Ray-Ban Meta camera access. Binary xcframeworks committed straight into the
+  # repo's tags (there is no Package.swift on `main`), so this MUST resolve by
+  # exact version — same reasoning as LiveKitWebRTC above. Developer preview:
+  # 0.8 -> 0.9 removed DeviceSession.addStream entirely. Ships arm64 + simulator
+  # slices, which is what lets the mock device work on the sim.
+  # See docs/meta-glasses-research-2026-08-04.md.
+  MetaWearablesDAT:
+    url: https://github.com/facebook/meta-wearables-dat-ios
+    exactVersion: "0.9.0"
   # Native Google sign-in. The browser flow would need no dependency, but the
   # Supabase Google provider is configured with a client id and no secret, which
   # is the native (id_token) setup; /auth/v1/authorize rejects the web flow with
@@ -78,10 +89,39 @@ targets:
         NSMicrophoneUsageDescription: Glutt uses the microphone so you can tell it what’s in your kitchen, and so Chef can guide you hands-free while you cook.
         NSSpeechRecognitionUsageDescription: Glutt recognizes speech on-device so you can list kitchen ingredients out loud, and so Chef only wakes when you say “Chef” — not to background chatter.
         ITSAppUsesNonExemptEncryption: false
+        # Meta Wearables Device Access Toolkit. MetaAppID "0" is the Developer
+        # Mode value (toggled in Meta AI > Settings > Your glasses), which is a
+        # different thing from a Wearables Developer Center account — that is
+        # only needed to distribute to other people, and brings ClientToken and
+        # TeamID with it. Add those when we have a release channel.
+        MWDAT:
+          AppLinkURLScheme: "glutt-wearables://"
+          MetaAppID: "0"
+        # The camera stream reaches the phone over Wi-Fi, which is why a camera
+        # SDK wants local network and Bonjour.
+        NSBluetoothAlwaysUsageDescription: Glutt connects to your Meta glasses so Chef can see what you are cooking.
+        NSBluetoothPeripheralUsageDescription: Glutt connects to your Meta glasses so Chef can see what you are cooking.
+        NSLocalNetworkUsageDescription: Glutt uses your local network to receive the camera view from your Meta glasses.
+        NSBonjourServices:
+          - _bonjour._tcp
+        # Meta's own sample also lists `audio` here. Deliberately omitted: Polly
+        # stands down on background on purpose (PollySessionView scenePhase), and
+        # DAT 0.9 ends the camera session on background regardless, so `audio`
+        # would buy nothing and quietly change how the cook session behaves.
+        UIBackgroundModes:
+          - processing
+          - bluetooth-central
+          - bluetooth-peripheral
         CFBundleURLTypes:
           - CFBundleURLName: com.malik.glutt
             CFBundleURLSchemes:
               - glutt
+          # Meta AI calls back here after the user approves the integration.
+          # Its own scheme, not `glutt`, so the callback can never be confused
+          # with an ordinary Glutt deep link.
+          - CFBundleURLName: com.malik.glutt.wearables
+            CFBundleURLSchemes:
+              - glutt-wearables
           # Google sign-in callback. Must be the iOS client id reversed, exactly;
           # GoogleSignIn hands this scheme to ASWebAuthenticationSession and the
           # flow dead-ends without it. See Secrets.googleClientID.
@@ -105,6 +145,16 @@ targets:
         product: Supabase
       - package: GoogleSignIn
         product: GoogleSignIn
+      # MWDATMockDevice ships in the same package as the real SDK and is how we
+      # develop against glasses we cannot yet register. It is deliberately NOT
+      # debug-only: XcodeGen has no per-configuration dependency here, and the
+      # code that uses it is already gated behind a debug surface.
+      - package: MetaWearablesDAT
+        product: MWDATCore
+      - package: MetaWearablesDAT
+        product: MWDATCamera
+      - package: MetaWearablesDAT
+        product: MWDATMockDevice
 
   GluttShare:
     type: app-extension

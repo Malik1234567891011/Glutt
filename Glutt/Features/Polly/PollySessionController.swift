@@ -673,6 +673,22 @@ final class PollySessionController {
         // half a cost table cannot answer.
         Analytics.capture(.cookStarted, ["with_polly": true])
 
+        // Snapshot the chef once, here, because the mint needs it and the mint
+        // now starts before the plan. Mid-cook changes are not merely
+        // undesirable: the Realtime API refuses a `voice` update once any audio
+        // has been output, so the voice has to travel with the token and the
+        // choice is fixed for the life of the session by design.
+        let chef = PollyChefVoice.selected
+
+        // The mint has no data dependency on the plan, so it runs alongside it.
+        // Measured on an iPhone 17 Pro sim: the mint takes 0.85-1.33s and the
+        // plan compile 8.0s cold (LLM) or 0.2s warm (cache hit). Serially the
+        // mint was pure added dead air before Polly's first word; overlapped it
+        // is free on a cold start (log: "token minted" now lands 0.00s after
+        // "plan ready") and worth ~0.2s warm. Cold time-to-first-word went
+        // 12.57s -> 10.51s on the same recipe. See docs/polly-latency-2026-08-04.md.
+        let mintTask = Task { try await deps.mintToken(chef.realtimeVoice, chef.elevenLabsVoiceID != nil) }
+
         // 1. Execution plan (compiler never fails — it falls back to linear).
         phase = .compiling
         PollyDebugLog.shared.log("session: compiling plan for \"\(recipe.title)\"")
@@ -749,16 +765,12 @@ final class PollySessionController {
             let granted = await AVAudioApplication.requestRecordPermission()
             guard granted else {
                 PollyDebugLog.shared.log("session: mic permission DENIED")
+                mintTask.cancel()
                 phase = .failed("Chef needs the microphone to cook with you. Enable it in Settings, or cook without Chef.")
                 return
             }
         }
 
-        // Snapshot the chef once, BEFORE the mint. Mid-cook changes are not
-        // merely undesirable: the Realtime API refuses a `voice` update once any
-        // audio has been output, so the voice has to travel with the token and
-        // the choice is fixed for the life of the session by design.
-        let chef = PollyChefVoice.selected
         clonedVoiceID = chef.elevenLabsVoiceID
         PollyDebugLog.shared.log(
             "session: chef=\(chef.id) realtimeVoice=\(chef.realtimeVoice)"
@@ -799,7 +811,7 @@ final class PollySessionController {
 
         let token: PollySessionToken
         do {
-            token = try await deps.mintToken(chef.realtimeVoice, chef.elevenLabsVoiceID != nil)
+            token = try await mintTask.value
             PollyDebugLog.shared.log("session: token minted — model=\(token.model) voice=\(token.voice)")
         } catch {
             PollyDebugLog.shared.log("session: token mint FAILED — \(error.localizedDescription)")

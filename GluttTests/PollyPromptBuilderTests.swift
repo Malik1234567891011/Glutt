@@ -192,6 +192,78 @@ final class PollyPromptBuilderTests: XCTestCase {
         XCTAssertTrue(prompt.contains("First time cooking this together."))
     }
 
+    // MARK: - Reading ahead
+
+    /// A cook who asks "how long do the muffins bake?" while creaming butter must
+    /// get an answer, not a lecture about which step they're on. The prompt used
+    /// to conflate "don't INSTRUCT ahead" with "don't INFORM ahead"; only the
+    /// first is a real rule.
+    func testPromptAlwaysAnswersQuestionsAboutLaterSteps() {
+        let prompt = instructions(recipe: makeRecipe())
+
+        XCTAssertTrue(prompt.contains("## Questions about later steps — ALWAYS answer, never deflect"))
+        // The refusals Malik hears in the kitchen, named so they can be banned.
+        for refusal in ["you're not on that step yet", "we'll get to that",
+                        "let's finish this step first", "one thing at a time"] {
+            XCTAssertTrue(prompt.contains(refusal),
+                          "the prompt must name and ban the refusal: \(refusal)")
+        }
+        XCTAssertTrue(prompt.contains("Answering is NOT advancing."))
+        // Looking ahead must not silently move the cook.
+        XCTAssertTrue(prompt.contains("call go_to_step or mark_step_done to answer a question"))
+
+        // The old blanket ban on even mentioning later work is gone.
+        XCTAssertFalse(prompt.contains("until the plan actually reaches that step"),
+                       "informing ahead is no longer forbidden")
+    }
+
+    /// The other half of the same rule: she still must not PUSH the cook forward.
+    func testPromptStillForbidsInstructingAheadOfThePlan() {
+        let prompt = instructions(recipe: makeRecipe())
+
+        XCTAssertTrue(prompt.contains("NEVER DIRECT the cook to DO something from a later step early"))
+        XCTAssertTrue(prompt.contains("Work through steps strictly in order."))
+        XCTAssertTrue(prompt.contains("never start a HEAT or TIME-SENSITIVE action early"),
+                      "the food-safety ordering line must survive")
+    }
+
+    /// Wording alone would be useless if the later steps weren't in her context.
+    /// Every step's instruction ships in the embedded plan, so she can answer a
+    /// question about the last step while standing on the first.
+    func testEveryLaterStepIsReachableInTheEmbeddedPlan() throws {
+        let recipe = Recipe(title: "Blueberry Muffins", servings: 12)
+        context.insert(recipe)
+        recipe.ingredients = [
+            RecipeIngredient(name: "flour", quantity: 250, unit: "g", sortIndex: 0),
+            RecipeIngredient(name: "blueberries", quantity: 150, unit: "g", sortIndex: 1),
+        ]
+        recipe.steps = [
+            RecipeStep(index: 0, text: "Cream the butter and sugar until pale."),
+            RecipeStep(index: 1, text: "Fold in the flour and blueberries."),
+            RecipeStep(index: 2, text: "Bake at 190C for 22 minutes.", durationSeconds: 1320),
+        ]
+
+        let plan = CookPlan.linear(from: recipe, scale: 1.0)
+        let prompt = PollyPromptBuilder.instructions(
+            recipe: recipe,
+            plan: plan,
+            pantryMatch: PantryMatcher.MatchResult(owned: recipe.ingredients, missing: [], missingOptional: []),
+            prefs: makePrefs(),
+            memories: [],
+            pastSessions: [],
+            ownedTools: []
+        )
+
+        for step in plan.steps {
+            XCTAssertTrue(prompt.contains(step.instruction),
+                          "step \(step.index) is not answerable: \(step.instruction)")
+        }
+        // The specific question from the bug report: the bake time and temperature
+        // are in context while the cook is still on step 1.
+        XCTAssertTrue(prompt.contains("Bake at 190C for 22 minutes."))
+        XCTAssertTrue(prompt.contains("250 g flour"), "amounts for later steps are in context too")
+    }
+
     func testMemoryBulletsAreCappedAtConfigLimit() {
         let memories = (0..<20).map { i in
             PollyMemory(kind: .outcome, text: "Durable kitchen fact number \(i)",

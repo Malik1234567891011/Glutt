@@ -116,6 +116,11 @@ final class PollyToolRegistryTests: XCTestCase {
         ])
         XCTAssertEqual(PollyToolRegistry.toolDefinitions.count, 19)
 
+        // go_to_step MOVES the cook, so it must never be the way she looks up a
+        // later step to answer a question — that would strand them mid-recipe.
+        let goToStep = PollyToolRegistry.toolDefinitions.first { $0.name == "go_to_step" }
+        XCTAssertEqual(goToStep?.description.contains("never call this just to look something up"), true)
+
         for definition in PollyToolRegistry.toolDefinitions {
             XCTAssertFalse(definition.description.isEmpty, definition.name)
             guard case .object(let schema) = definition.parameters else {

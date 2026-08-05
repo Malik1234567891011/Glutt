@@ -23,11 +23,15 @@ Legend: **[BLOCKER]** = stop and report rather than pressing on.
 
 **Signing note.** Meta's own sample carries two entitlements Glutt does not:
 `com.apple.developer.networking.HotspotConfiguration` and
-`com.apple.developer.networking.wifi-info`. They were deliberately left out,
-because they generally need a paid Apple Developer team and Glutt currently signs
-with the personal one. Try without them first. If the camera stream never starts
-on device while it works on the simulator, that is the first thing to add, and it
-will need a paid-team login.
+`com.apple.developer.networking.wifi-info`. They were left out because it was not
+clear they were needed, and because they generally require a paid Apple Developer
+team. Glutt signs with Omar's paid team (`Q7ZLXMG4SB`), so adding them should be
+possible if it comes to that.
+
+Try without them first. If the camera stream reaches `starting` and never
+`streaming` on device while it works fine on the simulator, add both to
+`Glutt/Glutt.entitlements` and regenerate. That is the single most likely
+device-only failure in this whole script.
 
 ---
 

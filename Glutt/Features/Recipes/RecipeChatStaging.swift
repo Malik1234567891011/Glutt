@@ -32,7 +32,15 @@ enum RecipeChatStaging {
         /// "Ask Polly about this instead" link. Verifies the sheet-to-sheet
         /// handoff and that the chat opens with the question already typed.
         case substitute
+        /// Sends a real question to the real proxy. The only scenario that
+        /// costs money, and the only one that proves the prompt survives
+        /// contact with the model and the envelope actually parses.
+        case ask
     }
+
+    /// The question `ask` sends. Phrased to invite a rewrite, so one call
+    /// exercises both halves of the envelope.
+    static let liveQuestion = "I don't eat pork and I'm missing a couple of things. Can you fix the recipe for me?"
 
     static var requested: Scenario? {
         let arguments = ProcessInfo.processInfo.arguments
@@ -71,7 +79,9 @@ enum RecipeChatStaging {
 
     /// Writes the canned turns, once. Re-entrant because `onAppear` is.
     static func seedIfRequested(family: String, in context: ModelContext) {
-        guard let scenario = requested, scenario != .empty, scenario != .substitute else { return }
+        guard let scenario = requested,
+              scenario != .empty, scenario != .substitute, scenario != .ask
+        else { return }
         guard RecipeChatStore.messages(family: family, in: context).isEmpty else { return }
 
         RecipeChatStore.append(
@@ -82,7 +92,7 @@ enum RecipeChatStaging {
         )
 
         switch scenario {
-        case .empty, .substitute:
+        case .empty, .substitute, .ask:
             break
         case .thread:
             RecipeChatStore.append(

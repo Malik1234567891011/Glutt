@@ -112,6 +112,14 @@ struct RecipeChatView: View {
             else { return }
             apply(message, proposal)
         }
+        // `-chatScreen ask`: sends a real question to the real proxy, through
+        // the same `send` the keyboard uses. Costs a call; run it deliberately.
+        .task {
+            guard RecipeChatStaging.requested == .ask, messages.isEmpty else { return }
+            try? await Task.sleep(for: RecipeChatStaging.beat)
+            guard !Task.isCancelled, messages.isEmpty else { return }
+            send(RecipeChatStaging.liveQuestion)
+        }
     }
 
     private static let bottomAnchor = "recipeChatBottom"

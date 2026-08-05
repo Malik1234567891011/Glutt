@@ -74,7 +74,7 @@ struct ImportSheet: View {
     private var centre: some View {
         switch viewModel.state {
         case .importing(let progress):
-            ImportingContent(title: viewModel.dishTitle, stage: progress.stage)
+            ImportingContent(stage: progress.stage)
                 .transition(.opacity)
 
         case .saved(let draft):

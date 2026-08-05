@@ -60,6 +60,10 @@ enum Theme {
         static let segmentTrack = Color(hex: 0xEBE2D4)
         /// Inactive page-dot fill. (#D8CDBE)
         static let dotInactive = Color(hex: 0xD8CDBE)
+        /// Middle card of the import "stack" — between `card` and `surface3`. (#F6EFE0)
+        static let stackMid = Color(hex: 0xF6EFE0)
+        /// Quietest text in the palette — the import status sub-line. (#B0A697)
+        static let mutedSoft = Color(hex: 0xB0A697)
 
         // MARK: Backwards-compatible aliases (kept so existing call sites compile)
         /// Semantic alias of `greenTint`.

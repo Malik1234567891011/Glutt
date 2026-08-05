@@ -5,6 +5,8 @@ import SwiftUI
 /// Trust is the product: show confidence, flag issues, allow inline edits.
 struct ImportReviewView: View {
     @Environment(\.modelContext) private var context
+    /// Optional so previews (and any host that doesn't inject it) still build.
+    @Environment(SyncCoordinator.self) private var sync: SyncCoordinator?
     @Query(sort: \RecipeCollection.createdAt) private var collections: [RecipeCollection]
 
     let onDone: () -> Void
@@ -327,6 +329,9 @@ struct ImportReviewView: View {
             await RecipeImageBackfill.ensure(for: recipe, in: context)
             await MediaClipEnqueue.ensure(for: recipe, in: context)
         }
+        // Debounced, so it lands after the image backfill above and the photo
+        // goes up with the recipe rather than a sweep later.
+        sync?.requestSync()
         onDone()
     }
 }

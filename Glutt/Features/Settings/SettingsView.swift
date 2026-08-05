@@ -21,10 +21,16 @@ struct SettingsView: View {
 
     /// Optional so previews (and any host that doesn't inject it) still build.
     @Environment(AccountSession.self) private var session: AccountSession?
+    @Environment(SyncCoordinator.self) private var sync: SyncCoordinator?
     @State private var isConfirmingDelete = false
     @State private var isDeleting = false
     @State private var didDeleteAccount = false
     @State private var deleteErrorMessage: String?
+    @State private var isConfirmingSignOut = false
+    @State private var isSigningOut = false
+    /// The flush before a sign out failed. Offers to stay signed in rather than
+    /// drop work that has not reached the server.
+    @State private var didFailToFlush = false
 
     var body: some View {
         NavigationStack {
@@ -51,20 +57,44 @@ struct SettingsView: View {
                     Task { await deleteAccount() }
                 }
             } message: {
-                // Says plainly what survives. The subscription line matters
-                // most: someone deleting an account does not expect to keep
-                // being charged, and only the App Store can stop that.
+                // Says plainly what goes. The recipe line changed the day the
+                // library started living on the server too: "delete my account"
+                // most honestly means everything, and leaving the phone holding
+                // the only remaining copy of a library with no backup is a
+                // stranger outcome than removing it.
+                //
+                // The subscription line matters most: someone deleting an
+                // account does not expect to keep being charged, and only the
+                // App Store can stop that.
                 Text("""
-                Your name and email are removed from Glutt's servers for good.
+                Your name, your email and your recipe library are removed from Glutt's \
+                servers for good, and from this iPhone.
 
-                Your recipes stay on this iPhone. This does not cancel your \
-                subscription. Manage that in the App Store.
+                This does not cancel your subscription. Manage that in the App Store.
                 """)
             }
             .alert("Account deleted", isPresented: $didDeleteAccount) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("Your Glutt account is gone. Your recipes are still here on this iPhone.")
+                Text("Your Glutt account and the recipes saved to it are gone.")
+            }
+            .confirmationDialog(
+                "Sign out of Glutt?",
+                isPresented: $isConfirmingSignOut,
+                titleVisibility: .visible
+            ) {
+                Button("Sign out") { Task { await signOut(force: false) } }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Your recipes stay backed up to your account and come back when you sign in. They will be removed from this iPhone in the meantime.")
+            }
+            .alert("Couldn't back up your recipes", isPresented: $didFailToFlush) {
+                Button("Stay signed in", role: .cancel) {}
+                Button("Sign out anyway", role: .destructive) {
+                    Task { await signOut(force: true) }
+                }
+            } message: {
+                Text("Some changes haven't reached your account yet, and signing out now would lose them. Try again once you're back online.")
             }
             .alert(
                 "Couldn't delete your account",
@@ -241,11 +271,16 @@ struct SettingsView: View {
 
                     Button {
                         Haptics.impact(.light)
-                        Task { await session.signOut() }
+                        isConfirmingSignOut = true
                     } label: {
-                        Text("Sign out")
-                            .foregroundStyle(Theme.Colors.textPrimary)
+                        HStack {
+                            Text("Sign out")
+                                .foregroundStyle(Theme.Colors.textPrimary)
+                            Spacer()
+                            if isSigningOut { ProgressView() }
+                        }
                     }
+                    .disabled(isSigningOut)
 
                     Button(role: .destructive) {
                         Haptics.impact(.medium)
@@ -267,16 +302,43 @@ struct SettingsView: View {
             } header: {
                 Text("Account")
             } footer: {
-                Text("Your account is how Glutt recognizes you on a new phone. Recipes live on this device either way.")
+                Text("Your account is how Glutt recognizes you on a new phone. Your recipes are backed up to it, so they come back when you sign in.")
             }
         }
+    }
+
+    /// Signing out now removes this account's library from the phone, so
+    /// anything still queued has to reach the server first. `force` is the
+    /// "sign out anyway" branch, taken only after the user has been told.
+    private func signOut(force: Bool) async {
+        guard let session else { return }
+        isSigningOut = true
+        defer { isSigningOut = false }
+
+        if !force {
+            do {
+                try await sync?.flush()
+            } catch {
+                didFailToFlush = true
+                return
+            }
+        }
+        // Captured before the sign-out, which is what clears it.
+        let userID = session.userID
+        await session.signOut()
+        sync?.purgeLocalUserData(for: userID)
     }
 
     private func deleteAccount() async {
         guard let session else { return }
         isDeleting = true
+        let userID = session.userID
         do {
             try await session.deleteAccount()
+            // The server copy is gone; leaving the phone holding the only
+            // remaining copy of a library with no backup is the half-state the
+            // confirmation dialog promised not to leave them in.
+            sync?.purgeLocalUserData(for: userID)
             didDeleteAccount = true
         } catch {
             deleteErrorMessage = "Something went wrong on our end. Please try again, or contact support if it keeps happening."

@@ -24,7 +24,9 @@ enum ImportSheetMetrics {
     static let loadingCentreTop: CGFloat = 158
     static let outcomeCentreTop: CGFloat = 150
     /// The cooking loop, rendered 1:1 from a square crop of the source clip.
-    static let visual: CGFloat = 338
+    /// Larger than the board's 338: with no dish name on this screen the pot is
+    /// the only thing to look at, so it gets the room.
+    static let visual: CGFloat = 360
     static let photo: CGFloat = 214
     static let photoCorner: CGFloat = 26
     static let badge: CGFloat = 52
@@ -80,11 +82,13 @@ struct ImportSheetHeader: View {
 
 // MARK: - Importing
 
-/// The whole wait: the cooking loop, the dish name as soon as Glutt knows it,
-/// and the current pipeline stage. Nothing else.
+/// The whole wait: the cooking loop and the current pipeline stage.
+///
+/// Deliberately no dish name. The board shows one, but the "title" a social
+/// post yields mid-import is routinely the entire caption — ingredients,
+/// method and all — which buries the screen. It is only worth showing once
+/// the cleanup pass has made it a name, which is the saved screen.
 struct ImportingContent: View {
-    /// `nil` until the source has given up a name — skeleton bars until then.
-    let title: String?
     let stage: ImportPipeline.Stage
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -93,71 +97,22 @@ struct ImportingContent: View {
         VStack(spacing: 0) {
             CookingLoopView()
 
-            ImportTitleBlock(title: title)
-                .padding(.top, 24)
-
             // Any stage can be skipped, so any string has to be able to follow
             // any other — crossfade rather than slide.
+            // The board sets this quiet because a dish name sat above it. It is
+            // now the only copy on the screen, so it carries the weight: larger,
+            // heavier and in the body colour rather than the faintest grey.
             Text(stage.label)
-                .font(BrandFont.nunito(13.5, 600))
-                .foregroundStyle(Theme.Colors.mutedSoft)
+                .font(BrandFont.nunito(16, 700))
+                .foregroundStyle(Theme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
                 .id(stage)
                 .transition(.opacity)
-                .padding(.top, 7)
+                .padding(.top, 24)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 24)
         .animation(.easeInOut(duration: reduceMotion ? 0.2 : 0.22), value: stage)
-    }
-}
-
-/// The dish name, or two skeleton bars that crossfade into it when it lands.
-private struct ImportTitleBlock: View {
-    let title: String?
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        ZStack {
-            if let title, !title.isEmpty {
-                Text(title)
-                    .font(BrandFont.bricolage(21, 600))
-                    .tracking(-0.4)
-                    .designLineHeight(1.2, BrandFont.uiBricolage(21, 600))
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .transition(
-                        reduceMotion
-                            ? .opacity
-                            : .asymmetric(
-                                insertion: .opacity.combined(with: .offset(y: 6)),
-                                removal: .opacity
-                            )
-                    )
-            } else {
-                skeleton.transition(.opacity)
-            }
-        }
-        .animation(.easeOut(duration: 0.2), value: title)
-    }
-
-    private var skeleton: some View {
-        GeometryReader { proxy in
-            VStack(spacing: 9) {
-                bar(width: proxy.size.width * 0.60)
-                bar(width: proxy.size.width * 0.38)
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .frame(height: 31)
-        .accessibilityLabel("Reading the dish name")
-    }
-
-    private func bar(width: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: 6, style: .continuous)
-            .fill(Theme.Colors.segmentTrack)
-            .frame(width: width, height: 11)
     }
 }
 
@@ -197,7 +152,10 @@ private struct LoopingVideo: UIViewRepresentable {
         )
         context.coordinator.player = player
         view.playerLayer.player = player
-        view.playerLayer.videoGravity = .resizeAspect
+        // Fill, not fit. The asset is cropped square at build time, so these are
+        // equivalent — but if a non-square clip is ever dropped in, filling keeps
+        // the pot at full size instead of silently letterboxing it to half.
+        view.playerLayer.videoGravity = .resizeAspectFill
         return view
     }
 
@@ -257,6 +215,10 @@ struct ImportOutcomeContent: View {
                 .designLineHeight(1.1, BrandFont.uiBricolage(27, 700))
                 .foregroundStyle(Theme.Colors.heading)
                 .multilineTextAlignment(.center)
+                // A social post's "title" is sometimes its entire caption. The
+                // cleanup pass usually fixes that; when it can't, truncate
+                // rather than let it push the buttons off screen.
+                .lineLimit(3)
                 .padding(.top, 44)
 
             Text(message)

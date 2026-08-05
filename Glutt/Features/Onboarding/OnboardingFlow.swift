@@ -34,11 +34,14 @@ struct OnboardingFlow: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.requestReview) private var requestReview
 
-    /// How long screen 6 is left alone before the rating card is asked for. Long
-    /// enough for the spring transition to settle (~0.45s) and for the laurel
-    /// badge and headline to actually be read, short enough that most people are
-    /// still on the screen when it lands.
-    private static let reviewPromptDelay = Duration.milliseconds(1200)
+    /// How long screen 6 is left alone before the rating card is asked for.
+    ///
+    /// The system card is drawn centred, which puts it squarely over the laurel
+    /// badge — so the badge has to be *read before it is covered*, or the whole
+    /// reason for asking here is lost. 1.8s clears the spring transition
+    /// (~0.45s) and leaves well over a second on the badge and headline, while
+    /// still landing inside the few seconds people spend on the chef footage.
+    private static let reviewPromptDelay = Duration.milliseconds(1800)
 
     /// Screens that share the cream chrome + footer scaffold.
     private static let scaffoldScreens: Set<Int> = [1, 2, 3, 4, 5, 7, 8]

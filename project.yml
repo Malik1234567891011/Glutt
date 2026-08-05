@@ -1,8 +1,6 @@
 name: Glutt
 options:
-  # Personal-team local IDs. App Store / Omar paid-team shipping stays on
-  # com.omarlahmimi.* — flip these back (or use a paid-team login) before archive.
-  bundleIdPrefix: com.malik
+  bundleIdPrefix: com.omarlahmimi
   deploymentTarget:
     # 17.2 is the floor for Meta's Device Access Toolkit 0.9.0 (raised from 15.2
     # in that release). Nothing else here needs it.
@@ -13,8 +11,10 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.10"
-    # Malik personal team (OU on Apple Development: malik.shourbaji@gmail.com).
-    DEVELOPMENT_TEAM: K8MRHHZ85N
+    # Omar's paid team. This is what ships, and the app group
+    # (group.com.omarlahmimi.glutt) only provisions under it. Signing on another
+    # team is a local-only change — keep it out of commits.
+    DEVELOPMENT_TEAM: Q7ZLXMG4SB
     CODE_SIGN_STYLE: Automatic
 
 packages:
@@ -61,14 +61,10 @@ targets:
     type: application
     platform: iOS
     sources:
-      # ImportSheet / ImportProgressViews are a half-landed design-loading UI that
-      # still references APIs ShareImportViewModel / ImportPipeline do not have
-      # (headerLabel, abandon, ImportPipeline.Stage). ShareRootView does not use
-      # them — keep the sources on disk, exclude until the ViewModel catches up.
-      - path: Glutt
-        excludes:
-          - Features/Import/ImportSheet.swift
-          - Features/Import/ImportProgressViews.swift
+      # ImportSheet / ImportProgressViews were excluded while the design-loading
+      # UI was half-landed. ShareImportViewModel now has the API they expect, so
+      # they compile into both targets again.
+      - Glutt
     info:
       path: Glutt/Info.plist
       properties:
@@ -113,13 +109,13 @@ targets:
           - bluetooth-central
           - bluetooth-peripheral
         CFBundleURLTypes:
-          - CFBundleURLName: com.malik.glutt
+          - CFBundleURLName: com.omarlahmimi.glutt
             CFBundleURLSchemes:
               - glutt
           # Meta AI calls back here after the user approves the integration.
           # Its own scheme, not `glutt`, so the callback can never be confused
           # with an ordinary Glutt deep link.
-          - CFBundleURLName: com.malik.glutt.wearables
+          - CFBundleURLName: com.omarlahmimi.glutt.wearables
             CFBundleURLSchemes:
               - glutt-wearables
           # Google sign-in callback. Must be the iOS client id reversed, exactly;
@@ -130,10 +126,10 @@ targets:
               - com.googleusercontent.apps.326973383718-tmur4tp76aicsnvih43tkn36u7aj44tk
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.malik.glutt
+        PRODUCT_BUNDLE_IDENTIFIER: com.omarlahmimi.glutt
         TARGETED_DEVICE_FAMILY: "1"
-        CURRENT_PROJECT_VERSION: 12
-        MARKETING_VERSION: "1.2"
+        CURRENT_PROJECT_VERSION: 13
+        MARKETING_VERSION: "1.2.1"
         ENABLE_USER_SCRIPT_SANDBOXING: true
         CODE_SIGN_ENTITLEMENTS: Glutt/Glutt.entitlements
     dependencies:
@@ -183,9 +179,12 @@ targets:
       - path: Glutt/Services/Import/ShareImportViewModel.swift
       # App-group pantry coverage for the share-sheet confirmation line.
       - path: Glutt/Services/Import/PantrySnapshot.swift
+      # The share sheet's own UI vocabulary. Both files live in the app target
+      # but the extension is what renders them, so they compile into it too.
+      - path: Glutt/Features/Import/ImportProgressViews.swift
+      - path: Glutt/Features/Import/ImportSheet.swift
       # Shared with the app target — extension needs the same canonicalizer for
       # pantry-coverage lines on the share-sheet preview.
-      # (ImportSheet / ImportProgressViews excluded — see Glutt target excludes.)
       - path: Glutt/Services/IngredientCanonicalizer.swift
       - path: Glutt/Services/Import/PendingImportStore.swift
       - path: Glutt/Services/AI/LLMClient.swift
@@ -229,10 +228,10 @@ targets:
               NSExtensionActivationSupportsWebURLWithMaxCount: 1
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.malik.glutt.share
+        PRODUCT_BUNDLE_IDENTIFIER: com.omarlahmimi.glutt.share
         CODE_SIGN_ENTITLEMENTS: GluttShare/GluttShare.entitlements
-        CURRENT_PROJECT_VERSION: 12
-        MARKETING_VERSION: "1.2"
+        CURRENT_PROJECT_VERSION: 13
+        MARKETING_VERSION: "1.2.1"
         SKIP_INSTALL: true
 
   GluttTests:

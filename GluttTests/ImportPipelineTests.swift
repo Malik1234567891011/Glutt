@@ -30,12 +30,12 @@ final class ImportPipelineTests: XCTestCase {
     }
 
     func testReadingMessageAlwaysComesFirst() async throws {
-        var messages: [String] = []
+        var stages: [ImportPipeline.Stage] = []
         var fetched = ImportedRecipeDraft()
         fetched.platform = .website
         let deps = fakeDeps(fetched: fetched, wouldImprove: { _ in false })
-        _ = try await ImportPipeline.run(urlString: "x", deps: deps) { messages.append($0) }
-        XCTAssertEqual(messages.first, "Reading the recipe…")
+        _ = try await ImportPipeline.run(urlString: "x", deps: deps) { stages.append($0.stage) }
+        XCTAssertEqual(stages.first, .reading)
     }
 
     func testCleanupRunsAndIsReflectedInResult() async throws {
@@ -47,9 +47,9 @@ final class ImportPipelineTests: XCTestCase {
             c.stepTexts = ["Cook the rice."]
             return c
         })
-        var messages: [String] = []
-        let result = try await ImportPipeline.run(urlString: "x", deps: deps) { messages.append($0) }
-        XCTAssertTrue(messages.contains("Cleaning it up with AI…"))
+        var stages: [ImportPipeline.Stage] = []
+        let result = try await ImportPipeline.run(urlString: "x", deps: deps) { stages.append($0.stage) }
+        XCTAssertTrue(stages.contains(.cleaning))
         XCTAssertEqual(result.ingredientLines, ["1 cup rice"])
         XCTAssertEqual(result.stepTexts, ["Cook the rice."])
     }
@@ -86,13 +86,13 @@ final class ImportPipelineTests: XCTestCase {
             }
         )
 
-        var messages: [String] = []
+        var stages: [ImportPipeline.Stage] = []
         let result = try await ImportPipeline.run(urlString: "https://tiktok.com/x", deps: deps) {
-            messages.append($0)
+            stages.append($0.stage)
         }
 
-        XCTAssertTrue(messages.contains("Listening to the video…"))
-        XCTAssertTrue(messages.contains("Building the recipe from what was said…"))
+        XCTAssertTrue(stages.contains(.listening))
+        XCTAssertTrue(stages.contains(.building))
         XCTAssertFalse(reconstructCalled, "speech extraction should skip freestyle reconstruct")
         XCTAssertEqual(result.ingredientLines.first, "0.5 lb rigatoni")
         XCTAssertTrue(result.usedSpeechTranscript)
@@ -112,9 +112,9 @@ final class ImportPipelineTests: XCTestCase {
             wouldImprove: { _ in false },
             transcript: nil
         )
-        var messages: [String] = []
-        let result = try await ImportPipeline.run(urlString: "x", deps: deps) { messages.append($0) }
-        XCTAssertTrue(messages.contains("No recipe in the video — drafting the dish…"))
+        var stages: [ImportPipeline.Stage] = []
+        let result = try await ImportPipeline.run(urlString: "x", deps: deps) { stages.append($0.stage) }
+        XCTAssertTrue(stages.contains(.drafting))
         XCTAssertEqual(result.ingredientLines, ["2 eggs"])
     }
 
@@ -128,9 +128,9 @@ final class ImportPipelineTests: XCTestCase {
             r.stepsAreAISuggested = true
             return r
         })
-        var messages: [String] = []
-        let result = try await ImportPipeline.run(urlString: "x", deps: deps) { messages.append($0) }
-        XCTAssertTrue(messages.contains("No method listed — drafting the steps…"))
+        var stages: [ImportPipeline.Stage] = []
+        let result = try await ImportPipeline.run(urlString: "x", deps: deps) { stages.append($0.stage) }
+        XCTAssertTrue(stages.contains(.steps))
         XCTAssertEqual(result.stepTexts, ["Cook the rice."])
         XCTAssertTrue(result.stepsAreAISuggested)
     }
@@ -154,13 +154,13 @@ final class ImportPipelineTests: XCTestCase {
             transcript: nil,
             onTranscribe: { transcribed = true }
         )
-        var messages: [String] = []
+        var stages: [ImportPipeline.Stage] = []
         let result = try await ImportPipeline.run(urlString: "https://tiktok.com/x", deps: deps) {
-            messages.append($0)
+            stages.append($0.stage)
         }
 
         XCTAssertFalse(transcribed, "should not call ElevenLabs when caption already has the recipe")
-        XCTAssertFalse(messages.contains("Listening to the video…"))
+        XCTAssertFalse(stages.contains(.listening))
         XCTAssertEqual(result.ingredientLines.count, 4)
         XCTAssertTrue(ImportPipeline.hasCaptionRecipe(fetched))
     }
@@ -178,13 +178,13 @@ final class ImportPipelineTests: XCTestCase {
             transcript: nil,
             onTranscribe: { transcribed = true }
         )
-        var messages: [String] = []
+        var stages: [ImportPipeline.Stage] = []
         _ = try await ImportPipeline.run(urlString: "https://tiktok.com/x", deps: deps) {
-            messages.append($0)
+            stages.append($0.stage)
         }
 
         XCTAssertTrue(transcribed)
-        XCTAssertTrue(messages.contains("Listening to the video…"))
+        XCTAssertTrue(stages.contains(.listening))
         XCTAssertFalse(ImportPipeline.hasCaptionRecipe(fetched))
     }
 
@@ -213,11 +213,11 @@ final class ImportPipelineTests: XCTestCase {
             wouldImprove: { _ in false },
             onTranscribe: { transcribed = true }
         )
-        var messages: [String] = []
+        var stages: [ImportPipeline.Stage] = []
         _ = try await ImportPipeline.run(urlString: "https://tiktok.com/x", deps: deps) {
-            messages.append($0)
+            stages.append($0.stage)
         }
         XCTAssertFalse(transcribed)
-        XCTAssertFalse(messages.contains("Listening to the video…"))
+        XCTAssertFalse(stages.contains(.listening))
     }
 }

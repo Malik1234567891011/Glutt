@@ -53,6 +53,35 @@ final class Recipe {
 
     var createdAt: Date
 
+    // MARK: - Sync (see docs/plan-recipe-sync.md)
+
+    /// Stable cross-device identity. `persistentModelID` is local and dies with
+    /// the store, so after a reinstall it is this that matches a pulled row to
+    /// a local one.
+    ///
+    /// Optional so the SwiftData migration stays lightweight — and, crucially,
+    /// **not** `= UUID()`: a defaulted value in a lightweight migration is
+    /// evaluated once for the schema, so every existing row would come back
+    /// carrying the *same* id. New recipes get theirs in `init` (which runs per
+    /// instance, and never when materializing a stored row); pre-existing ones
+    /// are filled in by `RecipeIdentity.backfill`.
+    var remoteID: UUID?
+
+    /// SHA256 of the sync body as last pushed. Different from the current body
+    /// means this recipe has local changes to send. Nil = never pushed.
+    ///
+    /// A hash rather than a dirty flag because recipe mutations happen inline
+    /// all over the view layer (the detail screen toggles `isFavorite`
+    /// directly), and any scheme needing a `touch()` at every mutation site
+    /// would silently miss one.
+    var syncedHash: String?
+    var syncedAt: Date?
+
+    /// Storage object key for this recipe's photo, once its bytes have been
+    /// uploaded. Nil means the photo lives only on this phone (or only at
+    /// `imageURL`, which is the free fallback and also the one that rots).
+    var remoteImagePath: String?
+
     @Relationship(deleteRule: .cascade, inverse: \RecipeIngredient.recipe)
     var ingredients: [RecipeIngredient]
 
@@ -144,6 +173,9 @@ final class Recipe {
         self.notes = notes
         self.nutritionIsEstimated = true
         self.createdAt = createdAt
+        // Every recipe born in this process gets its identity here, which is
+        // one place instead of the dozen `context.insert(recipe)` sites.
+        self.remoteID = UUID()
         self.ingredients = []
         self.steps = []
         self.collections = []

@@ -20,6 +20,8 @@ struct RecipeDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(Router.self) private var router
+    /// Optional so previews (and any host that doesn't inject it) still build.
+    @Environment(SyncCoordinator.self) private var sync: SyncCoordinator?
     @Query private var pantryItems: [PantryItem]
     @Query private var groceryItems: [GroceryItem]
     @Query private var ownedTools: [KitchenTool]
@@ -151,7 +153,13 @@ struct RecipeDetailView: View {
         .confirmationDialog("Delete this recipe?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 Analytics.capture(.recipeDeleted)
+                // Before the delete, while the recipe still has an id to
+                // remember. A hash sweep cannot see a row that no longer
+                // exists, so without this the recipe comes back on the next
+                // restore. Cleared once the tombstone reaches the server.
+                RecipeIdentity.recordDeletion(of: recipe, in: context)
                 context.delete(recipe)
+                sync?.requestSync()
                 dismiss()
             }
         }

@@ -84,6 +84,9 @@ enum DraftCleanup {
 
         var source = ""
         if let title = draft.title { source += "TITLE: \(title)\n" }
+        // Website imports put the page description here, not in `caption`, so
+        // without this the whole prompt for a web draft was one title line.
+        if let summary = draft.summary, !summary.isEmpty { source += "SUMMARY: \(summary)\n" }
         if let caption = draft.caption { source += "CAPTION/TEXT:\n\(caption)\n" }
         if !draft.ingredientLines.isEmpty {
             source += "EXTRACTED INGREDIENTS:\n" + draft.ingredientLines.joined(separator: "\n") + "\n"
@@ -91,7 +94,15 @@ enum DraftCleanup {
         if !draft.stepTexts.isEmpty {
             source += "EXTRACTED STEPS:\n" + draft.stepTexts.joined(separator: "\n") + "\n"
         }
-        guard source.count > 20 else { return draft }
+
+        // A title on its own is not a source to clean up. Sending it asks a model
+        // that recognizes the dish to invent a recipe that was never on the page.
+        // `reconstruct` is the deliberate path for that.
+        let hasSourceText = !(draft.summary ?? "").isEmpty
+            || !(draft.caption ?? "").isEmpty
+            || !draft.ingredientLines.isEmpty
+            || !draft.stepTexts.isEmpty
+        guard hasSourceText, source.count > 20 else { return draft }
 
         do {
             let cleaned = try await client.chatJSON(

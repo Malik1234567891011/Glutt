@@ -269,6 +269,152 @@ final class RecipeHTMLParserTests: XCTestCase {
         XCTAssertEqual(RecipeHTMLParser.isoDurationMinutes("PT2H"), 120)
         XCTAssertNil(RecipeHTMLParser.isoDurationMinutes(nil))
     }
+
+    func testDecodesNumericAndCurlyEntities() {
+        XCTAssertEqual(RecipeHTMLParser.decodeEntities("can&#8217;t"), "can’t")
+        XCTAssertEqual(RecipeHTMLParser.decodeEntities("2&#189; cups"), "2½ cups")
+        XCTAssertEqual(RecipeHTMLParser.decodeEntities("caf&#xe9;"), "café")
+        XCTAssertEqual(RecipeHTMLParser.decodeEntities("Salt &amp; pepper"), "Salt & pepper")
+        // Malformed entities are left alone rather than mangled.
+        XCTAssertEqual(RecipeHTMLParser.decodeEntities("100% &# done"), "100% &# done")
+    }
+}
+
+/// maangchi.com publishes a schema.org Recipe through the WPSSO plugin whose
+/// `recipeIngredient` is an empty array and whose `HowToStep`s carry a position
+/// and no text. The page fetches fine (HTTP 200); the parser used to accept that
+/// hollow node as a successful parse and return a recipe with nothing in it.
+final class HollowJSONLDImportTests: XCTestCase {
+
+    private func fixture() throws -> String {
+        let bundle = Bundle(for: Self.self)
+        let url = try XCTUnwrap(
+            bundle.url(forResource: "maangchiGalbiJjim", withExtension: "html"),
+            "maangchiGalbiJjim.html missing from the test bundle")
+        return try String(contentsOf: url, encoding: .utf8)
+    }
+
+    private func draft() throws -> ImportedRecipeDraft {
+        let url = try XCTUnwrap(URL(string: "https://www.maangchi.com/recipe/galbi-jjim"))
+        return RecipeHTMLParser.parse(html: try fixture(), sourceURL: url)
+    }
+
+    func testRecoversIngredientsTheJSONLDLeftEmpty() throws {
+        let draft = try draft()
+        XCTAssertGreaterThanOrEqual(draft.ingredientLines.count, 12)
+
+        let joined = draft.ingredientLines.joined(separator: "\n")
+        XCTAssertTrue(joined.contains("soy sauce"), joined)
+        XCTAssertTrue(joined.contains("beef short ribs"), joined)
+        XCTAssertTrue(joined.contains("garlic cloves"), joined)
+    }
+
+    func testRecoversStepsFromPositionOnlyHowToSteps() throws {
+        let draft = try draft()
+        XCTAssertGreaterThanOrEqual(draft.stepTexts.count, 10)
+        XCTAssertTrue(
+            draft.stepTexts.contains { $0.lowercased().contains("seasoning sauce") },
+            draft.stepTexts.joined(separator: "\n"))
+    }
+
+    func testKeepsJSONLDMetadataWhileFillingTheGaps() throws {
+        let draft = try draft()
+        XCTAssertEqual(draft.title, "Braised beef short ribs (Galbi-jjim: 갈비찜)")
+        XCTAssertEqual(draft.platform, .website)
+        XCTAssertNotNil(draft.summary)
+        // "Serves 4" sits under the Ingredients heading; the JSON-LD has no yield.
+        XCTAssertEqual(draft.servings, 4)
+    }
+
+    func testStopsAtNewsletterStorefrontAndCommentSections() throws {
+        let draft = try draft()
+        let all = (draft.ingredientLines + draft.stepTexts).joined(separator: "\n").lowercased()
+        XCTAssertFalse(all.contains("thanks maangchi"), "comment text leaked in")
+        XCTAssertFalse(all.contains("newsletter"), "newsletter block leaked in")
+        XCTAssertFalse(all.contains("buy a thing"), "storefront block leaked in")
+    }
+
+    func testNoStaleIssuesAfterTheMarkupFilledTheGaps() throws {
+        let draft = try draft()
+        let issues = draft.issues.joined(separator: " | ").lowercased()
+        XCTAssertFalse(issues.contains("no ingredients found"), issues)
+        XCTAssertFalse(issues.contains("no steps found"), issues)
+    }
+
+    func testGoodJSONLDStillWinsWithoutTouchingTheMarkup() throws {
+        // A page with complete JSON-LD must not pick up body markup, otherwise
+        // every well-formed recipe site regresses.
+        let html = """
+        <html><head><script type="application/ld+json">
+        {"@type":"Recipe","name":"Real Recipe",
+         "recipeIngredient":["1 cup flour","2 eggs"],
+         "recipeInstructions":[{"@type":"HowToStep","text":"Mix it."}]}
+        </script></head><body>
+        <h2>Ingredients</h2><ul><li>DECOY should not appear</li><li>DECOY two</li></ul>
+        </body></html>
+        """
+        let url = try XCTUnwrap(URL(string: "https://example.com/real"))
+        let draft = RecipeHTMLParser.parse(html: html, sourceURL: url)
+
+        XCTAssertEqual(draft.ingredientLines, ["1 cup flour", "2 eggs"])
+        XCTAssertEqual(draft.stepTexts, ["Mix it."])
+    }
+
+    func testHollowJSONLDWithNoUsableMarkupFallsThroughToMetaTags() throws {
+        let html = """
+        <html><head>
+        <meta property="og:title" content="Mystery Stew" />
+        <meta property="og:image" content="https://cdn.example.com/stew.jpg" />
+        <script type="application/ld+json">
+        {"@type":"Recipe","name":"Mystery Stew","recipeIngredient":[],"recipeInstructions":[]}
+        </script>
+        </head><body><p>Nothing useful here.</p></body></html>
+        """
+        let url = try XCTUnwrap(URL(string: "https://example.com/mystery"))
+        let draft = RecipeHTMLParser.parse(html: html, sourceURL: url)
+
+        // The meta path ran, rather than returning the hollow JSON-LD draft.
+        XCTAssertEqual(draft.imageURL, "https://cdn.example.com/stew.jpg")
+        XCTAssertTrue(draft.ingredientLines.isEmpty)
+        XCTAssertFalse(draft.issues.isEmpty)
+    }
+}
+
+final class RecipeBodyParserTests: XCTestCase {
+
+    func testPrefersListItemsButFallsBackToParagraphs() {
+        let html = """
+        <h2>Ingredients</h2><ul><li>1 cup rice</li><li>2 cups water</li></ul>
+        <h2>Method</h2><p>Rinse the rice until the water runs clear.</p>
+        <p>Simmer covered for 18 minutes.</p>
+        """
+        let result = RecipeBodyParser.parse(html: html)
+        XCTAssertEqual(result.ingredientLines, ["1 cup rice", "2 cups water"])
+        XCTAssertEqual(result.stepTexts.count, 2)
+        XCTAssertTrue(result.stepTexts[0].hasPrefix("Rinse the rice"))
+    }
+
+    func testIgnoresScriptContentThatNamesRecipeSelectors() {
+        // Ad configs embed ".recipe-card-ingredients li" strings in the page.
+        let html = """
+        <script>var ads = {"elementSelector": ".recipe-card-ingredients li"};</script>
+        <h2>Ingredients</h2><ul><li>1 tsp salt</li><li>3 eggs</li></ul>
+        """
+        let result = RecipeBodyParser.parse(html: html)
+        XCTAssertEqual(result.ingredientLines, ["1 tsp salt", "3 eggs"])
+    }
+
+    func testReadsServingsFromTheIngredientSection() {
+        let html = "<h2>Ingredients</h2><p>Serves 6</p><ul><li>1 lb pork</li><li>2 onions</li></ul>"
+        XCTAssertEqual(RecipeBodyParser.parse(html: html).servings, 6)
+    }
+
+    func testReturnsNothingWhenThePageHasNoRecipeHeadings() {
+        let html = "<h2>About me</h2><p>I like cooking.</p><ul><li>one</li><li>two</li></ul>"
+        let result = RecipeBodyParser.parse(html: html)
+        XCTAssertTrue(result.ingredientLines.isEmpty)
+        XCTAssertTrue(result.stepTexts.isEmpty)
+    }
 }
 
 final class TextRecipeParserTests: XCTestCase {

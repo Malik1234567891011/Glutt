@@ -8,7 +8,25 @@ enum RecipeHTMLParser {
     static func parse(html: String, sourceURL: URL) -> ImportedRecipeDraft {
         if var draft = parseJSONLD(html: html, sourceURL: sourceURL) {
             draft.platform = ImportedRecipeDraft.platform(for: sourceURL)
-            return draft
+
+            // A Recipe node can be well-formed and still carry no recipe: some
+            // SEO plugins emit an empty `recipeIngredient` and text-less
+            // `HowToStep`s. Finding the node is not the same as finding a
+            // recipe, so fill the gaps from the page's own markup.
+            if draft.ingredientLines.isEmpty || draft.stepTexts.isEmpty {
+                let body = RecipeBodyParser.parse(html: html)
+                if draft.ingredientLines.isEmpty { draft.ingredientLines = body.ingredientLines }
+                if draft.stepTexts.isEmpty { draft.stepTexts = body.stepTexts }
+                if draft.servings == nil { draft.servings = body.servings }
+            }
+
+            if !draft.ingredientLines.isEmpty || !draft.stepTexts.isEmpty {
+                annotateIssues(&draft)
+                return draft
+            }
+            // Hollow JSON-LD and nothing in the markup either. Fall through so
+            // the meta path still gets its shot rather than returning a title
+            // with no recipe under it.
         }
         return parseMetaFallback(html: html, sourceURL: sourceURL)
     }
@@ -89,14 +107,17 @@ enum RecipeHTMLParser {
             draft.proteinGrams = leadingInt(nutrition["proteinContent"] as? String)
         }
 
-        // Issues for the review screen
+        return draft
+    }
+
+    /// Runs after the markup fallback, so a gap the page itself filled never
+    /// shows up as a warning on the review screen.
+    private static func annotateIssues(_ draft: inout ImportedRecipeDraft) {
         if draft.title == nil { draft.issues.append("Couldn't find a title") }
-        if draft.ingredientLines.isEmpty { draft.issues.append("No ingredients found — add them manually") }
-        if draft.stepTexts.isEmpty { draft.issues.append("No steps found — add them manually") }
+        if draft.ingredientLines.isEmpty { draft.issues.append("No ingredients found. Add them manually.") }
+        if draft.stepTexts.isEmpty { draft.issues.append("No steps found. Add them manually.") }
         if draft.servings == nil { draft.issues.append("Servings were guessed") }
         if draft.prepMinutes == nil, draft.cookMinutes == nil { draft.issues.append("No timing information") }
-
-        return draft
     }
 
     // MARK: - JSON-LD field helpers
@@ -195,15 +216,50 @@ enum RecipeHTMLParser {
     }
 
     static func decodeEntities(_ text: String) -> String {
-        text
-            .replacingOccurrences(of: "&amp;", with: "&")
-            .replacingOccurrences(of: "&quot;", with: "\"")
-            .replacingOccurrences(of: "&#39;", with: "'")
-            .replacingOccurrences(of: "&apos;", with: "'")
-            .replacingOccurrences(of: "&nbsp;", with: " ")
-            .replacingOccurrences(of: "&lt;", with: "<")
-            .replacingOccurrences(of: "&gt;", with: ">")
+        var decoded = decodeNumericEntities(text)
+        for (entity, replacement) in [
+            ("&quot;", "\""), ("&apos;", "'"), ("&nbsp;", " "),
+            ("&lt;", "<"), ("&gt;", ">"),
+            ("&rsquo;", "'"), ("&lsquo;", "'"), ("&ldquo;", "\""), ("&rdquo;", "\""),
+            ("&hellip;", "..."), ("&frac12;", "½"), ("&frac14;", "¼"), ("&frac34;", "¾"),
+            ("&deg;", "°"),
+        ] {
+            decoded = decoded.replacingOccurrences(of: entity, with: replacement)
+        }
+        // Last, so "&amp;lt;" decodes to "&lt;" and not to "<".
+        return decoded.replacingOccurrences(of: "&amp;", with: "&")
     }
+
+    /// WordPress writes curly quotes and fractions as `&#8217;` / `&#189;`, which
+    /// otherwise survive into ingredient lines as literal entity text.
+    private static func decodeNumericEntities(_ text: String) -> String {
+        guard text.contains("&#") else { return text }
+        let source = text as NSString
+        let matches = numericEntityRegex.matches(
+            in: text, range: NSRange(location: 0, length: source.length))
+        guard !matches.isEmpty else { return text }
+
+        var decoded = ""
+        var cursor = 0
+        for match in matches {
+            decoded += source.substring(
+                with: NSRange(location: cursor, length: match.range.location - cursor))
+            let isHex = match.range(at: 1).length > 0
+            let digits = source.substring(with: match.range(at: 2))
+            if let code = UInt32(digits, radix: isHex ? 16 : 10),
+               let scalar = Unicode.Scalar(code) {
+                decoded.append(Character(scalar))
+            } else {
+                decoded += source.substring(with: match.range)  // leave malformed entities alone
+            }
+            cursor = match.range.location + match.range.length
+        }
+        decoded += source.substring(from: cursor)
+        return decoded
+    }
+
+    private static let numericEntityRegex = try! NSRegularExpression(
+        pattern: "&#(x)?([0-9A-Fa-f]{1,6});", options: .caseInsensitive)
 
     // MARK: - Meta tag fallback (social pages, unmarked blogs)
 
@@ -229,7 +285,7 @@ enum RecipeHTMLParser {
         draft.platform = ImportedRecipeDraft.platform(for: sourceURL)
 
         if draft.ingredientLines.isEmpty {
-            draft.issues.append("Couldn't extract ingredients from this page — paste them manually or try the screenshot import")
+            draft.issues.append("Couldn't extract ingredients from this page. Paste them manually, or try the screenshot import.")
         }
         if draft.stepTexts.isEmpty {
             draft.issues.append("No steps found")

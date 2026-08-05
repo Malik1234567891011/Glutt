@@ -74,14 +74,18 @@ Never report a change as working until:
 
 1. Build is clean, 0 errors, via XcodeBuildMCP.
 2. `GluttTests` is green. Baseline as of 2026-08-04: **475 passed, 0 failed, 0 skipped**. If the total drops, say why.
-3. The change is **driven in the running app**, every time, not just when it's UI work. Follow `/verify-in-app`. Green tests are the floor, not the proof.
+3. The change is **driven in the running app**, every time, not just when it's UI work. Green tests are the floor, not the proof.
 4. Failures are reported with the real output. Never round a red run up to "mostly passing", and say plainly what you did not verify.
 
 Note: the simulator uses the Mac's network stack, TLS fingerprint, and egress IP. It cannot reproduce anything that depends on being a real phone on a real connection. Go to the device for that.
 
+## Bigger tasks
+
+Anything larger than a one-file change: decompose into tracked tasks before writing code, show the list, work one at a time, and finish by handing over a risk-ordered checklist of exactly what to tap in the app to confirm it works. Match the style of `docs/goLiveTestScript.md`.
+
 ## Explaining bugs
 
-Any time you report what went wrong, use `/explain-bug`: plain English, then technical facts, then fix, then difficulty. Four sentences maximum, cause first, no story of the investigation.
+Report what went wrong in four parts, one to two short sentences each: plain English, then technical facts with real values, then the fix, then its difficulty. Cause first. No story of the investigation.
 
 ## How Malik works (match this)
 
@@ -115,6 +119,12 @@ Any time you report what went wrong, use `/explain-bug`: plain English, then tec
 
 ## Skills
 
-Sources live in `.agents/skills/`, symlinked into `.claude/skills/` so `/verify-in-app`, `/explain-bug`, `/grilling`, `/research`, `/to-tickets`, `/improve-codebase-architecture`, `/writing-great-skills` resolve. Add a new skill in `.agents/skills/`, then symlink it.
+Tracked skills live in `.agents/skills/` (grilling, research, to-tickets, improve-codebase-architecture, writing-great-skills). Claude Code reads `.claude/skills/`, which is gitignored, so **a fresh clone must symlink them** before `/grilling` and friends resolve:
+
+```bash
+cd .claude/skills && for s in ../../.agents/skills/*/; do ln -sfn "$s" "$(basename "$s")"; done
+```
+
+New skills go in `.agents/skills/`, then get symlinked. They are ignored by default; add a `!` negation line in `.gitignore` only when a skill is meant to be shared with everyone on the repo.
 
 Path-scoped rules load automatically by file glob: `.claude/rules/ui-copy.md`, `polly-clips.md`, `media-worker.md`.

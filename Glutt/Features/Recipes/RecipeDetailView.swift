@@ -13,8 +13,8 @@ struct ScrollOffsetKey: PreferenceKey {
 
 /// Recipe detail, redesigned to `Glutt Screens.dc.html` (screen "Recipe detail"):
 /// a tall hero, a rounded cream content sheet with title, stats, nutrition for
-/// the current serving count, tags, an adapt row, Ingredients/Steps, versions of
-/// this recipe, and a pinned "Cook with Chef" bar. Extras (tools, notes, rating,
+/// the current serving count, tags, the "Ask Polly" button, Ingredients/Steps,
+/// versions of this recipe, and a pinned "Cook with Chef" bar. Extras (tools, notes, rating,
 /// history) live in the more_horiz "More details" sheet.
 struct RecipeDetailView: View {
     @Environment(\.modelContext) private var context
@@ -37,7 +37,23 @@ struct RecipeDetailView: View {
     @State private var isShowingPreCookChecklist = false
     @State private var isShowingCookBriefing = false
     @State private var isOptimizing = false
-    @State private var isAdjusting = false
+    /// One chat presentation, carrying whatever it should open with.
+    ///
+    /// An `item` rather than a bool plus a separate `prefill` string: the two
+    /// are written in the same turn when the substitute sheet hands over, and
+    /// the sheet's content closure can be captured before the string lands,
+    /// which opened the chat with an empty field. Travelling together, it can't.
+    struct ChatLaunch: Identifiable {
+        let id = UUID()
+        var prefill: String?
+    }
+    @State private var chatLaunch: ChatLaunch?
+    /// Set by the chat's Apply, read once the sheet has finished dismissing.
+    /// Pushing while a sheet is still animating away drops the push.
+    @State private var versionFromChat: Recipe?
+    @State private var pushedVersion: Recipe?
+    /// Held while the substitute sheet dismisses, then handed over.
+    @State private var chatPrefillAfterSubstitute: String?
     @State private var isShowingDetails = false
     @State private var substituteTarget: DietGuard.Conflict?
     @State private var selectedTab = 0   // 0 = Ingredients, 1 = Steps
@@ -144,11 +160,35 @@ struct RecipeDetailView: View {
         }
         .sheet(isPresented: $isShowingEditor) { RecipeEditorView(recipe: recipe) }
         .sheet(isPresented: $isOptimizing) { OptimizeRecipeView(recipe: recipe) }
-        .sheet(isPresented: $isAdjusting) { AdjustRecipeView(recipe: recipe) }
+        .sheet(item: $chatLaunch, onDismiss: {
+            guard let created = versionFromChat else { return }
+            versionFromChat = nil
+            pushedVersion = created
+        }) { launch in
+            RecipeChatView(recipe: recipe, servings: displayServings, prefill: launch.prefill) { created in
+                versionFromChat = created
+                chatLaunch = nil
+            }
+        }
+        // Applying in chat lands you on what you just made. Without this the
+        // version is only reachable by scrolling down to the version row, which
+        // reads as "nothing happened".
+        .navigationDestination(item: $pushedVersion) { version in
+            RecipeDetailView(recipe: version)
+        }
         .sheet(isPresented: $isShowingDetails) { detailsSheet }
-        .sheet(item: $substituteTarget) { conflict in
-            SubstituteSheet(recipe: recipe, conflict: conflict)
-                .presentationDetents([.medium, .large])
+        .sheet(item: $substituteTarget, onDismiss: {
+            guard let question = chatPrefillAfterSubstitute else { return }
+            chatPrefillAfterSubstitute = nil
+            chatLaunch = ChatLaunch(prefill: question)
+        }) { conflict in
+            SubstituteSheet(recipe: recipe, conflict: conflict) { ingredient in
+                // Queued rather than presented here: swapping one sheet for
+                // another in the same frame loses the second one.
+                chatPrefillAfterSubstitute = "I can't use \(ingredient). What should I use instead?"
+                substituteTarget = nil
+            }
+            .presentationDetents([.medium, .large])
         }
         .confirmationDialog("Delete this recipe?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
@@ -173,6 +213,11 @@ struct RecipeDetailView: View {
             withAnimation(.easeOut(duration: 0.3).delay(0.12)) { sheetRevealed = true }
             RecipeNutrition.backfillIfNeeded(recipe: recipe)
             Analytics.capture(.recipeViewed)
+            // `-chatScreen`: stages the chat for screenshots. Inert without it.
+            if RecipeChatStaging.shouldOpenChatOnAppear() { chatLaunch = ChatLaunch() }
+            if RecipeChatStaging.shouldOpenSubstituteSheetOnAppear(), let first = sortedIngredients.first {
+                substituteTarget = DietGuard.Conflict(ingredientName: first.name, severity: .rule(.halal))
+            }
         }
     }
 
@@ -430,15 +475,52 @@ struct RecipeDetailView: View {
 
     // MARK: - Adapt row
 
+    /// One full-width button, not a row of them.
+    ///
+    /// "Make it…" and "Use what I have" side by side overflowed the 20pt-padded
+    /// content width and got clipped on every phone. Both live inside the chat
+    /// now, as chips, so there is nothing left to line up — and a single
+    /// full-width button cannot be cut off by a longer label later.
+    @ViewBuilder
     private var adaptRow: some View {
-        HStack(spacing: 9) {
-            if LLMClient.isConfigured {
-                adaptPill(MS.autoAwesomeFill, "Make it…") { isAdjusting = true }
-            }
-            if !pantryMatch.missing.isEmpty {
-                adaptPill(MS.autoFixHighFill, "Use what I have") { isOptimizing = true }
-            }
+        if LLMClient.isConfigured {
+            askPollyButton
+        } else if !pantryMatch.missing.isEmpty {
+            // No proxy in this build, so there is no chef to ask. The pantry
+            // swap is pure local heuristic and still works without one.
+            adaptPill(MS.autoFixHighFill, "Use what I have") { isOptimizing = true }
         }
+    }
+
+    private var askPollySubtitle: String {
+        let missing = pantryMatch.missing.count
+        guard missing > 0 else { return "Swaps, substitutions, anything about this dish" }
+        return "You're missing \(missing) \(missing == 1 ? "ingredient" : "ingredients")"
+    }
+
+    private var askPollyButton: some View {
+        Button {
+            Haptics.impact(.light); chatLaunch = ChatLaunch()
+        } label: {
+            HStack(spacing: 11) {
+                MS.chatBubbleFill.sized(18)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Ask Polly").font(BrandFont.nunito(15, 800))
+                    Text(askPollySubtitle)
+                        .font(BrandFont.nunito(12, 600))
+                        .foregroundStyle(Theme.Colors.accent.opacity(0.75))
+                }
+                Spacer(minLength: 0)
+            }
+            .foregroundColor(Theme.Colors.accent)
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Theme.Colors.accent.opacity(0.10)))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(Theme.Colors.accent.opacity(0.22), lineWidth: 1.5))
+        }
+        .buttonStyle(.plain)
     }
 
     private func adaptPill(_ icon: MS, _ label: String, action: @escaping () -> Void) -> some View {

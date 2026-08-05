@@ -1,5 +1,5 @@
 import { isAuthorized } from "../_lib/auth.js";
-import { logUsage, installIdFrom, tokensFrom } from "../_lib/usage.js";
+import { logUsage, installIdFrom, tokensFrom, featureFrom } from "../_lib/usage.js";
 
 function resolveOpenAIKey() {
   return (
@@ -33,6 +33,9 @@ export default async function handler(req, res) {
   // The model is whatever the app asked for -- this endpoint is a pass-through.
   // A model with no ai_rates row costs $0, which is the signal to add a rate.
   const model = (req.body && req.body.model) || null;
+  // Every one-shot LLM feature shares this endpoint; the header is how one
+  // surface's spend stays readable apart from the rest.
+  const feature = featureFrom(req, "chat");
   const startedAt = Date.now();
 
   try {
@@ -58,7 +61,7 @@ export default async function handler(req, res) {
     }
 
     await logUsage({
-      feature: "chat",
+      feature,
       model,
       install_id: installIdFrom(req),
       ...usage,
@@ -71,7 +74,7 @@ export default async function handler(req, res) {
     return res.send(raw);
   } catch (error) {
     await logUsage({
-      feature: "chat",
+      feature,
       model,
       install_id: installIdFrom(req),
       duration_ms: Date.now() - startedAt,

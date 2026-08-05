@@ -115,9 +115,12 @@ enum Analytics {
         case pollyWakeWord = "polly_wake_word"
 
         /// The AI features that are not Polly and not an import: `invent`,
-        /// `pantry_scan`, `substitute`, `optimize`, `adjust`. Every one of
-        /// these is a `feature = chat` row in `ai_usage`, which knows what they
-        /// cost in total but not which button produced them.
+        /// `pantry_scan`, `substitute`, `optimize`, `adjust`, and the recipe
+        /// chat (`recipe_chat_opened` / `recipe_chat` / `recipe_chat_pantry` /
+        /// `recipe_chat_applied`). Most are a `feature = chat` row in
+        /// `ai_usage`, which knows what they cost in total but not which button
+        /// produced them. Recipe chat is the exception: it sends
+        /// `x-glutt-feature: recipe_chat`, so its spend is readable on its own.
         ///
         /// Not to be confused with `KitchenTool`, which is a whisk.
         case aiToolUsed = "ai_tool_used"

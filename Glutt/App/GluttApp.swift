@@ -72,6 +72,7 @@ struct GluttApp: App {
             UserPrefs.self,
             PollyMemory.self,
             PollyCookLog.self,
+            RecipeChatMessage.self,
             SyncTombstone.self,
         ])
         do {

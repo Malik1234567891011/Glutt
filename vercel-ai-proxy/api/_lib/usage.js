@@ -36,6 +36,19 @@ export function installIdFrom(req) {
   return (req.headers["x-glutt-device-id"] || "").toString().slice(0, 64) || null;
 }
 
+/**
+ * Which app surface made the call, when it says so. `/chat/completions` is
+ * shared by every one-shot LLM feature in the app, so without this they all
+ * land in `ai_usage` as an undifferentiated "chat" and no single feature's
+ * spend can be read. Callers that don't set the header keep the old label.
+ */
+export function featureFrom(req, fallback) {
+  const raw = (req.headers["x-glutt-feature"] || "").toString();
+  // Whitelist the shape rather than the values, so a new client-side feature
+  // needs no proxy deploy -- but a junk header can't invent arbitrary rows.
+  return /^[a-z0-9_]{1,40}$/.test(raw) ? raw : fallback;
+}
+
 /** Pulls token counts out of an OpenAI-shaped `usage` object. */
 export function tokensFrom(payload) {
   const u = payload && payload.usage;

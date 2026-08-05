@@ -10,6 +10,9 @@ struct SubstituteSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var recipe: Recipe
     let conflict: DietGuard.Conflict
+    /// Hands the conflicting ingredient to the chat. Nil hides the link, so
+    /// this sheet still works anywhere the chat isn't reachable.
+    var onAskChef: ((String) -> Void)?
 
     private var options: [SubstitutionService.Substitution] {
         let prefs = UserPrefs.current(in: context)
@@ -35,10 +38,20 @@ struct SubstituteSheet: View {
                             }
                         }
                     }
+
+                    askChefLink
                 }
                 .padding(Theme.Spacing.lg)
             }
             .background(Theme.Colors.background)
+            // `-chatScreen substitute`: follows the link below for you, through
+            // the same call the button makes. Inert without the launch argument.
+            .task {
+                guard RecipeChatStaging.requested == .substitute else { return }
+                try? await Task.sleep(for: RecipeChatStaging.beat)
+                guard !Task.isCancelled else { return }
+                onAskChef?(conflict.ingredientName)
+            }
             .navigationTitle("Substitute")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -46,6 +59,31 @@ struct SubstituteSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
+        }
+    }
+
+    /// The list above is curated, instant, and finite. When none of it fits the
+    /// dish the cook is actually looking at, the chef can think about it.
+    @ViewBuilder
+    private var askChefLink: some View {
+        if let onAskChef {
+            Button {
+                Haptics.impact(.light)
+                onAskChef(conflict.ingredientName)
+            } label: {
+                HStack(spacing: Theme.Spacing.sm) {
+                    MS.chatBubbleFill.sized(16)
+                    Text("Ask Polly about this instead")
+                        .font(.gluttBody.weight(.semibold))
+                    Spacer(minLength: 0)
+                }
+                .foregroundStyle(Theme.Colors.accent)
+                .padding(Theme.Spacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.Colors.accent.opacity(0.08),
+                            in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            }
+            .buttonStyle(.plain)
         }
     }
 

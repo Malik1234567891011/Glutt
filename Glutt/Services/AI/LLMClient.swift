@@ -67,6 +67,37 @@ struct LLMClient {
     /// The production client, reading the build's proxy settings.
     static let live = LLMClient()
 
+    /// One turn of a conversation. `imageData` (JPEG, pre-downscaled via
+    /// `ImagePrep`) turns it into a vision message.
+    struct Message {
+        enum Role: String {
+            case system, user, assistant
+        }
+
+        let role: Role
+        let text: String
+        var imageData: Data?
+
+        static func system(_ text: String) -> Message { Message(role: .system, text: text) }
+        static func user(_ text: String, imageData: Data? = nil) -> Message {
+            Message(role: .user, text: text, imageData: imageData)
+        }
+        static func assistant(_ text: String) -> Message { Message(role: .assistant, text: text) }
+
+        var wireFormat: [String: Any] {
+            guard let imageData else { return ["role": role.rawValue, "content": text] }
+            return [
+                "role": role.rawValue,
+                "content": [
+                    ["type": "text", "text": text],
+                    ["type": "image_url", "image_url": [
+                        "url": "data:image/jpeg;base64,\(imageData.base64EncodedString())",
+                    ]],
+                ],
+            ]
+        }
+    }
+
     /// Single-turn chat completion. Keep prompts structured; parse strictly.
     /// Pass `imageData` (JPEG, pre-downscaled via `ImagePrep`) for vision calls.
     func chat(
@@ -75,6 +106,29 @@ struct LLMClient {
         imageData: Data? = nil,
         temperature: Double = 0.4,
         jsonMode: Bool = false,
+        feature: String? = nil,
+        timeout: TimeInterval = 30
+    ) async throws -> String {
+        try await chat(
+            messages: [.system(system), .user(user, imageData: imageData)],
+            temperature: temperature,
+            jsonMode: jsonMode,
+            feature: feature,
+            timeout: timeout
+        )
+    }
+
+    /// Multi-turn chat completion. The API is stateless, so the caller owns the
+    /// history and decides how much of it is worth re-sending — see
+    /// `RecipeChatStore.contextTurns`.
+    ///
+    /// `feature` tags the proxy's `ai_usage` row so one surface's spend can be
+    /// read apart from every other call that lands on `/chat/completions`.
+    func chat(
+        messages: [Message],
+        temperature: Double = 0.4,
+        jsonMode: Bool = false,
+        feature: String? = nil,
         timeout: TimeInterval = 30
     ) async throws -> String {
         guard isConfigured else { throw LLMError.notConfigured }
@@ -92,26 +146,14 @@ struct LLMClient {
         // Attributes the proxy's ai_usage row to this install. Identifies a
         // device for cost accounting, never a person.
         request.setValue(InstallID.current, forHTTPHeaderField: "x-glutt-device-id")
-
-        let userContent: Any
-        if let imageData {
-            userContent = [
-                ["type": "text", "text": user],
-                ["type": "image_url", "image_url": [
-                    "url": "data:image/jpeg;base64,\(imageData.base64EncodedString())",
-                ]],
-            ]
-        } else {
-            userContent = user
+        if let feature, !feature.isEmpty {
+            request.setValue(feature, forHTTPHeaderField: "x-glutt-feature")
         }
 
         var body: [String: Any] = [
             "model": Self.model,
             "temperature": temperature,
-            "messages": [
-                ["role": "system", "content": system],
-                ["role": "user", "content": userContent],
-            ],
+            "messages": messages.map(\.wireFormat),
         ]
         if jsonMode {
             body["response_format"] = ["type": "json_object"]
@@ -149,14 +191,31 @@ struct LLMClient {
         user: String,
         imageData: Data? = nil,
         temperature: Double = 0.2,
+        feature: String? = nil,
+        timeout: TimeInterval = 30
+    ) async throws -> T {
+        try await chatJSON(
+            type,
+            messages: [.system(system), .user(user, imageData: imageData)],
+            temperature: temperature,
+            feature: feature,
+            timeout: timeout
+        )
+    }
+
+    /// Multi-turn flavour of `chatJSON`.
+    func chatJSON<T: Decodable>(
+        _ type: T.Type,
+        messages: [Message],
+        temperature: Double = 0.2,
+        feature: String? = nil,
         timeout: TimeInterval = 30
     ) async throws -> T {
         let raw = try await chat(
-            system: system,
-            user: user,
-            imageData: imageData,
+            messages: messages,
             temperature: temperature,
             jsonMode: true,
+            feature: feature,
             timeout: timeout
         )
         // Some providers wrap JSON in markdown fences despite json mode.

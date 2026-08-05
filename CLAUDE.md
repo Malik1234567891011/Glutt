@@ -20,7 +20,8 @@ Repo folder is still `Cook4Me`. Product name is **Glutt**. GitHub: `Malik1234567
 | `media-worker/` | yt-dlp / FFmpeg / pilot clip materialization |
 | `supabase/migrations/` | Media schema (apply in Supabase SQL editor) |
 | `docs/` | Product, plans, research notes, go-live scripts |
-| `.agents/skills/` | Existing skills (migrate/symlink into `.claude/skills/` for Claude Code) |
+| `.agents/skills/` | Skill sources, symlinked into `.claude/skills/` |
+| `build/` | Generated. Vendored SPM checkouts, ignore when searching |
 
 Tabs (implemented order): Today → Recipes → **Polly** → Plan → Kitchen → Progress.
 
@@ -29,9 +30,9 @@ Tabs (implemented order): Today → Recipes → **Polly** → Plan → Kitchen �
 ```bash
 xcodegen generate                    # after editing project.yml
 # Prefer XcodeBuildMCP over raw xcodebuild (see Tooling).
-# Fallback when MCP unavailable:
+# Fallback when MCP unavailable (omit OS= so it picks the installed runtime):
 xcodebuild test -scheme Glutt \
-  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.3.1' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
   -only-testing:GluttTests/<Suite>
 
 cd media-worker && npm run serve-local   # local pilot clip server
@@ -52,9 +53,35 @@ Secrets: gitignored `Glutt/Services/AI/Secrets.local.plist` (copy from `Secrets.
 - **Do not commit or push unless Malik explicitly asks.** Never `--no-verify`, force-push `main`, or amend others' commits.
 - **Do not invent product behavior.** Prefer `docs/product.md`, `docs/structure.md`, and existing code over improvising UX.
 - **Match surrounding code.** Small diffs. No drive-by refactors, no unsolicited markdown docs.
-- **UI copy:** never use dashes as punctuation (no em/en dashes, no spaced hyphens). Commas/periods/reword. Hyphenated compounds (`gluten-free`) are fine. See design handoff `PROJECT-RULES.md`.
-- After `project.yml` changes: `xcodegen generate` before building.
-- Prefers **verify on simulator** for UI/Polly/clip work, not “compiles so ship it.”
+- **UI copy:** never use dashes as punctuation (no em/en dashes, no spaced hyphens). Commas/periods/reword. Hyphenated compounds (`gluten-free`) are fine. See `design-doc/glutt-design-context/design_handoff_glutt_app/PROJECT-RULES.md`.
+- **Never hand-edit `Glutt.xcodeproj`.** It's tracked but generated. Edit `project.yml`, then `xcodegen generate`.
+
+## Autonomy
+
+Once the task is clear, run it to completion without checking in. Don't ask to read a file, grep, build, run tests, drive the simulator, or write scratchpad files. Don't narrate tool calls or list what you're about to do. Come back when it's done or when genuinely blocked.
+
+Stop and ask only for these:
+
+- **Design and product decisions.** UX, copy, naming, data shape, architecture, anything with more than one defensible answer. Never pick one silently, even if the choice looks obvious. Use `/grilling`: one question at a time, recommend an answer, wait.
+- **Commits, pushes, and anything touching `main`.** Every time, even mid-task.
+- **Destructive or irreversible actions.** Deleting files, rewriting history, DB migrations, anything outward-facing.
+
+For anything else that comes up mid-task, assume the sensible default, say what you assumed, and keep going. A question that stops the work is only worth it when proceeding either way would be unsafe or would waste the work if wrong.
+
+## Definition of done
+
+Never report a change as working until:
+
+1. Build is clean, 0 errors, via XcodeBuildMCP.
+2. `GluttTests` is green. Baseline as of 2026-08-04: **475 passed, 0 failed, 0 skipped**. If the total drops, say why.
+3. The change is **driven in the running app**, every time, not just when it's UI work. Follow `/verify-in-app`. Green tests are the floor, not the proof.
+4. Failures are reported with the real output. Never round a red run up to "mostly passing", and say plainly what you did not verify.
+
+Note: the simulator uses the Mac's network stack, TLS fingerprint, and egress IP. It cannot reproduce anything that depends on being a real phone on a real connection. Go to the device for that.
+
+## Explaining bugs
+
+Any time you report what went wrong, use `/explain-bug`: plain English, then technical facts, then fix, then difficulty. Four sentences maximum, cause first, no story of the investigation.
 
 ## How Malik works (match this)
 
@@ -88,6 +115,6 @@ Secrets: gitignored `Glutt/Services/AI/Secrets.local.plist` (copy from `Secrets.
 
 ## Skills
 
-Project skills today live under `.agents/skills/` (grilling, research, to-tickets, improve-codebase-architecture, writing-great-skills). For Claude Code, prefer `.claude/skills/` — symlink or copy those folders so `/grilling` etc. resolve.
+Sources live in `.agents/skills/`, symlinked into `.claude/skills/` so `/verify-in-app`, `/explain-bug`, `/grilling`, `/research`, `/to-tickets`, `/improve-codebase-architecture`, `/writing-great-skills` resolve. Add a new skill in `.agents/skills/`, then symlink it.
 
-Path-scoped rules: `.claude/rules/`.
+Path-scoped rules load automatically by file glob: `.claude/rules/ui-copy.md`, `polly-clips.md`, `media-worker.md`.

@@ -65,6 +65,8 @@ struct GluttApp: App {
             RecipeIngredient.self,
             RecipeStep.self,
             RecipeCollection.self,
+            MealPlan.self,
+            MealPlanLine.self,
             PantryItem.self,
             GroceryItem.self,
             KitchenTool.self,

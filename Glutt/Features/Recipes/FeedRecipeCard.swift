@@ -13,36 +13,50 @@ struct FeedRecipeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ZStack(alignment: .topLeading) {
-                RecipeImageView(recipe: recipe)
-                    .frame(height: 180)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-                if let rank {
-                    rankPill(rank).padding(11)
-                } else if let tag = recipe.tags.first {
-                    tagPill(tag).padding(11)
+            if recipe.hasArtwork {
+                ZStack(alignment: .topLeading) {
+                    RecipeImageView(recipe: recipe)
+                        .frame(height: 180)
+                        .frame(maxWidth: .infinity)
+                        .clipped()
+                    if let rank {
+                        rankPill(rank).padding(11)
+                    } else if let tag = recipe.tags.first {
+                        tagPill(tag).padding(11)
+                    }
                 }
+                .frame(height: 180)
+                .clipped()
             }
-            .frame(height: 180)
-            .clipped()
 
             VStack(alignment: .leading, spacing: 0) {
-                Text(recipe.title)
-                    .font(BrandFont.bricolage(20, 600))
-                    .foregroundStyle(Theme.Colors.heading)
-                    .lineLimit(2)
-                if let summary = recipe.summary, !summary.isEmpty {
-                    Text(summary)
-                        .font(BrandFont.nunito(13, 600))
-                        .foregroundStyle(Theme.Colors.muted)
-                        .lineLimit(1)
-                        .padding(.top, 4)
+                // With no photo the glyph carries the identity, so it sits
+                // beside the title and the 180pt slot is not reserved at all.
+                HStack(alignment: .top, spacing: recipe.hasArtwork ? 0 : 12) {
+                    if !recipe.hasArtwork {
+                        RecipeGlyphTile(recipe: recipe, size: 52)
+                    }
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(recipe.title)
+                            .font(BrandFont.bricolage(20, 600))
+                            .foregroundStyle(Theme.Colors.heading)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let summary = recipe.summary, !summary.isEmpty {
+                            Text(summary)
+                                .font(BrandFont.nunito(13, 600))
+                                .foregroundStyle(Theme.Colors.muted)
+                                .lineLimit(recipe.hasArtwork ? 1 : 2)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 4)
+                        }
+                    }
+                    Spacer(minLength: 0)
                 }
                 statRow.padding(.top, 12)
             }
             .padding(.horizontal, 15)
-            .padding(.top, 13)
+            .padding(.top, recipe.hasArtwork ? 13 : 15)
             .padding(.bottom, 15)
         }
         .background(Theme.Colors.card)
@@ -124,13 +138,10 @@ struct FeedRecipeCard: View {
 
     // MARK: Tag → icon + color
 
+    /// Kept as the name callers already use; the mapping itself moved to
+    /// `RecipeTagStyle` so the glyph tile and this pill cannot disagree about
+    /// what colour a dish is.
     static func tagStyle(_ tag: String) -> (icon: MS, color: Color) {
-        let t = tag.lowercased()
-        if t.contains("spic") || t.contains("hot") { return (.fireFill, Theme.Colors.tomato) }
-        if t.contains("protein") { return (.boltFill, Theme.Colors.accent) }
-        if t.contains("prep") || t.contains("batch") { return (.lunchDiningFill, Theme.Colors.accent) }
-        if t.contains("veg") || t.contains("plant") || t.contains("green") { return (.ecoFill, Theme.Colors.accent) }
-        if t.contains("omega") || t.contains("fish") || t.contains("seafood") { return (.restaurantFill, Theme.Colors.accent) }
-        return (.restaurantFill, Theme.Colors.accent)
+        RecipeTagStyle.style(for: tag)
     }
 }

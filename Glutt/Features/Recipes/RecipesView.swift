@@ -10,6 +10,7 @@ struct RecipesView: View {
     @Query(sort: \Recipe.createdAt, order: .reverse) private var allRecipes: [Recipe]
     @Query private var pantryItems: [PantryItem]
     @Query private var cookHistory: [CookSession]
+    @Query private var mealPlans: [MealPlan]
 
     // Heterogeneous on purpose: the feed pushes recipes, the chef rail pushes chefs.
     @State private var navPath = NavigationPath()
@@ -25,6 +26,7 @@ struct RecipesView: View {
     @State private var isShowingSettings = false
     @State private var isShowingBasics = false
     @State private var isShowingCollections = false
+    @State private var isPlanningWeek = false
     @State private var isRequestingHowTo = false
     @State private var isNamingCollection = false
     @State private var newCollectionName = ""
@@ -101,8 +103,24 @@ struct RecipesView: View {
         }
     }
 
+    /// Dinners that belong to a planned week.
+    ///
+    /// They stay in `libraryRecipes`, so search still finds them and the "ready
+    /// tonight" hero can still pick one, and they are held out of the flat list
+    /// below, where the week rail already shows them as the set they are. Listing
+    /// them twice would be worse than either.
+    private var plannedRecipeIDs: Set<PersistentIdentifier> {
+        Set(mealPlans.flatMap { $0.collection?.recipes ?? [] }.map(\.persistentModelID))
+    }
+
     private var visibleRecipes: [Recipe] {
         var recipes = libraryRecipes
+        if filter != .favorites {
+            // Favourites is the exception: someone who deliberately starred a
+            // planned dinner is asking to see it in a list of starred things.
+            let planned = plannedRecipeIDs
+            recipes = recipes.filter { !planned.contains($0.persistentModelID) }
+        }
         switch filter {
         case .all:
             break
@@ -235,6 +253,14 @@ struct RecipesView: View {
             .sheet(isPresented: $isShowingCollections) {
                 CollectionsListSheet()
             }
+            .sheet(isPresented: $isPlanningWeek) {
+                WeekPlanView { collection in
+                    // Straight into the week you just saved, which is where the
+                    // five recipes and the reason for them live.
+                    zoomSource.card = nil
+                    navPath = NavigationPath([collection])
+                }
+            }
             .sheet(isPresented: $isRequestingHowTo) {
                 RequestHowToSheet { recipe in open(recipe) }
             }
@@ -328,6 +354,10 @@ struct RecipesView: View {
                     Button("Import from link or screenshot", systemImage: "link") { isShowingImport = true }
                     Button("Create manually", systemImage: "square.and.pencil") { isShowingEditor = true }
                     Divider()
+                    // The five dinners land here as ordinary recipes, so the
+                    // way in sits with everything else that adds to the shelf.
+                    Button("Plan a week of dinners", systemImage: "calendar") { isPlanningWeek = true }
+                    Divider()
                     Button("Cooking basics", systemImage: "book") { isShowingBasics = true }
                     Button("Browse collections", systemImage: "folder") { isShowingCollections = true }
                     Button("New collection", systemImage: "folder.badge.plus") { isNamingCollection = true }
@@ -404,6 +434,9 @@ struct RecipesView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 6)
             }
+            // Above the chef and restaurant rails: a week the cook planned
+            // themselves, with a shop still open against it, outranks browsing.
+            WeekPlanRail()
             if RestaurantContent.isEnabled {
                 RestaurantRail()
             }

@@ -85,7 +85,9 @@ enum GroceryListBuilder {
         }
     }
 
-    private static func normalizedUnit(_ unit: String?) -> String {
+    /// Shared with `MealPlanConsolidator`, which merges the same way when it
+    /// folds five planned recipes into one shop.
+    static func normalizedUnit(_ unit: String?) -> String {
         guard let unit = unit?.lowercased(), !unit.isEmpty else { return "" }
         // "cup" == "cups", "lb" == "lbs" for combining purposes.
         return unit.hasSuffix("s") ? String(unit.dropLast()) : unit

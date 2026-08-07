@@ -16,16 +16,20 @@ struct RecipeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            mediaBlock
-            Text(recipe.title)
-                .font(BrandFont.bricolage(21, 700))
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .lineLimit(2)
-            if let summary = recipe.summary, !summary.isEmpty {
-                Text(summary)
-                    .font(.gluttBody)
-                    .foregroundStyle(Theme.Colors.textSecondary)
+            if recipe.hasArtwork {
+                mediaBlock
+                Text(recipe.title)
+                    .font(BrandFont.bricolage(21, 700))
+                    .foregroundStyle(Theme.Colors.textPrimary)
                     .lineLimit(2)
+                if let summary = recipe.summary, !summary.isEmpty {
+                    Text(summary)
+                        .font(.gluttBody)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                        .lineLimit(2)
+                }
+            } else {
+                titleWithGlyph
             }
             statRow
         }
@@ -37,6 +41,33 @@ struct RecipeCard: View {
                 .strokeBorder(Theme.Colors.border.opacity(0.55), lineWidth: 1)
         )
         .shadow(color: Theme.Colors.textPrimary.opacity(0.07), radius: 10, x: 0, y: 3)
+    }
+
+    /// The layout for a dish with no photo: glyph beside the title instead of a
+    /// 148pt panel above it.
+    ///
+    /// The card gets shorter rather than emptier, which is the point. A planned
+    /// week is four or five of these in a row, and four tinted panels with
+    /// nothing in them would look like the screen failed to load.
+    private var titleWithGlyph: some View {
+        HStack(alignment: .top, spacing: 11) {
+            RecipeGlyphTile(recipe: recipe)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(recipe.title)
+                    .font(BrandFont.bricolage(19, 700))
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let summary = recipe.summary, !summary.isEmpty {
+                    Text(summary)
+                        .font(.gluttBody)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     private var mediaBlock: some View {

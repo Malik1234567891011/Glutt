@@ -93,6 +93,19 @@ targets:
         MWDAT:
           AppLinkURLScheme: "glutt-wearables://"
           MetaAppID: "0"
+          # No DAMEnabled key here on purpose. Bluetooth camera transport is
+          # gone: the 0.9.0 changelog removes "support for opting out of the
+          # Device Access Toolkit App Model (DAM)" and states the key is now
+          # ignored. Camera frames come over Wi-Fi (softAP) and only Wi-Fi, so
+          # the phone joining a network hosted by the glasses is the design, not
+          # a fault to configure away. See docs/glasses-transport-and-memory.md.
+        # The toolkit finds Meta AI with `UIApplication.canOpenURL`, which
+        # silently returns false for any scheme not listed here. Without it the
+        # SDK reports Meta AI as not installed when it is sitting on the home
+        # screen, and registration fails with an error that names the wrong
+        # problem.
+        LSApplicationQueriesSchemes:
+          - fb-viewapp
         # The camera stream reaches the phone over Wi-Fi, which is why a camera
         # SDK wants local network and Bonjour.
         NSBluetoothAlwaysUsageDescription: Glutt connects to your Meta glasses so Chef can see what you are cooking.
@@ -141,16 +154,20 @@ targets:
         product: Supabase
       - package: GoogleSignIn
         product: GoogleSignIn
-      # MWDATMockDevice ships in the same package as the real SDK and is how we
-      # develop against glasses we cannot yet register. It is deliberately NOT
-      # debug-only: XcodeGen has no per-configuration dependency here, and the
-      # code that uses it is already gated behind a debug surface.
       - package: MetaWearablesDAT
         product: MWDATCore
       - package: MetaWearablesDAT
         product: MWDATCamera
-      - package: MetaWearablesDAT
-        product: MWDATMockDevice
+      # MWDATMockDevice is DELIBERATELY NOT LINKED HERE. It lives on the
+      # GluttTests target instead, which gets us the mock for automated
+      # measurement without ever putting it in a shippable app. See the harness
+      # in GluttTests/Glasses/. It statically duplicates the
+      # same internal SUPMediaStream* and FB* ObjC classes as MWDATCamera, and
+      # dyld warns that this "may cause spurious casting failures and mysterious
+      # crashes". It did: the app died the moment a real stream reached
+      # waitingForDevice. Every use of it is behind
+      # `#if canImport(MWDATMockDevice)`, so add the product back here to get the
+      # mock device and the -mockGlasses rig, and expect the crash back with it.
 
   GluttShare:
     type: app-extension
@@ -244,6 +261,21 @@ targets:
         GENERATE_INFOPLIST_FILE: true
     dependencies:
       - target: Glutt
+      # The mock device lives HERE and nowhere else. Linking it into the app
+      # duplicates MWDATCamera's internal SUPMediaStream*/FB* ObjC classes and
+      # crashes real streams; a unit-test bundle is injected into the app at
+      # test time only, so the harness gets a fake pair of glasses and no
+      # shipping build ever carries the symbols.
+      #
+      # This is what makes glasses behaviour measurable without hardware. Two
+      # non-obvious prerequisites, both from Meta on issue #197: the fixture
+      # handed to `setCameraFeed` MUST be H.265 (an H.264 file fails silently
+      # and delivers zero frames), and the test run must sign ad-hoc with
+      # CODE_SIGN_IDENTITY="-" rather than CODE_SIGNING_ALLOWED=NO, because
+      # `Wearables.configure()` does keychain work that throws without a
+      # signing identity.
+      - package: MetaWearablesDAT
+        product: MWDATMockDevice
 
 schemes:
   Glutt:
@@ -261,6 +293,31 @@ schemes:
         "-pollyV2Spike": false
     archive:
       config: Release
+
+  # Runs the glasses memory matrix, which is skipped everywhere else because it
+  # takes minutes and would distort the suite baseline.
+  #
+  # A separate scheme rather than a test plan or a `-only-testing` flag, because
+  # the gate is an environment variable and there is no way to get one into a
+  # unit-test host from the xcodebuild command line: plain `FOO=1 xcodebuild`
+  # stops at the build system, and the `TEST_RUNNER_` prefix only reaches a
+  # XCUITest runner process, not an app hosting unit tests. A scheme test action
+  # is the one place that setting survives into the simulator.
+  #
+  #   xcodebuild test -scheme "Glutt Glasses Matrix" \
+  #     -destination 'platform=iOS Simulator,name=iPhone 17' \
+  #     -only-testing:GluttTests/GlassesMemoryMatrixTests/testA_timeVersusFrames \
+  #     CODE_SIGN_IDENTITY="-"
+  Glutt Glasses Matrix:
+    build:
+      targets:
+        Glutt: [test]
+    test:
+      config: Debug
+      environmentVariables:
+        GLUTT_GLASSES_MATRIX: "1"
+      targets:
+        - GluttTests
 
   # Release-config scheme for testing a production-like build locally. Passes
   # `-seed` so demo recipes are populated when you RUN it from Xcode (handy for

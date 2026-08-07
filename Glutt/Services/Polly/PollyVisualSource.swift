@@ -38,6 +38,47 @@ protocol PollyVisualSource: AnyObject {
 
 extension PollyVisualSource {
     var isStreaming: Bool { state == .streaming }
+
+    /// Whether Chef can get a picture if she asks for one. True while a look is
+    /// in progress AND while merely connected, because to the cook those are the
+    /// same thing: she can see. Only the plumbing knows the camera is off
+    /// between looks.
+    var canSee: Bool { state == .ready || state == .streaming }
+}
+
+/// One look through the glasses, plus what it cost.
+///
+/// The timings are not diagnostics for their own sake: whether a look feels like
+/// a glance or a hang is the single number that decides if on-demand vision is a
+/// viable design, and it has never been measured warm.
+struct GlassesLook: Sendable {
+    var jpeg: Data?
+    var frameID: String?
+    var framesSeen: Int = 0
+    /// Camera requested to first frame arriving.
+    var startLatency: TimeInterval = 0
+    var totalDuration: TimeInterval = 0
+    /// Process footprint growth across the whole look, in MB.
+    var memoryDeltaMB: Double = 0
+    var rejection: VisualFrameRejection?
+
+    /// Where inside the look the memory actually went.
+    ///
+    /// A single number for the whole look cannot tell the difference between two
+    /// very different worlds, and they imply opposite designs. If the cost sits
+    /// in `linkMB` — everything up to the first frame, which is the Wi-Fi
+    /// association the toolkit performs to reach the camera — then opening the
+    /// camera is what is expensive and the cheapest design is to open it once
+    /// and leave it open. If the cost sits in `framesMB`, streaming is expensive
+    /// and short looks are right.
+    ///
+    /// The mock, which has no radio, streams thousands of frames for a few MB.
+    /// Real glasses spent 569 MB on eight. That points hard at the link, and
+    /// these two fields are how we stop pointing and know.
+    var linkMB: Double = 0
+    var framesMB: Double = 0
+
+    var succeeded: Bool { jpeg != nil }
 }
 
 enum PollyVisualSourceKind: String, Sendable {
@@ -58,6 +99,17 @@ enum PollyVisualSourceKind: String, Sendable {
 enum PollyVisualSourceState: Equatable, Sendable {
     case off
     case starting
+    /// Connected and able to take a look on demand, with the camera currently
+    /// off. The session stays up because establishing it is the expensive part;
+    /// the camera comes on only for a look.
+    ///
+    /// This shape was originally forced by a measured per-frame leak that has
+    /// since been retracted (see `docs/glasses-transport-and-memory.md`): the
+    /// growth was traced to `MWDATMockDevice` being linked into the app rather
+    /// than to the toolkit. It is kept for now because a look still costs a
+    /// softAP association, and because the cheap version has not yet been
+    /// re-measured on hardware.
+    case ready
     case streaming
     /// The device is holding the connection but has stopped sending. Wait, do
     /// not restart: the toolkit resumes or stops on its own.

@@ -66,7 +66,10 @@ final class PollyVisualSourceCoordinator: PollyVisualSource {
 
         if glassesPossible {
             await glasses.start()
-            if glasses.isStreaming {
+            // `canSee`, not `isStreaming`: the glasses rest connected with the
+            // camera off and only stream during a look, so demanding a live
+            // stream here would read a healthy connection as a failure.
+            if glasses.canSee {
                 activeKind = .metaGlasses
                 PollyDebugLog.shared.log("visual: glasses active")
                 return
@@ -132,19 +135,16 @@ final class PollyVisualSourceCoordinator: PollyVisualSource {
         }
 
         if activeKind == .metaGlasses {
-            if highDetail, let jpeg = await glasses.captureHighDetailFrame() {
-                let capture = PollyVisualCapture(source: .metaGlasses, jpeg: jpeg, rejection: nil)
-                await withGlassesDropCheck { nil }
-                return capture
-            }
-            let result = await glasses.prepared(maxAge: maxAge)
+            // There is no buffered frame to reach for: between looks the camera
+            // is off. Asking for a picture IS opening the camera.
+            let look = await glasses.captureLook()
             await withGlassesDropCheck { nil }
             return PollyVisualCapture(
                 source: .metaGlasses,
-                jpeg: result.jpeg,
-                frameID: result.frameID,
-                ageMillis: result.ageMillis,
-                rejection: result.rejection
+                jpeg: look.jpeg,
+                frameID: look.frameID,
+                ageMillis: Int(look.totalDuration * 1000),
+                rejection: look.rejection
             )
         }
 

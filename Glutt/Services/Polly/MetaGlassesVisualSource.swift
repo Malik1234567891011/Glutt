@@ -14,6 +14,10 @@ import UIKit
 /// Failure is never fatal. Every path that cannot deliver a picture leaves the
 /// cook session running and reports why, because losing the camera must not lose
 /// the cook their place in the recipe.
+enum GlassesLookError: Error {
+    case cameraDidNotStart
+}
+
 @MainActor
 @Observable
 final class MetaGlassesVisualSource: PollyVisualSource {
@@ -52,9 +56,23 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     private var session: DeviceSession?
     private var camera: Camera?
     private var tokens: [any AnyListenerToken] = []
+    /// Cancelled at the end of every look, unlike `tokens`, which belong to the
+    /// long-lived session.
+    private var streamTokens: [any AnyListenerToken] = []
     private var observationTasks: [Task<Void, Never>] = []
     private var photoContinuation: CheckedContinuation<Data?, Never>?
     private var frameSequence = 0
+    /// One frame in flight at a time. Without this every delivered frame queues
+    /// a main-actor Task holding a decoded image, and the backlog is unbounded.
+    private let admission = FrameAdmission()
+    /// Frames the toolkit actually handed us during this look.
+    ///
+    /// Distinct from `buffer.frames.count`, which was what a look reported until
+    /// a 73-second run came back claiming "8 frames": the buffer holds 8 images
+    /// by design and drops the oldest, so its count saturates and stops being a
+    /// frame count at all. That made every long run look identical to every
+    /// short one and made MB-per-frame impossible to compute.
+    private let delivered = FrameCounter()
 
     init() {}
 
@@ -90,7 +108,12 @@ final class MetaGlassesVisualSource: PollyVisualSource {
                 teardown()
                 return
             }
-            try await attachCamera(to: session)
+            // Deliberately no camera here. The session is the expensive part to
+            // establish and the cheap part to hold; the camera is the opposite,
+            // because every frame it delivers costs ~1.9 MB that never comes
+            // back. So we connect and wait.
+            state = .ready
+            PollyDebugLog.shared.log("glasses: connected, ready to look on demand")
         } catch {
             let text = (error as? any DatError)?.description ?? String(describing: error)
             state = .unavailable(reason: text)
@@ -115,6 +138,144 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         return false
     }
 
+    // MARK: - Looks
+
+    /// Take one look: open the camera, gather a few frames, close it, return the
+    /// best.
+    ///
+    /// Reports its own timings because whether a look reads as a glance or a
+    /// hang is the number that decides whether this design survives.
+    ///
+    /// The design was originally forced by a per-frame leak that has since been
+    /// retracted — see `docs/glasses-transport-and-memory.md`, and
+    /// `GluttTests/Glasses/GlassesMemoryMatrixTests.swift` for the measurements
+    /// that retracted it. What still argues for looks over a live stream is the
+    /// transport: since 0.8 the camera runs over a Wi-Fi network hosted by the
+    /// glasses, so opening one costs an association and drops the phone to
+    /// cellular for the duration. That cost is per look, which is a reason to
+    /// take few of them, not short ones.
+    func captureLook(maxFrames: Int = 8, timeout: TimeInterval = 30) async -> GlassesLook {
+        var look = GlassesLook()
+        let startedAt = Date()
+        let footprintBefore = MemoryProbe.footprintBytes
+
+        guard let session, session.state == .started else {
+            look.rejection = .noFrames
+            // Say which, because a look that returns in 0.0s having spent 0 MB
+            // looks identical to a look that was never attempted, and the
+            // difference is the whole diagnosis: a dead session means the
+            // previous look took the connection down with it.
+            let detail = session.map { "session is \($0.state)" } ?? "no session at all"
+            PollyDebugLog.shared.log("glasses: look refused, \(detail)")
+            GlassesRunLog.shared.log("look refused before it started: \(detail)")
+            return look
+        }
+        guard camera == nil else {
+            look.rejection = .noFrames
+            PollyDebugLog.shared.log("glasses: look refused, one already in progress")
+            return look
+        }
+
+        buffer.removeAll()
+        frameSequence = 0
+        delivered.reset()
+
+        // Sample while the look runs. A look that ends in a memory kill reports
+        // nothing at all, and those are the looks worth reading; this way the
+        // last flushed line says how far it got and what it had spent.
+        let sampler = Task { [startedAt] in
+            var lastMB = Double(footprintBefore) / 1_048_576
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                if Task.isCancelled { break }
+                let nowMB = Double(MemoryProbe.footprintBytes) / 1_048_576
+                GlassesRunLog.shared.log(String(
+                    format: "  look t+%.0fs · %.0f MB used (%+.0f) · %.0f MB free",
+                    Date().timeIntervalSince(startedAt), nowMB, nowMB - lastMB,
+                    Double(MemoryProbe.availableBytes) / 1_048_576))
+                lastMB = nowMB
+            }
+        }
+        defer { sampler.cancel() }
+
+        do {
+            try await attachCamera(to: session)
+        } catch {
+            look.rejection = .noFrames
+            PollyDebugLog.shared.log("glasses: look failed to open camera — \(message(error))")
+            endLook()
+            return look
+        }
+
+        // Wait for enough frames, or give up. `maxFrames` is usually reached long
+        // before the timeout once frames start; the timeout covers the case where
+        // they never do.
+        let deadline = Date().addingTimeInterval(timeout)
+        var firstFrameAt: Date?
+        var footprintAtFirstFrame: UInt64?
+        while Date() < deadline {
+            if firstFrameAt == nil, buffer.newest != nil {
+                firstFrameAt = Date()
+                footprintAtFirstFrame = MemoryProbe.footprintBytes
+                look.startLatency = firstFrameAt!.timeIntervalSince(startedAt)
+            }
+            if buffer.frames.count >= maxFrames { break }
+            if isUnavailable { break }
+            try? await Task.sleep(for: .milliseconds(80))
+        }
+
+        // Everything before the first frame is the toolkit reaching the camera,
+        // which since 0.8 means standing up a Wi-Fi link to the glasses.
+        // Everything after is delivering pictures over a link that already
+        // exists. Splitting there is what separates "opening the camera is
+        // expensive" from "streaming is expensive".
+        if let atFirstFrame = footprintAtFirstFrame {
+            look.linkMB = (Double(atFirstFrame) - Double(footprintBefore)) / 1_048_576
+            look.framesMB = (Double(MemoryProbe.footprintBytes) - Double(atFirstFrame)) / 1_048_576
+        }
+
+        look.framesSeen = delivered.count
+        let selected = buffer.best(maxAge: timeout, now: Date(), gate: gate)
+        endLook()
+
+        switch selected {
+        case .failure(let rejection):
+            look.rejection = rejection
+        case .success(let frame):
+            look.frameID = frame.id
+            let image = frame.image
+            look.jpeg = await Task.detached { VisualFramePipeline.prepare(image) }.value
+            if look.jpeg == nil { look.rejection = .noFrames }
+        }
+
+        look.totalDuration = Date().timeIntervalSince(startedAt)
+        look.memoryDeltaMB = (Double(MemoryProbe.footprintBytes) - Double(footprintBefore)) / 1_048_576
+        let summary = String(
+            format: "glasses: look %@ — %d frames, %.1fs to first frame, %.1fs total, +%.0f MB (link %+.0f, frames %+.0f)",
+            look.succeeded ? "ok" : "failed (\(look.rejection?.rawValue ?? "?"))",
+            look.framesSeen, look.startLatency, look.totalDuration,
+            look.memoryDeltaMB, look.linkMB, look.framesMB)
+        PollyDebugLog.shared.log(summary)
+        GlassesRunLog.shared.log(summary)
+        return look
+    }
+
+    /// Close the camera but keep the session. Re-establishing the session is the
+    /// slow part, so it is deliberately left alive between looks.
+    private func endLook() {
+        let tokens = streamTokens
+        streamTokens.removeAll()
+        Task { for token in tokens { await token.cancel() } }
+        camera?.stop()
+        camera = nil
+        previewImage = nil
+        if !isUnavailable { state = .ready }
+    }
+
+    private func message(_ error: any Error) -> String {
+        (error as? any DatError)?.description ?? String(describing: error)
+    }
+
     private func attachCamera(to session: DeviceSession) async throws {
         let config = StreamConfiguration(videoCodec: .raw, resolution: resolution, frameRate: frameRate)
         guard let camera = try session.addCamera(config: config) else {
@@ -133,14 +294,19 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         // the caller a source that says it is not streaming and invite it to
         // tear the whole thing down, which is exactly what happened.
         guard await waitForStreaming() else {
-            state = .unavailable(reason: "The glasses camera did not start.")
-            PollyDebugLog.shared.log("glasses: stream never reached streaming")
-            teardown()
-            return
+            // Deliberately NOT teardown(): that destroys the DeviceSession,
+            // which is the expensive thing we keep alive between looks. One
+            // camera failing must not cost the connection, or every later look
+            // fails instantly with nothing to look through.
+            PollyDebugLog.shared.log("glasses: camera did not reach streaming, session kept")
+            throw GlassesLookError.cameraDidNotStart
         }
     }
 
-    private func waitForStreaming(timeout: TimeInterval = 6) async -> Bool {
+    /// 25s, not 6. Measured on device, `waitingForDevice -> starting -> streaming`
+    /// takes 12 to 19 seconds on a cold camera, so the old 6s timeout gave up on
+    /// a camera that was still legitimately coming up.
+    private func waitForStreaming(timeout: TimeInterval = 25) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             if state == .streaming { return true }
@@ -296,25 +462,43 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     }
 
     private func observeStream(_ stream: MWDATCamera.Stream) {
-        tokens.append(stream.statePublisher.listen { [weak self] streamState in
+        streamTokens.append(stream.statePublisher.listen { [weak self] streamState in
             Task { @MainActor in self?.apply(streamState) }
         })
-        tokens.append(stream.errorPublisher.listen { [weak self] error in
+        streamTokens.append(stream.errorPublisher.listen { [weak self] error in
             Task { @MainActor in self?.applyStreamError(error) }
         })
-        tokens.append(stream.photoDataPublisher.listen { [weak self] photo in
+        streamTokens.append(stream.photoDataPublisher.listen { [weak self] photo in
             let data = photo.data
             Task { @MainActor in self?.resumePhoto(data) }
         })
-        tokens.append(stream.videoFramePublisher.listen { [weak self] frame in
+        streamTokens.append(stream.videoFramePublisher.listen { [weak self] frame in
             // Decode and measure off the main actor: this runs several times a
             // second and the cook session's UI is on the other side of it.
-            guard let image = frame.makeUIImage() else { return }
-            let gate = VisualFrameGate()
-            guard let quality = gate.measure(image) else { return }
+            guard let self else { return }
+            // Counted before admission, so the number reflects what the toolkit
+            // delivered rather than what we chose to decode.
+            self.delivered.increment()
+            guard self.admission.admit() else { return }
+            // The toolkit calls this on its own thread, which has no autorelease
+            // pool of its own. Decoding a frame and measuring it produces several
+            // megabytes of autoreleased CGImage and UIImage temporaries, and
+            // without a pool to drain they accumulate for the life of the
+            // stream: about 5 MB per frame, which ate 2 GB in a minute.
+            let decoded: (UIImage, VisualFrameQuality)? = autoreleasepool {
+                // NOT frame.makeUIImage(): measured at ~5.8 MB per call that
+                // never comes back. See VisualFramePipeline.image(from:).
+                guard let image = VisualFramePipeline.image(from: frame.sampleBuffer),
+                      let quality = VisualFrameGate().measure(image) else { return nil }
+                return (image, quality)
+            }
+            guard let (image, quality) = decoded else {
+                self.admission.release()
+                return
+            }
             let captured = Date()
             Task { @MainActor in
-                guard let self else { return }
+                defer { self.admission.release() }
                 self.frameSequence += 1
                 self.ingest(
                     BufferedVisualFrame(

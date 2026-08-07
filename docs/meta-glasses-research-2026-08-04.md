@@ -171,6 +171,75 @@ So a routine look costs single-digit milliseconds once the buffer is warm, and a
 `capturePhoto` still is about half a second. That gap is the whole reason
 `detail_level` is a parameter on the tool.
 
+## The hardware bring-up, and the memory bug that dominated it (2026-08-05)
+
+Five separate things stood between a paired pair of glasses and a live stream.
+In order, because each only became visible once the previous one was fixed:
+
+1. **`LSApplicationQueriesSchemes` was missing `fb-viewapp`.** The toolkit finds
+   Meta AI with `canOpenURL`, which returns false for un-allowlisted schemes, so
+   `startRegistration()` reports Meta AI as **not installed** while it sits on the
+   home screen.
+2. **Nothing ever called `startRegistration()`.** The mock had faked it with
+   `MockDeviceKitConfig(initiallyRegistered: true)`. Developer Mode means
+   registration is always *granted*, not that it can be skipped.
+3. **The DAT app on the glasses was out of date**, reported as
+   `datAppOnTheGlassesUpdateRequired`. `Wearables.shared.openDATGlassesAppUpdate()`
+   deep links to the right page.
+4. **The Wi-Fi entitlements were missing.** `HotspotConfiguration` and
+   `wifi-info`. Without them the stream sits in `waitingForDevice` for ~30s and
+   dies `deviceNotConnected`; with them it reaches `streaming`. **A personal Apple
+   team cannot provision either** ("Personal development teams do not support the
+   Hotspot and Access Wi-Fi Information capabilities"), so glasses work requires
+   the paid team.
+5. **Memory.** Below.
+
+### `VideoFrame.makeUIImage()` leaks about 5.8 MB per call
+
+Measured on device, 504×896 at 7 fps:
+
+```
+21.7  memory: 1178 MB used · 1.8 GB left (frame 1)
+...
+42.7  memory: 2031 MB used · 1.0 GB left (frame 149)
+```
+
+853 MB over 148 frames, a flat **5.76 MB per decoded frame**, killed inside a
+minute. It scales with frames *decoded*, not frames delivered.
+
+Three fixes that did **not** change the slope at all, and what each ruled out:
+
+| Change | Slope after | Rules out |
+|---|---|---|
+| Admission control, one frame in flight | unchanged | queued `Task`s / backlog |
+| Thumbnail the preview instead of retaining full frames | unchanged | our own retention |
+| `autoreleasepool` around the frame handler | unchanged | autoreleased temporaries |
+
+Everything we did with the *result* was irrelevant, which is what finally pointed
+at the call itself. `VideoFrame` also exposes `sampleBuffer`, so the fix is to
+decode it ourselves through one shared `CIContext`
+(`VisualFramePipeline.image(from:)`) instead of calling `makeUIImage()`.
+
+A `CIContext` owns Metal and GPU caches and is expensive to build.
+`PollyCameraController` has carried the comment *"One shared context, allocating
+a CIContext per frame is the expensive part of rendering"* since it was written.
+The most likely explanation is that `makeUIImage()` builds one per call.
+
+**Never call `VideoFrame.makeUIImage()` in a streaming path.** It is fine for a
+one-off still.
+
+### Diagnosing it was slow for an avoidable reason
+
+The device had stopped writing crash reports (last one 2026-08-02) and jetsam
+events (last one 2026-07-28) because its disk was full. "No crash report" was
+read as evidence about the failure when it only meant the recorder was broken,
+and that sent the investigation down two wrong paths (the mock framework, then
+the entitlements — the latter was a real bug but not this one).
+
+What actually settled it was `MemoryProbe`, which puts `phys_footprint` and
+`os_proc_available_memory()` on screen and logs each 25 MB of decline. When a
+device will not tell you why it killed something, make the app say so itself.
+
 ## Landmine: MWDATMockDevice and MWDATCamera collide
 
 Linking both produces ~30 dyld warnings at launch, of the form:

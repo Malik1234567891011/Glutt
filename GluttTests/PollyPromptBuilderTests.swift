@@ -223,8 +223,32 @@ final class PollyPromptBuilderTests: XCTestCase {
 
         XCTAssertTrue(prompt.contains("NEVER DIRECT the cook to DO something from a later step early"))
         XCTAssertTrue(prompt.contains("Work through steps strictly in order."))
-        XCTAssertTrue(prompt.contains("never start a HEAT or TIME-SENSITIVE action early"),
+        XCTAssertTrue(prompt.contains("never start a TIME-SENSITIVE action early"),
                       "the food-safety ordering line must survive")
+        XCTAssertTrue(prompt.contains("Don't start searing,"),
+                      "the things that genuinely must not start early are still named")
+    }
+
+    /// From a real crème brûlée cook: the first mention of 325 degrees was the
+    /// bake step itself, so the custard was finished and the oven was cold.
+    ///
+    /// Two rules used to guarantee that. One banned preheating "to get ahead",
+    /// the other scoped preheat to the immediately-next step. An oven takes 10 to
+    /// 15 minutes, so between them the oven could never be ready on time.
+    func testOvensAreToldToPreheatAheadOfTheBake() {
+        let prompt = instructions(recipe: makeRecipe())
+
+        XCTAssertTrue(prompt.contains("OVENS GET LEAD TIME"))
+        XCTAssertTrue(prompt.contains("within the next two or three steps"),
+                      "she has to look ahead for the bake, not wait for it")
+        XCTAssertTrue(prompt.contains("Never let the first mention of an"),
+                      "the failure itself must be named")
+        XCTAssertTrue(prompt.contains("THE OVEN IS THE EXCEPTION"),
+                      "the ordering rule must carve the oven out explicitly")
+
+        // The blanket ban that caused the cold oven is gone.
+        XCTAssertFalse(prompt.contains("don't preheat \"to"),
+                       "preheating ahead is no longer forbidden")
     }
 
     /// Wording alone would be useless if the later steps weren't in her context.

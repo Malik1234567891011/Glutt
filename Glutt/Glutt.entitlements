@@ -10,5 +10,13 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<!-- The Ray-Ban Meta camera stream runs over Wi-Fi, not Bluetooth. Without
+	     these the stream sits in waitingForDevice and dies deviceNotConnected.
+	     Both are in Meta's own CameraAccess sample, and both need a paid team:
+	     a personal team cannot provision them at all. -->
+	<key>com.apple.developer.networking.HotspotConfiguration</key>
+	<true/>
+	<key>com.apple.developer.networking.wifi-info</key>
+	<true/>
 </dict>
 </plist>

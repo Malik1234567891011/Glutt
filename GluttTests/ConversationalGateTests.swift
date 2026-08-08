@@ -111,6 +111,46 @@ final class ConversationalGateTests: XCTestCase {
             .explicitEnd)
     }
 
+    /// From a real crème brûlée cook: the transcriber heard "steep cream" as
+    /// "sleep screen", the bare "sleep" end-phrase matched mid-sentence, and Chef
+    /// went dormant on someone asking why their screen was wrong. They had to
+    /// wake her and ask again.
+    func testQuestionContainingAnEndPhraseNeverEndsTheSession() {
+        XCTAssertEqual(
+            ConversationalGate.classify(
+                "Why am I still here on the sleep screen?", context: warm),
+            .directFollowUp,
+            "a question is never a goodbye")
+
+        XCTAssertNotEqual(
+            ConversationalGate.classify(
+                "Can you bring me to that step? Why am I still here on the sleep screen?",
+                context: warm),
+            .explicitEnd)
+    }
+
+    /// "steep" and "sleep" are one phoneme apart and "steep" is a cooking word,
+    /// so ending a session needs the whole command now.
+    func testBareSleepIsNoLongerAnEndPhrase() {
+        XCTAssertNotEqual(
+            ConversationalGate.classify("let the cream sleep for a bit", context: warm),
+            .explicitEnd)
+        XCTAssertEqual(
+            ConversationalGate.classify("go to sleep", context: warm),
+            .explicitEnd,
+            "the actual command still works")
+    }
+
+    /// Real goodbyes are short. A cook narrating their food must not trip an end
+    /// phrase buried in the middle of a sentence.
+    func testRamblingSentenceContainingAnEndPhraseKeepsTheSession() {
+        XCTAssertNotEqual(
+            ConversationalGate.classify(
+                "the custard looks all good so I am pouring it into the ramekins now",
+                context: warm),
+            .explicitEnd)
+    }
+
     func testUncertainPreferredOverGuessing() {
         XCTAssertEqual(
             ConversationalGate.classify("hmm interesting", context: cold),

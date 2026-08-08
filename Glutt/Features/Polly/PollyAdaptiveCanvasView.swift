@@ -28,7 +28,11 @@ struct PollyAdaptiveCanvasView: View {
     /// Native MP4 or YouTube window — either counts as "this step has a clip".
     private var hasClip: Bool { nativeClip != nil || youtubeClip != nil }
     /// Chef has a picture from somewhere. Drives the control, not the canvas.
-    private var chefCanSee: Bool { controller.visualSource.isStreaming }
+    /// `canSee`, not `isStreaming`. With the glasses the camera is off between
+    /// looks, but the cook should still be told Chef can see: to them those are
+    /// the same thing, and flickering the pill on every look would be a lie
+    /// about a distinction they do not have.
+    private var chefCanSee: Bool { controller.visualSource.canSee }
     /// The picture is coming from the cook's glasses.
     private var usingGlasses: Bool {
         chefCanSee && controller.visuals.activeKind == .metaGlasses

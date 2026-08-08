@@ -64,6 +64,8 @@ final class SubscriptionGate {
         #if DEBUG
         if arguments.contains("-unlockPremium") { return true }
         #endif
+        // A locked Debug build is an app you cannot use to test anything else.
+        if DevBuild.relaxGates { return true }
         return false
     }
 

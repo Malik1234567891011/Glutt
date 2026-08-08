@@ -43,7 +43,8 @@ struct GluttApp: App {
         // `-uiPreview`: dev/screenshot hook — skip Superwall so its test-mode
         // sheet (shown when the running bundle id differs from the dashboard's)
         // doesn't cover the UI during local iteration.
-        if !ProcessInfo.processInfo.arguments.contains("-uiPreview") {
+        // `-realGates` brings it back when the paywall is the thing being tested.
+        if !ProcessInfo.processInfo.arguments.contains("-uiPreview"), !DevBuild.relaxGates {
             Superwall.configure(apiKey: Self.superwallPublicAPIKey)
         }
         // Before any view exists, so the onboarding funnel's first screen and
@@ -54,7 +55,9 @@ struct GluttApp: App {
         GlassesSupport.shared.configure()
         // `-mockGlasses`: pretend a pair is paired and worn, so a real cook
         // session can be driven without hardware. No-op without the argument.
+#if canImport(MWDATMockDevice)
         GlassesMockRig.armIfRequested()
+#endif
         notificationDelegate.router = router
         UNUserNotificationCenter.current().delegate = notificationDelegate
     }

@@ -1,3 +1,4 @@
+#if canImport(MWDATMockDevice)
 import Foundation
 import MWDATMockDevice
 
@@ -48,3 +49,4 @@ enum GlassesMockRig {
         PollyDebugLog.shared.log("glasses: mock rig armed (\(device.deviceIdentifier.prefix(8)))")
     }
 }
+#endif

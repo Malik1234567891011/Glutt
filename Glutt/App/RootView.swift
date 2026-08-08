@@ -35,7 +35,10 @@ struct RootView: View {
     @State private var stagedImport: ShareImportViewModel?
 
     private var needsOnboarding: Bool {
-        router.forceOnboarding || allPrefs.first?.hasCompletedOnboarding != true
+        // `router.forceOnboarding` still wins, so `-onboarding` and the Settings
+        // entry point both keep working in a Debug build.
+        if DevBuild.relaxGates, !router.forceOnboarding { return false }
+        return router.forceOnboarding || allPrefs.first?.hasCompletedOnboarding != true
     }
 
     /// A locked user who is past onboarding. Drives the automatic paywall

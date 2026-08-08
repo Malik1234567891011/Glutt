@@ -28,11 +28,28 @@ enum ConversationalGate {
     }
 
     /// Clear stop / leave-me-alone phrases (normalized: no apostrophes).
+    /// `matchesAnyPhrase` matches these anywhere in the utterance, so every entry
+    /// has to be something nobody says in the middle of a sentence about food.
+    ///
+    /// A bare "sleep" used to be here and it cost a real cook their session: the
+    /// transcriber heard "steep cream" as "sleep screen", the substring matched,
+    /// and Chef hung up on someone asking a question. "steep" and "sleep" are one
+    /// phoneme apart and "steep" is a cooking word, so this now needs the whole
+    /// command.
     private static let explicitEndPhrases: [String] = [
         "stop listening", "thats all", "thanks chef", "thank you chef",
         "go away", "never mind", "nevermind", "im good", "were good", "were good",
-        "all good", "that is all", "bye chef", "sleep", "shut up",
+        "all good", "that is all", "bye chef", "go to sleep", "go back to sleep",
+        "shut up",
     ]
+
+    /// Longest an utterance can be and still be read as "leave me alone".
+    ///
+    /// Real goodbyes are short. Anything rambling that happens to contain "all
+    /// good" or "im good" is a cook narrating their food, and ending the session
+    /// on it is the most expensive mistake this gate can make: they have to
+    /// notice Chef left, say the wake word, and start the thought again.
+    private static let explicitEndMaxWords = 6
 
     /// Bare acks — normally no spoken reply unless Polly asked a question.
     ///
@@ -80,7 +97,18 @@ enum ConversationalGate {
         let text = normalize(raw)
         guard !text.isEmpty else { return .uncertain }
 
-        if matchesAnyPhrase(text, explicitEndPhrases) { return .explicitEnd }
+        // A question is never a goodbye. This check runs before everything else,
+        // so without the guard any sentence containing an end phrase ends the
+        // session, including the one that asks why the screen is wrong.
+        //
+        // Deliberately narrower than `looksLikeDirectFollowUp`, which also
+        // matches imperatives: that treats "go to sleep" as a question, because
+        // it starts with "go to".
+        if !isQuestion(raw: raw, text: text),
+           text.split(separator: " ").count <= explicitEndMaxWords,
+           matchesAnyPhrase(text, explicitEndPhrases) {
+            return .explicitEnd
+        }
 
         // Wake-only / name alone — keep listening, don't speak, don't reject.
         if isNameOnly(text) { return .nameOnly }
@@ -210,6 +238,22 @@ enum ConversationalGate {
     private static func isShortAnswer(_ text: String) -> Bool {
         let tokens = text.split(separator: " ")
         return tokens.count <= 6
+    }
+
+    /// Is the cook asking something, rather than telling Chef to go away?
+    ///
+    /// Only used to protect a turn from being read as a goodbye, so it errs
+    /// toward "yes, a question": staying listening one turn too long costs
+    /// nothing, and hanging up on a question costs the cook their place.
+    private static let questionOpeners: [String] = [
+        "what", "whats", "why", "how", "when", "where", "which", "who",
+        "can", "could", "should", "shall", "do", "does", "did", "is", "are",
+        "am", "was", "were", "will", "would",
+    ]
+
+    private static func isQuestion(raw: String, text: String) -> Bool {
+        if raw.contains("?") { return true }
+        return questionOpeners.contains { text == $0 || text.hasPrefix($0 + " ") }
     }
 
     private static func looksLikeDirectFollowUp(_ text: String) -> Bool {

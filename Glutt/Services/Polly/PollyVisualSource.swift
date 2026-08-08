@@ -99,16 +99,14 @@ enum PollyVisualSourceKind: String, Sendable {
 enum PollyVisualSourceState: Equatable, Sendable {
     case off
     case starting
-    /// Connected and able to take a look on demand, with the camera currently
-    /// off. The session stays up because establishing it is the expensive part;
-    /// the camera comes on only for a look.
+    /// Connected, but not seeing: the session is up and the camera is not.
     ///
-    /// This shape was originally forced by a measured per-frame leak that has
-    /// since been retracted (see `docs/glasses-transport-and-memory.md`): the
-    /// growth was traced to `MWDATMockDevice` being linked into the app rather
-    /// than to the toolkit. It is kept for now because a look still costs a
-    /// softAP association, and because the cheap version has not yet been
-    /// re-measured on hardware.
+    /// No longer the resting state. The camera is opened with the session and
+    /// held for the cook, because opening it costs 14 to 20 seconds of Wi-Fi
+    /// association and the frames themselves are nearly free. This is what is
+    /// left when the session came up and the camera did not, which is worth
+    /// keeping rather than tearing down: the cook can be told, and a retry does
+    /// not have to re-establish the connection.
     case ready
     case streaming
     /// The device is holding the connection but has stopped sending. Wait, do

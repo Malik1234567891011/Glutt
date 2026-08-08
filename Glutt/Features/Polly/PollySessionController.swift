@@ -686,6 +686,18 @@ final class PollySessionController {
         // 12.57s -> 10.51s on the same recipe. See docs/polly-latency-2026-08-04.md.
         let mintTask = Task { try await deps.mintToken(chef.realtimeVoice, chef.elevenLabsVoiceID != nil) }
 
+        // Glasses come up alongside the mint and the plan, for the same reason
+        // the mint does: it is slow and it has no data dependency on anything
+        // here. The camera's Wi-Fi link takes 14 to 20 seconds to establish, so
+        // starting it with the session means Chef can see by the time the cook
+        // has finished listening to her; starting it when they first ask would
+        // put that wait in the middle of a question. Nothing awaits this, and a
+        // cook with no glasses never notices it ran.
+        // Through `visuals` rather than `visualSource`: this is the one thing
+        // that is deliberately not source-agnostic, because it must never reach
+        // for the phone camera.
+        Task { await visuals.startGlassesIfAvailable() }
+
         // 1. Execution plan (compiler never fails — it falls back to linear).
         phase = .compiling
         PollyDebugLog.shared.log("session: compiling plan for \"\(recipe.title)\"")

@@ -84,6 +84,35 @@ final class PollyVisualSourceCoordinator: PollyVisualSource {
         PollyDebugLog.shared.log("visual: phone camera \(phone.isStreaming ? "active" : "unavailable")")
     }
 
+    /// Bring the glasses up at the start of a cook, and do nothing whatsoever
+    /// if there are none.
+    ///
+    /// Deliberately not `start()`. That one falls back to the phone camera, and
+    /// falling back here would point the phone at whatever it happens to be
+    /// facing the moment a recipe opens, which is the thing the camera button
+    /// exists to prevent. Glasses are different: they are on the cook's face,
+    /// aimed where the cook is looking, and were put on for this.
+    ///
+    /// Started early because it is slow, not because it is urgent. Opening the
+    /// camera stands up a Wi-Fi link to the glasses and that takes 14 to 20
+    /// seconds; run alongside the plan compile and the token mint it finishes
+    /// somewhere around Chef's first sentence, so by the time anyone is
+    /// chopping she can already see. Left until the cook first asks "does this
+    /// look right", it would be fifteen seconds of silence at the worst moment.
+    func startGlassesIfAvailable() async {
+        guard activeKind == nil, glassesPossible else { return }
+        lastGlassesDropReason = nil
+        await glasses.start()
+        guard glasses.canSee else {
+            // No glasses on, or they refused. Silent on purpose: nobody asked
+            // for a camera, so nobody needs telling they did not get one.
+            glasses.stop()
+            return
+        }
+        activeKind = .metaGlasses
+        PollyDebugLog.shared.log("visual: glasses active from the start of the cook")
+    }
+
     func stop() {
         glasses.stop()
         phone.stop()
@@ -135,16 +164,33 @@ final class PollyVisualSourceCoordinator: PollyVisualSource {
         }
 
         if activeKind == .metaGlasses {
-            // There is no buffered frame to reach for: between looks the camera
-            // is off. Asking for a picture IS opening the camera.
-            let look = await glasses.captureLook()
+            // Read the buffer the live stream is already filling.
+            //
+            // This used to call `captureLook`, which opened the camera, waited
+            // for frames and closed it again, because the camera was held shut
+            // between glances to save memory. The camera now stays open for the
+            // cook, so a question can be answered from frames that already
+            // exist instead of standing up a Wi-Fi link and making the cook wait
+            // fifteen seconds for an answer to "does this look done".
+            //
+            // High detail still goes to `capturePhoto`, which is a real still
+            // off the glasses rather than a stream frame, and falls back to the
+            // buffer when it cannot deliver.
+            let jpeg = highDetail
+                ? await glasses.captureHighDetailFrame()
+                : nil
+            if let jpeg {
+                await withGlassesDropCheck { nil }
+                return PollyVisualCapture(source: .metaGlasses, jpeg: jpeg, rejection: nil)
+            }
+            let frame = await glasses.prepared(maxAge: maxAge)
             await withGlassesDropCheck { nil }
             return PollyVisualCapture(
                 source: .metaGlasses,
-                jpeg: look.jpeg,
-                frameID: look.frameID,
-                ageMillis: Int(look.totalDuration * 1000),
-                rejection: look.rejection
+                jpeg: frame.jpeg,
+                frameID: frame.frameID,
+                ageMillis: frame.ageMillis,
+                rejection: frame.rejection
             )
         }
 

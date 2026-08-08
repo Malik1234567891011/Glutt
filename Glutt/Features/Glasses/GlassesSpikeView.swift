@@ -186,6 +186,7 @@ struct GlassesSpikeView: View {
                 labelled("polly") {
                     button("Look x5") { model.runLookSeries() }
                     button("Long look") { model.runLongLook() }
+                    button("Warm reopen") { model.runWarmReopen() }
                     button("Coordinator") { model.startCoordinator() }
                     button("Ask frame") { model.requestFrameLikePolly(highDetail: false) }
                     button("Ask detail") { model.requestFrameLikePolly(highDetail: true) }
@@ -719,6 +720,59 @@ final class GlassesSpikeModel {
                     format: "memory +%ds after session stop: %@ (peak %.0f MB, %.0f%% back)",
                     elapsed, MemoryProbe.summary, peak, recovered))
             }
+        }
+    }
+
+    /// Does closing the camera give the phone its Wi-Fi back, and how long does
+    /// it take to start watching again?
+    ///
+    /// Those two numbers decide the whole shape of glasses vision. Holding the
+    /// stream for a cook means the phone is on the glasses' access point the
+    /// entire time and Polly's voice runs on cellular, which is not a trade
+    /// worth making in a kitchen with weak signal. The alternative is watch
+    /// windows, and the alternative is only viable if closing the camera
+    /// actually releases the network and reopening it is quick.
+    ///
+    /// Three cycles, because the first reopen after a cold start may not behave
+    /// like the ones after it.
+    func runWarmReopen(cycles: Int = 3) {
+        Task {
+            let coordinator = self.coordinator ?? PollyVisualSourceCoordinator(
+                phone: PhoneCameraVisualSource(camera: PollyCameraController())
+            )
+            self.coordinator = coordinator
+            if coordinator.activeKind == nil {
+                append("warm reopen: starting coordinator (cold open)")
+                let cold = Date()
+                await coordinator.start()
+                coordinatorStatus = coordinator.activeKind?.toolName ?? "nothing"
+                append(String(format: "cold open took %.1fs", Date().timeIntervalSince(cold)))
+            }
+            guard coordinator.activeKind == .metaGlasses else {
+                return append("! warm reopen needs the glasses, active source is \(coordinatorStatus)")
+            }
+            append("while watching → \(await NetworkProbe.describeCurrent())")
+
+            for cycle in 1...cycles {
+                coordinator.glasses.pauseWatching()
+                append("cycle \(cycle): camera closed, session kept")
+                // iOS does not hand the network back instantly, so give it a
+                // moment before asking, and ask twice.
+                for wait in [3, 8] {
+                    try? await Task.sleep(for: .seconds(wait == 3 ? 3 : 5))
+                    append("  +\(wait)s after closing → \(await NetworkProbe.describeCurrent())")
+                }
+
+                let latency = await coordinator.glasses.resumeWatching()
+                if let latency {
+                    append(String(format: "cycle %d: watching again after %.1fs", cycle, latency))
+                } else {
+                    append("cycle \(cycle): could NOT start watching again")
+                }
+                append("  now → \(await NetworkProbe.describeCurrent())")
+                try? await Task.sleep(for: .seconds(3))
+            }
+            append("memory now: \(MemoryProbe.summary)")
         }
     }
 

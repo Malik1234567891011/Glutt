@@ -68,6 +68,7 @@
 		19D5DE8E0D64A73F1756C3FD /* CookModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8234C61CD0352DE70ED0462 /* CookModeView.swift */; };
 		1A90EE765490FEA8BB97B607 /* PollyPromptBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45320BAE787463C2D042171F /* PollyPromptBuilder.swift */; };
 		1B82B84680A299EABA5B7B76 /* ImportReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2F97AA4C16C61F7F73AC7 /* ImportReviewView.swift */; };
+		1BA642E6BE689CB4ABD77AE3 /* NetworkProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D5824A9006BBF86955DB3E /* NetworkProbe.swift */; };
 		1C0AD550808BE9C56D35B333 /* ConversationalGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08AC449BF12F35D4E4B81855 /* ConversationalGateTests.swift */; };
 		1C9B79FFE1C78122BF14B197 /* ToolsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A1CD51469E394423D7CF6A /* ToolsView.swift */; };
 		1D226EA6959ADF8E7BF1289D /* Phosphor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07ABF4C86860BFE521940467 /* Phosphor.swift */; };
@@ -500,6 +501,7 @@
 		224D234069FFF372F1A687A9 /* Router.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Router.swift; sourceTree = "<group>"; };
 		25E35CFA98848DCF01C3A037 /* PollyAdaptiveCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyAdaptiveCanvasView.swift; sourceTree = "<group>"; };
 		26ED82AA2C948DE902E8555C /* PlateCardMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlateCardMapper.swift; sourceTree = "<group>"; };
+		28D5824A9006BBF86955DB3E /* NetworkProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkProbe.swift; sourceTree = "<group>"; };
 		29E80A11E6C417F2882AA826 /* RecipeArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeArtwork.swift; sourceTree = "<group>"; };
 		2A43CDC56562862964EEBF41 /* instagramEmbed.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = instagramEmbed.html; sourceTree = "<group>"; };
 		2A8D21FE9E43E058A9534A87 /* Glutt.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Glutt.entitlements; sourceTree = "<group>"; };
@@ -1448,6 +1450,7 @@
 				8ADECB80E5623E4D600179CB /* GlassesMockRig.swift */,
 				0E8F38C7D799749793A499EC /* GlassesRunLog.swift */,
 				CECD522366AA0151F1ADC8AA /* GlassesSupport.swift */,
+				28D5824A9006BBF86955DB3E /* NetworkProbe.swift */,
 			);
 			path = Glasses;
 			sourceTree = "<group>";
@@ -1931,6 +1934,7 @@
 				C8926002EB7C459C66BECADF /* NativeClipModels.swift in Sources */,
 				3502A104C62676FCDE04A3B0 /* NativeClipPlayerView.swift in Sources */,
 				60EBA477E4FEF380DED51AA4 /* NativeClipService.swift in Sources */,
+				1BA642E6BE689CB4ABD77AE3 /* NetworkProbe.swift in Sources */,
 				7D6EC4A5329A5B9EA8CE3B40 /* NotificationsSoftAskScreen.swift in Sources */,
 				E9E62465FDE3533A7CE521B1 /* NutritionEstimator.swift in Sources */,
 				7A516F7C0B25F4F5444BBE19 /* OnboardingComponents.swift in Sources */,

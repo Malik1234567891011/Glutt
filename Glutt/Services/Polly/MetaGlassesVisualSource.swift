@@ -108,12 +108,30 @@ final class MetaGlassesVisualSource: PollyVisualSource {
                 teardown()
                 return
             }
-            // Deliberately no camera here. The session is the expensive part to
-            // establish and the cheap part to hold; the camera is the opposite,
-            // because every frame it delivers costs ~1.9 MB that never comes
-            // back. So we connect and wait.
-            state = .ready
-            PollyDebugLog.shared.log("glasses: connected, ready to look on demand")
+            // Open the camera here and leave it open for the cook.
+            //
+            // This used to stop at the session and open the camera per look,
+            // to spend as few frames as possible. That was built for a leak
+            // that turned out to be ours, and with it fixed the frames are
+            // nearly free: 0.16 MB/s at 2 fps, so a 45 minute cook watching
+            // continuously costs a few hundred MB.
+            //
+            // What is expensive is *opening* the camera. Every open stands up a
+            // Wi-Fi link to the glasses and that takes 14 to 20 seconds,
+            // measured, against Meta's stated ~5s. Paying that per glance made
+            // five looks cost a minute and a half of waiting; paying it once
+            // makes it a single wait at the start of the cook, after which Chef
+            // answers immediately. That inverts the old design and is the whole
+            // reason this is here rather than in `captureLook`.
+            do {
+                try await attachCamera(to: session)
+                PollyDebugLog.shared.log("glasses: watching")
+            } catch {
+                // The connection is worth keeping even with no picture: the cook
+                // is told, and a retry does not have to re-establish the session.
+                state = .ready
+                PollyDebugLog.shared.log("glasses: connected, but the camera did not start")
+            }
         } catch {
             let text = (error as? any DatError)?.description ?? String(describing: error)
             state = .unavailable(reason: text)
@@ -170,11 +188,12 @@ final class MetaGlassesVisualSource: PollyVisualSource {
             GlassesRunLog.shared.log("look refused before it started: \(detail)")
             return look
         }
-        guard camera == nil else {
-            look.rejection = .noFrames
-            PollyDebugLog.shared.log("glasses: look refused, one already in progress")
-            return look
-        }
+        // A camera that is already open is the normal case now that the stream
+        // is held for the whole cook, so a look samples the live stream rather
+        // than refusing. Only a look that opened the camera itself closes it
+        // again; closing one it found open would take the cook's vision away as
+        // a side effect of answering a question.
+        let openedCamera = camera == nil
 
         buffer.removeAll()
         frameSequence = 0
@@ -198,13 +217,15 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         }
         defer { sampler.cancel() }
 
-        do {
-            try await attachCamera(to: session)
-        } catch {
-            look.rejection = .noFrames
-            PollyDebugLog.shared.log("glasses: look failed to open camera — \(message(error))")
-            endLook()
-            return look
+        if openedCamera {
+            do {
+                try await attachCamera(to: session)
+            } catch {
+                look.rejection = .noFrames
+                PollyDebugLog.shared.log("glasses: look failed to open camera — \(message(error))")
+                endLook()
+                return look
+            }
         }
 
         // Wait for enough frames, or give up. `maxFrames` is usually reached long
@@ -236,7 +257,7 @@ final class MetaGlassesVisualSource: PollyVisualSource {
 
         look.framesSeen = delivered.count
         let selected = buffer.best(maxAge: timeout, now: Date(), gate: gate)
-        endLook()
+        if openedCamera { endLook() }
 
         switch selected {
         case .failure(let rejection):
@@ -258,6 +279,44 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         PollyDebugLog.shared.log(summary)
         GlassesRunLog.shared.log(summary)
         return look
+    }
+
+    /// Stop watching without disconnecting.
+    ///
+    /// The camera closes and the session stays. This is what gives the cook
+    /// their Wi-Fi back: the toolkit joins an access point hosted by the glasses
+    /// to carry frames, so while the camera is open the phone is off the home
+    /// network and everything else, Polly's voice included, is on cellular. In a
+    /// kitchen with poor signal that is a worse trade than losing vision.
+    func pauseWatching() {
+        guard camera != nil else { return }
+        endLook()
+        PollyDebugLog.shared.log("glasses: stopped watching, connection kept")
+    }
+
+    /// Start watching again on the connection we already have.
+    ///
+    /// Returns seconds to the first frame, which is the number that decides
+    /// whether vision can be something Chef opens when she needs it. A cold open
+    /// measured 14 to 20 seconds; if a warm one is a second or two, watch
+    /// windows work and the phone spends most of a cook on Wi-Fi.
+    @discardableResult
+    func resumeWatching(timeout: TimeInterval = 30) async -> TimeInterval? {
+        guard let session, session.state == .started, camera == nil else { return nil }
+        let startedAt = Date()
+        do {
+            try await attachCamera(to: session)
+        } catch {
+            PollyDebugLog.shared.log("glasses: could not start watching again — \(message(error))")
+            return nil
+        }
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if buffer.newest != nil { return Date().timeIntervalSince(startedAt) }
+            if isUnavailable { return nil }
+            try? await Task.sleep(for: .milliseconds(80))
+        }
+        return nil
     }
 
     /// Close the camera but keep the session. Re-establishing the session is the

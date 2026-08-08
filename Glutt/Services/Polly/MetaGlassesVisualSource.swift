@@ -54,7 +54,13 @@ final class MetaGlassesVisualSource: PollyVisualSource {
 
     private var selector: AutoDeviceSelector?
     private var session: DeviceSession?
-    private var camera: Camera?
+    /// On 0.8 the camera hardware and its video stream are the same object.
+    ///
+    /// 0.9 split them into a `Camera` that owns the hardware and a `Camera
+    /// .stream` hanging off it. This spike is pinned to 0.8 for the Bluetooth
+    /// transport, so `addStream` hands back a `Stream` directly and everything
+    /// that used to go through `camera.stream` talks to it.
+    private var camera: MWDATCamera.Stream?
     private var tokens: [any AnyListenerToken] = []
     /// Cancelled at the end of every look, unlike `tokens`, which belong to the
     /// long-lived session.
@@ -337,15 +343,33 @@ final class MetaGlassesVisualSource: PollyVisualSource {
 
     private func attachCamera(to session: DeviceSession) async throws {
         let config = StreamConfiguration(videoCodec: .raw, resolution: resolution, frameRate: frameRate)
-        guard let camera = try session.addCamera(config: config) else {
+        guard let camera = try session.addStream(config: config) else {
             state = .unavailable(reason: "The glasses camera is not available.")
             return
         }
         self.camera = camera
-        observeStream(camera.stream)
-        camera.stream.start()
+        observeStream(camera)
+        camera.start()
         let size = resolution.videoFrameSize
         PollyDebugLog.shared.log("glasses: camera \(size.width)x\(size.height) @ \(frameRate) fps")
+
+        // The whole point of the 0.8 spike, printed where it cannot be missed.
+        //
+        // On the 0.9 softAP transport this reads "Meta Glasses 01S9" and stays
+        // that way for the life of the session, which is the cook's internet
+        // gone. If Bluetooth Classic is really carrying the frames, the phone
+        // never leaves the network it was on and this line says so.
+        Task {
+            let before = await NetworkProbe.describeCurrent()
+            GlassesRunLog.shared.log("TRANSPORT CHECK · camera requested · \(before)")
+            try? await Task.sleep(for: .seconds(12))
+            let after = await NetworkProbe.describeCurrent()
+            let ssid = await NetworkProbe.currentSSID()
+            let verdict = NetworkProbe.isOnGlassesNetwork(ssid)
+                ? "WI-FI TRANSPORT (phone moved to the glasses' network)"
+                : "BLUETOOTH TRANSPORT (phone kept its own network)"
+            GlassesRunLog.shared.log("TRANSPORT CHECK · 12s later · \(after) · \(verdict)")
+        }
 
         // `stream.start()` returns before the stream is running: the state
         // arrives on the publisher a moment later, through
@@ -424,7 +448,7 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         guard let camera, state == .streaming, photoContinuation == nil else {
             return await captureFrame()
         }
-        guard camera.stream.capturePhoto(format: .jpeg) else {
+        guard camera.capturePhoto(format: .jpeg) else {
             PollyDebugLog.shared.log("glasses: capturePhoto refused, using stream frame")
             return await captureFrame()
         }

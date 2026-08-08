@@ -45,24 +45,12 @@ packages:
   # 0.8 -> 0.9 removed DeviceSession.addStream entirely. Ships arm64 + simulator
   # slices, which is what lets the mock device work on the sim.
   # See docs/meta-glasses-research-2026-08-04.md.
-  # PINNED BACK TO 0.8.0 ON PURPOSE. This is a spike, not the shipping pin.
-  #
-  # 0.9 made the glasses' softAP the only camera transport, which takes the
-  # phone off its own Wi-Fi for as long as the session lives and puts Polly's
-  # voice on cellular. 0.8 still has the Bluetooth Classic path, reachable with
-  # `MWDAT.DAMEnabled = false`, and Meta's own answer on issue #233 is that BTC
-  # is where apps like ours belong:
-  #
-  #   "Live streaming applications will still have to use the BTC channel
-  #    unfortunately. But softAP unblocks the high quality media requirement
-  #    for the non streaming applications."   — sourabh-nanoti, 2026-07
-  #
-  # BTC tops out around 504x896 and stalls for a second or two under load, which
-  # is fatal for video and probably irrelevant to us: Chef needs one good frame
-  # every few seconds, not thirty a second.
+  # 0.9.0. The 0.8 Bluetooth spike is answered and closed: see
+  # docs/glasses-transport-and-memory.md. There is no public way to select the
+  # BTC media transport in either 0.8.0 or 0.9.0.
   MetaWearablesDAT:
     url: https://github.com/facebook/meta-wearables-dat-ios
-    exactVersion: "0.8.0"
+    exactVersion: "0.9.0"
   # Native Google sign-in. The browser flow would need no dependency, but the
   # Supabase Google provider is configured with a client id and no secret, which
   # is the native (id_token) setup; /auth/v1/authorize rejects the web flow with
@@ -108,11 +96,9 @@ targets:
         MWDAT:
           AppLinkURLScheme: "glutt-wearables://"
           MetaAppID: "0"
-          # THE POINT OF THIS SPIKE. On 0.8 this selects Bluetooth Classic
-          # instead of the Wi-Fi softAP, which is the difference between the
-          # cook keeping their internet and losing it for the whole session.
-          # 0.9 ignores this key, which is why the package is pinned back.
-          DAMEnabled: false
+          # No DAMEnabled key. It is not read at all in 0.8.0 (the string does
+          # not appear in either framework binary) and 0.9.0 documents it as
+          # ignored. Camera media runs over the glasses' softAP, full stop.
         # The toolkit finds Meta AI with `UIApplication.canOpenURL`, which
         # silently returns false for any scheme not listed here. Without it the
         # SDK reports Meta AI as not installed when it is sitting on the home

@@ -54,13 +54,7 @@ final class MetaGlassesVisualSource: PollyVisualSource {
 
     private var selector: AutoDeviceSelector?
     private var session: DeviceSession?
-    /// On 0.8 the camera hardware and its video stream are the same object.
-    ///
-    /// 0.9 split them into a `Camera` that owns the hardware and a `Camera
-    /// .stream` hanging off it. This spike is pinned to 0.8 for the Bluetooth
-    /// transport, so `addStream` hands back a `Stream` directly and everything
-    /// that used to go through `camera.stream` talks to it.
-    private var camera: MWDATCamera.Stream?
+    private var camera: Camera?
     private var tokens: [any AnyListenerToken] = []
     /// Cancelled at the end of every look, unlike `tokens`, which belong to the
     /// long-lived session.
@@ -343,32 +337,37 @@ final class MetaGlassesVisualSource: PollyVisualSource {
 
     private func attachCamera(to session: DeviceSession) async throws {
         let config = StreamConfiguration(videoCodec: .raw, resolution: resolution, frameRate: frameRate)
-        guard let camera = try session.addStream(config: config) else {
+        guard let camera = try session.addCamera(config: config) else {
             state = .unavailable(reason: "The glasses camera is not available.")
             return
         }
         self.camera = camera
-        observeStream(camera)
-        camera.start()
+        observeStream(camera.stream)
+        camera.stream.start()
         let size = resolution.videoFrameSize
         PollyDebugLog.shared.log("glasses: camera \(size.width)x\(size.height) @ \(frameRate) fps")
 
-        // The whole point of the 0.8 spike, printed where it cannot be missed.
+        // Which network the cook is actually on while Chef watches.
         //
-        // On the 0.9 softAP transport this reads "Meta Glasses 01S9" and stays
-        // that way for the life of the session, which is the cook's internet
-        // gone. If Bluetooth Classic is really carrying the frames, the phone
-        // never leaves the network it was on and this line says so.
+        // Reads "Meta Glasses 01S9" and stays that way for the life of the
+        // session: that is the cook's internet gone, and it is the constraint
+        // the whole design has to answer to. Kept as a log line because it is
+        // the one thing about this feature nobody can see from the outside.
+        //
+        // Deliberately does NOT try to name the transport. An earlier version
+        // concluded "Bluetooth" from the absence of the glasses' SSID and was
+        // wrong: with the Wi-Fi join blocked the phone stays on its own network
+        // and no frames arrive at all, which looks identical from here.
         Task {
             let before = await NetworkProbe.describeCurrent()
-            GlassesRunLog.shared.log("TRANSPORT CHECK · camera requested · \(before)")
+            GlassesRunLog.shared.log("NETWORK · camera requested · \(before)")
             try? await Task.sleep(for: .seconds(12))
             let after = await NetworkProbe.describeCurrent()
             let ssid = await NetworkProbe.currentSSID()
-            let verdict = NetworkProbe.isOnGlassesNetwork(ssid)
-                ? "WI-FI TRANSPORT (phone moved to the glasses' network)"
-                : "BLUETOOTH TRANSPORT (phone kept its own network)"
-            GlassesRunLog.shared.log("TRANSPORT CHECK · 12s later · \(after) · \(verdict)")
+            let note = NetworkProbe.isOnGlassesNetwork(ssid)
+                ? "on the glasses' network, so the cook's internet is on cellular"
+                : "still on the cook's own network"
+            GlassesRunLog.shared.log("NETWORK · 12s after the camera opened · \(after) · \(note)")
         }
 
         // `stream.start()` returns before the stream is running: the state
@@ -448,7 +447,7 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         guard let camera, state == .streaming, photoContinuation == nil else {
             return await captureFrame()
         }
-        guard camera.capturePhoto(format: .jpeg) else {
+        guard camera.stream.capturePhoto(format: .jpeg) else {
             PollyDebugLog.shared.log("glasses: capturePhoto refused, using stream frame")
             return await captureFrame()
         }

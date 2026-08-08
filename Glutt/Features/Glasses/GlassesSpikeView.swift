@@ -401,8 +401,7 @@ final class GlassesSpikeModel {
     /// device and `createSession` fails with `noEligibleDevice`.
     private var selector: AutoDeviceSelector?
     private var session: DeviceSession?
-    /// 0.8: `addStream` hands back the stream itself, with no `Camera` wrapper.
-    private var camera: MWDATCamera.Stream?
+    private var camera: Camera?
     private var tokens: [any AnyListenerToken] = []
     private var streamTasks: [Task<Void, Never>] = []
 
@@ -928,16 +927,16 @@ final class GlassesSpikeModel {
             frameRate: frameRate
         )
         do {
-            guard let camera = try session.addStream(config: config) else {
-                return append("! addStream returned nil")
+            guard let camera = try session.addCamera(config: config) else {
+                return append("! addCamera returned nil")
             }
             self.camera = camera
             let size = resolutionChoice.streaming.videoFrameSize
             append("camera added — \(size.width)x\(size.height) @ \(frameRate) fps")
         append("memory after addCamera: \(MemoryProbe.summary)")
         startMemorySampling()
-            observeStream(camera)
-            camera.start()
+            observeStream(camera.stream)
+            camera.stream.start()
             append("stream.start() called")
         } catch {
             append("! addCamera failed: \(message(error))")
@@ -955,7 +954,7 @@ final class GlassesSpikeModel {
 
     func capturePhoto() {
         guard let camera else { return append("! no camera") }
-        let accepted = camera.capturePhoto(format: .jpeg)
+        let accepted = camera.stream.capturePhoto(format: .jpeg)
         append("capturePhoto(.jpeg) accepted=\(accepted)")
     }
 

@@ -57,8 +57,6 @@
 	<dict>
 		<key>AppLinkURLScheme</key>
 		<string>glutt-wearables://</string>
-		<key>DAMEnabled</key>
-		<false/>
 		<key>MetaAppID</key>
 		<string>0</string>
 	</dict>

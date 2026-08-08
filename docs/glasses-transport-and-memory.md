@@ -192,6 +192,49 @@ now **one** test rather than a series. See §5.
 
 ---
 
+## 1b. The Bluetooth question, asked properly and answered no
+
+2026-08-08. Meta's engineer closed issue #233, about the softAP displacing the
+phone's internet, with this:
+
+> "Live streaming applications will still have to use the BTC channel
+> unfortunately. But softAP unblocks the high quality media requirement for the
+> non streaming applications." — `sourabh-nanoti`
+
+We are a live streaming application, so that reads like an instruction. And on
+0.8, `metadavithom` said in discussion #226 that "BTC transport & DAM will be
+the default behaviour if you update your app from the 0.7 sdk to 0.8 sdk". So
+the SDK was pinned back to 0.8.0 and tested on real glasses. Three findings,
+in order:
+
+**`DAMEnabled` is not read by 0.8.0 at all.** The string appears nowhere in
+either `MWDATCore` or `MWDATCamera`. The only Info.plist keys those binaries
+look for are `appLinkURLScheme`, `clientToken` and `metaAppId`. Setting it
+either way does nothing, on 0.8 or 0.9.
+
+**0.8.0 with default configuration still uses the softAP.** Measured: the phone
+moved to `Meta Glasses 01S9` twelve seconds after the camera was requested,
+exactly as on 0.9.
+
+**Blocking the Wi-Fi join does not fall back to Bluetooth.** Removing the
+`HotspotConfiguration` entitlement stops the toolkit joining anything, which is
+worth doing because the binary ships a `NoAccessoryWifiNetworkJoiner` beside the
+two auto-join ones. Result: no join prompt, the phone kept its own network, the
+`DeviceSession` reached `.started`, `addCamera` succeeded — and then the stream
+sat in `waitingForDevice` and delivered zero frames, with `capturePhoto`
+returning false. The Bluetooth control channel works. The media path needs the
+softAP and has no fallback.
+
+So: **there is no public way to select the BTC media transport in 0.8.0 or
+0.9.0.** Meta says streaming apps must use it; the SDK offers no way to ask.
+That contradiction is worth putting to them directly, and is the one open
+question left on transport.
+
+Everything above is reverted. The pin is back on 0.9.0, the entitlement is
+back, and the spike lives on `spike/dat-0.8-bluetooth`.
+
+---
+
 ## 2. Bluetooth camera transport is gone, and `DAMEnabled` is a no-op
 
 From the 0.9.0 changelog, under *Removed*:

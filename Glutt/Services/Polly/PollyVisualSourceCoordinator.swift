@@ -160,10 +160,24 @@ final class PollyVisualSourceCoordinator: PollyVisualSource {
         highDetail: Bool
     ) async -> PollyVisualCapture {
         guard let activeKind else {
+            // The glasses may be mid-connect rather than absent: the cook
+            // session starts them in the background and they take the better
+            // part of twenty seconds. Saying "no camera" to a question asked in
+            // that window is wrong twice over, because a camera is coming and
+            // the cook has nothing to fix.
+            if glassesPossible, glasses.state == .starting {
+                return PollyVisualCapture(source: .metaGlasses, jpeg: nil, rejection: .warmingUp)
+            }
             return PollyVisualCapture(source: nil, jpeg: nil, rejection: .noFrames)
         }
 
         if activeKind == .metaGlasses {
+            // Same window, reached the other way: the source is already active
+            // because the session came up, but the camera behind it has not
+            // delivered its first frame yet.
+            if glasses.state == .starting {
+                return PollyVisualCapture(source: .metaGlasses, jpeg: nil, rejection: .warmingUp)
+            }
             // Read the buffer the live stream is already filling.
             //
             // This used to call `captureLook`, which opened the camera, waited

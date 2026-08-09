@@ -103,6 +103,34 @@ final class VisualFrameGateTests: XCTestCase {
         XCTAssertEqual(VisualFrameGate.hammingDistance(0b1011, 0b1011), 0)
         XCTAssertEqual(VisualFrameGate.hammingDistance(0b1011, 0b1000), 2)
     }
+
+    // MARK: - What Chef is told while her eyes are still coming up
+
+    /// Opening the glasses camera stands up a Wi-Fi link and takes the better
+    /// part of twenty seconds. A cook who asks "does this look right" inside
+    /// that window used to be told to go and check the camera, which is advice
+    /// for a problem they do not have about a camera that is working fine.
+    func testWarmingUpTellsChefToWaitRatherThanBlameTheCamera() {
+        let suggestion = VisualFrameRejection.warmingUp.suggestion
+
+        XCTAssertTrue(suggestion.localizedCaseInsensitiveContains("still connecting"))
+        // She should keep being useful from the recipe rather than stopping dead.
+        XCTAssertTrue(suggestion.localizedCaseInsensitiveContains("answer from the recipe"))
+        // And must not send the cook off to fix something that is not broken.
+        XCTAssertFalse(suggestion.localizedCaseInsensitiveContains("check the camera"))
+    }
+
+    /// The other reasons still send the cook to do the thing that fixes them,
+    /// which is the whole point of having separate cases.
+    func testEveryRejectionStillCarriesItsOwnAdvice() {
+        let all: [VisualFrameRejection] = [.noFrames, .tooOld, .blurred, .tooDark, .tooBright, .warmingUp]
+        let suggestions = all.map(\.suggestion)
+
+        XCTAssertEqual(Set(suggestions).count, all.count, "two reasons give identical advice")
+        XCTAssertTrue(suggestions.allSatisfy { !$0.isEmpty })
+        XCTAssertTrue(VisualFrameRejection.noFrames.suggestion.localizedCaseInsensitiveContains("check the camera"))
+        XCTAssertTrue(VisualFrameRejection.blurred.suggestion.localizedCaseInsensitiveContains("hold still"))
+    }
 }
 
 /// Choosing among buffered frames. Newest is the wrong answer for a camera

@@ -37,6 +37,14 @@ struct PollyAdaptiveCanvasView: View {
     private var usingGlasses: Bool {
         chefCanSee && controller.visuals.activeKind == .metaGlasses
     }
+    /// The glasses are coming up but cannot see yet.
+    ///
+    /// True for the fifteen to twenty seconds the toolkit spends standing up a
+    /// Wi-Fi link to the glasses at the start of a cook.
+    private var isConnectingGlasses: Bool {
+        controller.visuals.glassesPossible && controller.visuals.glasses.state == .starting
+    }
+
     /// Whether the canvas gives the whole screen over to the camera.
     ///
     /// Only the phone earns that. A cook wearing glasses is already looking at
@@ -441,6 +449,18 @@ struct PollyAdaptiveCanvasView: View {
     private var glassesIndicator: some View {
         if usingGlasses {
             glassesPill(symbol: "eyeglasses", text: "Chef can see", tint: CookCanvasTheme.green)
+        } else if isConnectingGlasses {
+            // Says what the unexplained iOS prompt was for.
+            //
+            // Chef's eyes take the better part of twenty seconds to come up,
+            // and somewhere in there iOS asks to join a network named after the
+            // glasses. Without this the cook gets a system dialog out of
+            // nowhere, mid-sentence, with nothing on screen accounting for it.
+            glassesPill(
+                symbol: "eyeglasses",
+                text: "Connecting your glasses, uses mobile data",
+                tint: CookCanvasTheme.primaryText.opacity(0.7)
+            )
         } else if let dropped = controller.visuals.lastGlassesDropReason {
             glassesPill(symbol: "eyeglasses.slash", text: dropped, tint: .orange)
         }

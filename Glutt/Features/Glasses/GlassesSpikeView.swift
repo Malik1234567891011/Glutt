@@ -591,8 +591,12 @@ final class GlassesSpikeModel {
     /// as if it were the glasses. Closer to a real POV rehearsal than a file.
     func usePhoneCameraFeed() {
         guard let mockGlasses else { return append("! no paired device") }
-        mockGlasses.services.camera.setCameraFeed(cameraFacing: .back)
-        append("feed: phone back camera")
+        // `await` because this spike is pinned to 0.8, where the mock's
+        // `setCameraFeed(cameraFacing:)` is async. 0.9 made it synchronous.
+        Task {
+            await mockGlasses.services.camera.setCameraFeed(cameraFacing: .back)
+            append("feed: phone back camera")
+        }
     }
 
 #endif

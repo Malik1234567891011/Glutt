@@ -178,11 +178,11 @@ final class GlassesMemoryMatrixTests: XCTestCase {
         let startedAt = Date()
 
         let config = StreamConfiguration(videoCodec: codec, resolution: resolution, frameRate: frameRate)
-        let camera = try XCTUnwrap(try session.addCamera(config: config), "addCamera returned nil for \(label)")
+        let camera = try XCTUnwrap(try session.addStream(config: config), "addStream returned nil for \(label)")
 
         var token: (any AnyListenerToken)?
         if subscribe {
-            token = camera.stream.videoFramePublisher.listen { frame in
+            token = camera.videoFramePublisher.listen { frame in
                 counter.increment()
                 guard decode else { return }
                 // The toolkit's delivery thread has no autorelease pool of its
@@ -194,7 +194,7 @@ final class GlassesMemoryMatrixTests: XCTestCase {
             }
         }
 
-        camera.stream.start()
+        camera.start()
         try? await Task.sleep(for: .seconds(seconds))
 
         camera.stop()

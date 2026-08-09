@@ -13,12 +13,14 @@ enum VisualFrameRejection: String, Sendable, Error {
     case tooBright = "frame_too_bright"
     /// The glasses camera is on its way up and has not delivered a frame yet.
     ///
-    /// Its own case because it is the one failure that fixes itself. Opening the
-    /// glasses camera stands up a Wi-Fi link and that takes 14 to 20 seconds,
-    /// measured, and a cook who asks "does this look right" inside that window
-    /// used to hear "no picture is coming through, check the camera" — advice
-    /// for a problem they do not have, about a camera that is working. Chef
-    /// needs to say she is nearly there and answer from what she already knows.
+    /// Its own case because it is the one failure that fixes itself. A cook who
+    /// asks "does this look right" before the first frame arrives used to hear
+    /// "no picture is coming through, check the camera" — advice for a problem
+    /// they do not have, about a camera that is working. Chef needs to say she
+    /// is nearly there and answer from what she already knows.
+    ///
+    /// The window is about two seconds over Bluetooth. It was 14 to 20 on the
+    /// Wi-Fi transport, which is why this case exists at all.
     case warmingUp = "camera_warming_up"
 
     /// What Polly should ask the cook to do about it. Kept here so the wording
@@ -40,10 +42,9 @@ enum VisualFrameRejection: String, Sendable, Error {
             // ended "do not ask them to check the camera", which is the exact
             // instruction a model is most likely to invert, and it put the
             // wrong phrase in front of it at the same time.
-            return "Your eyes are still connecting, about fifteen seconds from the start of "
-                + "the cook. Say so in your own words, answer from the recipe and what they "
-                + "have told you, and offer to look properly in a moment. Nothing is wrong "
-                + "on their end."
+            return "Your eyes are still connecting, which takes a couple of seconds. Say so "
+                + "in your own words, answer from the recipe and what they have told you, and "
+                + "offer to look properly in a moment. Nothing is wrong on their end."
         }
     }
 }

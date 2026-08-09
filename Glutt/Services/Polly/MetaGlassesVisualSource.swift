@@ -344,7 +344,10 @@ final class MetaGlassesVisualSource: PollyVisualSource {
             return
         }
         self.camera = camera
+        lastFrameAt = nil
+        stallReported = false
         observeStream(camera)
+        startStallWatchdog()
         camera.start()
         let size = resolution.videoFrameSize
         PollyDebugLog.shared.log("glasses: camera \(size.width)x\(size.height) @ \(frameRate) fps")
@@ -491,7 +494,52 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         }
     }
 
+    /// When the toolkit last handed us a frame, and whether we have already said
+    /// that it stopped.
+    ///
+    /// A stalled feed is invisible from the outside: `state` stays `.streaming`,
+    /// no error fires, and the only symptom is Chef saying "the view is stale"
+    /// about a camera she believes is running. In the first real cook, frames
+    /// arrived, delivery stopped, and by the time the cook asked a question
+    /// sixty seconds later the whole buffer was too old to use — with nothing in
+    /// the log to say when it went quiet or what else was happening at the time.
+    private var lastFrameAt: Date?
+    private var stallReported = false
+
+    /// Notices the feed going quiet and says so once, with the audio route
+    /// attached.
+    ///
+    /// The route is there because it is the leading suspect. Chef's voice runs
+    /// over Bluetooth HFP to the same glasses that are streaming the camera, and
+    /// Meta have two open issues about audio and camera interfering (#260, #256).
+    /// If the stall lands right after the session switches to HFP, that is the
+    /// answer; if it lands somewhere unrelated, this rules it out instead of
+    /// leaving us guessing.
+    private func startStallWatchdog() {
+        observationTasks.append(Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self, self.state == .streaming else { continue }
+                guard let last = self.lastFrameAt else { continue }
+                let quiet = Date().timeIntervalSince(last)
+                if quiet > 3, !self.stallReported {
+                    self.stallReported = true
+                    let route = PollyAudioSession.routeSummary()
+                    let line = String(
+                        format: "glasses: FRAME DELIVERY STALLED — nothing for %.1fs · audio %@",
+                        quiet, route)
+                    PollyDebugLog.shared.log(line)
+                    GlassesRunLog.shared.log(line)
+                } else if quiet < 1, self.stallReported {
+                    self.stallReported = false
+                    PollyDebugLog.shared.log("glasses: frames resumed")
+                }
+            }
+        })
+    }
+
     private func ingest(_ frame: BufferedVisualFrame) {
+        lastFrameAt = Date()
         buffer.insert(frame)
         previewImage = frame.image
     }

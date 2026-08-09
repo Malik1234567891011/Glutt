@@ -170,6 +170,16 @@ struct PollyAdaptiveCanvasView: View {
                 controller.refreshAudioLab()
                 Haptics.impact(.light)
             }
+            // Takes effect on the next cook, not this one: the audio session is
+            // configured once at connect and the Realtime transport is already
+            // holding the route. Worth flipping between two cooks of the same
+            // dish, which is how the camera-versus-voice question gets settled.
+            Button(PollyAudioLab.micOnGlasses
+                   ? "Audio: glasses (tap for phone, next cook)"
+                   : "Audio: phone (tap for glasses, next cook)") {
+                PollyAudioLab.micOnGlasses.toggle()
+                Haptics.impact(.light)
+            }
             #endif
             Button("End cooking session", role: .destructive, action: onRequestEnd)
             Button("Cancel", role: .cancel) {}

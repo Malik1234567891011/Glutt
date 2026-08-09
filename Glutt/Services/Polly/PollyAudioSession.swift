@@ -16,7 +16,13 @@ enum PollyAudioSession {
     static var categoryOptions: AVAudioSession.CategoryOptions {
         // `.allowBluetoothHFP` is the current spelling of `.allowBluetooth`.
         // Same option, same raw value, renamed in the SDK.
-        [.allowBluetoothHFP, .defaultToSpeaker]
+        //
+        // Dropped entirely when the cook has taken Chef's audio off the glasses,
+        // because leaving it in lets iOS route to HFP anyway and the whole point
+        // of that switch is a radio with no voice traffic on it. See
+        // `PollyAudioLab.micOnGlasses`.
+        guard PollyAudioLab.micOnGlasses else { return [.defaultToSpeaker] }
+        return [.allowBluetoothHFP, .defaultToSpeaker]
     }
 
     /// Port names Meta's glasses present themselves under. Matched loosely and
@@ -87,6 +93,18 @@ enum PollyAudioSession {
             PollyDebugLog.shared.log("audio: available inputs [\(described)]")
         }
 
+        guard PollyAudioLab.micOnGlasses else {
+            // Pin the phone's own microphone rather than merely declining to
+            // prefer the glasses: with a paired headset on the route, "no
+            // preference" still lands on the headset often enough to ruin the
+            // experiment.
+            if let builtIn = inputs.first(where: { $0.portType == .builtInMic }) {
+                try? session.setPreferredInput(builtIn)
+            }
+            PollyDebugLog.shared.log("audio: input preference — phone mic (glasses audio off)")
+            return
+        }
+
         guard let glasses = inputs.first(where: isMetaGlassesPort) else { return }
         do {
             try session.setPreferredInput(glasses)
@@ -101,6 +119,11 @@ enum PollyAudioSession {
     static func applyPreferredOutputPort(
         on session: AVAudioSession = .sharedInstance()
     ) {
+        guard PollyAudioLab.micOnGlasses else {
+            try? session.overrideOutputAudioPort(.speaker)
+            PollyDebugLog.shared.log("audio: output preference — built-in speaker (glasses audio off)")
+            return
+        }
         if isBluetoothHeadsetConnected(route: session.currentRoute) {
             try? session.overrideOutputAudioPort(.none)
             PollyDebugLog.shared.log("audio: output preference — Bluetooth headset (no speaker override)")

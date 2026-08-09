@@ -478,6 +478,16 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         guard state == .streaming else { return (nil, nil, nil, .noFrames) }
         switch buffer.best(maxAge: maxAge, now: Date(), gate: gate) {
         case .failure(let rejection):
+            // A dead feed reads as `tooOld`, because every frame in the buffer
+            // genuinely is. The advice that comes with `tooOld` is "look at what
+            // you are working on", which is right for a head turn and wrong for
+            // a radio that stopped: in one real cook Chef told a cook to point
+            // at the board and hold still three times while they were already
+            // doing exactly that. The watchdog knows the difference, so use it.
+            if rejection == .tooOld, stallReported {
+                PollyDebugLog.shared.log("glasses: refused, feed stopped (\(buffer.frames.count) stale frames)")
+                return (nil, nil, nil, .feedStopped)
+            }
             if let newest = buffer.newest {
                 PollyDebugLog.shared.log(String(
                     format: "glasses: refused %@ (sharp %.4f, bright %.3f, %d buffered)",
@@ -505,6 +515,9 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     /// the log to say when it went quiet or what else was happening at the time.
     private var lastFrameAt: Date?
     private var stallReported = false
+    /// Delivered count at the previous watchdog tick, so a stall can report
+    /// whether the toolkit kept handing us frames while we stopped taking them.
+    private var deliveredAtLastCheck = 0
 
     /// Notices the feed going quiet and says so once, with the audio route
     /// attached.
@@ -524,16 +537,30 @@ final class MetaGlassesVisualSource: PollyVisualSource {
                 let quiet = Date().timeIntervalSince(last)
                 if quiet > 3, !self.stallReported {
                     self.stallReported = true
-                    let route = PollyAudioSession.routeSummary()
+                    // Delivered vs ingested is the whole diagnosis, and the
+                    // first version of this watchdog could not tell them apart.
+                    //
+                    // `lastFrameAt` is set in `ingest`, which is downstream of
+                    // admission control, an off-thread decode and a hop to the
+                    // main actor. `delivered` is incremented in the listener
+                    // itself, before any of that. If delivered is still climbing
+                    // while ingest has stopped, the toolkit is fine and the stall
+                    // is ours. If both are frozen, nothing is arriving over the
+                    // radio and the audio link is the suspect.
+                    let sinceLast = self.delivered.count - self.deliveredAtLastCheck
                     let line = String(
-                        format: "glasses: FRAME DELIVERY STALLED — nothing for %.1fs · audio %@",
-                        quiet, route)
+                        format: "glasses: FRAME DELIVERY STALLED — no ingest for %.1fs · "
+                            + "toolkit delivered %d more in that window (total %d) · audio %@",
+                        quiet, sinceLast, self.delivered.count, PollyAudioSession.routeSummary())
                     PollyDebugLog.shared.log(line)
                     GlassesRunLog.shared.log(line)
                 } else if quiet < 1, self.stallReported {
                     self.stallReported = false
-                    PollyDebugLog.shared.log("glasses: frames resumed")
+                    let line = "glasses: frames resumed (total \(self.delivered.count))"
+                    PollyDebugLog.shared.log(line)
+                    GlassesRunLog.shared.log(line)
                 }
+                self.deliveredAtLastCheck = self.delivered.count
             }
         })
     }

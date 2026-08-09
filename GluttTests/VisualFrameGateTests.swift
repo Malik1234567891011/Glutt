@@ -120,10 +120,27 @@ final class VisualFrameGateTests: XCTestCase {
         XCTAssertFalse(suggestion.localizedCaseInsensitiveContains("check the camera"))
     }
 
+    /// A dead feed and a stale frame are different problems with different
+    /// answers. `tooOld` says "look at what you are working on", which is right
+    /// after a head turn. Said to a cook whose radio has gone quiet it is three
+    /// rounds of being told to hold still while already holding still.
+    func testAStoppedFeedIsNotBlamedOnTheCookMoving() {
+        let stopped = VisualFrameRejection.feedStopped.suggestion
+
+        XCTAssertTrue(stopped.localizedCaseInsensitiveContains("not something the cook can fix"))
+        XCTAssertFalse(stopped.localizedCaseInsensitiveContains("hold still"))
+        // And she should keep cooking rather than stopping dead on it.
+        XCTAssertTrue(stopped.localizedCaseInsensitiveContains("keep going"))
+        // Still distinct from the ordinary stale frame, which does deserve that advice.
+        XCTAssertTrue(VisualFrameRejection.tooOld.suggestion.localizedCaseInsensitiveContains("look at"))
+    }
+
     /// The other reasons still send the cook to do the thing that fixes them,
     /// which is the whole point of having separate cases.
     func testEveryRejectionStillCarriesItsOwnAdvice() {
-        let all: [VisualFrameRejection] = [.noFrames, .tooOld, .blurred, .tooDark, .tooBright, .warmingUp]
+        let all: [VisualFrameRejection] = [
+            .noFrames, .tooOld, .blurred, .tooDark, .tooBright, .warmingUp, .feedStopped,
+        ]
         let suggestions = all.map(\.suggestion)
 
         XCTAssertEqual(Set(suggestions).count, all.count, "two reasons give identical advice")

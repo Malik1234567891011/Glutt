@@ -22,6 +22,15 @@ enum VisualFrameRejection: String, Sendable, Error {
     /// The window is about two seconds over Bluetooth. It was 14 to 20 on the
     /// Wi-Fi transport, which is why this case exists at all.
     case warmingUp = "camera_warming_up"
+    /// The feed was running and has stopped, rather than the picture being old
+    /// because the cook moved.
+    ///
+    /// `tooOld` tells them to look at what they are working on, which is the
+    /// right advice when a head turn left the buffer behind and useless advice
+    /// when nothing has arrived over the radio for a minute. In a real cook Chef
+    /// said "point it at the cutting board and hold still" three times at a cook
+    /// who was already pointing at the cutting board and holding still.
+    case feedStopped = "camera_feed_stopped"
 
     /// What Polly should ask the cook to do about it. Kept here so the wording
     /// lives next to the condition that produced it.
@@ -37,6 +46,11 @@ enum VisualFrameRejection: String, Sendable, Error {
             return "It is too dark to judge. Ask the cook to turn a light on or move closer."
         case .tooBright:
             return "The picture is blown out. Ask the cook to angle away from the light."
+        case .feedStopped:
+            return "The picture has stopped arriving from the glasses. This is not something "
+                + "the cook can fix by moving or holding still, so do not ask them to. Say you "
+                + "have lost the view, keep going on what they tell you, and mention it may "
+                + "come back on its own."
         case .warmingUp:
             // Phrased as what to do rather than what to avoid. The first version
             // ended "do not ask them to check the camera", which is the exact

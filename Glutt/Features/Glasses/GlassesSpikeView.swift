@@ -110,7 +110,7 @@ struct GlassesSpikeView: View {
         ZStack {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color.secondary.opacity(0.15))
-            if let frame = model.latestFrame {
+            if let frame = model.previewFrame {
                 Image(uiImage: frame)
                     .resizable()
                     .scaledToFit()
@@ -380,6 +380,17 @@ final class GlassesSpikeModel {
     private(set) var sessionStatus = "none"
     private(set) var streamStatus = "none"
     private(set) var latestFrame: UIImage?
+
+    /// What to draw in the preview pane, from whichever path is running.
+    ///
+    /// `latestFrame` is only ever set by this screen's own Add camera path, so
+    /// the pane sat empty through Look x5, Long look and Warm reopen — every
+    /// experiment that goes through the real coordinator, which is most of them.
+    /// A diagnostic screen that cannot show you the picture it just spent a
+    /// minute capturing is failing at its one job.
+    var previewFrame: UIImage? {
+        latestFrame ?? coordinator?.glasses.previewImage
+    }
     private(set) var capturedPhoto: UIImage?
     private(set) var frameSummary = "0 frames"
     private(set) var log: [String] = []
@@ -390,7 +401,7 @@ final class GlassesSpikeModel {
 #endif
     /// Built lazily: the coordinator is the thing Polly holds, and starting it
     /// here proves the same path a cook session takes.
-    private var coordinator: PollyVisualSourceCoordinator?
+    private(set) var coordinator: PollyVisualSourceCoordinator?
     private(set) var coordinatorStatus = "not started"
     private(set) var memoryStatus = MemoryProbe.summary
     /// Lowest headroom seen. Logged as it falls so the copied log shows the

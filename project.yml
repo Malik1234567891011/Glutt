@@ -45,12 +45,11 @@ packages:
   # 0.8 -> 0.9 removed DeviceSession.addStream entirely. Ships arm64 + simulator
   # slices, which is what lets the mock device work on the sim.
   # See docs/meta-glasses-research-2026-08-04.md.
-  # 0.9.0. The 0.8 Bluetooth spike is answered and closed: see
-  # docs/glasses-transport-and-memory.md. There is no public way to select the
-  # BTC media transport in either 0.8.0 or 0.9.0.
+  # SPIKE: pinned to 0.8.0 to reach the Bluetooth Classic camera transport.
+  # 0.9 is Wi-Fi only. See docs/glasses-transport-and-memory.md.
   MetaWearablesDAT:
     url: https://github.com/facebook/meta-wearables-dat-ios
-    exactVersion: "0.9.0"
+    exactVersion: "0.8.0"
   # Native Google sign-in. The browser flow would need no dependency, but the
   # Supabase Google provider is configured with a client id and no secret, which
   # is the native (id_token) setup; /auth/v1/authorize rejects the web flow with
@@ -106,13 +105,31 @@ targets:
         # problem.
         LSApplicationQueriesSchemes:
           - fb-viewapp
+        # SPIKE: the Bluetooth Classic selector.
+        #
+        # `vinidlidoo` in discussion #226, after getting Wi-Fi working on 0.8:
+        # "we also had to remove the ExternalAccessory wiring
+        #  (UISupportedExternalAccessoryProtocols + the external-accessory
+        #  background mode) before the transport would engage."
+        #
+        # So these keys hold the camera on BTC and removing them is what lets
+        # softAP take over. They come from the 0.7-era integration guide; the
+        # 0.9 docs we built against dropped them, which is why Glutt has been on
+        # Wi-Fi since the first line of glasses code and has never once asked
+        # for Bluetooth.
+        #
+        # `com.meta.ar.wearable` is the MFi protocol. Corroborated by the App
+        # Store rejections on issues #114, #167 and #169, all of which are apps
+        # declaring exactly this string.
+        UISupportedExternalAccessoryProtocols:
+          - com.meta.ar.wearable
         # The camera stream reaches the phone over Wi-Fi, which is why a camera
         # SDK wants local network and Bonjour.
         NSBluetoothAlwaysUsageDescription: Glutt connects to your Meta glasses so Chef can see what you are cooking.
         NSBluetoothPeripheralUsageDescription: Glutt connects to your Meta glasses so Chef can see what you are cooking.
-        NSLocalNetworkUsageDescription: Glutt uses your local network to receive the camera view from your Meta glasses.
-        NSBonjourServices:
-          - _bonjour._tcp
+        # SPIKE: NSLocalNetworkUsageDescription and NSBonjourServices removed.
+        # Both exist only to let the softAP socket layer work. Restore with the
+        # pin if this experiment fails.
         # Meta's own sample also lists `audio` here. Deliberately omitted: Polly
         # stands down on background on purpose (PollySessionView scenePhase), and
         # DAT 0.9 ends the camera session on background regardless, so `audio`
@@ -121,6 +138,8 @@ targets:
           - processing
           - bluetooth-central
           - bluetooth-peripheral
+          # SPIKE: the other half of the BTC selector.
+          - external-accessory
         CFBundleURLTypes:
           - CFBundleURLName: com.omarlahmimi.glutt
             CFBundleURLSchemes:

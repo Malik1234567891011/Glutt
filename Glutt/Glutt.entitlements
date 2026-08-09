@@ -14,8 +14,17 @@
 	     these the stream sits in waitingForDevice and dies deviceNotConnected.
 	     Both are in Meta's own CameraAccess sample, and both need a paid team:
 	     a personal team cannot provision them at all. -->
-	<key>com.apple.developer.networking.HotspotConfiguration</key>
-	<true/>
+	<!-- SPIKE: HotspotConfiguration removed so the toolkit cannot stand up the
+	     softAP even if it wants to. The ExternalAccessory keys in Info.plist are
+	     what should select Bluetooth; this is the belt to that pair of braces.
+
+	     `wifi-info` deliberately KEPT. It is read-only, cannot cause a join, and
+	     is the only way NetworkProbe can report which network the phone is
+	     actually on — which is the entire result we are here to measure.
+	     Removing it to eliminate an implausible confounder would cost the
+	     instrumentation that makes the run worth doing.
+
+	     Restore HotspotConfiguration before anything ships. -->
 	<key>com.apple.developer.networking.wifi-info</key>
 	<true/>
 </dict>

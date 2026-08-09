@@ -54,7 +54,9 @@ final class MetaGlassesVisualSource: PollyVisualSource {
 
     private var selector: AutoDeviceSelector?
     private var session: DeviceSession?
-    private var camera: Camera?
+    /// 0.8 has no `Camera`: `addStream` returns the `Stream` itself.
+    /// Qualified because Foundation has a `Stream` too.
+    private var camera: MWDATCamera.Stream?
     private var tokens: [any AnyListenerToken] = []
     /// Cancelled at the end of every look, unlike `tokens`, which belong to the
     /// long-lived session.
@@ -337,13 +339,13 @@ final class MetaGlassesVisualSource: PollyVisualSource {
 
     private func attachCamera(to session: DeviceSession) async throws {
         let config = StreamConfiguration(videoCodec: .raw, resolution: resolution, frameRate: frameRate)
-        guard let camera = try session.addCamera(config: config) else {
+        guard let camera = try session.addStream(config: config) else {
             state = .unavailable(reason: "The glasses camera is not available.")
             return
         }
         self.camera = camera
-        observeStream(camera.stream)
-        camera.stream.start()
+        observeStream(camera)
+        camera.start()
         let size = resolution.videoFrameSize
         PollyDebugLog.shared.log("glasses: camera \(size.width)x\(size.height) @ \(frameRate) fps")
 
@@ -447,7 +449,7 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         guard let camera, state == .streaming, photoContinuation == nil else {
             return await captureFrame()
         }
-        guard camera.stream.capturePhoto(format: .jpeg) else {
+        guard camera.capturePhoto(format: .jpeg) else {
             PollyDebugLog.shared.log("glasses: capturePhoto refused, using stream frame")
             return await captureFrame()
         }

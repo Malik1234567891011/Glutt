@@ -235,7 +235,88 @@ back, and the spike lives on `spike/dat-0.8-bluetooth`.
 
 ---
 
-## 2. Bluetooth camera transport is gone, and `DAMEnabled` is a no-op
+## 2. RETRACTED TWICE. Bluetooth transport works, and `DAMEnabled` is honoured
+
+**Everything in this section below the retraction is wrong.** It is kept because
+both errors were acted on and both cost weeks.
+
+**Retraction 1, the transport.** Bluetooth Classic is selectable and Glutt now
+runs on it. `UISupportedExternalAccessoryProtocols = com.meta.ar.wearable` plus
+the `external-accessory` background mode holds the camera on BTC and keeps the
+phone on its own Wi-Fi. See §1b, itself retracted. First frame in 1.8s rather
+than fifteen.
+
+**Retraction 2, `DAMEnabled`.** The key *is* read by 0.8.0, which is the version
+we link. The quote below is from **0.9's** changelog, and "support for opting out
+was removed" is a statement that it existed in 0.8. `project.yml` additionally
+claimed the key was absent from the framework binary, on the strength of
+`strings` output. `strings` does not enumerate Swift string literals, so that
+observation could not distinguish "not read" from "not visible to grep".
+
+Settled by test rather than argument. `GluttTests/Glasses/GlassesDAMConfigTests`
+calls `MWDATCore.Configuration(infoDictionary:)`, the same parse the SDK performs
+at launch, and gets: key absent → DAM **on**, `false` → **off**, `true` → **on**.
+No glasses, no device, 2 milliseconds. It also asserts what the shipping bundle
+resolves to, which is the assertion that would have caught the original mistake.
+
+### Why this one mattered
+
+`metadavithom` of Meta, discussion #226, a month before we hit it:
+
+> I think there is an issue where we can drop frames when you are using bluetooth
+> as the transport channel and have DAM enabled. **BTC transport & DAM will be the
+> default behaviour if you update your app from the 0.7 sdk to 0.8 sdk**, but we
+> have moved to Wifi in our sample app so perhaps didn't catch this.
+
+That is Glutt exactly: BTC by the MFi keys, DAM by saying nothing. `jeffhoang`
+measured both sides of it on issue #227 — with DAM on, frames stop dead 5 to 9
+seconds in and never return with nothing on any error channel; with
+`DAMEnabled=false`, a 30+ minute continuous run and only ordinary 1 to 2 second
+stalls that heal by themselves. Our cooks froze at 12 to 19 seconds.
+
+### The freeze itself, from Meta
+
+`metadavithom`, #226, 2026-07-13:
+
+> We've identified this as a glasses firmware bug — it is an issue where i-frames
+> are dropped occasionally by the glasses and not sent, if the packet size gets
+> too large. [...] On top of that **if you use `.raw`, our SDK decoder has a bug
+> where it freezes on the missed frame and doesn't recover.**
+
+So two defects stacked: firmware drops a keyframe, and the `.raw` decoder never
+asks for another. `vinidlidoo` rebuilt a `VTDecompressionSession` every 0.5s
+through a 72-second freeze and decoded nothing — the decoder is not wedged, it is
+waiting for a reference that will never arrive. Only restarting the *stream*
+brings it back, because that forces a keyframe.
+
+Three fixes were promised. Ranked by what is actually available:
+
+1. **`DAMEnabled=false`** — shipped. Removes the DAM half.
+2. **`.hvc1` and decode ourselves** — Meta's standing recommendation. Recovers at
+   the next keyframe with no restart. Not done.
+3. **Meta's own `.raw` decoder fix** — promised 2026-07-13 "in a few weeks".
+   **0.9.0 shipped 2026-08-03 with no mention of it**, and removed the DAM
+   opt-out. That is the reason the SDK stays pinned to 0.8.0.
+4. **Firmware v128** — "more than a month" from 2026-07-13.
+
+### The restart that could never have worked
+
+Our first mitigation tore the session down and rebuilt it. It failed on both
+attempts in the cook of 2026-08-11 with `A session already exists for this
+device`, and it was always going to. `jeffhoang`, #227, 2026-07-06:
+
+> 0.8.0 made `Stream.stop()` / `DeviceSession.stop()` synchronous/fire-and-forget:
+> re-adding a stream races the still-in-flight teardown and throws
+> `DeviceSessionError.capabilityAlreadyActive` (code 5) or `sessionAlreadyExists`
+> (code 3).
+
+Now the camera is recycled on the session we already have, which forces the
+keyframe without racing anything. A session rebuild is the fallback, and it waits
+for the old session to actually reach `.stopped` first.
+
+---
+
+### Superseded text, kept for the record
 
 From the 0.9.0 changelog, under *Removed*:
 

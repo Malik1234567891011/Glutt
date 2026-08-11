@@ -583,6 +583,8 @@ final class PollySessionController {
     /// What `liveConfig`'s prompt was actually built with, so a correction only
     /// goes out when the answer has changed.
     private var promptAssumesContinuousSight = false
+    /// How readily Chef interrupts, chosen before the cook and fixed for it.
+    private(set) var watchfulness = ChefWatchfulness.default
 
     private var transcriptLog: [String] = []
     private var pendingAssistantItemId: String?
@@ -602,6 +604,9 @@ final class PollySessionController {
     /// hasn't started when it fires, force a spoken repair; two strikes = the
     /// session is broken and the reconnect ladder takes over.
     private var responseWatchdogTask: Task<Void, Never>?
+    /// True between `response.created` and `response.done`. The watchdog uses it
+    /// to tell "she never started" from "she is taking her time".
+    private var responseInFlight = false
     private var watchdogStrikes = 0
     /// Never-silent, final layer: when the session dies mid-cook and no model
     /// can speak anymore, the on-device system voice says so — dead air is
@@ -682,6 +687,12 @@ final class PollySessionController {
         // has been output, so the voice has to travel with the token and the
         // choice is fixed for the life of the session by design.
         let chef = PollyChefVoice.selected
+        // Fixed for the session for a softer reason than the voice: it could be
+        // changed live by re-sending the instructions, but it would change her
+        // manner mid-sentence, so it is chosen next to the chef on the same
+        // screen and left alone.
+        let watchfulness = ChefWatchfulness.selected
+        self.watchfulness = watchfulness
 
         // The mint has no data dependency on the plan, so it runs alongside it.
         // Measured on an iPhone 17 Pro sim: the mint takes 0.85-1.33s and the
@@ -886,6 +897,7 @@ final class PollySessionController {
                 // phone wording and the first successful look corrects her,
                 // because the frame result names its own source.
                 seesContinuously: visuals.activeKind == .metaGlasses,
+                watchfulness: watchfulness,
                 chef: chef),
             tools: PollyToolRegistry.toolDefinitions,
             voice: token.voice,
@@ -901,6 +913,7 @@ final class PollySessionController {
         // that has moved on.
         let briefingHeard = heardBriefing
         let verbalGo = awaitVerbalGo
+        let level = watchfulness
         rebuildInstructions = { [recipe] sees in
             PollyPromptBuilder.instructions(
                 recipe: recipe, plan: plan, pantryMatch: pantryMatch,
@@ -909,6 +922,7 @@ final class PollySessionController {
                 heardBriefing: briefingHeard,
                 awaitVerbalGo: verbalGo,
                 seesContinuously: sees,
+                watchfulness: level,
                 chef: chef)
         }
 
@@ -1762,6 +1776,16 @@ final class PollySessionController {
         }
         try? await transport?.send(.responseCreate)
         isThinking = true
+        // Restart the clock here, not at speech-stop.
+        //
+        // The watchdog is armed when the cook stops talking, but nothing is asked
+        // of the model until the transcript lands and the gate commits, and that
+        // gap is not fixed: it is usually ~0.3s and was 2.9s in one cook. The
+        // model then had 1.1s of a 4s window and lost, so a repair went out on
+        // top of a response that was already generating and the server rejected
+        // it with `conversation_already_has_active_response`. The window is meant
+        // to measure how long she takes to answer, so it starts when she is asked.
+        armResponseWatchdog()
         PollyDebugLog.shared.event(.turnCommitted, ["barge": wasSpeaking ? "1" : "0"])
         PollyDebugLog.shared.log("gate: committed user turn → response.create")
     }
@@ -1821,6 +1845,7 @@ final class PollySessionController {
             // invisible exactly when the cook was waiting. Not while she's
             // audibly speaking (queued follow-ups would flicker the pill).
             if !isPollySpeaking { isThinking = true }
+            responseInFlight = true
 
         case .unhandled(let type):
             PollyDebugLog.shared.log("event: unhandled '\(type)'")
@@ -1907,6 +1932,7 @@ final class PollySessionController {
             // The server reports exactly what it billed for this response.
             // Accumulating it is what makes Polly's cost measured, not guessed.
             if let usage { sessionUsage += usage }
+            responseInFlight = false
             PollyDebugLog.shared.log(
                 "event: response DONE status=\(status) tools=[\(calls.map(\.name).joined(separator: ","))]"
                 + (pendingAssistantLine.isEmpty ? "" : " said=\"\(pendingAssistantLine.prefix(120))\""))
@@ -2089,6 +2115,15 @@ final class PollySessionController {
         // watcher open forever and strands the session engaged for the rest of
         // the cook.
         awaitingTranscript = false
+        // She is mid-answer, just not audible yet: a long tool chain, or a reply
+        // still streaming. Asking for a repair on top of that is rejected by the
+        // server as `conversation_already_has_active_response` and buys nothing.
+        // Wait another window instead, and do not spend a strike on it.
+        if responseInFlight {
+            PollyDebugLog.shared.log("watchdog: a response is still generating, waiting another window")
+            armResponseWatchdog()
+            return
+        }
         watchdogStrikes += 1
         PollyDebugLog.shared.log("watchdog: no reply \(Int(PollyConfig.responseWatchdogSeconds))s after user turn (strike \(watchdogStrikes))")
         if watchdogStrikes >= 2, let context = sessionContext {

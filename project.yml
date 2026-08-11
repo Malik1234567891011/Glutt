@@ -95,9 +95,29 @@ targets:
         MWDAT:
           AppLinkURLScheme: "glutt-wearables://"
           MetaAppID: "0"
-          # No DAMEnabled key. It is not read at all in 0.8.0 (the string does
-          # not appear in either framework binary) and 0.9.0 documents it as
-          # ignored. Camera media runs over the glasses' softAP, full stop.
+          # Opt out of the Device Access Toolkit App Model.
+          #
+          # Meta's own engineer, discussion #226: "there is an issue where we can
+          # drop frames when you are using bluetooth as the transport channel and
+          # have DAM enabled. BTC transport & DAM will be the default behaviour
+          # if you update your app from the 0.7 sdk to 0.8 sdk." That is Glutt
+          # exactly: we hold the camera on Bluetooth with the MFi keys below, and
+          # DAM defaults to on in 0.8 for anyone who says nothing.
+          #
+          # Measured by `jeffhoang` on the same thread: with DAM on, frames stop
+          # dead 5 to 9 seconds in and never return, with nothing on any error
+          # channel. With this key, a 30+ minute continuous run and only the
+          # ordinary 1 to 2 second stalls that recover by themselves. Our cooks
+          # froze at 12 to 19 seconds, which is the same failure.
+          #
+          # An earlier comment here claimed the key was not read in 0.8 because
+          # the string does not appear in the framework binary. `strings` does not
+          # enumerate Swift string literals, so that showed nothing either way.
+          # GlassesDAMConfigTests asserts the real answer against the real bundle.
+          #
+          # This is why the SDK stays pinned to 0.8.0: 0.9 removed the opt-out and
+          # shipped no decoder fix.
+          DAMEnabled: false
         # The toolkit finds Meta AI with `UIApplication.canOpenURL`, which
         # silently returns false for any scheme not listed here. Without it the
         # SDK reports Meta AI as not installed when it is sitting on the home

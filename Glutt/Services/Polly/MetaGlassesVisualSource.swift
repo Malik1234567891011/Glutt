@@ -88,6 +88,13 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         }
         state = .starting
         PollyDebugLog.shared.log("glasses: starting visual source")
+        // Printed every time because these two plist keys decide whether the feed
+        // survives, nothing in the code names them, and a log that does not say
+        // which flow it was is a log that cannot explain a freeze.
+        if let flow = GlassesSupport.shared.cameraFlow {
+            PollyDebugLog.shared.log("glasses: \(flow.summary)")
+            GlassesRunLog.shared.log("glasses: \(flow.summary)")
+        }
 
         let selector = self.selector ?? AutoDeviceSelector(wearables: Wearables.shared)
         self.selector = selector
@@ -99,6 +106,12 @@ final class MetaGlassesVisualSource: PollyVisualSource {
             PollyDebugLog.shared.log("glasses: no eligible device")
             return
         }
+
+        // A session we stopped a moment ago is still tearing down, and 0.8 made
+        // `stop()` fire-and-forget, so creating the next one immediately loses
+        // the race and throws `sessionAlreadyExists`. Every automatic recovery in
+        // the last cook died exactly here.
+        await waitForSessionRelease()
 
         do {
             let session = try Wearables.shared.createSession(deviceSelector: selector)
@@ -337,9 +350,30 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         (error as? any DatError)?.description ?? String(describing: error)
     }
 
-    private func attachCamera(to session: DeviceSession) async throws {
+    /// Ask the session for the camera, allowing for the slot still being held.
+    ///
+    /// A stream we stopped a moment ago has not necessarily let go of the
+    /// capability: `Stream.stop()` is fire-and-forget in 0.8, and re-adding
+    /// straight away throws `capabilityAlreadyActive`. That is a wait, not a
+    /// failure, and treating it as a failure is what turned every stall into a
+    /// dead camera for the rest of the cook.
+    private func addStream(to session: DeviceSession, attempts: Int = 8) async throws -> MWDATCamera.Stream? {
         let config = StreamConfiguration(videoCodec: .raw, resolution: resolution, frameRate: frameRate)
-        guard let camera = try session.addStream(config: config) else {
+        for attempt in 1...attempts {
+            do {
+                return try session.addStream(config: config)
+            } catch {
+                // Typed throws: `error` is already a `DeviceSessionError` here.
+                guard case .capabilityAlreadyActive = error, attempt < attempts else { throw error }
+                PollyDebugLog.shared.log("glasses: camera slot still held, waiting (\(attempt)/\(attempts))")
+                try? await Task.sleep(for: .milliseconds(300))
+            }
+        }
+        throw GlassesLookError.cameraDidNotStart
+    }
+
+    private func attachCamera(to session: DeviceSession, streamingTimeout: TimeInterval = 25) async throws {
+        guard let camera = try await addStream(to: session) else {
             state = .unavailable(reason: "The glasses camera is not available.")
             return
         }
@@ -382,7 +416,7 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         // `waitingForDevice → starting → streaming`. Returning here would hand
         // the caller a source that says it is not streaming and invite it to
         // tear the whole thing down, which is exactly what happened.
-        guard await waitForStreaming() else {
+        guard await waitForStreaming(timeout: streamingTimeout) else {
             // Deliberately NOT teardown(): that destroys the DeviceSession,
             // which is the expensive thing we keep alive between looks. One
             // camera failing must not cost the connection, or every later look
@@ -403,6 +437,30 @@ final class MetaGlassesVisualSource: PollyVisualSource {
             try? await Task.sleep(for: .milliseconds(100))
         }
         return state == .streaming
+    }
+
+    /// Block until the session we just stopped has actually stopped.
+    ///
+    /// 0.8 made `DeviceSession.stop()` synchronous and fire-and-forget, so the
+    /// object reports `.stopping` for a while after the call returns and the
+    /// device still considers the session live. Creating the next one inside that
+    /// window throws `sessionAlreadyExists`, which is what happened on both
+    /// automatic recoveries in the last cook and left the cook blind for the rest
+    /// of it. Documented by another developer on issue #227 a month before we hit
+    /// it.
+    private func waitForSessionRelease(timeout: TimeInterval = 6) async {
+        guard let retiring = retiringSession else { return }
+        retiringSession = nil
+        let startedAt = Date()
+        let deadline = startedAt.addingTimeInterval(timeout)
+        while Date() < deadline, retiring.state != .stopped, retiring.state != .idle {
+            try? await Task.sleep(for: .milliseconds(150))
+        }
+        let waited = Date().timeIntervalSince(startedAt)
+        guard waited > 0.15 else { return }
+        PollyDebugLog.shared.log(String(
+            format: "glasses: waited %.1fs for the old session to let go (now %@)",
+            waited, String(describing: retiring.state)))
     }
 
     private func waitForDevice(selector: AutoDeviceSelector, timeout: TimeInterval = 4) async -> Bool {
@@ -429,6 +487,8 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     private func teardown() {
         observationTasks.forEach { $0.cancel() }
         observationTasks.removeAll()
+        stallWatchdog?.cancel()
+        stallWatchdog = nil
         let tokens = self.tokens
         self.tokens.removeAll()
         Task { for token in tokens { await token.cancel() } }
@@ -436,6 +496,9 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         resumePhoto(nil)
         camera?.stop()
         camera = nil
+        // Kept, not dropped: the next `start()` has to wait for this one to
+        // finish stopping, and a nil'd reference cannot be asked.
+        retiringSession = session
         session?.stop()
         session = nil
     }
@@ -529,6 +592,12 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     private var stallStartedAt: Date?
     private var recoveryAttempts = 0
     private var lastRecoveryAt: Date?
+    /// Held apart from `observationTasks` because recovery recycles the camera
+    /// without touching the session, and the watchdog has to outlive that.
+    private var stallWatchdog: Task<Void, Never>?
+    /// The session we most recently asked to stop, kept only long enough to see
+    /// it actually reach `.stopped`.
+    private var retiringSession: DeviceSession?
 
     /// Notices the feed going quiet and says so once, with the audio route
     /// attached.
@@ -540,8 +609,14 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     /// answer; if it lands somewhere unrelated, this rules it out instead of
     /// leaving us guessing.
     private func startStallWatchdog() {
-        observationTasks.append(Task { [weak self] in
-            var lastHeartbeatCount = 0
+        stallWatchdog?.cancel()
+        stallWatchdog = Task { [weak self] in
+            // Seeded from the running total rather than zero. `delivered` counts
+            // for the life of the source, not the life of a stream, so a watchdog
+            // restarted after a recycle used to attribute every frame since the
+            // cook began to its first three-second window and print "+50 in 3.0s
+            // (16.7 fps)" for a camera that had just opened.
+            var lastHeartbeatCount = self?.delivered.count ?? 0
             var lastHeartbeatAt = Date()
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(3))
@@ -607,52 +682,79 @@ final class MetaGlassesVisualSource: PollyVisualSource {
                 }
                 self.deliveredAtLastCheck = total
             }
-        })
+        }
     }
 
-    /// Restart the camera when the feed freezes, because that is the only thing
-    /// that has ever brought it back.
+    /// Recycle the camera when the feed freezes, because a new stream forces a
+    /// keyframe and a keyframe is the only thing that unwedges the decoder.
     ///
-    /// Measured across one cook, twice: delivery ramps up, runs for twelve to
-    /// sixteen seconds, and stops dead while the stream still reports
-    /// `.streaming`, the session still reports `.started`, and no error fires.
-    /// It is not the audio — Chef's voice sat on Bluetooth HFP throughout,
-    /// including through the healthy sixteen seconds after a manual restart, and
-    /// the freeze arrived on schedule anyway. It matches what Meta describe of
-    /// the `.raw` decoder on discussion #226: "freezes on the missed frame and
-    /// doesn't recover".
+    /// Meta's account of the freeze, on discussion #226: the glasses drop i-frames
+    /// when a packet gets too big, "and on top of that if you use `.raw`, our SDK
+    /// decoder has a bug where it freezes on the missed frame and doesn't
+    /// recover." Another developer confirmed rebuilding a `VTDecompressionSession`
+    /// through a 72-second freeze decoded nothing, and that only restarting the
+    /// stream brought it back. So the frames on the wire are fine and the decoder
+    /// is waiting for a reference it will never get; the restart is not a reset,
+    /// it is a request for a keyframe.
     ///
-    /// The cook found the workaround before we did, by turning the camera off
-    /// and on from the canvas. A full stop and start costs about two seconds
-    /// over Bluetooth, which is cheap enough to do automatically; on the old
-    /// Wi-Fi transport it was fifteen and would not have been worth it.
+    /// The camera is recycled on the session we already have. An earlier version
+    /// tore the session down as well, and failed every single time with
+    /// `sessionAlreadyExists` — `stop()` is fire-and-forget in 0.8, so the next
+    /// `createSession` lands inside the old one's teardown. That is documented on
+    /// issue #227 and it cost this cook its vision twice. The session is rebuilt
+    /// only if recycling the camera genuinely fails.
     ///
-    /// This is a mitigation, not the fix. The fix is `.hvc1` with our own
-    /// decoder, which is what Meta told people to do a month ago.
+    /// Still a mitigation. `.hvc1` with our own decoder is Meta's actual
+    /// recommendation, and `DAMEnabled=false` should make the freeze rare enough
+    /// that this rarely fires at all.
     private func recoverFromStall() {
         guard state == .streaming || state == .paused else { return }
-        if let last = lastRecoveryAt, Date().timeIntervalSince(last) < 8 { return }
+        // Long enough that a recycle can finish and deliver, short enough that a
+        // second freeze is caught in the same breath. Measured cold open over
+        // Bluetooth is ~1.7s.
+        if let last = lastRecoveryAt, Date().timeIntervalSince(last) < 5 { return }
         guard recoveryAttempts < 200 else { return }
         recoveryAttempts += 1
         lastRecoveryAt = Date()
 
         let attempt = recoveryAttempts
-        // Detached from `observationTasks` on purpose: `stop()` cancels those,
-        // and the watchdog that noticed the stall is one of them.
+        // Its own task: the watchdog that noticed the stall is cancelled and
+        // replaced partway through this, and cannot be the thing awaiting it.
         Task { @MainActor [weak self] in
-            guard let self else { return }
-            let line = "glasses: feed frozen, restarting the camera (attempt \(attempt))"
-            PollyDebugLog.shared.log(line)
-            GlassesRunLog.shared.log(line)
-
-            self.stop()
-            await self.start()
-
-            let ok = self.state == .streaming
-            let done = "glasses: restart \(ok ? "recovered the feed" : "did not recover")"
-            PollyDebugLog.shared.log(done)
-            GlassesRunLog.shared.log(done)
+            await self?.recycleCamera(attempt: attempt)
         }
+    }
+
+    private func recycleCamera(attempt: Int) async {
+        let startedAt = Date()
+        func report(_ text: String) {
+            PollyDebugLog.shared.log(text)
+            GlassesRunLog.shared.log(text)
+        }
+        report("glasses: feed frozen, recycling the camera (attempt \(attempt))")
+
+        if let session, session.state == .started {
+            endLook()
+            do {
+                // 10s rather than the cold-open 25: the session is already up, so
+                // this is only the camera coming back. Failing fast leaves time to
+                // rebuild the session while the cook is still mid-step.
+                try await attachCamera(to: session, streamingTimeout: 10)
+                report(String(format: "glasses: camera back in %.1fs, session untouched",
+                              Date().timeIntervalSince(startedAt)))
+                return
+            } catch {
+                report("glasses: the camera would not reopen on the live session — \(message(error))")
+            }
+        } else {
+            report("glasses: session is \(session.map { String(describing: $0.state) } ?? "gone"), rebuilding it")
+        }
+
+        stop()
+        await start()
+        let ok = state == .streaming
+        report(String(format: "glasses: session rebuild %@ after %.1fs",
+                      ok ? "recovered the feed" : "did not recover", Date().timeIntervalSince(startedAt)))
     }
 
     /// How far the frames that did arrive got through our own pipeline.

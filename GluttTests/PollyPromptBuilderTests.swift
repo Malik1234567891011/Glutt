@@ -79,6 +79,7 @@ final class PollyPromptBuilderTests: XCTestCase {
         memories: [PollyMemory] = [],
         pastSessions: [CookSession] = [],
         seesContinuously: Bool = false,
+        watchfulness: ChefWatchfulness = .default,
         chef: PollyChefVoice = .default
     ) -> String {
         PollyPromptBuilder.instructions(
@@ -90,6 +91,7 @@ final class PollyPromptBuilderTests: XCTestCase {
             pastSessions: pastSessions,
             ownedTools: [],
             seesContinuously: seesContinuously,
+            watchfulness: watchfulness,
             chef: chef
         )
     }
@@ -213,8 +215,66 @@ final class PollyPromptBuilderTests: XCTestCase {
                       "she has a per-step expectation and should be pointed at it")
         // And a bar, because a camera on your face narrating your kitchen is
         // worse than one that stays quiet.
-        XCTAssertTrue(prompt.contains("BUT HAVE A BAR"))
+        XCTAssertTrue(prompt.contains("HAVE A HIGH BAR"))
         XCTAssertTrue(prompt.localizedCaseInsensitiveContains("do not narrate"))
+    }
+
+    // MARK: - Watchfulness
+
+    /// The three levels have to be genuinely different instructions, not the
+    /// same paragraph with an adjective swapped. If two of them ever produce the
+    /// same prompt, the picker is a placebo.
+    func testEachWatchfulnessLevelProducesADifferentPrompt() {
+        let recipe = makeRecipe()
+        let prompts = ChefWatchfulness.allCases.map {
+            instructions(recipe: recipe, seesContinuously: true, watchfulness: $0)
+        }
+        XCTAssertEqual(Set(prompts).count, ChefWatchfulness.allCases.count)
+    }
+
+    /// The cook picked "leave me alone". Being right is not a reason to override
+    /// that, and this is the assertion that stops a later prompt edit from
+    /// helpfully adding the speaking-up rules back for everyone.
+    func testHandsOffIsNeverToldToVolunteer() {
+        let prompt = instructions(recipe: makeRecipe(), seesContinuously: true, watchfulness: .handsOff)
+
+        XCTAssertTrue(prompt.contains("DO NOT VOLUNTEER"))
+        XCTAssertFalse(prompt.contains("SPEAK UP UNASKED"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("being right is not a reason to speak"))
+        // She can still see and can still be asked. Hands off is about her
+        // manner, not about taking the camera away.
+        XCTAssertTrue(prompt.contains("YOU CAN SEE"))
+        XCTAssertTrue(prompt.contains("LOOK BEFORE YOU AGREE"))
+    }
+
+    /// Danger to the person is the one thing that outranks the cook's choice.
+    func testHandsOffStillBreaksSilenceForDanger() {
+        let prompt = instructions(recipe: makeRecipe(), seesContinuously: true, watchfulness: .handsOff)
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("danger to the person"))
+    }
+
+    /// The strict level is the one that judges technique and cut sizes, which
+    /// the middle level is explicitly told to leave alone.
+    func testPerfectionistJudgesTechniqueAndWatchfulDoesNot() {
+        let recipe = makeRecipe()
+        let strict = instructions(recipe: recipe, seesContinuously: true, watchfulness: .perfectionist)
+        let middle = instructions(recipe: recipe, seesContinuously: true, watchfulness: .watchful)
+
+        XCTAssertTrue(strict.contains("TECHNIQUE COUNTS"))
+        XCTAssertFalse(middle.contains("TECHNIQUE COUNTS"))
+        XCTAssertTrue(middle.localizedCaseInsensitiveContains("do not correct cut sizes, technique"))
+        // Even the strict one is not allowed to become a commentary.
+        XCTAssertTrue(strict.contains("STILL NOT A COMMENTARY"))
+    }
+
+    /// Watchfulness is a glasses idea. A phone cook must get the same prompt
+    /// whatever is persisted, or a setting they never saw changes their cook.
+    func testWatchfulnessDoesNotLeakIntoAPhoneCook() {
+        let recipe = makeRecipe()
+        let prompts = ChefWatchfulness.allCases.map {
+            instructions(recipe: recipe, seesContinuously: false, watchfulness: $0)
+        }
+        XCTAssertEqual(Set(prompts).count, 1)
     }
 
     func testCookPlanJSONRoundTripsBetweenMarkers() throws {

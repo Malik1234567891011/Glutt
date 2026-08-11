@@ -26,6 +26,10 @@ enum PollyPromptBuilder {
         /// for the whole session, and the interesting behaviour is checking
         /// what they tell her against what is actually on the board.
         seesContinuously: Bool = false,
+        /// How much she interferes with what she sees. Only reaches the prompt
+        /// when `seesContinuously`, because on a phone there is nothing to be
+        /// watchful with.
+        watchfulness: ChefWatchfulness = .default,
         chef: PollyChefVoice = .default
     ) -> String {
         // The chef overlay goes LAST, after the run policy, so it can only
@@ -44,7 +48,7 @@ enum PollyPromptBuilder {
             memorySection(memories),
             historySection(pastSessions),
             runPolicySection(heardBriefing: heardBriefing, awaitVerbalGo: awaitVerbalGo,
-                             seesContinuously: seesContinuously),
+                             seesContinuously: seesContinuously, watchfulness: watchfulness),
             chef.personaOverlay,
         ]
         .filter { !$0.isEmpty }
@@ -279,7 +283,7 @@ enum PollyPromptBuilder {
     /// during the first real glasses cook, and it does not merely underuse the
     /// camera, it contradicts it: Chef said "I can't see the counter unless you
     /// turn the camera on" to a cook who was streaming to her at the time.
-    private static func seeingRules(seesContinuously: Bool) -> String {
+    private static func seeingRules(seesContinuously: Bool, watchfulness: ChefWatchfulness) -> String {
         guard seesContinuously else {
             return """
             - The camera is OFF by default — the phone's usually on the counter, so you can't see
@@ -305,23 +309,72 @@ enum PollyPromptBuilder {
           yellow one on the board is worth saying. Chunks when the step says finely diced is
           worth saying. A pan too small for the amount of food about to go in it is worth saying.
           Vague approval is worthless; the specific catch is the whole point.
-        - SPEAK UP UNASKED when what you see will change how the dish turns out. You do not need
-          to be asked a question to mention that the garlic is catching or that the fillets are
-          crowded. Lead with the fix, not the observation.
-        - BUT HAVE A BAR. Say it when it changes the outcome or costs them a redo. Do not narrate
-          what you see, do not comment on their kitchen, their tidiness or their technique in
-          general, and do not confirm that things are fine unless they asked. A running commentary
-          is worse than silence, and they are wearing you on their face.
+        \(interruptionRules(watchfulness))
         - Say only what you can actually see in the frame you were given, and never pretend to
           have seen. If a look comes back with no usable picture, the reason says whether it is
           worth another try; a stopped feed is not something the cook can fix by moving.
         """
     }
 
+    /// How readily she interrupts, which the cook chose before the cook started.
+    ///
+    /// This is the one setting that changes what it feels like to wear the
+    /// glasses, so it gets its own block rather than a clause. The wrong bar in
+    /// either direction ruins it: too high and she never catches anything, which
+    /// is a camera that does nothing; too low and she is a voice in your ear
+    /// correcting your knife grip, which people turn off once and never turn
+    /// back on.
+    private static func interruptionRules(_ watchfulness: ChefWatchfulness) -> String {
+        switch watchfulness {
+        case .perfectionist:
+            return """
+            - SPEAK UP UNASKED, and hold them to the recipe. This cook asked you to keep them
+              exact, so anything that is not what the recipe called for is worth a word: the wrong
+              onion, dice that are noticeably bigger or smaller than the step asks for, ingredients
+              going in out of order, something on the board that is not in the ingredient list at
+              all, a pan that is not hot yet, garlic starting to catch. Lead with the fix.
+            - TECHNIQUE COUNTS at this level. How they are holding the knife, whether the fillets
+              are patted dry before they hit the pan, whether the board is crowded. Say it once,
+              in one sentence, then let them get on with it.
+            - STILL NOT A COMMENTARY. Correct, do not narrate. Never say a thing is fine unless
+              they asked, never mention their kitchen or their tidiness, and never repeat a
+              correction they have already heard from you on this step. They are wearing you on
+              their face and the third unprompted remark in a row is the one that gets you muted.
+            """
+        case .watchful:
+            return """
+            - SPEAK UP UNASKED when what you see will change how the dish turns out. You do not
+              need to be asked a question to mention that the garlic is catching, that the fillets
+              are crowded, or that something is going in that the recipe never mentions. Lead with
+              the fix, not the observation.
+            - HAVE A HIGH BAR. This cook asked you to stay out of the way unless it matters, so
+              perfect is not the goal and a dish that comes out well by a different route is fine.
+              Say it when it costs them the dish or costs them a redo, and stay quiet otherwise.
+              Do not correct cut sizes, technique or tidiness on their own, do not narrate what you
+              see, and do not confirm that things are fine unless they asked. A running commentary
+              is worse than silence.
+            """
+        case .handsOff:
+            return """
+            - DO NOT VOLUNTEER. This cook asked to be left alone, and that outranks anything above
+              about how useful an observation would be.
+              Being right is not a reason to speak.
+              Stay silent even when you can see a mistake being made, including one that will hurt
+              the dish; they know, or they will find out, and they chose this.
+            - Look when they ask, answer what they asked, and stop. No follow-up advice, no "while
+              I'm looking", no mentioning the other thing you noticed in the frame.
+            - The single exception is danger to the person, not to the food: a fire, a pan handle
+              over a lit burner, oil about to catch. Say that immediately, in as few words as
+              possible.
+            """
+        }
+    }
+
     private static func runPolicySection(
         heardBriefing: Bool,
         awaitVerbalGo: Bool,
-        seesContinuously: Bool
+        seesContinuously: Bool,
+        watchfulness: ChefWatchfulness
     ) -> String {
         let opening: String
         if awaitVerbalGo {
@@ -559,7 +612,7 @@ enum PollyPromptBuilder {
           bad timing, missing-ingredient workaround), also call record_polly_save with a short
           past-tense moment — e.g. "Stopped garlic from burning", "Recovered a split sauce".
           Do NOT call it for routine tips or every step — only when you changed the outcome.
-        \(seeingRules(seesContinuously: seesContinuously))
+        \(seeingRules(seesContinuously: seesContinuously, watchfulness: watchfulness))
         - Wrap up and call end_session when the dish is plated or the user asks to stop.
         - The session ends around minute \(PollyConfig.maxSessionMinutes); start wrapping
           up by minute \(PollyConfig.wrapUpWarningMinutes).

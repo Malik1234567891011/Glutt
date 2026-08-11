@@ -55,6 +55,75 @@ final class GlassesSupport: @unchecked Sendable {
         }
     }
 
+    /// Which camera flow and which transport this build actually asked for.
+    ///
+    /// Both are decided entirely by Info.plist keys that nothing in the code
+    /// mentions, which is how Glutt spent six weeks on a combination Meta had
+    /// publicly named as broken without anyone noticing. Discussion #226:
+    /// frames are dropped "when you are using bluetooth as the transport channel
+    /// and have DAM enabled", and BTC plus DAM is exactly what an app inherits by
+    /// moving from the 0.7 SDK to 0.8 and leaving its plist alone.
+    ///
+    /// Read from `Configuration`, which is the same parse the toolkit performs at
+    /// launch, so this reports what the SDK concluded rather than what we meant.
+    struct CameraFlow {
+        /// True when the Device Access Toolkit App Model is in play. Defaults to
+        /// true in 0.8 when the key is absent, and is forced true in 0.9, which
+        /// is a reason to stay on 0.8 until Meta ship the decoder fix.
+        let usesDAM: Bool
+        /// True when the app is declared as an MFi accessory host, which is what
+        /// holds the camera on Bluetooth Classic instead of the glasses' softAP.
+        let declaresMFiAccessory: Bool
+
+        var summary: String {
+            "camera flow: DAM \(usesDAM ? "ON" : "off") · transport "
+                + (declaresMFiAccessory ? "Bluetooth Classic (MFi accessory declared)" : "Wi-Fi softAP")
+        }
+    }
+
+    /// Whether a pair of glasses is on the cook's face right now, rather than in
+    /// a drawer.
+    ///
+    /// `isAvailable` only says the toolkit configured, which stays true forever
+    /// once someone has registered a pair. The pre-cook screen needs the harder
+    /// question: offering "Chef watches everything" to someone with no camera is
+    /// a promise about a cook that cannot happen, and the setting would sit there
+    /// silently doing nothing.
+    ///
+    /// Costs a moment because the selector resolves by observing rather than by
+    /// asking, which is why `MetaGlassesVisualSource.start` waits on it too.
+    func hasConnectedGlasses(timeout: TimeInterval = 2) async -> Bool {
+        guard isAvailable else { return false }
+        let selector = AutoDeviceSelector(wearables: Wearables.shared)
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if selector.activeDevice != nil { return true }
+            try? await Task.sleep(for: .milliseconds(120))
+        }
+        return selector.activeDevice != nil
+    }
+
+    /// Parse an arbitrary info dictionary exactly as the toolkit parses ours.
+    ///
+    /// Exists for one reason: "our bundle resolves to DAM off" passes just as
+    /// happily against a toolkit that ignores `DAMEnabled` and reports false to
+    /// everyone. Without a case that must come back true, the assertion tests
+    /// nothing, which is precisely the mistake this whole area is recovering
+    /// from. Nil when the dictionary is too incomplete to parse at all.
+    static func usesDAM(infoDictionary: [String: Any]) -> Bool? {
+        (try? Configuration(infoDictionary: infoDictionary))?.usesDam
+    }
+
+    /// Nil only if the bundle is missing something `Configuration` insists on,
+    /// which cannot happen in a built app.
+    var cameraFlow: CameraFlow? {
+        guard let configuration = try? Configuration(bundle: .main) else { return nil }
+        let protocols = Bundle.main.object(forInfoDictionaryKey: "UISupportedExternalAccessoryProtocols") as? [String]
+        return CameraFlow(
+            usesDAM: configuration.usesDam,
+            declaresMFiAccessory: protocols?.contains("com.meta.ar.wearable") ?? false)
+    }
+
     /// Meta AI's post-approval callback. Returns true when the URL belonged to
     /// the toolkit so the caller knows not to also treat it as a Glutt deep link.
     @discardableResult

@@ -346,6 +346,8 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         self.camera = camera
         lastFrameAt = nil
         stallReported = false
+        cameraOpenedAt = Date()
+        lastLoggedStreamState = nil
         observeStream(camera)
         startStallWatchdog()
         camera.start()
@@ -518,6 +520,13 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     /// Delivered count at the previous watchdog tick, so a stall can report
     /// whether the toolkit kept handing us frames while we stopped taking them.
     private var deliveredAtLastCheck = 0
+    private var lastLoggedStreamState: StreamState?
+    private var lastLoggedSessionState: DeviceSessionState?
+    /// When the camera was opened, so every delivery line can say how far into
+    /// the stream it happened. Stalls have clustered around thirteen seconds and
+    /// that only became visible once the numbers were anchored to something.
+    private var cameraOpenedAt: Date?
+    private var stallStartedAt: Date?
 
     /// Notices the feed going quiet and says so once, with the audio route
     /// attached.
@@ -530,39 +539,81 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     /// leaving us guessing.
     private func startStallWatchdog() {
         observationTasks.append(Task { [weak self] in
+            var lastHeartbeatCount = 0
+            var lastHeartbeatAt = Date()
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
+                try? await Task.sleep(for: .seconds(3))
                 guard let self, self.state == .streaming else { continue }
+
+                let now = Date()
+                let total = self.delivered.count
+                let sinceHeartbeat = total - lastHeartbeatCount
+                let window = now.timeIntervalSince(lastHeartbeatAt)
+                let fps = window > 0 ? Double(sinceHeartbeat) / window : 0
+                let intoStream = self.cameraOpenedAt.map { now.timeIntervalSince($0) } ?? 0
+
+                // A heartbeat every three seconds, not only on failure.
+                //
+                // Stalls were only ever visible as an after-the-fact "no frames
+                // for N seconds", which cannot say whether delivery cliffed or
+                // decayed, and cannot be lined up against anything else. Printed
+                // into the same timeline as "assistant audio START/STOP" and the
+                // mic governor, a steady rate line makes the correlation
+                // readable directly: if delivery dies a few seconds into every
+                // spoken turn, the voice link is the cause; if it dies at a fixed
+                // point regardless, it is the `.raw` decoder freeze Meta describe
+                // on #226 and #254.
+                let line = String(
+                    format: "glasses: frames +%d in %.1fs (%.1f fps) · total %d · t+%.0fs · %@",
+                    sinceHeartbeat, window, fps, total, intoStream,
+                    self.ingestSummary())
+                PollyDebugLog.shared.log(line)
+                GlassesRunLog.shared.log(line)
+
+                lastHeartbeatCount = total
+                lastHeartbeatAt = now
+
                 guard let last = self.lastFrameAt else { continue }
-                let quiet = Date().timeIntervalSince(last)
+                let quiet = now.timeIntervalSince(last)
                 if quiet > 3, !self.stallReported {
                     self.stallReported = true
-                    // Delivered vs ingested is the whole diagnosis, and the
-                    // first version of this watchdog could not tell them apart.
-                    //
-                    // `lastFrameAt` is set in `ingest`, which is downstream of
-                    // admission control, an off-thread decode and a hop to the
-                    // main actor. `delivered` is incremented in the listener
-                    // itself, before any of that. If delivered is still climbing
-                    // while ingest has stopped, the toolkit is fine and the stall
-                    // is ours. If both are frozen, nothing is arriving over the
-                    // radio and the audio link is the suspect.
-                    let sinceLast = self.delivered.count - self.deliveredAtLastCheck
+                    self.stallStartedAt = last
+                    // Everything needed to place the stall, in one line, because
+                    // reconstructing it from four separate lines after the fact
+                    // is how the last three attempts went wrong.
                     let line = String(
-                        format: "glasses: FRAME DELIVERY STALLED — no ingest for %.1fs · "
-                            + "toolkit delivered %d more in that window (total %d) · audio %@",
-                        quiet, sinceLast, self.delivered.count, PollyAudioSession.routeSummary())
+                        format: "glasses: STALL — nothing for %.1fs · began t+%.0fs into the stream · "
+                            + "stream reports %@ · session %@ · toolkit delivered %d more while quiet "
+                            + "(total %d) · audio %@",
+                        quiet,
+                        (self.cameraOpenedAt.map { last.timeIntervalSince($0) } ?? 0),
+                        String(describing: self.lastLoggedStreamState ?? .stopped),
+                        String(describing: self.session?.state as Any),
+                        total - self.deliveredAtLastCheck, total,
+                        PollyAudioSession.routeSummary())
                     PollyDebugLog.shared.log(line)
                     GlassesRunLog.shared.log(line)
                 } else if quiet < 1, self.stallReported {
                     self.stallReported = false
-                    let line = "glasses: frames resumed (total \(self.delivered.count))"
+                    let outage = self.stallStartedAt.map { now.timeIntervalSince($0) } ?? 0
+                    let line = String(
+                        format: "glasses: RECOVERED after %.0fs blind · total %d · stream reports %@",
+                        outage, total, String(describing: self.lastLoggedStreamState ?? .stopped))
                     PollyDebugLog.shared.log(line)
                     GlassesRunLog.shared.log(line)
                 }
-                self.deliveredAtLastCheck = self.delivered.count
+                self.deliveredAtLastCheck = total
             }
         })
+    }
+
+    /// How far the frames that did arrive got through our own pipeline.
+    ///
+    /// Delivered-versus-ingested is what separates "the radio went quiet" from
+    /// "we stopped taking them", and admission control sitting between the two
+    /// means the gap is real and worth printing rather than assumed to be zero.
+    private func ingestSummary() -> String {
+        "ingested \(frameSequence)"
     }
 
     private func ingest(_ frame: BufferedVisualFrame) {
@@ -599,6 +650,12 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     }
 
     private func apply(_ sessionState: DeviceSessionState) {
+        if sessionState != lastLoggedSessionState {
+            lastLoggedSessionState = sessionState
+            let line = "glasses: session → \(sessionState)"
+            PollyDebugLog.shared.log(line)
+            GlassesRunLog.shared.log(line)
+        }
         switch sessionState {
         case .paused:
             // Do not restart. The device resumes or stops on its own, and
@@ -672,6 +729,19 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     }
 
     private func apply(_ streamState: StreamState) {
+        // Logged because its silence is itself the evidence. Meta's issue #254
+        // is "videoFramePublisher silently stops delivering while state remains
+        // .streaming", and their engineer's account in #226 is that the `.raw`
+        // decoder "freezes on the missed frame and doesn't recover". If a stall
+        // arrives with no transition printed here, that is the signature. If the
+        // stream quietly went `.paused` instead, that is a different bug and
+        // this is the only place it would ever show.
+        if streamState != lastLoggedStreamState {
+            lastLoggedStreamState = streamState
+            let line = "glasses: stream → \(streamState) (delivered \(delivered.count))"
+            PollyDebugLog.shared.log(line)
+            GlassesRunLog.shared.log(line)
+        }
         switch streamState {
         case .streaming:
             state = .streaming

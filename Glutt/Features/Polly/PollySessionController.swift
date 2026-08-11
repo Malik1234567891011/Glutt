@@ -755,6 +755,10 @@ final class PollySessionController {
                 try await self.transport?.send(.createUserImage(dataURI: dataURI, itemId: nil))
                 PollyDebugLog.shared.log(
                     "visual: sent \(capture.source?.toolName ?? "?") frame for \"\(request.reason)\"")
+                // Keep the picture itself, not just the fact of it. Whether the
+                // glasses resolve a red onion from a yellow one is still an open
+                // question and no amount of logging answers it.
+                GlassesRunLog.shared.saveFrame(jpeg, reason: request.reason)
                 return PollyFrameOutcome(
                     captured: true,
                     source: capture.source?.toolName,

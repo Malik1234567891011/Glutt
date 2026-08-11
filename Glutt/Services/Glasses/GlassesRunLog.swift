@@ -21,6 +21,7 @@ final class GlassesRunLog: @unchecked Sendable {
     private let url: URL
     private var handle: FileHandle?
     private var runStart = Date()
+    private var savedFrames = 0
 
     /// Roughly 400 KB of text, after which the file is truncated and started
     /// again. A diagnostic run is a few hundred lines; anything approaching this
@@ -38,6 +39,7 @@ final class GlassesRunLog: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         runStart = Date()
+        savedFrames = 0
         openIfNeeded()
         write("\n\n══════ \(title) — \(Self.stamp.string(from: runStart)) ══════\n")
     }
@@ -48,6 +50,36 @@ final class GlassesRunLog: @unchecked Sendable {
         openIfNeeded()
         let elapsed = Date().timeIntervalSince(runStart)
         write(String(format: "%6.1f  %@\n", elapsed, message))
+    }
+
+    /// Keep the picture Chef was actually shown.
+    ///
+    /// A log can say a frame was sent, its sharpness and its age, and still
+    /// leave the question that matters unanswered: is 504x896 over Bluetooth
+    /// enough to tell a red onion from a yellow one, or 5mm dice from 15mm?
+    /// Nobody has looked. These land next to the log so a run can be reviewed
+    /// picture by picture afterwards rather than argued about.
+    ///
+    /// Capped per launch. Diagnostic frames are ~50 KB, so this is a couple of
+    /// megabytes at worst, and it is the only copy that exists — the buffer
+    /// holds eight and drops the rest.
+    func saveFrame(_ jpeg: Data, reason: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard savedFrames < 60 else { return }
+        savedFrames += 1
+
+        let directory = url.deletingLastPathComponent().appendingPathComponent("glasses-frames")
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        // Numbered by order and stamped with seconds into the run, so the file
+        // name alone lines a picture up against the line in the log that sent it.
+        let elapsed = Int(Date().timeIntervalSince(runStart))
+        let slug = reason
+            .lowercased()
+            .replacingOccurrences(of: "[^a-z0-9]+", with: "-", options: .regularExpression)
+            .prefix(50)
+        let name = String(format: "%03d-t%04ds-%@.jpg", savedFrames, elapsed, String(slug))
+        try? jpeg.write(to: directory.appendingPathComponent(name))
     }
 
     /// Everything on disk, including runs that ended in a kill.

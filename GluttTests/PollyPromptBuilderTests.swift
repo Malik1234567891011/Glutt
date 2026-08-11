@@ -78,6 +78,7 @@ final class PollyPromptBuilderTests: XCTestCase {
         recipe: Recipe,
         memories: [PollyMemory] = [],
         pastSessions: [CookSession] = [],
+        seesContinuously: Bool = false,
         chef: PollyChefVoice = .default
     ) -> String {
         PollyPromptBuilder.instructions(
@@ -88,6 +89,7 @@ final class PollyPromptBuilderTests: XCTestCase {
             memories: memories,
             pastSessions: pastSessions,
             ownedTools: [],
+            seesContinuously: seesContinuously,
             chef: chef
         )
     }
@@ -171,6 +173,48 @@ final class PollyPromptBuilderTests: XCTestCase {
         XCTAssertTrue(prompt.contains("4/5"), "past-session rating string")
         XCTAssertTrue(prompt.contains("Came out great, went heavier on harissa"))
         XCTAssertFalse(prompt.contains("First time cooking this together."))
+    }
+
+    // MARK: - What she is told she can see
+
+    /// The phone camera sits on a counter and is off until asked, so the useful
+    /// behaviour is inviting a look. Nothing about that should leak into a cook
+    /// wearing glasses.
+    func testPhoneCookIsToldTheCameraIsOffAndToInviteALook() {
+        let prompt = instructions(recipe: makeRecipe(), seesContinuously: false)
+
+        XCTAssertTrue(prompt.contains("The camera is OFF by default"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("tap the camera"))
+        XCTAssertFalse(prompt.contains("YOU CAN SEE"))
+    }
+
+    /// The glasses cook gets the opposite instruction, and this is the exact
+    /// regression that made the first real glasses cook useless: Chef told a cook
+    /// who was streaming to her "I can't see the counter unless you turn the
+    /// camera on", because she had been handed the phone wording.
+    func testGlassesCookIsNeverToldToTurnACameraOn() {
+        let prompt = instructions(recipe: makeRecipe(), seesContinuously: true)
+
+        XCTAssertTrue(prompt.contains("YOU CAN SEE"))
+        XCTAssertFalse(prompt.contains("The camera is OFF by default"))
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("tap the camera"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("never say you cannot see"))
+    }
+
+    /// Always-on vision is only worth having if she uses it to catch what the
+    /// cook got wrong. Verifying claims against the recipe is the whole feature,
+    /// so it is asserted rather than left to a prompt edit to quietly drop.
+    func testGlassesCookIsToldToVerifyClaimsAgainstTheRecipe() {
+        let prompt = instructions(recipe: makeRecipe(), seesContinuously: true)
+
+        XCTAssertTrue(prompt.contains("LOOK BEFORE YOU AGREE"))
+        XCTAssertTrue(prompt.contains("CHECK IT AGAINST THE RECIPE"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("visualCheck"),
+                      "she has a per-step expectation and should be pointed at it")
+        // And a bar, because a camera on your face narrating your kitchen is
+        // worse than one that stays quiet.
+        XCTAssertTrue(prompt.contains("BUT HAVE A BAR"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("do not narrate"))
     }
 
     func testCookPlanJSONRoundTripsBetweenMarkers() throws {

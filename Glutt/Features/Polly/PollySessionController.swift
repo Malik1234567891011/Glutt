@@ -870,6 +870,12 @@ final class PollySessionController {
                 ownedTools: ownedTools,
                 heardBriefing: heardBriefing,
                 awaitVerbalGo: awaitVerbalGo,
+                // Read here rather than assumed: the glasses come up in
+                // parallel with the plan and the token, and by this point they
+                // have usually won that race. When they have not, she gets the
+                // phone wording and the first successful look corrects her,
+                // because the frame result names its own source.
+                seesContinuously: visuals.activeKind == .metaGlasses,
                 chef: chef),
             tools: PollyToolRegistry.toolDefinitions,
             voice: token.voice,

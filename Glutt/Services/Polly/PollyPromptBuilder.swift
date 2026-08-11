@@ -19,6 +19,13 @@ enum PollyPromptBuilder {
         ownedTools: [KitchenTool],
         heardBriefing: Bool = false,
         awaitVerbalGo: Bool = false,
+        /// True when the cook is wearing camera glasses that are already
+        /// streaming, which changes what Chef is capable of rather than merely
+        /// where the picture comes from. With a phone she is blind until asked;
+        /// with glasses she can see whatever the cook is looking at, for free,
+        /// for the whole session, and the interesting behaviour is checking
+        /// what they tell her against what is actually on the board.
+        seesContinuously: Bool = false,
         chef: PollyChefVoice = .default
     ) -> String {
         // The chef overlay goes LAST, after the run policy, so it can only
@@ -36,7 +43,8 @@ enum PollyPromptBuilder {
             hardRulesSection(prefs),
             memorySection(memories),
             historySection(pastSessions),
-            runPolicySection(heardBriefing: heardBriefing, awaitVerbalGo: awaitVerbalGo),
+            runPolicySection(heardBriefing: heardBriefing, awaitVerbalGo: awaitVerbalGo,
+                             seesContinuously: seesContinuously),
             chef.personaOverlay,
         ]
         .filter { !$0.isEmpty }
@@ -258,7 +266,63 @@ enum PollyPromptBuilder {
         return lines.joined(separator: "\n")
     }
 
-    private static func runPolicySection(heardBriefing: Bool, awaitVerbalGo: Bool) -> String {
+    /// What Chef can see, and what she is expected to do about it.
+    ///
+    /// Two genuinely different jobs, not one job with a different lens on the
+    /// front. Through a phone propped on the counter she is blind until someone
+    /// asks, so the useful behaviour is inviting a look when one would help.
+    /// Through glasses she can see whatever the cook is looking at, all session,
+    /// for free — and the valuable thing becomes checking what they *tell* her
+    /// against what is actually on the board.
+    ///
+    /// The glasses version exists because the phone wording was still in place
+    /// during the first real glasses cook, and it does not merely underuse the
+    /// camera, it contradicts it: Chef said "I can't see the counter unless you
+    /// turn the camera on" to a cook who was streaming to her at the time.
+    private static func seeingRules(seesContinuously: Bool) -> String {
+        guard seesContinuously else {
+            return """
+            - The camera is OFF by default — the phone's usually on the counter, so you can't see
+              anything unless the cook turns it on. When a look would genuinely help (the colour of
+              the onions, whether a sear is done), casually invite them: "if you want, tap the camera
+              button and show me the pan and I'll take a look." Only call request_camera_frame once
+              the camera is on; if a capture comes back unavailable, the camera's still off — ask
+              them to tap it. Comment on what you actually SEE — browning, cut size, texture — and
+              never pretend to see without a frame.
+            """
+        }
+        return """
+        - YOU CAN SEE. The cook is wearing camera glasses pointed wherever they are looking, and
+          they are streaming for the whole session. A look costs them nothing and needs no
+          permission, so never ask them to turn a camera on and never say you cannot see.
+        - LOOK BEFORE YOU AGREE. When they tell you something about the physical world — "I've
+          got the tools out", "the onions are chopped", "that's done", "I've added it" — call
+          request_camera_frame and check before you accept it and move on. This is the single
+          most useful thing you do that a recipe cannot: they are telling you what they think
+          they did, and you can see what they actually did.
+        - CHECK IT AGAINST THE RECIPE, not against nothing. You have the ingredient list and the
+          current step's visualCheck from get_current_step. A recipe that wants red onion and a
+          yellow one on the board is worth saying. Chunks when the step says finely diced is
+          worth saying. A pan too small for the amount of food about to go in it is worth saying.
+          Vague approval is worthless; the specific catch is the whole point.
+        - SPEAK UP UNASKED when what you see will change how the dish turns out. You do not need
+          to be asked a question to mention that the garlic is catching or that the fillets are
+          crowded. Lead with the fix, not the observation.
+        - BUT HAVE A BAR. Say it when it changes the outcome or costs them a redo. Do not narrate
+          what you see, do not comment on their kitchen, their tidiness or their technique in
+          general, and do not confirm that things are fine unless they asked. A running commentary
+          is worse than silence, and they are wearing you on their face.
+        - Say only what you can actually see in the frame you were given, and never pretend to
+          have seen. If a look comes back with no usable picture, the reason says whether it is
+          worth another try; a stopped feed is not something the cook can fix by moving.
+        """
+    }
+
+    private static func runPolicySection(
+        heardBriefing: Bool,
+        awaitVerbalGo: Bool,
+        seesContinuously: Bool
+    ) -> String {
         let opening: String
         if awaitVerbalGo {
             opening = """
@@ -495,13 +559,7 @@ enum PollyPromptBuilder {
           bad timing, missing-ingredient workaround), also call record_polly_save with a short
           past-tense moment — e.g. "Stopped garlic from burning", "Recovered a split sauce".
           Do NOT call it for routine tips or every step — only when you changed the outcome.
-        - The camera is OFF by default — the phone's usually on the counter, so you can't see
-          anything unless the cook turns it on. When a look would genuinely help (the colour of
-          the onions, whether a sear is done), casually invite them: "if you want, tap the camera
-          button and show me the pan and I'll take a look." Only call request_camera_frame once
-          the camera is on; if a capture comes back unavailable, the camera's still off — ask
-          them to tap it. Comment on what you actually SEE — browning, cut size, texture — and
-          never pretend to see without a frame.
+        \(seeingRules(seesContinuously: seesContinuously))
         - Wrap up and call end_session when the dish is plated or the user asks to stop.
         - The session ends around minute \(PollyConfig.maxSessionMinutes); start wrapping
           up by minute \(PollyConfig.wrapUpWarningMinutes).

@@ -527,6 +527,8 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     /// that only became visible once the numbers were anchored to something.
     private var cameraOpenedAt: Date?
     private var stallStartedAt: Date?
+    private var recoveryAttempts = 0
+    private var lastRecoveryAt: Date?
 
     /// Notices the feed going quiet and says so once, with the audio route
     /// attached.
@@ -593,6 +595,7 @@ final class MetaGlassesVisualSource: PollyVisualSource {
                         PollyAudioSession.routeSummary())
                     PollyDebugLog.shared.log(line)
                     GlassesRunLog.shared.log(line)
+                    self.recoverFromStall()
                 } else if quiet < 1, self.stallReported {
                     self.stallReported = false
                     let outage = self.stallStartedAt.map { now.timeIntervalSince($0) } ?? 0
@@ -605,6 +608,51 @@ final class MetaGlassesVisualSource: PollyVisualSource {
                 self.deliveredAtLastCheck = total
             }
         })
+    }
+
+    /// Restart the camera when the feed freezes, because that is the only thing
+    /// that has ever brought it back.
+    ///
+    /// Measured across one cook, twice: delivery ramps up, runs for twelve to
+    /// sixteen seconds, and stops dead while the stream still reports
+    /// `.streaming`, the session still reports `.started`, and no error fires.
+    /// It is not the audio — Chef's voice sat on Bluetooth HFP throughout,
+    /// including through the healthy sixteen seconds after a manual restart, and
+    /// the freeze arrived on schedule anyway. It matches what Meta describe of
+    /// the `.raw` decoder on discussion #226: "freezes on the missed frame and
+    /// doesn't recover".
+    ///
+    /// The cook found the workaround before we did, by turning the camera off
+    /// and on from the canvas. A full stop and start costs about two seconds
+    /// over Bluetooth, which is cheap enough to do automatically; on the old
+    /// Wi-Fi transport it was fifteen and would not have been worth it.
+    ///
+    /// This is a mitigation, not the fix. The fix is `.hvc1` with our own
+    /// decoder, which is what Meta told people to do a month ago.
+    private func recoverFromStall() {
+        guard state == .streaming || state == .paused else { return }
+        if let last = lastRecoveryAt, Date().timeIntervalSince(last) < 8 { return }
+        guard recoveryAttempts < 200 else { return }
+        recoveryAttempts += 1
+        lastRecoveryAt = Date()
+
+        let attempt = recoveryAttempts
+        // Detached from `observationTasks` on purpose: `stop()` cancels those,
+        // and the watchdog that noticed the stall is one of them.
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let line = "glasses: feed frozen, restarting the camera (attempt \(attempt))"
+            PollyDebugLog.shared.log(line)
+            GlassesRunLog.shared.log(line)
+
+            self.stop()
+            await self.start()
+
+            let ok = self.state == .streaming
+            let done = "glasses: restart \(ok ? "recovered the feed" : "did not recover")"
+            PollyDebugLog.shared.log(done)
+            GlassesRunLog.shared.log(done)
+        }
     }
 
     /// How far the frames that did arrive got through our own pipeline.

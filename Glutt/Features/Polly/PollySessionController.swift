@@ -577,6 +577,12 @@ final class PollySessionController {
     /// on the single silent reconnect. Instructions/tools never mutate mid-cook
     /// so the realtime prompt cache stays warm.
     private var liveConfig: RealtimeSessionConfig?
+    /// Rebuilds the system prompt for a different visual source, with every
+    /// other input held exactly as it was at session start.
+    private var rebuildInstructions: ((Bool) -> String)?
+    /// What `liveConfig`'s prompt was actually built with, so a correction only
+    /// goes out when the answer has changed.
+    private var promptAssumesContinuousSight = false
 
     private var transcriptLog: [String] = []
     private var pendingAssistantItemId: String?
@@ -884,6 +890,23 @@ final class PollySessionController {
             audioPinnedAtMint: true,
             textOnlyOutput: chef.elevenLabsVoiceID != nil)
         liveConfig = config
+        promptAssumesContinuousSight = visuals.activeKind == .metaGlasses
+        // Values captured, not `self`: the rebuild must reproduce the prompt
+        // exactly as it was at session start apart from the one flag, and
+        // reading these off the controller later would silently pick up state
+        // that has moved on.
+        let briefingHeard = heardBriefing
+        let verbalGo = awaitVerbalGo
+        rebuildInstructions = { [recipe] sees in
+            PollyPromptBuilder.instructions(
+                recipe: recipe, plan: plan, pantryMatch: pantryMatch,
+                prefs: prefs, memories: memories, pastSessions: pastSessions,
+                ownedTools: ownedTools,
+                heardBriefing: briefingHeard,
+                awaitVerbalGo: verbalGo,
+                seesContinuously: sees,
+                chef: chef)
+        }
 
         let transport = deps.makeTransport()
         self.transport = transport
@@ -923,6 +946,7 @@ final class PollySessionController {
 
         phase = .live
         PollyDebugLog.shared.log("session: LIVE")
+        await refreshSeeingRulesIfNeeded()
         consumeEvents(from: transport, context: context)
         startSessionClock(context: context)
 
@@ -1445,6 +1469,36 @@ final class PollySessionController {
             followUpDeadline = proposed
         }
         if listeningMode == .followUp { listeningMode = .listening }
+    }
+
+    /// Re-send the system prompt when what Chef can see stops matching what she
+    /// was told she can see.
+    ///
+    /// The prompt is built immediately after the token mint, and the glasses
+    /// finish connecting about six tenths of a second later. That race was
+    /// assumed to be won and is in fact lost every time, so a cook wearing
+    /// glasses got the phone-camera instructions and Chef told them "I can't
+    /// see you unless you turn the camera on" while their stream was live.
+    ///
+    /// Correcting after the fact rather than waiting for the glasses before
+    /// connecting, because the wait would be dead air on every single cook to
+    /// fix a prompt that costs nothing to replace. It also covers the case a
+    /// pre-connect check never could: glasses that drop or arrive mid-cook.
+    private func refreshSeeingRulesIfNeeded() async {
+        guard let transport, let rebuild = rebuildInstructions, var config = liveConfig else { return }
+        let seesNow = visuals.activeKind == .metaGlasses
+        guard seesNow != promptAssumesContinuousSight else { return }
+
+        config.instructions = rebuild(seesNow)
+        liveConfig = config
+        promptAssumesContinuousSight = seesNow
+        do {
+            try await transport.send(.sessionUpdate(config))
+            PollyDebugLog.shared.log(
+                "session: seeing rules updated — \(seesNow ? "glasses, sees continuously" : "phone camera, off until asked")")
+        } catch {
+            PollyDebugLog.shared.log("session: could not update seeing rules — \(error.localizedDescription)")
+        }
     }
 
     private func startFollowUpWatcher() {

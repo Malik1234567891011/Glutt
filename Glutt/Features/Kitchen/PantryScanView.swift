@@ -17,9 +17,46 @@ struct PantryScanView: View {
         case failed(String)
     }
 
-    @State private var phase: Phase = .pick
+    /// Which way in the cook chose.
+    ///
+    /// The Kitchen header used to carry a camera button next to the plus, and
+    /// the camera button opened this sheet on a screen offering the same three
+    /// choices over again. Now the plus is a menu and the choice is made before
+    /// the sheet opens, so the sheet starts where they pointed it. `.pick`
+    /// remains as the fallback anyone lands on by backing out of a method.
+    /// `Identifiable` so the sheet can be presented with `.sheet(item:)`.
+    ///
+    /// Not decoration. With `.sheet(isPresented:)` the content view keeps the
+    /// identity it was first given, and `@State` initial values are only read
+    /// for the first instance of an identity, so picking "Tell us what you
+    /// have" opened the sheet on the hub screen instead: the phase had been
+    /// fixed at `.pick` by an earlier presentation and the new argument was
+    /// ignored. Presenting by item makes each choice a new identity.
+    enum Entry: String, Identifiable {
+        case pick
+        case camera
+        case library
+        case voice
+
+        var id: String { rawValue }
+    }
+
+    private let entry: Entry
+
+    init(entry: Entry = .pick) {
+        self.entry = entry
+        _phase = State(initialValue: entry == .voice ? .dictate : .pick)
+        _isShowingCamera = State(initialValue: entry == .camera)
+        _isShowingPhotoPicker = State(initialValue: entry == .library)
+    }
+
+    @State private var phase: Phase
     @State private var photoItem: PhotosPickerItem?
-    @State private var isShowingCamera = false
+    @State private var isShowingCamera: Bool
+    /// Separate from the inline `PhotosPicker` on the hub screen, because
+    /// arriving straight from the menu needs the picker presented rather than
+    /// tapped.
+    @State private var isShowingPhotoPicker: Bool
     @State private var items: [PantryScan.ScannedItem] = []
     /// Which path produced `items` — the camera or the voice description. Read
     /// by `commit()`, which cannot otherwise tell them apart.
@@ -77,6 +114,7 @@ struct PantryScanView: View {
                 if !newValue.isEmpty { descriptionText = newValue }
             }
             .onDisappear { dictation.stop() }
+            .photosPicker(isPresented: $isShowingPhotoPicker, selection: $photoItem, matching: .images)
             .fullScreenCover(isPresented: $isShowingCamera) {
                 CameraPicker { data in
                     Task { await scan(data) }
@@ -197,7 +235,12 @@ struct PantryScanView: View {
             }
             .buttonStyle(.plain)
 
-            if let error = dictation.errorMessage {
+            // Only when there is genuinely nothing to work with. A cook whose
+            // list is sitting right there in the box does not need to be told
+            // it could not be caught, and being told so is what made a working
+            // feature feel broken.
+            if let error = dictation.errorMessage,
+               descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(error)
                     .font(.gluttCaption)
                     .foregroundStyle(Theme.Colors.tomato)
@@ -385,7 +428,12 @@ struct PantryScanView: View {
     }
 
     private func parseDescription() async {
+        // Tapping Find ingredients mid-sentence is normal, so give the
+        // recognizer the moment it needs to hand back its last words rather
+        // than parsing a list that stops short of what was said.
+        let wasListening = dictation.isListening
         dictation.stop()
+        if wasListening { try? await Task.sleep(for: .milliseconds(650)) }
         let text = descriptionText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         phase = .scanning

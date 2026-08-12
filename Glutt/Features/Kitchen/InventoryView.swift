@@ -7,7 +7,10 @@ struct InventoryView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \PantryItem.name) private var items: [PantryItem]
     @Binding var isAddingItem: Bool
-    @Binding var isScanning: Bool
+    /// Which way in the header's plus menu chose, and whether the scan sheet is
+    /// up at all. Nil is closed. `.pick` is the hub, which is what the empty
+    /// state wants because it is offering the idea rather than a method.
+    @Binding var scanEntry: PantryScanView.Entry?
     @State private var searchText = ""
     @State private var editingQuantityItem: PantryItem?
     @State private var exactQuantityText = ""
@@ -51,7 +54,7 @@ struct InventoryView: View {
                         actionLabel: LLMClient.isConfigured ? "Add what you have" : "Add items",
                         action: {
                             if LLMClient.isConfigured {
-                                isScanning = true
+                                scanEntry = .pick
                             } else {
                                 isAddingItem = true
                             }
@@ -83,8 +86,8 @@ struct InventoryView: View {
         .sheet(isPresented: $isAddingItem) {
             PantryItemEditorView()
         }
-        .sheet(isPresented: $isScanning) {
-            PantryScanView()
+        .sheet(item: $scanEntry) { entry in
+            PantryScanView(entry: entry)
         }
         .sheet(isPresented: $isInventing) {
             InventDishView()

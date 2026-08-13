@@ -22,6 +22,9 @@ struct RecipeDetailView: View {
     @Environment(Router.self) private var router
     /// Optional so previews (and any host that doesn't inject it) still build.
     @Environment(SyncCoordinator.self) private var sync: SyncCoordinator?
+    /// Reading a recipe is free; everything you can *do* with one is Pro. Same
+    /// optionality as `sync`, and it reads as free when absent.
+    @Environment(Entitlements.self) private var gate: Entitlements?
     @Query private var pantryItems: [PantryItem]
     @Query private var groceryItems: [GroceryItem]
     @Query private var ownedTools: [KitchenTool]
@@ -291,19 +294,55 @@ struct RecipeDetailView: View {
             .opacity(1 - barProgress)
     }
 
+    /// Everything in here except Delete is Pro. A menu can't carry an overlay —
+    /// UIKit draws these rows from their `Label` — so the crown is interpolated
+    /// into each title (`PremiumMenuLabel`) and the action is routed through the
+    /// gate rather than being removed. Deleting your own recipe stays free:
+    /// nobody should have to subscribe to clean up their own library.
     private var overflowMenu: some View {
         Menu {
-            Button("More details", systemImage: "list.bullet.rectangle") { isShowingDetails = true }
-            Divider()
-            Picker("Units", selection: $unitSystem) {
-                ForEach(MeasurementSystem.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            Button { gate.perform(.recipeExtras) { isShowingDetails = true } } label: {
+                PremiumMenuLabel(title: "More details", systemImage: "list.bullet.rectangle",
+                                 feature: .recipeExtras, isPro: gate.isPro)
             }
             Divider()
-            Button("Edit", systemImage: "pencil") { isShowingEditor = true }
-            Button("Save as version", systemImage: "square.on.square") { isNamingVersion = true }
-            CollectionsMenu(recipe: recipe)
-            ShareLink(item: RecipeShareService.shareText(for: recipe, servings: displayServings)) {
-                Label("Share", systemImage: "square.and.arrow.up")
+            if gate.isPro {
+                Picker("Units", selection: $unitSystem) {
+                    ForEach(MeasurementSystem.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+            } else {
+                // A Picker has no single action to intercept, so the locked form
+                // is a plain row that opens the paywall instead.
+                Button { gate.presentPaywall(for: .unitConversion) } label: {
+                    PremiumMenuLabel(title: "Units", systemImage: "ruler",
+                                     feature: .unitConversion, isPro: false)
+                }
+            }
+            Divider()
+            Button { gate.perform(.editRecipe) { isShowingEditor = true } } label: {
+                PremiumMenuLabel(title: "Edit", systemImage: "pencil",
+                                 feature: .editRecipe, isPro: gate.isPro)
+            }
+            Button { gate.perform(.recipeVersions) { isNamingVersion = true } } label: {
+                PremiumMenuLabel(title: "Save as version", systemImage: "square.on.square",
+                                 feature: .recipeVersions, isPro: gate.isPro)
+            }
+            if gate.isPro {
+                CollectionsMenu(recipe: recipe)
+                ShareLink(item: RecipeShareService.shareText(for: recipe, servings: displayServings)) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+            } else {
+                // Same reasoning as Units: a submenu and a ShareLink both own
+                // their own presentation, so the locked forms are plain rows.
+                Button { gate.presentPaywall(for: .collections) } label: {
+                    PremiumMenuLabel(title: "Add to collection", systemImage: "folder",
+                                     feature: .collections, isPro: false)
+                }
+                Button { gate.presentPaywall(for: .shareRecipe) } label: {
+                    PremiumMenuLabel(title: "Share", systemImage: "square.and.arrow.up",
+                                     feature: .shareRecipe, isPro: false)
+                }
             }
             Divider()
             Button("Delete", systemImage: "trash", role: .destructive) { isConfirmingDelete = true }
@@ -488,7 +527,9 @@ struct RecipeDetailView: View {
         } else if !pantryMatch.missing.isEmpty {
             // No proxy in this build, so there is no chef to ask. The pantry
             // swap is pure local heuristic and still works without one.
-            adaptPill(MS.autoFixHighFill, "Use what I have") { isOptimizing = true }
+            adaptPill(MS.autoFixHighFill, "Use what I have") {
+                gate.perform(.useWhatIHave) { isOptimizing = true }
+            }
         }
     }
 
@@ -500,7 +541,8 @@ struct RecipeDetailView: View {
 
     private var askPollyButton: some View {
         Button {
-            Haptics.impact(.light); chatLaunch = ChatLaunch()
+            Haptics.impact(.light)
+            gate.perform(.askPolly) { chatLaunch = ChatLaunch() }
         } label: {
             HStack(spacing: 11) {
                 MS.chatBubbleFill.sized(18)
@@ -521,6 +563,7 @@ struct RecipeDetailView: View {
                 .strokeBorder(Theme.Colors.accent.opacity(0.22), lineWidth: 1.5))
         }
         .buttonStyle(.plain)
+        .premiumCrown(.askPolly, offset: CGSize(width: 4, height: -6))
     }
 
     private func adaptPill(_ icon: MS, _ label: String, action: @escaping () -> Void) -> some View {
@@ -537,6 +580,7 @@ struct RecipeDetailView: View {
             .overlay(Capsule().strokeBorder(Theme.Colors.accent.opacity(0.22), lineWidth: 1.5))
         }
         .buttonStyle(.plain)
+        .premiumCrown(.useWhatIHave, offset: CGSize(width: 6, height: -6))
     }
 
     // MARK: - Diet warnings (inline, conditional safety info)
@@ -556,11 +600,13 @@ struct RecipeDetailView: View {
                         Spacer(minLength: 0)
                         if conflict.severity != .dislike {
                             Button {
-                                Haptics.impact(.light); substituteTarget = conflict
+                                Haptics.impact(.light)
+                                gate.perform(.substitutions) { substituteTarget = conflict }
                             } label: {
                                 HStack(spacing: 4) {
                                     Image(systemName: "arrow.triangle.2.circlepath")
                                     Text("Substitute").font(.gluttCaption.weight(.heavy))
+                                    if !gate.isPro { PremiumCrown() }
                                 }
                                 .foregroundStyle(Theme.Colors.accent)
                                 .padding(.horizontal, 12).padding(.vertical, 7)
@@ -708,9 +754,11 @@ struct RecipeDetailView: View {
 
     private var groceriesButton: some View {
         Button {
-            Haptics.notify(.success)
-            GroceryListBuilder.add(ingredients: pantryMatch.missing, from: recipe,
-                                   existing: groceryItems, context: context)
+            gate.perform(.groceries) {
+                Haptics.notify(.success)
+                GroceryListBuilder.add(ingredients: pantryMatch.missing, from: recipe,
+                                       existing: groceryItems, context: context)
+            }
         } label: {
             HStack(spacing: 9) {
                 MS.shoppingBasketFill.sized(19)
@@ -724,6 +772,7 @@ struct RecipeDetailView: View {
             .shadow(color: Theme.Colors.textPrimary.opacity(0.13), radius: 18, y: 10)
         }
         .buttonStyle(.plain)
+        .premiumCrown(.groceries, offset: CGSize(width: 4, height: -4))
         .padding(.top, 4)
     }
 
@@ -757,7 +806,7 @@ struct RecipeDetailView: View {
             if LLMClient.isConfigured {
                 Button {
                     Haptics.impact(.medium)
-                    isShowingCookBriefing = true
+                    gate.perform(.cookWithChef) { isShowingCookBriefing = true }
                 } label: {
                     HStack(spacing: 10) {
                         MS.graphicEqFill.sized(22).foregroundStyle(Theme.Colors.brightAccent)
@@ -770,23 +819,34 @@ struct RecipeDetailView: View {
                     .shadow(color: Theme.Colors.textPrimary.opacity(0.14), radius: 18, y: 10)
                 }
                 .buttonStyle(.plain)
+                .premiumCrown(.cookWithChef, offset: CGSize(width: 4, height: -4))
                 // Warm the cook-plan cache while the cook is still reading the
                 // recipe, so Polly's greeting is instant instead of waiting on
                 // an LLM compile. The dwell delay keeps idle browsing from
                 // spending compile calls; scale changes re-warm.
+                //
+                // Not for free cooks: this is an LLM call, and warming a plan
+                // for a session they cannot start would spend real money on
+                // every recipe they merely opened.
                 .task(id: scale) {
+                    guard gate.isPro else { return }
                     try? await Task.sleep(for: .seconds(1.5))
                     guard !Task.isCancelled else { return }
                     _ = await CookPlanCompiler.compile(recipe: recipe, scale: scale)
                 }
                 Button {
                     Haptics.impact(.light)
-                    if pantryMatch.missing.isEmpty { isCooking = true } else { isShowingPreCookChecklist = true }
+                    gate.perform(.cookStepByStep) {
+                        if pantryMatch.missing.isEmpty { isCooking = true } else { isShowingPreCookChecklist = true }
+                    }
                 } label: {
                     HStack(spacing: 7) {
                         MS.formatListNumbered.sized(18).foregroundStyle(Theme.Colors.muted)
                         Text(recipe.isCookingBasic ? "Or practice step by step" : "Or cook step by step")
                             .font(BrandFont.nunito(14, 700)).foregroundStyle(Theme.Colors.textSecondary)
+                        // Inline rather than the disc badge: a crown on its own
+                        // disc over a quiet text link outweighs the link.
+                        if !(gate.isPro) { PremiumCrown() }
                     }
                 }
                 .buttonStyle(.plain)

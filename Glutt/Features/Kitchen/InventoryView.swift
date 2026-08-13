@@ -11,6 +11,8 @@ struct InventoryView: View {
     /// up at all. Nil is closed. `.pick` is the hub, which is what the empty
     /// state wants because it is offering the idea rather than a method.
     @Binding var scanEntry: PantryScanView.Entry?
+    /// Seeing and typing in ingredients is free; the shortcuts are not.
+    @Environment(Entitlements.self) private var gate: Entitlements?
     @State private var searchText = ""
     @State private var editingQuantityItem: PantryItem?
     @State private var exactQuantityText = ""
@@ -112,6 +114,11 @@ struct InventoryView: View {
     }
 
     /// One quiet line under search — invent lives here, not on a home dashboard.
+    ///
+    /// Crowned but **not** gated: the row opens for everybody. The wall is on
+    /// the Make button inside (`InventDishView`), so a free cook can see what
+    /// the feature is, pick a meal type, read the promise, and only meets the
+    /// paywall at the moment they ask for the thing that costs us money.
     private var inventPrompt: some View {
         Button {
             Haptics.impact(.light)
@@ -121,9 +128,12 @@ struct InventoryView: View {
                 MS.autoAwesomeFill.sized(20)
                     .foregroundStyle(Theme.Colors.accent)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Invent a dish")
-                        .font(BrandFont.nunito(15, 800))
-                        .foregroundStyle(Theme.Colors.heading)
+                    HStack(spacing: 5) {
+                        Text("Invent a dish")
+                            .font(BrandFont.nunito(15, 800))
+                            .foregroundStyle(Theme.Colors.heading)
+                        if !gate.isPro { PremiumCrown() }
+                    }
                     Text("Glutt cooks up something from what you have")
                         .font(BrandFont.nunito(12.5, 600))
                         .foregroundStyle(Theme.Colors.textSecondary)

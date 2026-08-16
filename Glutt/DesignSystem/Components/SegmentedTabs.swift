@@ -6,10 +6,6 @@ import SwiftUI
 struct SegmentedTabs: View {
     let titles: [String]
     @Binding var selection: Int
-    /// Indices to mark with a crown, for segments that are Pro. The segment
-    /// still selects: seeing what is behind it is the point, so the content
-    /// underneath shows itself blurred rather than the tap being refused.
-    var crowned: Set<Int> = []
 
     var body: some View {
         HStack(spacing: 4) {
@@ -21,13 +17,9 @@ struct SegmentedTabs: View {
                         selection = i
                     }
                 } label: {
-                    HStack(spacing: 4) {
-                        Text(titles[i])
-                            .font(BrandFont.nunito(14, isActive ? 800 : 700))
-                            .foregroundColor(isActive ? Theme.Colors.heading : Theme.Colors.textSecondary)
-                            .lineLimit(1)
-                        if crowned.contains(i) { PremiumCrown() }
-                    }
+                    Text(titles[i])
+                        .font(BrandFont.nunito(14, isActive ? 800 : 700))
+                        .foregroundColor(isActive ? Theme.Colors.heading : Theme.Colors.textSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(

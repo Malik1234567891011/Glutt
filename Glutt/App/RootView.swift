@@ -9,10 +9,9 @@ struct RootView: View {
     @Query(sort: \Recipe.createdAt) private var recipes: [Recipe]
     @Query private var allPrefs: [UserPrefs]
 
-    /// Which tier the cook is on. Glutt is freemium: the app always runs, and
-    /// this is what the Pro features read to decide whether to wear a crown
-    /// (see `Entitlements`).
-    @State private var gate = Entitlements()
+    /// The hard-paywall gate. Glutt is unusable without an active subscription;
+    /// this owns that decision app-wide (see `SubscriptionGate`).
+    @State private var gate = SubscriptionGate()
 
     /// Who is signed in. A separate axis from `gate` on purpose: paying does
     /// not sign you in, and signing in does not unlock the app.
@@ -42,10 +41,10 @@ struct RootView: View {
         return router.forceOnboarding || allPrefs.first?.hasCompletedOnboarding != true
     }
 
-    /// A free user who is past onboarding. Drives the one automatic paywall
+    /// A locked user who is past onboarding. Drives the automatic paywall
     /// presentation below.
     private var shouldPresentPaywall: Bool {
-        gate.tier == .free && !needsOnboarding
+        gate.access == .locked && !needsOnboarding
     }
 
     var body: some View {
@@ -65,36 +64,32 @@ struct RootView: View {
         // So Settings (presented from deep inside a tab) can offer sign out and
         // account deletion without threading the session through every screen.
         .environment(session)
-        // Every crowned control reads this to decide whether it gates. It has to
-        // be on the environment rather than passed down: the gated surfaces are
-        // scattered from the tab roots to sheets four levels deep.
-        .environment(gate)
         // Sign out has to flush the queue before it wipes the local library, so
         // Settings needs to reach the coordinator too.
         .environment(sync)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             GluttTabBar(selection: $router.selectedTab)
         }
-        // Freemium. The app itself is never covered: `.free` and `.pro` both get
-        // the real tabs, and the difference between them is drawn on the
-        // individual Pro controls. `.resolving` still waits on a neutral splash
-        // for the sub-second entitlement check, because rendering first would
-        // show a paying customer a screen full of crowns on features they own.
+        // Hard paywall. `.resolving` covers the app with a neutral splash while
+        // entitlement loads; `.locked` lets the tabs show but swallows every
+        // touch and bounces to the paywall; `.unlocked` is the full app.
+        // Sits under the onboarding/cook/Polly covers (they present above), so
+        // a locked user still can't reach them — every touch bounces first.
         .overlay {
-            switch gate.tier {
+            switch gate.access {
             case .resolving: GateSplashView()
-            case .free, .pro: accountOverlay
+            case .locked: PaywallGateOverlay { gate.presentPaywall() }
+            case .unlocked: unlockedOverlay
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: gate.tier)
+        .animation(.easeInOut(duration: 0.2), value: gate.access)
         .animation(.easeInOut(duration: 0.2), value: session.state)
         .task { gate.start() }
         .task { session.start() }
-        // Present the wall once, the moment a free user lands past onboarding.
-        // Finishing the tutorial is the strongest moment we get, so it is still
-        // spent on the paywall; closing it now lands in a working free app
-        // rather than on a cover. Held back until onboarding is done, or it
-        // would fire behind the onboarding cover on a first launch.
+        // Present the wall the moment a locked user lands, rather than waiting
+        // for them to tap: pressing Continue at the end of onboarding should
+        // open the paywall, never the app. Held back until onboarding is done,
+        // or it would fire behind the onboarding cover on a first launch.
         .task(id: shouldPresentPaywall) {
             guard shouldPresentPaywall else { return }
             // A beat for the onboarding cover to finish dismissing. Presenting
@@ -227,30 +222,21 @@ struct RootView: View {
         PantrySnapshot.write(canonicalNames: stocked + staples)
     }
 
-    /// The second axis: who is signed in.
-    ///
-    /// Asked of subscribers only, deliberately. The account exists to carry a
-    /// paid library between phones, and every row in `profiles` is a paying
-    /// customer by construction (`AccountSession`) — walling a free cook behind
-    /// a sign-in would both break that and put a login screen in front of the
-    /// tier we want people to try. So a free user is never asked and never
-    /// blocked here; upgrading is what brings them to it.
+    /// The second axis, reached only once entitlement is resolved and active.
     ///
     /// `.signedOut` is the cell that would otherwise bite: someone pays, then
     /// kills the app before signing in. Next launch they are entitled with no
     /// account, and this catches them.
-    @ViewBuilder private var accountOverlay: some View {
-        if gate.isPro {
-            switch session.state {
-            case .resolving:
-                GateSplashView()
-            case .signedOut where !session.deferredThisLaunch
-                && !ProcessInfo.processInfo.arguments.contains("-seed")
-                && !ProcessInfo.processInfo.arguments.contains("-uiPreview"):
-                SignInView(session: session)
-            default:
-                EmptyView()
-            }
+    @ViewBuilder private var unlockedOverlay: some View {
+        switch session.state {
+        case .resolving:
+            GateSplashView()
+        case .signedOut where !session.deferredThisLaunch
+            && !ProcessInfo.processInfo.arguments.contains("-seed")
+            && !ProcessInfo.processInfo.arguments.contains("-uiPreview"):
+            SignInView(session: session)
+        default:
+            EmptyView()
         }
     }
 

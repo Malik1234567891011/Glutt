@@ -14,8 +14,6 @@ struct DiscoverTabView: View {
     }
 
     @Query(sort: \Recipe.createdAt, order: .reverse) private var recipes: [Recipe]
-    /// The deck is metered for free cooks; the Videos feed is Pro outright.
-    @Environment(Entitlements.self) private var gate: Entitlements?
     @State private var mode: Mode = .deck
     @State private var videosModel = DiscoverFeedViewModel()
     @State private var videoQuery = ""
@@ -60,29 +58,14 @@ struct DiscoverTabView: View {
             HStack(spacing: 8) {
                 Button {
                     Haptics.selection()
-                    // Only the trip *into* Videos is gated. Coming back to the
-                    // deck must always work, or a free cook who somehow landed
-                    // on Videos would be stuck there.
-                    if mode == .videos {
-                        mode = .deck
-                    } else {
-                        gate.perform(.discoverVideos) { mode = .videos }
-                    }
+                    mode = mode == .deck ? .videos : .deck
                 } label: {
-                    HStack(spacing: 5) {
-                        Text(mode == .deck ? "Videos" : "Deck")
-                            .font(BrandFont.nunito(12, 800))
-                            .foregroundStyle(Theme.Colors.accent)
-                            // The crown costs this pill about 20pt, which was
-                            // enough to wrap "Videos" onto two lines next to the
-                            // streak chip. The label never wraps.
-                            .lineLimit(1)
-                            .fixedSize()
-                        if mode == .deck, !gate.isPro { PremiumCrown() }
-                    }
-                    .padding(.horizontal, 13).padding(.vertical, 8)
-                    .background(Capsule().fill(Theme.Colors.accent.opacity(0.10)))
-                    .overlay(Capsule().strokeBorder(Theme.Colors.accent.opacity(0.22), lineWidth: 1.5))
+                    Text(mode == .deck ? "Videos" : "Deck")
+                        .font(BrandFont.nunito(12, 800))
+                        .foregroundStyle(Theme.Colors.accent)
+                        .padding(.horizontal, 13).padding(.vertical, 8)
+                        .background(Capsule().fill(Theme.Colors.accent.opacity(0.10)))
+                        .overlay(Capsule().strokeBorder(Theme.Colors.accent.opacity(0.22), lineWidth: 1.5))
                 }
                 .buttonStyle(.plain)
                 streakChip
@@ -99,10 +82,6 @@ struct DiscoverTabView: View {
             MS.fireFill.sized(16).foregroundStyle(Theme.Colors.coralBright)
             Text("^[\(days) day](inflect: true)")
                 .font(BrandFont.nunito(13, 800)).foregroundStyle(Theme.Colors.amber)
-                // The crown on the Videos pill took the slack out of this row,
-                // and this chip wrapped next. Neither label wraps.
-                .lineLimit(1)
-                .fixedSize()
         }
         .padding(.horizontal, 13).padding(.vertical, 8)
         .background(Capsule().fill(Theme.Colors.amberChip))

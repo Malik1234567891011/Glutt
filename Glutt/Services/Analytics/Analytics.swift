@@ -52,17 +52,8 @@ enum Analytics {
         /// switch it off) or what was tapped. Compare against App Store Connect
         /// review counts, never against this alone.
         case reviewPrompted = "review_prompted"
-        /// Once per cold launch, when entitlement settles: `access` is `free` or
-        /// `pro`. It read `locked`/`unlocked` before freemium, when locked meant
-        /// a dead app, so the series changes value at that release rather than
-        /// silently meaning something new under the old labels.
+        /// Once per cold launch, when entitlement settles: locked or unlocked.
         case gateResolved = "gate_resolved"
-        /// A free user tapped a crowned control, with the `feature` they wanted.
-        /// This is the question the hard paywall could never answer: which
-        /// locked feature people actually reach for, and therefore which one is
-        /// worth putting on the paywall. Fires before the wall is presented, so
-        /// it counts intent even when the placement fails to resolve.
-        case premiumGateTapped = "premium_gate_tapped"
         case paywallPresented = "paywall_presented"
         case paywallDismissed = "paywall_dismissed"
         case paywallSkipped = "paywall_skipped"

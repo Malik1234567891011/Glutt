@@ -19,8 +19,8 @@ struct OnboardingFlow: View {
     /// Enables the "Already have an account? Log in" path on screen 0. Nil in
     /// previews, where there is no session to sign into.
     var session: AccountSession?
-    /// Gates that same link on entitlement — see `logInTapped`.
-    var gate: Entitlements?
+    /// Gates that same link on entitlement — see `canLogIn`.
+    var gate: SubscriptionGate?
 
     @State private var showLogIn = false
     /// Restoring a purchase after the log-in tap. Swaps the link for a status
@@ -62,7 +62,7 @@ struct OnboardingFlow: View {
     private func logInTapped() {
         guard let gate, !isCheckingLogIn else { return }
 
-        if gate.isPro {
+        if gate.access == .unlocked {
             showLogIn = true
             return
         }
@@ -304,8 +304,8 @@ struct OnboardingFlow: View {
             "dietary_rules": state.selectedRules.count,
         ])
         state.apply(to: context)
-        // Land straight into the app. `RootView` presents the paywall once from
-        // here; closing it leaves them on the free tier rather than on a cover.
+        // Land straight into the app. The hard-paywall gate takes over from
+        // here — the first touch bounces to the paywall (see `SubscriptionGate`).
         onFinish()
     }
 }

@@ -12,9 +12,6 @@ struct PlatesTabView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// The deck is the free tier's one *metered* feature: ten cards a week, then
-    /// the wall. See `SwipeQuota`.
-    @Environment(Entitlements.self) private var gate: Entitlements?
     @Query private var recipes: [Recipe]
     @Query private var pantryItems: [PantryItem]
 
@@ -22,20 +19,6 @@ struct PlatesTabView: View {
     @State private var flippedID: String?
     @State private var dragX: CGFloat = 0
     @State private var dragY: CGFloat = 0
-    /// Mirrors `SwipeQuota` into view state. `UserDefaults` is not observable, so
-    /// without this the counter and the lock would not move until something else
-    /// happened to redraw the deck.
-    @State private var swipesLeft = SwipeQuota.remaining()
-
-    /// Whether the deck still turns. Subscribers are never metered.
-    private var canSwipe: Bool { gate.isPro || swipesLeft > 0 }
-
-    /// The weekday the allowance comes back, for the locked copy.
-    private var resetWeekday: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE"
-        return formatter.string(from: SwipeQuota.resetDate())
-    }
 
     private var prefs: UserPrefs { UserPrefs.current(in: context) }
 
@@ -118,29 +101,14 @@ struct PlatesTabView: View {
                 }
             }
             .frame(maxHeight: .infinity)
-            // The cards stay on screen behind the blur. Someone who has spent
-            // their ten should see there is a deck still there, not an empty
-            // state that reads as "Discover is over".
-            .premiumLockedSurface(
-                .unlimitedSwipes,
-                isUnlocked: canSwipe,
-                headline: "That's your ten for this week",
-                message: "Fresh cards on \(resetWeekday). Glutt \(PremiumFeature.tierName) swipes as much as you like."
-            )
 
-            // Deliberately no counter. A running "N swipes left" turns the deck
-            // into a budget to ration rather than a feed to enjoy, and every
-            // card gets weighed against the number instead of judged. Tinder
-            // does not show one either: you swipe freely, and one day you hit
-            // the end. The wall does the telling, once.
-            if model.current != nil, flippedID == nil, canSwipe {
+            if model.current != nil, flippedID == nil {
                 Text("Swipe right to save, left to skip")
                     .font(BrandFont.nunito(12.5, 700))
                     .foregroundStyle(Theme.Colors.muted)
                 actionBar()
             }
         }
-        .onAppear { swipesLeft = SwipeQuota.remaining() }
         .padding(.horizontal, 22)
         .padding(.top, Theme.Spacing.sm)
         .padding(.bottom, GluttTabBar.reservedHeight)
@@ -234,14 +202,6 @@ struct PlatesTabView: View {
     /// center so the revealed card sits correctly.
     private func commitSwipe(save: Bool) {
         guard let card = model.current else { return }
-        // The single funnel for the deck: the drag gesture and both action-bar
-        // buttons all land here, so the meter only has to be read in one place.
-        guard canSwipe else {
-            gate.presentPaywall(for: .unlimitedSwipes)
-            return
-        }
-        SwipeQuota.record(isPro: gate.isPro)
-        swipesLeft = SwipeQuota.remaining()
         Haptics.impact(.medium)
         withAnimation(.easeIn(duration: 0.22)) {
             dragX = save ? 700 : -700
@@ -297,10 +257,6 @@ struct PlatesTabView: View {
         let isSaved = card.map { model.savedIDs.contains($0.id) } ?? false
         return HStack(spacing: 18) {
             circleAction(MS.undo, glyph: Theme.Colors.amber, bg: Theme.Colors.card, size: 46, bordered: true) {
-                // Taking a card back has to give the swipe back too. Charging
-                // for an undo means the app bills you for its own mistake.
-                SwipeQuota.refund(isPro: gate.isPro)
-                swipesLeft = SwipeQuota.remaining()
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { model.undo() }
             }
             circleAction(MS.closeIcon, glyph: Theme.Colors.coralBright, bg: Theme.Colors.card, size: 60, bordered: false) {

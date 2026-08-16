@@ -25,8 +25,9 @@ enum DevBuild {
     /// Launch arguments only apply to a launch someone *triggers*, so on a phone
     /// they are gone the moment the app is opened from its icon. Testing the
     /// paywall on a device therefore lasted exactly one launch: after that,
-    /// Superwall was no longer configured and every crown was a dead tap that
-    /// looked like a broken gate. Latching it makes the phone hold the setting.
+    /// Superwall was no longer configured and the app came up unlocked, which
+    /// looks exactly like a broken gate. Latching it makes the phone hold the
+    /// setting.
     private static let realGatesKey = "dev.realGates"
 
     /// Environment equivalents of the two arguments above, for physical devices.
@@ -34,9 +35,8 @@ enum DevBuild {
     /// `devicectl` splits a launch argument into single-letter flags — it reads
     /// `-realGates` as `-r -e -a -l …` and then fails demanding a value for
     /// `-l` — so **any** flag containing an "l" is unusable on a phone.
-    /// `-freeTier` happens to survive; `-realGates` cannot. Environment
-    /// variables are passed through untouched, so they are the only reliable way
-    /// to set this on device.
+    /// Environment variables are passed through untouched, so they are the only
+    /// reliable way to set this on device.
     static let realGatesEnvironmentKey = "GLUTT_REAL_GATES"
     static let relaxGatesEnvironmentKey = "GLUTT_RELAX_GATES"
 

@@ -7,9 +7,6 @@ import SwiftUI
 struct RecipesView: View {
     @Environment(\.modelContext) private var context
     @Environment(Router.self) private var router
-    /// Saving and browsing the library is free. The extras hanging off the +
-    /// menu, and the AI re-ranking behind search, are not.
-    @Environment(Entitlements.self) private var gate: Entitlements?
     @Query(sort: \Recipe.createdAt, order: .reverse) private var allRecipes: [Recipe]
     @Query private var pantryItems: [PantryItem]
     @Query private var cookHistory: [CookSession]
@@ -354,31 +351,16 @@ struct RecipesView: View {
                 .buttonStyle(.plain)
 
                 Menu {
-                    // Getting recipes in is the free tier's whole point, so both
-                    // ways of doing it stay open. Everything below the first
-                    // divider is Pro.
                     Button("Import from link or screenshot", systemImage: "link") { isShowingImport = true }
                     Button("Create manually", systemImage: "square.and.pencil") { isShowingEditor = true }
                     Divider()
                     // The five dinners land here as ordinary recipes, so the
                     // way in sits with everything else that adds to the shelf.
-                    Button { gate.perform(.weekPlan) { isPlanningWeek = true } } label: {
-                        PremiumMenuLabel(title: "Plan a week of dinners", systemImage: "calendar",
-                                         feature: .weekPlan, isPro: gate.isPro)
-                    }
+                    Button("Plan a week of dinners", systemImage: "calendar") { isPlanningWeek = true }
                     Divider()
-                    Button { gate.perform(.cookingBasics) { isShowingBasics = true } } label: {
-                        PremiumMenuLabel(title: "Cooking basics", systemImage: "book",
-                                         feature: .cookingBasics, isPro: gate.isPro)
-                    }
-                    Button { gate.perform(.collections) { isShowingCollections = true } } label: {
-                        PremiumMenuLabel(title: "Browse collections", systemImage: "folder",
-                                         feature: .collections, isPro: gate.isPro)
-                    }
-                    Button { gate.perform(.collections) { isNamingCollection = true } } label: {
-                        PremiumMenuLabel(title: "New collection", systemImage: "folder.badge.plus",
-                                         feature: .collections, isPro: gate.isPro)
-                    }
+                    Button("Cooking basics", systemImage: "book") { isShowingBasics = true }
+                    Button("Browse collections", systemImage: "folder") { isShowingCollections = true }
+                    Button("New collection", systemImage: "folder.badge.plus") { isNamingCollection = true }
                 } label: {
                     circleButton(fill: Theme.Colors.accent, bordered: false) {
                         MS.add.sized(24).foregroundStyle(Theme.Colors.creamText)
@@ -413,10 +395,6 @@ struct RecipesView: View {
                 .submitLabel(.search)
                 .onSubmit(runAIRanking)
             if trimmedQuery.isEmpty {
-                // Deliberately never crowned. Search is the thing you reach for
-                // to find your own recipe, and a crown sitting on the search bar
-                // reads as "searching your own library costs money". The AI
-                // re-ranking behind Return is still gated; the field is not.
                 MS.autoAwesomeFill.sized(21).foregroundStyle(Theme.Colors.accent)
             } else {
                 Button { searchText = ""; searchFocused = false } label: {
@@ -638,10 +616,6 @@ struct RecipesView: View {
         let query = trimmedQuery
         let results = searchResults
         guard !query.isEmpty, !results.isEmpty else { return }
-        // Free, deliberately, AI pass included. Finding a recipe you already
-        // saved is the one thing nobody should ever hit a wall on: a paywall
-        // between someone and their own library reads as the app holding their
-        // recipes hostage, whatever it actually costs us to run.
         Haptics.impact(.light)
         isRanking = true; aiResults = nil; aiHeadline = nil
         Task {

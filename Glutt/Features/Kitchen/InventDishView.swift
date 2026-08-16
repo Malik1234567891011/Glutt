@@ -7,9 +7,6 @@ import SwiftUI
 struct InventDishView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-    /// The screen is free to look at. Only Make is Pro, so the promise can be
-    /// read before it is sold. See `InventoryView.inventPrompt`.
-    @Environment(Entitlements.self) private var gate: Entitlements?
     @Query private var pantryItems: [PantryItem]
 
     @State private var isInventing = false
@@ -87,7 +84,7 @@ struct InventDishView: View {
 
     private var inventBody: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            Text("A brand-new recipe built around \(pantryPreview), not one of your saved ones.")
+            Text("A brand-new recipe built around \(pantryPreview) — not one of your saved ones.")
                 .font(.gluttBody)
                 .foregroundStyle(Theme.Colors.textSecondary)
 
@@ -113,7 +110,7 @@ struct InventDishView: View {
 
             Button {
                 Haptics.impact(.medium)
-                gate.perform(.inventDish) { invent(excludingCurrent: false) }
+                invent(excludingCurrent: false)
             } label: {
                 HStack(spacing: Theme.Spacing.sm) {
                     if isInventing { ProgressView().tint(.white) }
@@ -123,9 +120,6 @@ struct InventDishView: View {
             }
             .buttonStyle(.gluttPrimary)
             .disabled(isInventing)
-            // The one wall on this screen. Everything above it is readable, so
-            // the pitch lands before the price does.
-            .premiumCrown(.inventDish, offset: CGSize(width: 6, height: -6))
 
             if let draft = inventedDraft {
                 inventedPreview(draft)

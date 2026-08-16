@@ -40,12 +40,10 @@ struct GluttApp: App {
     private static let superwallPublicAPIKey = "pk_WahaBcbECKEDins7Lio-Q"
 
     init() {
-        // Both before anything reads them, and `DevBuild` before the Superwall
-        // configure below, which is the thing it decides. `-realGates` and
-        // `-freeTier` latch in Debug so a phone holds the setting rather than
+        // Before the Superwall configure below, which is the thing it decides.
+        // `-realGates` latches in Debug so a phone holds the setting rather than
         // reverting the moment the app is opened from its icon.
         DevBuild.applyLaunchOverrides()
-        Entitlements.applyLaunchOverrides()
         // `-uiPreview`: dev/screenshot hook — skip Superwall so its test-mode
         // sheet (shown when the running bundle id differs from the dashboard's)
         // doesn't cover the UI during local iteration.

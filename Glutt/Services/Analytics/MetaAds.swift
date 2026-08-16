@@ -69,8 +69,11 @@ enum MetaAds {
     ///
     /// Confirmed against Superwall's own record of a 2026-08-16 purchase, which
     /// carried `is_free_trial_available: false` and raised `subscriptionStart`
-    /// rather than `freeTrialStart`. Meta's Events Manager needs `Subscribe`
-    /// added alongside `StartTrial` for this to be usable as a campaign goal.
+    /// rather than `freeTrialStart`.
+    ///
+    /// Nothing needs declaring in Events Manager: a standard event appears there
+    /// the first time Meta receives one. An event missing from that list has
+    /// never fired, which is a fact about the app rather than about the setup.
     static func logSubscribed(productID: String, price: Decimal, currencyCode: String?) {
         log(.subscribe, productID: productID, price: price, currencyCode: currencyCode)
     }

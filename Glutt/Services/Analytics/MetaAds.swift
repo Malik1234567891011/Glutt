@@ -47,7 +47,7 @@ enum MetaAds {
         #endif
     }
 
-    /// The one conversion the ad sets bid on: someone started the free trial.
+    /// The conversion the ad sets bid on: someone started the free trial.
     ///
     /// `price` is the price of the subscription the trial converts into, not
     /// the price of the trial itself (which is zero). Meta sums `valueToSum`
@@ -56,6 +56,31 @@ enum MetaAds {
     /// reported ROAS counts trials that never convert, so read it as reach,
     /// not revenue. Revenue lives in App Store Connect.
     static func logTrialStarted(productID: String, price: Decimal, currencyCode: String?) {
+        log(.startTrial, productID: productID, price: price, currencyCode: currencyCode)
+    }
+
+    /// Someone subscribed without a trial, because they had already used theirs.
+    /// Reinstalls and lapsed subscribers, mostly.
+    ///
+    /// A separate Meta standard event rather than a second `StartTrial`, so the
+    /// two never merge into one inflated number. Without it these conversions
+    /// were invisible: an ad could buy a resubscribe and hear nothing back, and
+    /// a quiet week read exactly the same as a broken integration.
+    ///
+    /// Confirmed against Superwall's own record of a 2026-08-16 purchase, which
+    /// carried `is_free_trial_available: false` and raised `subscriptionStart`
+    /// rather than `freeTrialStart`. Meta's Events Manager needs `Subscribe`
+    /// added alongside `StartTrial` for this to be usable as a campaign goal.
+    static func logSubscribed(productID: String, price: Decimal, currencyCode: String?) {
+        log(.subscribe, productID: productID, price: price, currencyCode: currencyCode)
+    }
+
+    private static func log(
+        _ event: AppEvents.Name,
+        productID: String,
+        price: Decimal,
+        currencyCode: String?
+    ) {
         guard isReportingAllowed, isConfigured else { return }
 
         var parameters: [AppEvents.ParameterName: Any] = [.contentID: productID]
@@ -64,7 +89,7 @@ enum MetaAds {
         if let currencyCode { parameters[.currency] = currencyCode }
 
         AppEvents.shared.logEvent(
-            .startTrial,
+            event,
             valueToSum: NSDecimalNumber(decimal: price).doubleValue,
             parameters: parameters
         )

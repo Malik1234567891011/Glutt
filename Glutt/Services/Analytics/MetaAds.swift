@@ -36,6 +36,15 @@ enum MetaAds {
         // call in Meta's docs. Glutt has no `UIApplicationDelegate` and does not
         // need one for this.
         ApplicationDelegate.shared.initializeSDK()
+
+        // Prints every event and its full parameter dictionary to the console,
+        // including `advertiser_id` and the ATE flag. Nothing else in this
+        // integration is inspectable from here: the events go to Meta and come
+        // back as a number in Ads Manager three days later. When the question is
+        // "is this actually wired up", this is the answer.
+        #if DEBUG
+        Settings.shared.loggingBehaviors = [.appEvents]
+        #endif
     }
 
     /// The one conversion the ad sets bid on: someone started the free trial.

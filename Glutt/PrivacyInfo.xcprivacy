@@ -2,11 +2,23 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Glutt does not track users across apps/sites owned by other companies. -->
+	<!--
+	  True since the Facebook SDK landed, for the Meta ad campaigns. Glutt sends
+	  app launches and one `StartTrial` conversion to Meta, and Meta links that
+	  to its own data to attribute the install. That is tracking under Apple's
+	  definition, whatever the events themselves look like.
+
+	  Which is why `TrackingPermission` exists: ATT must be *asked* if this says
+	  true, and iOS blocks every request to the domain below until it is granted.
+	  The Facebook SDK ships the same domain in its own manifest, so listing it
+	  here changes nothing at runtime — it makes Glutt's own manifest honest.
+	-->
 	<key>NSPrivacyTracking</key>
-	<false/>
+	<true/>
 	<key>NSPrivacyTrackingDomains</key>
-	<array/>
+	<array>
+		<string>ep1.facebook.com</string>
+	</array>
 	<!--
 	  This list stopped being empty in 1.2.1. Accounts and recipe sync mean the
 	  library no longer lives only on the phone: signed in, recipes and their
@@ -90,17 +102,58 @@
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
 			</array>
 		</dict>
-		<!-- Screens viewed, imports run, cooks started. -->
+		<!--
+		  Screens viewed, imports run, cooks started. Two consumers with very
+		  different terms, and the label has to describe the wider of them:
+		  PostHog gets the detail and does not track, the Facebook SDK gets app
+		  launches and the trial start and does. Hence tracking = true here.
+		-->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
 			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
-			<false/>
+			<true/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>
 			<array>
 				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+				<string>NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising</string>
+			</array>
+		</dict>
+		<!--
+		  The IDFA, and the IDFV the Facebook SDK falls back to when ATT is not
+		  granted. Not linked: it never reaches the Supabase profile or PostHog,
+		  it exists only so Meta can attribute an install to a campaign.
+		-->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeDeviceID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising</string>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+			</array>
+		</dict>
+		<!--
+		  The `StartTrial` conversion carries the product id, its price and the
+		  currency. No card details and no App Store receipt: Apple keeps those,
+		  and nothing in Glutt ever sees them.
+		-->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePurchaseHistory</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising</string>
 			</array>
 		</dict>
 	</array>

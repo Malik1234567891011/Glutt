@@ -19,8 +19,11 @@ enum VisualFrameRejection: String, Sendable, Error {
     /// they do not have, about a camera that is working. Chef needs to say she
     /// is nearly there and answer from what she already knows.
     ///
-    /// The window is about two seconds over Bluetooth. It was 14 to 20 on the
-    /// Wi-Fi transport, which is why this case exists at all.
+    /// The window is 14 to 20 seconds, measured, because opening the glasses
+    /// camera stands up a Wi-Fi link to them first. That length is the whole
+    /// reason this case exists at all. It was briefly two seconds on the
+    /// Bluetooth transport, which needs an MFi authorisation Meta will not give
+    /// us, so the long window is the one that ships.
     case warmingUp = "camera_warming_up"
     /// The feed was running and has stopped, rather than the picture being old
     /// because the cook moved.
@@ -56,9 +59,10 @@ enum VisualFrameRejection: String, Sendable, Error {
             // ended "do not ask them to check the camera", which is the exact
             // instruction a model is most likely to invert, and it put the
             // wrong phrase in front of it at the same time.
-            return "Your eyes are still connecting, which takes a couple of seconds. Say so "
-                + "in your own words, answer from the recipe and what they have told you, and "
-                + "offer to look properly in a moment. Nothing is wrong on their end."
+            return "Your eyes are still connecting, about fifteen seconds from the start of "
+                + "the cook. Say so in your own words, answer from the recipe and what they "
+                + "have told you, and offer to look properly in a moment. Nothing is wrong "
+                + "on their end."
         }
     }
 }

@@ -46,6 +46,11 @@ enum Analytics {
         /// The soft-ask outcome: granted / denied / skipped.
         case onboardingNotifications = "onboarding_notifications"
         case onboardingCompleted = "onboarding_completed"
+        /// The App Tracking Transparency answer, with `status`. This is the
+        /// opt-in rate the Meta ad reporting rests on: everyone who is not
+        /// `authorized` is measured through SKAdNetwork alone, so a low number
+        /// here explains a campaign that looks blind before the ads do.
+        case trackingPermission = "tracking_permission"
         /// The native App Store rating card was asked for, with the `moment` it
         /// fired at. Counts *asks*, not ratings: iOS never reports whether the
         /// card actually appeared (it is throttled to 3 a year and users can

@@ -304,9 +304,17 @@ struct OnboardingFlow: View {
             "dietary_rules": state.selectedRules.count,
         ])
         state.apply(to: context)
-        // Land straight into the app. The hard-paywall gate takes over from
-        // here — the first touch bounces to the paywall (see `SubscriptionGate`).
-        onFinish()
+        // The tracking ask sits between the last onboarding screen and the
+        // paywall, and is awaited rather than fired off. The paywall is where
+        // the trial starts, and Meta cannot attribute a conversion logged while
+        // the answer was still unknown — so the order here is the whole point,
+        // not a detail. Returns immediately for anyone who has already answered.
+        Task {
+            await TrackingPermission.requestIfNeeded()
+            // Land straight into the app. The hard-paywall gate takes over from
+            // here — the first touch bounces to the paywall (see `SubscriptionGate`).
+            onFinish()
+        }
     }
 }
 

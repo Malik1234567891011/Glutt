@@ -37,8 +37,10 @@ struct PollyAdaptiveCanvasView: View {
     private var usingGlasses: Bool {
         chefCanSee && controller.visuals.activeKind == .metaGlasses
     }
-    /// The glasses are coming up but cannot see yet. A couple of seconds over
-    /// the Bluetooth transport.
+    /// The glasses are coming up but cannot see yet.
+    ///
+    /// True for the fifteen to twenty seconds the toolkit spends standing up a
+    /// Wi-Fi link to the glasses at the start of a cook.
     private var isConnectingGlasses: Bool {
         controller.visuals.glassesPossible && controller.visuals.glasses.state == .starting
     }
@@ -458,15 +460,15 @@ struct PollyAdaptiveCanvasView: View {
         if usingGlasses {
             glassesPill(symbol: "eyeglasses", text: "Chef can see", tint: CookCanvasTheme.green)
         } else if isConnectingGlasses {
-            // Both halves of this used to be about Wi-Fi and are now wrong.
-            // Over Bluetooth there is no network to join, no prompt to explain,
-            // and no mobile data being spent — and the wait is a couple of
-            // seconds rather than twenty. What is left is a brief honest
-            // "not yet", which is still worth saying so the eye icon going
-            // green is not the first the cook hears of it.
+            // Says what the unexplained iOS prompt was for.
+            //
+            // Chef's eyes take the better part of twenty seconds to come up,
+            // and somewhere in there iOS asks to join a network named after the
+            // glasses. Without this the cook gets a system dialog out of
+            // nowhere, mid-sentence, with nothing on screen accounting for it.
             glassesPill(
                 symbol: "eyeglasses",
-                text: "Connecting your glasses",
+                text: "Connecting your glasses, uses mobile data",
                 tint: CookCanvasTheme.primaryText.opacity(0.7)
             )
         } else if let dropped = controller.visuals.lastGlassesDropReason {

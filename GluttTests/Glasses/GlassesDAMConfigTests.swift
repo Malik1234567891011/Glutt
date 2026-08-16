@@ -59,13 +59,29 @@ final class GlassesDAMConfigTests: XCTestCase {
                 + "If the SDK was bumped to 0.9 the opt-out is gone entirely and the stall comes back with it.")
     }
 
-    /// The transport half. Removing the MFi keys is what hands the camera to the
-    /// glasses' softAP, which takes the cook's phone off Wi-Fi for the whole
-    /// session and puts Chef's voice on cellular.
-    func testGluttHoldsTheCameraOnBluetooth() throws {
-        XCTAssertTrue(
+    /// The transport half, and it guards the App Store submission rather than the
+    /// picture.
+    ///
+    /// Declaring `com.meta.ar.wearable` selects the Bluetooth Classic camera,
+    /// which is the better transport by every measure we have: first frame in
+    /// 1.8s against fifteen, and the phone keeps its own network. It is also an
+    /// MFi protocol, so App Review requires Meta to authorise this bundle id on
+    /// their Product Plan, and Meta answered our issue #266 on 2026-08-10 saying
+    /// they will not and there is no waitlist. Four other apps were rejected for
+    /// exactly this string (#74, #83, #149, #217).
+    ///
+    /// So the key is worth more than it costs only if you never ship. The one
+    /// third-party DAT app we found on the App Store, `Keepers`
+    /// (com.ggaswint.keepers), runs the Wi-Fi path, which is confirmation from
+    /// someone else's shipping build rather than from our reading of a thread.
+    ///
+    /// Re-add the key the day Meta open publishing, and delete this test with it.
+    func testGluttDoesNotDeclareTheMFiProtocol() throws {
+        XCTAssertFalse(
             try flow().declaresMFiAccessory,
-            "UISupportedExternalAccessoryProtocols no longer declares com.meta.ar.wearable, so the camera "
-                + "will fall back to the glasses' Wi-Fi network and the phone loses its internet mid-cook.")
+            "UISupportedExternalAccessoryProtocols declares com.meta.ar.wearable again. That is the MFi "
+                + "trigger, and App Review will reject the build with \"the app has not been authorized by "
+                + "the accessory manufacturer\" until Meta authorises the bundle id, which they have "
+                + "declined to do. The Bluetooth configuration lives on spike/dat-0.8-external-accessory.")
     }
 }

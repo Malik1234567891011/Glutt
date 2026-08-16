@@ -47,6 +47,12 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>FacebookAppID</key>
+	<string>1015291791330103</string>
+	<key>FacebookClientToken</key>
+	<string>5d1df788714aab27e93fada27215ae02</string>
+	<key>FacebookDisplayName</key>
+	<string>Glutt</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>
@@ -66,12 +72,31 @@
 	<string>Glutt connects to your Meta glasses so Chef can see what you are cooking.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>Glutt connects to your Meta glasses so Chef can see what you are cooking.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_bonjour._tcp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Glutt uses the camera to scan your fridge or pantry, to estimate meals you log from photos, and to let Chef watch the pan during live cooking sessions.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Glutt uses your local network to receive the camera view from your Meta glasses.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Glutt uses the microphone so you can tell it what’s in your kitchen, and so Chef can guide you hands-free while you cook.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Glutt recognizes speech on-device so you can list kitchen ingredients out loud, and so Chef only wakes when you say “Chef” — not to background chatter.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Glutt uses this to measure which ads brought new cooks to the app. It changes nothing about what you see inside Glutt.</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>v9wttpbfk9.skadnetwork</string>
+		</dict>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>n38lu8286q.skadnetwork</string>
+		</dict>
+	</array>
 	<key>UIAppFonts</key>
 	<array>
 		<string>BricolageGrotesque-Variable.ttf</string>
@@ -79,17 +104,11 @@
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>processing</string>
 		<string>bluetooth-central</string>
 		<string>bluetooth-peripheral</string>
-		<string>external-accessory</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
-	<key>UISupportedExternalAccessoryProtocols</key>
-	<array>
-		<string>com.meta.ar.wearable</string>
-	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

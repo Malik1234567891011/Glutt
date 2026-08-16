@@ -34,6 +34,16 @@ packages:
   PostHog:
     url: https://github.com/PostHog/posthog-ios
     from: "3.68.4"
+  # Meta app events, for the Facebook and Instagram ad campaigns. Two jobs:
+  # SKAdNetwork install attribution (the SDK owns the conversion values, and
+  # only one SDK in an app may), and the `StartTrial` conversion the ad sets
+  # optimize delivery on. App target only — the share extension has no funnel
+  # to report and is on a tight memory budget.
+  #
+  # Distinct from MetaWearablesDAT below: same company, unrelated SDK.
+  FacebookSDK:
+    url: https://github.com/facebook/facebook-ios-sdk
+    from: "18.1.0"
   # Accounts (Sign in with Apple). App target only: the share extension has no
   # session and attributes its proxy calls by install id instead.
   Supabase:
@@ -45,8 +55,14 @@ packages:
   # 0.8 -> 0.9 removed DeviceSession.addStream entirely. Ships arm64 + simulator
   # slices, which is what lets the mock device work on the sim.
   # See docs/meta-glasses-research-2026-08-04.md.
-  # SPIKE: pinned to 0.8.0 to reach the Bluetooth Classic camera transport.
-  # 0.9 is Wi-Fi only. See docs/glasses-transport-and-memory.md.
+  #
+  # Pinned to 0.8.0 for the `DAMEnabled` opt-out, not for the transport. 0.8 is
+  # the last version that reads the key, and without it the glasses drop an
+  # i-frame and the `.raw` decoder freezes on it and never recovers — Meta's own
+  # account on discussion #226, and the reason our cooks died at 12 to 19
+  # seconds. 0.9 removed the opt-out and shipped no decoder fix. Moving to 0.9
+  # means decoding `.hvc1` ourselves first, which is Meta's actual
+  # recommendation. See docs/glasses-transport-and-memory.md.
   MetaWearablesDAT:
     url: https://github.com/facebook/meta-wearables-dat-ios
     exactVersion: "0.8.0"
@@ -86,7 +102,36 @@ targets:
         NSCameraUsageDescription: Glutt uses the camera to scan your fridge or pantry, to estimate meals you log from photos, and to let Chef watch the pan during live cooking sessions.
         NSMicrophoneUsageDescription: Glutt uses the microphone so you can tell it what’s in your kitchen, and so Chef can guide you hands-free while you cook.
         NSSpeechRecognitionUsageDescription: Glutt recognizes speech on-device so you can list kitchen ingredients out loud, and so Chef only wakes when you say “Chef” — not to background chatter.
+        # Asked once, at the end of onboarding, right before the paywall. Not on
+        # first launch: the answer is worth far more after someone has seen what
+        # the app is, and it has to be answered *before* the trial starts or the
+        # conversion it would attribute has already happened.
+        NSUserTrackingUsageDescription: Glutt uses this to measure which ads brought new cooks to the app. It changes nothing about what you see inside Glutt.
         ITSAppUsesNonExemptEncryption: false
+        # Meta app events, read by the Facebook SDK at launch. Both values come
+        # from the app's page on developers.facebook.com (the client token is
+        # under Settings > Advanced). The client token is publishable — same
+        # class of value as the Superwall and PostHog keys in the source.
+        #
+        # NOT the same number as MWDAT.MetaAppID below, which is the glasses
+        # Developer Mode value and stays "0".
+        FacebookAppID: "1015291791330103"
+        FacebookClientToken: "5d1df788714aab27e93fada27215ae02"
+        FacebookDisplayName: Glutt
+        # Deliberately NOT declared: the `fb<app-id>` URL scheme and the
+        # `fbapi` / `fb-messenger-share-api` query schemes from Meta's setup
+        # page. Both only exist to bring a user back from the Facebook app after
+        # a Login or Share dialog, and Glutt links neither FacebookLogin nor
+        # FacebookShare. Add them the day one of those ships.
+        #
+        # Apple hands install postbacks only to ad networks the app names here,
+        # so without these two identifiers Meta can measure events but cannot
+        # attribute a single install to a campaign. The Facebook SDK owns the
+        # conversion values; only one SDK per app may, which is why there is no
+        # AppsFlyer/Adjust alongside it.
+        SKAdNetworkItems:
+          - SKAdNetworkIdentifier: v9wttpbfk9.skadnetwork
+          - SKAdNetworkIdentifier: n38lu8286q.skadnetwork
         # Meta Wearables Device Access Toolkit. MetaAppID "0" is the Developer
         # Mode value (toggled in Meta AI > Settings > Your glasses), which is a
         # different thing from a Wearables Developer Center account — that is
@@ -125,41 +170,54 @@ targets:
         # problem.
         LSApplicationQueriesSchemes:
           - fb-viewapp
-        # SPIKE: the Bluetooth Classic selector.
+        # NOT declared: `UISupportedExternalAccessoryProtocols` =
+        # `com.meta.ar.wearable`.
         #
-        # `vinidlidoo` in discussion #226, after getting Wi-Fi working on 0.8:
-        # "we also had to remove the ExternalAccessory wiring
-        #  (UISupportedExternalAccessoryProtocols + the external-accessory
-        #  background mode) before the transport would engage."
+        # That one string is the whole difference between an app that can go on
+        # the App Store and one that cannot. It selects the Bluetooth Classic
+        # camera transport, which is far better than Wi-Fi — first frame in 1.8s
+        # rather than fifteen, and the phone keeps its own network — and it is
+        # also an MFi protocol, so App Review demands that Meta authorise this
+        # bundle id on their MFi Product Plan. Meta's `alexsinkmeta` answered
+        # our own issue #266 on 2026-08-10: they will not, there is no waitlist,
+        # and "declaring `com.meta.ar.wearable` is what triggers Apple's MFi
+        # requirement, so that path stays gated until publishing opens up".
+        # Same rejection on issues #74, #83, #149 and #217.
         #
-        # So these keys hold the camera on BTC and removing them is what lets
-        # softAP take over. They come from the 0.7-era integration guide; the
-        # 0.9 docs we built against dropped them, which is why Glutt has been on
-        # Wi-Fi since the first line of glasses code and has never once asked
-        # for Bluetooth.
+        # Without it the toolkit falls back to the glasses' own Wi-Fi softAP,
+        # which needs nobody's permission. That is what `Keepers` (App Store,
+        # com.ggaswint.keepers, shipped 2026-07-28) does, and it is the only
+        # third-party DAT app we have found on the store.
         #
-        # `com.meta.ar.wearable` is the MFi protocol. Corroborated by the App
-        # Store rejections on issues #114, #167 and #169, all of which are apps
-        # declaring exactly this string.
-        UISupportedExternalAccessoryProtocols:
-          - com.meta.ar.wearable
-        # The camera stream reaches the phone over Wi-Fi, which is why a camera
-        # SDK wants local network and Bonjour.
+        # The BTC configuration is not lost, it is on
+        # `origin/spike/dat-0.8-external-accessory`, and it goes back in the day
+        # Meta open publishing.
         NSBluetoothAlwaysUsageDescription: Glutt connects to your Meta glasses so Chef can see what you are cooking.
         NSBluetoothPeripheralUsageDescription: Glutt connects to your Meta glasses so Chef can see what you are cooking.
-        # SPIKE: NSLocalNetworkUsageDescription and NSBonjourServices removed.
-        # Both exist only to let the softAP socket layer work. Restore with the
-        # pin if this experiment fails.
+        # The camera stream reaches the phone over the glasses' own Wi-Fi
+        # network, which is why a camera SDK wants local network and Bonjour.
+        # Missing, iOS terminates the app the moment the toolkit opens a socket.
+        NSLocalNetworkUsageDescription: Glutt uses your local network to receive the camera view from your Meta glasses.
+        NSBonjourServices:
+          - _bonjour._tcp
         # Meta's own sample also lists `audio` here. Deliberately omitted: Polly
         # stands down on background on purpose (PollySessionView scenePhase), and
         # DAT 0.9 ends the camera session on background regardless, so `audio`
         # would buy nothing and quietly change how the cook session behaves.
+        #
+        # `processing` is omitted for the same reason it came from Meta's sample
+        # and not from us: that mode only ever runs through BGTaskScheduler, and
+        # nothing here submits a BGProcessingTaskRequest. Declaring it made App
+        # Store validation demand a BGTaskSchedulerPermittedIdentifiers list we
+        # have no identifiers for, and it bought no runtime behaviour.
+        #
+        # `external-accessory` is gone with the MFi protocol string above. It is
+        # the other half of the Bluetooth Classic selector and, on its own, a
+        # background mode with nothing behind it, which is the same 2.5.4 problem
+        # `processing` just failed validation for.
         UIBackgroundModes:
-          - processing
           - bluetooth-central
           - bluetooth-peripheral
-          # SPIKE: the other half of the BTC selector.
-          - external-accessory
         CFBundleURLTypes:
           - CFBundleURLName: com.omarlahmimi.glutt
             CFBundleURLSchemes:
@@ -180,8 +238,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.omarlahmimi.glutt
         TARGETED_DEVICE_FAMILY: "1"
-        CURRENT_PROJECT_VERSION: 13
-        MARKETING_VERSION: "1.2.1"
+        CURRENT_PROJECT_VERSION: 16
+        MARKETING_VERSION: "1.2.2"
         ENABLE_USER_SCRIPT_SANDBOXING: true
         CODE_SIGN_ENTITLEMENTS: Glutt/Glutt.entitlements
     dependencies:
@@ -189,6 +247,8 @@ targets:
       - package: SuperwallKit
       - package: LiveKitWebRTC
       - package: PostHog
+      - package: FacebookSDK
+        product: FacebookCore
       - package: Supabase
         product: Supabase
       - package: GoogleSignIn
@@ -286,8 +346,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.omarlahmimi.glutt.share
         CODE_SIGN_ENTITLEMENTS: GluttShare/GluttShare.entitlements
-        CURRENT_PROJECT_VERSION: 13
-        MARKETING_VERSION: "1.2.1"
+        CURRENT_PROJECT_VERSION: 16
+        MARKETING_VERSION: "1.2.2"
         SKIP_INSTALL: true
 
   GluttTests:

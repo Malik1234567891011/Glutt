@@ -769,7 +769,15 @@ final class PollySessionController {
                 // Keep the picture itself, not just the fact of it. Whether the
                 // glasses resolve a red onion from a yellow one is still an open
                 // question and no amount of logging answers it.
+                //
+                // Debug builds ONLY. This writes up to sixty JPEGs of whatever
+                // Chef was shown into Documents, it fires on the phone camera
+                // path too, nothing ever deletes them, and no cook has been told
+                // it happens. That is a diagnostic, not a feature, and it must
+                // never reach anybody's App Store copy.
+                #if DEBUG
                 GlassesRunLog.shared.saveFrame(jpeg, reason: request.reason)
+                #endif
                 return PollyFrameOutcome(
                     captured: true,
                     source: capture.source?.toolName,

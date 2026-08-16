@@ -34,6 +34,8 @@ final class NotificationRoutingDelegate: NSObject, UNUserNotificationCenterDeleg
 struct GluttApp: App {
     @State private var router = Router()
     private let notificationDelegate = NotificationRoutingDelegate()
+    /// Held here because `Superwall.shared.delegate` is weak. See the type.
+    private let paywallEventBridge = PaywallEventBridge()
 
     /// Superwall publishable key — safe to embed in the app binary.
     /// Dashboard → Settings → API Keys.
@@ -50,10 +52,18 @@ struct GluttApp: App {
         // `-realGates` brings it back when the paywall is the thing being tested.
         if !ProcessInfo.processInfo.arguments.contains("-uiPreview"), !DevBuild.relaxGates {
             Superwall.configure(apiKey: Self.superwallPublicAPIKey)
+            // Inside this branch, never outside it: reading `Superwall.shared`
+            // before `configure` is the one ordering mistake this file has to
+            // avoid.
+            Superwall.shared.delegate = paywallEventBridge
         }
         // Before any view exists, so the onboarding funnel's first screen and
         // PostHog's own launch events are captured under the install id.
         Analytics.start()
+        // Meta app events for the Facebook and Instagram campaigns. Separate
+        // from PostHog on purpose: this one reports to an ad account, not to
+        // us, and sends exactly one hand-written event (`StartTrial`).
+        MetaAds.start()
         // Meta glasses support, if the toolkit will have us. Never fatal: this
         // returns having quietly given up for every user who owns no glasses.
         GlassesSupport.shared.configure()

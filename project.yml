@@ -154,10 +154,20 @@ targets:
         # stands down on background on purpose (PollySessionView scenePhase), and
         # DAT 0.9 ends the camera session on background regardless, so `audio`
         # would buy nothing and quietly change how the cook session behaves.
+        # `bluetooth-central` and `bluetooth-peripheral` are NOT here, and must
+        # not come back. They are Core Bluetooth (BLE) background modes, and
+        # Glutt contains no Core Bluetooth at all: no `import CoreBluetooth`, no
+        # CBCentralManager, no CBPeripheral. The glasses reach the camera over
+        # Bluetooth *Classic* through ExternalAccessory, which is the
+        # `external-accessory` mode below and has nothing to do with BLE.
+        #
+        # They were added with the BTC selector on the assumption that anything
+        # Bluetooth wanted them. They bought nothing, and they cost the 1.2.2 (16)
+        # submission a rejection under guideline 2.5.4 on 2026-08-17: "we are
+        # unable to locate any Bluetooth Low Energy functionality", which was
+        # exactly correct.
         UIBackgroundModes:
           - processing
-          - bluetooth-central
-          - bluetooth-peripheral
           # SPIKE: the other half of the BTC selector.
           - external-accessory
         CFBundleURLTypes:

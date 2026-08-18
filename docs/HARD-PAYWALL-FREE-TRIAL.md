@@ -1,7 +1,20 @@
-# Hard paywall + 3-day free trial
+# Hard paywall + 7-day free trial
 
-Status of the "Glutt is unusable without a subscription, with a 3-day free trial"
-change. Branch: `paywall-hard-gate-trial`.
+Status of the "Glutt is unusable without a subscription, with a free trial"
+change. Shipped from `paywall-hard-gate-trial`, now on `main`.
+
+**Current pricing (verified in the Superwall editor + App Store Connect product
+data, 2026-08-18):**
+
+| Product | ID | Price | Trial | ASC state |
+|---|---|---|---|---|
+| Annual, with trial (**paywall default**) | `com.omarlahmimi.glutt.premium.yearly.trial` | $44.99 / year | **7 days free** | APPROVED |
+| Annual, charge now | `com.omarlahmimi.glutt.premium.yearly` | $44.99 / year | none | APPROVED |
+| Monthly | `com.omarlahmimi.glutt.premium.monthly` | $14.99 / month | none | APPROVED |
+
+Annual works out to $3.74/mo against $179.88/yr of monthly, which is the 75% the
+paywall advertises. The badge computes that from both raw prices, so it follows a
+price change on its own.
 
 ## The decisions (from the grilling session, 2026-07-17)
 
@@ -12,14 +25,14 @@ change. Branch: `paywall-hard-gate-trial`.
   functionality behind it.
 - **Runs every cold launch**, keyed to `Superwall.shared.subscriptionStatus`. A
   **lapsed / expired subscription re-locks** the app on the next launch.
-- **Plans:** annual ($49.99) + monthly ($7.99) — both already approved. No weekly.
-- **Trial = Model 1 (reverse-trial funnel).** Toggle **OFF (default)** → existing
-  annual, charged now, no trial. Toggle **ON** → a **new annual SKU** carrying a
-  3-day free-trial intro offer. Monthly is the faded secondary.
 - **Everyone is locked out** — no grandfather, no allowlist. Testers/reviewers
   sandbox-subscribe (free). Dev bypass flags for local builds.
+- **Trial model changed after the fact.** The original plan was Model 1, a
+  reverse-trial toggle: trial off by default, flip a switch to swap in the trial
+  SKU. That toggle is **gone**. The paywall now makes the **trial SKU the default
+  annual card**, so the trial is what a user gets unless they pick monthly.
 
-## ✅ Done in code (this branch)
+## ✅ In code (`main`)
 
 - **`SubscriptionGate`** (`Glutt/Features/Paywall/SubscriptionGate.swift`) — the
   single app-wide gate. `access` = `.resolving` / `.locked` / `.unlocked`, keyed
@@ -34,88 +47,71 @@ change. Branch: `paywall-hard-gate-trial`.
 - **Dev bypass** (`SubscriptionGate.bypassEnabled`): `-uiPreview`, `-seed` (the
   demo scheme), or `-unlockPremium` (DEBUG only). None survive a TestFlight/App
   Store upload, so they can never unlock a shipped build.
-- **Verified:** clean build; unlocked path renders the full app; 6 unit tests
-  cover the decision table (`GluttTests/SubscriptionGateTests.swift`).
+- **No prices in the app.** Nothing in `Glutt/` or `GluttShare/` hardcodes a
+  price, a product id, or a trial length; it all arrives from Superwall and
+  StoreKit. A price change needs no app release.
+- **Covered:** 6 unit tests over the decision table
+  (`GluttTests/SubscriptionGateTests.swift`).
 
-## ✅ Done in Superwall (paywall 243875) — draft, NOT yet published
+## ✅ On the paywall (verified 2026-08-18)
 
-Discovery: the paywall's annual card **already** had the trial-selection logic
-wired (conditional click-behavior: `if state.isChecked && products.hasIntroductoryOffer
-→ set-product-index 2, else index 0`). Only the toggle UI + the index-2 product had
-been removed. So the rebuild was a re-add, verified in both states via screenshots:
+Five-page flow. Pages 0 to 2 sell; the last page is the plan picker; a fixed
+footer carries the CTA and the legal links.
 
-- **Toggle row re-added** ("Not sure yet? Enable free trial." + iOS switch), placed
-  above the plan cards. Nodes: row `node:2Zv43Gkvfe05jP6hEVE03`, track
-  `node:tDmlqHlZIouGjkZYKswZf`, knob `node:1mzeHAK_x_tbP0flqRrvL`. Bound to
-  `state.isChecked` (default **false** = Model 1 reverse-trial default).
-- **Switch appearance** bound to `isChecked`: track bg `#2e5339`↔`#d8d2c4`, knob
-  slides via `paddingLeft` `23px`↔`2px`.
-- **Toggle click behavior** (conditional): flips `isChecked` AND sets product index
-  (enable → index 2 trial, disable → index 0 yearly). CTA buys `by-selected`.
-- **Trial-aware copy** bound to `isChecked`:
-  - CTA `node:RYpzLKOq0Um85KZK8e_L1`: "Continue" ↔ "Start my 3-day free trial".
-  - Disclosure `node:vHfxx6HVO9JrAMFsQ7l6b`: "Cancel anytime · Protected by the App
-    Store" ↔ "3-day free trial, then $49.99/year. Auto-renews unless cancelled. Cancel anytime."
+- **Plan cards:** Annual (default, selected) and Monthly. Annual shows the
+  monthly price struck through above the annual price.
+- **Every price and trial length is a liquid binding.** Nothing is typed in:
 
-- **Trial product added at index 2** ✅ — `a2 | trial | com.omarlahmimi.glutt.premium.yearly.trial`
-  (trialDays=3, $49.99/yr). Adding it did not spawn a stray third card (verified).
+  | Element | Binding |
+  |---|---|
+  | Annual price | `{{ products.primary.price }}/{{ products.primary.period }}` |
+  | Annual per month | `{{ products.primary.monthlyPrice }}/mo` |
+  | Strikethrough | `{{ products.secondary.yearlyPrice }}` |
+  | Save badge | `products.primary.rawPrice ÷ 12` against `products.secondary.rawPrice` |
+  | Monthly price | `{{ products.secondary.price }}/{{ products.secondary.period }}` |
+  | Trial headings | `{{ products.primary.trialPeriodDays }}` |
 
-The paywall **draft is complete**. Everything below is the go-live sequence.
+- **CTA is conditional**, not a fixed string: with an introductory offer on the
+  selected product it reads "Try {{ products.selected.trialPeriodDays }} days
+  free"; otherwise "Continue". Selecting Monthly therefore reads "Continue"
+  rather than the "Try 0 days free" a naive binding would produce.
+- **No trial toggle.** The switch, its `state.isChecked` bindings, and the
+  index-swapping click behavior described in the 2026-07 plan are no longer on
+  the paywall.
 
-## ⏳ Remaining — publish BEFORE submitting (corrected sequencing)
+This is paywall **249784 "Glutt Pro Trial Flow v1"**, which replaced 243875 on
+2026-07-29 (243875 is left as a draft, as the rollback target). Identified from
+its structure and typography rather than an id lookup, so confirm in the
+dashboard before relying on it for a submission. Also not checked: whether the
+current draft is published.
 
-Superwall paywalls are server-side: the reviewer's build fetches whatever is **published**
-at review time. So the toggle/trial paywall must be **published before submission**, or the
-reviewer sees the old published version (v4, no trial) — and, worse, because the gate
-placement must resolve to a paywall, an unresolved placement = a **locked app with no
-paywall = automatic rejection**. During review the reviewer completes the trial purchase in
-the **sandbox** (the trial IAP is attached to the build under review), so there's no dead
-button for them.
+## Sequencing rules that still apply
 
-**Gate placement:** the gate reuses **`onboarding_complete`** (already wired in campaign
-91288 → 243875), so **no campaign change is needed** — avoids touching the live campaign.
-(`SubscriptionGate.placement`.) A dedicated `premium_gate` placement is a future analytics
-cleanup, not required to ship.
+Superwall paywalls are server-side: a reviewer's build fetches whatever is
+**published** at review time. So a paywall change must be **published before
+submission**, or the reviewer sees the previous published version. Worse: the
+gate placement must resolve to a paywall at all, and an unresolved placement is a
+**locked app with no paywall, which is an automatic rejection**. The reviewer
+completes the purchase in the **sandbox**, so there is no dead button for them.
 
-Go-live order:
-1. ✅ Code on `main`, build 10, Release build verified.
-2. **Publish paywall 243875** (its draft has the toggle + trial product). No API publish
-   endpoint — click **Publish** in the Superwall editor. ⚠️ Only downside: if the app is
-   *already live* on the App Store, existing users would see the toggle and its trial button
-   would be dead until this build is approved (annual "Continue" still works). If not yet
-   released, zero downside.
-3. **Submit to App Review with all three IAPs attached** — `…premium.yearly`,
-   `…premium.monthly`, and the new **`…premium.yearly.trial`** (attaching the trial is what
-   gets it approved *and* makes it testable in the review sandbox). Include review notes:
-   "Glutt requires a subscription; on the paywall tap Continue and purchase with a Sandbox
-   Apple ID (no charge). The toggle starts a 3-day free trial."
-4. On approval → release. Hard gate + 3-day trial live together.
+**Gate placement:** the gate reuses **`onboarding_complete`** (campaign 91288,
+audience 153609, treatment variant → paywall 249784 since 2026-07-29), so no
+campaign change is needed. A dedicated `premium_gate` placement is a future
+analytics cleanup, not required to ship.
 
-Note: dynamic `{{ products.* }}` price bindings left as static literals for now
-($49.99 / $0.96/week / $7.99) — the annual price is unchanged by the trial, and the trial
-terms are shown in the disclosure. Revisit if going multi-currency.
+Review notes that worked: "Glutt requires a subscription; on the paywall tap the
+Continue button and purchase with a Sandbox Apple ID (no charge). The annual plan
+starts a 7-day free trial."
 
-## 🔴 YOUR App Store Connect to-do (go-live blockers — only you can do these)
+## After a price change (what to check)
 
-1. **Create one new auto-renewable subscription product:**
-   - Suggested ID: **`com.omarlahmimi.glutt.premium.yearly.trial`**
-     (the Superwall wiring will reference this exact ID — tell me if you pick a
-     different one).
-   - **Same price as the existing annual: $49.99 / year.**
-   - **Same subscription group** as `com.omarlahmimi.glutt.premium.yearly`.
-2. **Add a 3-day Free introductory offer** to that new product
-   (Product → Subscription → Introductory Offer → type **Free**, duration **3 days**).
-   - Leave the *existing* `…premium.yearly` **without** an intro offer — that's the
-     "toggle OFF, charge now" product.
-3. **Confirm a sandbox purchase completes** for BOTH annual products
-   (charge-now and trial) before we flip the gate live.
-
-## Go-live sequence (so we never ship a brick)
-
-1. ✅ Code gate built + verified (behind dev bypass; `main` stays safe).
-2. ⏳ Superwall paywall rebuilt (toggle + dynamic prices + disclosure + `premium_gate`).
-3. 🔴 You: create the trial SKU + 3-day intro offer in ASC; confirm sandbox purchases.
-4. Ship the build; the gate is live. Testers/reviewers sandbox-subscribe (free).
+1. Superwall editor: reopen the paywall and confirm the plan page renders the new
+   numbers. The bindings update on their own; the point is to catch a stale
+   *published* version.
+2. **Publish** if the numbers only moved in the draft.
+3. App Store Connect: the price change applies per territory and needs the
+   existing-subscriber choice answered (keep them on the old price, or move them).
+4. Nothing to rebuild in the app.
 
 ## Notes / edge cases
 
@@ -123,9 +119,17 @@ terms are shown in the disclosure. Revisit if going multi-currency.
   used an intro offer in that subscription group. A returning user who already
   trialed will be charged immediately. StoreKit handles this automatically; a
   future polish is eligibility-aware copy on the paywall.
+- **Two annual SKUs, same price.** `…premium.yearly` (no offer) exists alongside
+  `…premium.yearly.trial` (7-day offer). Only the trial SKU is on the paywall
+  today. Keep the plain one: it is what a trial-ineligible user should buy, and
+  deleting an ASC product is not reversible.
 - **Restore:** the paywall's Restore button + Settings → Restore both call
   `Superwall.shared.restorePurchases()`; a successful restore flips
   `subscriptionStatus` to `.active`, which unlocks the gate automatically.
+- **Meta ads:** `StartTrial` fires on the trial purchase and `Subscribe` on a
+  charge-now purchase, so a trial length change does not touch that wiring, but
+  the value sent follows the price. See `docs/` Meta notes and
+  `Glutt/Services/Analytics/MetaAds.swift`.
 - **Simulator gotcha:** on the sim, Superwall's launch-time StoreKit check pops a
   "Sign in to Apple Account" dialog (no sandbox account). Harmless; doesn't happen
   on a device signed into a sandbox tester. It does obscure UI automation, so the

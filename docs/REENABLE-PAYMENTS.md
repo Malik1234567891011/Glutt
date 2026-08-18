@@ -38,11 +38,17 @@ re-enabling is a small, well-contained change.
 2. **Create the two auto-renewable subscriptions** in a Subscription Group
    (e.g. "Glutt Premium"), with localized display name + description, price, and
    a **review screenshot** so each reaches **"Ready to Submit":**
-   | Product ID | Length | Price |
+   | Product ID | Length | Price at creation |
    | --- | --- | --- |
    | `com.omarlahmimi.glutt.premium.yearly` | 1 year | $49.99 |
    | `com.omarlahmimi.glutt.premium.monthly` | 1 month | $7.99 |
    These IDs MUST match exactly what Superwall references (see below).
+
+   > **Prices have moved since.** As of 2026-08-18 the live set is annual $44.99
+   > (both `…premium.yearly` and the trial SKU `…premium.yearly.trial`, which
+   > carries a 7-day free intro offer) and monthly $14.99. Current pricing lives
+   > in `docs/HARD-PAYWALL-FREE-TRIAL.md`; the table above is what was created in
+   > July 2026 and is kept for the setup steps, not as a price reference.
 
    > ⚠️ **The original `com.glutt.premium.*` products were DELETED in June 2026**
    > and Apple reserves deleted IAP product IDs, so (decided **2026-07-11**) we

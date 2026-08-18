@@ -182,6 +182,7 @@
 		68D64093FFAABED03230F291 /* StepClipFallbacks.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCB97E3E9E973E51DDB56C2 /* StepClipFallbacks.swift */; };
 		697330B415E9565AA6123D7A /* PollySessionControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A45301997FCD1BF1A6D7095C /* PollySessionControllerTests.swift */; };
 		6ABD45E567FBF53631FE17DF /* CookingBasicsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37A25B855F5C19D1CEECA71 /* CookingBasicsView.swift */; };
+		6AF3C1FA72E62AAEACAB7141 /* SkillProgressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB11FDEDB692D95C9167FA09 /* SkillProgressionTests.swift */; };
 		6BD892D3347E8504FBCB7405 /* StoreModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4013BCB69BEE4E7DCC7FFE7D /* StoreModeView.swift */; };
 		6BF2F279EDBA70BACD78AC36 /* RecipeHTMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */; };
 		6C3620872F65393AC9EFB6A8 /* PlatesSaverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE29D712EF7D650D2A01355 /* PlatesSaverTests.swift */; };
@@ -227,6 +228,7 @@
 		8B25B96F5F18DC8D65859EAE /* RecipeStateSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 577CA5FBA794203B9BC2E60F /* RecipeStateSync.swift */; };
 		8BDD48B6434CA9E49822814F /* BrandFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3CE3284BCABBE6DFDF3FD0 /* BrandFonts.swift */; };
 		8C0D062FF6DCCED2FCA0D6ED /* ReviewPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B54E978F5F5933B538CAAC5 /* ReviewPrompt.swift */; };
+		8CEA072A5925A173C48BDB2E /* SkillProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 276732B305F2B1605D20E1DC /* SkillProgress.swift */; };
 		8CF3C736F5FC6104A52F5965 /* ChefDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61601122F7A17B84FC3B9124 /* ChefDetailView.swift */; };
 		8D5B5CBDC96D718DBFF8198D /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF3E70A3CCB84A7042B5FE65 /* Haptics.swift */; };
 		8D97633ED2E9B73B7FE66242 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86682BDF2281AFC52C3BCFB6 /* SignInView.swift */; };
@@ -238,6 +240,7 @@
 		906182F5CD250106DD6EE9D0 /* PollyRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 999E0EFAB970BFA5F17622C8 /* PollyRouterTests.swift */; };
 		90B13129DB93AF54ECC8895B /* RecipeImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 598FB7658D86B414965B6432 /* RecipeImportService.swift */; };
 		91197926AFB4DD9A0AF50485 /* SkillCatalog+Heat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13A79B8C80A85D6DFA6B2D3B /* SkillCatalog+Heat.swift */; };
+		915F03B4A66B272F053C3628 /* SkillProgression.swift in Sources */ = {isa = PBXBuildFile; fileRef = 254B5A3FC9E54A7C4D02A8E3 /* SkillProgression.swift */; };
 		91E09FBEA927C5B65D548293 /* SocialMediaImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD93233274D874B07BC71E66 /* SocialMediaImport.swift */; };
 		92BA95B82102753E53525278 /* TutorialFrames.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61DC78ADF8EA5883A89DD07D /* TutorialFrames.swift */; };
 		93268C4A6AEE45B7D2FDD33A /* ImportInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421A2BD5A79AB7F890E43900 /* ImportInbox.swift */; };
@@ -385,6 +388,7 @@
 		E9E62465FDE3533A7CE521B1 /* NutritionEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF96F3FA7AE1145E7946CB47 /* NutritionEstimator.swift */; };
 		EAB06B1CEB7F2CF3DF02C083 /* KitchenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAC0FFFECF313768192EAFA2 /* KitchenView.swift */; };
 		EB89E07070A29DEC1316D7C7 /* SpokenText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0229D8E0822A641F432338C9 /* SpokenText.swift */; };
+		EBC7278F44203D42E77D4748 /* SkillStreak.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02A165E814B0595AF526ECEA /* SkillStreak.swift */; };
 		EC7900FBF28183D9581843B3 /* login-hero.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = B4EC96BE9E53F56A78A4756C /* login-hero.mp4 */; };
 		ECA3CC45E7ACC10EC3BF2B42 /* VideoRecipeCompiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C52C47E69FDD90C9D781D4E /* VideoRecipeCompiler.swift */; };
 		ED26B8105E0501647811E5D6 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 15A3A64B79D2D9D2BD9102B7 /* README.md */; };
@@ -457,6 +461,7 @@
 		0229D8E0822A641F432338C9 /* SpokenText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpokenText.swift; sourceTree = "<group>"; };
 		0253AFA0F0F645D26A917A47 /* PlatesSaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesSaver.swift; sourceTree = "<group>"; };
 		0268F027D0F03E7A16372293 /* PollyDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyDebugLog.swift; sourceTree = "<group>"; };
+		02A165E814B0595AF526ECEA /* SkillStreak.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillStreak.swift; sourceTree = "<group>"; };
 		02F1A8EEDCAB3ACE7B50E2C0 /* LoopingVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopingVideoView.swift; sourceTree = "<group>"; };
 		037A155DAF316A42096C3D9B /* PaywallGateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallGateViews.swift; sourceTree = "<group>"; };
 		03E4B5038BD3A803FFA377AD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -501,8 +506,10 @@
 		21809502CBC21424D65A50E4 /* Chip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chip.swift; sourceTree = "<group>"; };
 		21CC5F0D4C0BF8DF830CA4E1 /* ConfidenceBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfidenceBadge.swift; sourceTree = "<group>"; };
 		224D234069FFF372F1A687A9 /* Router.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Router.swift; sourceTree = "<group>"; };
+		254B5A3FC9E54A7C4D02A8E3 /* SkillProgression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillProgression.swift; sourceTree = "<group>"; };
 		25E35CFA98848DCF01C3A037 /* PollyAdaptiveCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyAdaptiveCanvasView.swift; sourceTree = "<group>"; };
 		26ED82AA2C948DE902E8555C /* PlateCardMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlateCardMapper.swift; sourceTree = "<group>"; };
+		276732B305F2B1605D20E1DC /* SkillProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillProgress.swift; sourceTree = "<group>"; };
 		299C79D5AA27E5C011F65ACA /* SkillCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillCatalog.swift; sourceTree = "<group>"; };
 		29E80A11E6C417F2882AA826 /* RecipeArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeArtwork.swift; sourceTree = "<group>"; };
 		2A43CDC56562862964EEBF41 /* instagramEmbed.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = instagramEmbed.html; sourceTree = "<group>"; };
@@ -793,6 +800,7 @@
 		E8608EAECE0CF4A45B2C0B7F /* SubstitutionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubstitutionService.swift; sourceTree = "<group>"; };
 		E90EEBE18AA27989254875A2 /* RecipeImageSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImageSync.swift; sourceTree = "<group>"; };
 		E935FD442B09E554268417A8 /* CollectionsListSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionsListSheet.swift; sourceTree = "<group>"; };
+		EB11FDEDB692D95C9167FA09 /* SkillProgressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillProgressionTests.swift; sourceTree = "<group>"; };
 		EB24F00BC9661311C005BE78 /* OFL-BricolageGrotesque.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-BricolageGrotesque.txt"; sourceTree = "<group>"; };
 		ECDBF6B434AAC4E4144F2CF7 /* PollyVoicePlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyVoicePlayer.swift; sourceTree = "<group>"; };
 		ECE5BFA285767FD229AB9547 /* SegmentedTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentedTabs.swift; sourceTree = "<group>"; };
@@ -1011,6 +1019,7 @@
 				E16B9E3FC176CCD52B8C1E82 /* RouterImportNavigationTests.swift */,
 				F37334F4D4FCC0C8A3291B1C /* ShareImportViewModelTests.swift */,
 				B6CA84A34AE96922E1980AF4 /* SkillCatalogTests.swift */,
+				EB11FDEDB692D95C9167FA09 /* SkillProgressionTests.swift */,
 				91568D9FE637F7812BD88B51 /* SpeechTranscriptionClientTests.swift */,
 				C06B65AB82EE6F186D44D2FC /* SpokenTextTests.swift */,
 				0D4F33FEA43DB20961D28522 /* StepActionChecklistTests.swift */,
@@ -1448,6 +1457,9 @@
 				76263AC17C198923CC32EE1A /* SkillCatalog+Knife.swift */,
 				41C80C4125F387E85A43FF52 /* SkillCatalog+Upcoming.swift */,
 				0B99F4164C9760B4C490A7D1 /* SkillCategory.swift */,
+				276732B305F2B1605D20E1DC /* SkillProgress.swift */,
+				254B5A3FC9E54A7C4D02A8E3 /* SkillProgression.swift */,
+				02A165E814B0595AF526ECEA /* SkillStreak.swift */,
 			);
 			path = Skills;
 			sourceTree = "<group>";
@@ -1790,6 +1802,7 @@
 				8119CE17BB8C7A31895954A3 /* RouterImportNavigationTests.swift in Sources */,
 				22AA6B7E63246878771B566E /* ShareImportViewModelTests.swift in Sources */,
 				864AE3656EF10E89A9617F7D /* SkillCatalogTests.swift in Sources */,
+				6AF3C1FA72E62AAEACAB7141 /* SkillProgressionTests.swift in Sources */,
 				EDE53C61A5EC7A9BD3EA9FC8 /* SpeechTranscriptionClientTests.swift in Sources */,
 				C84A8A4D99D1A4ECFAA434B9 /* SpokenTextTests.swift in Sources */,
 				117F06F09C345AB979D64EE0 /* StepActionChecklistTests.swift in Sources */,
@@ -2035,6 +2048,9 @@
 				057066A8675F05C819DC4BE9 /* SkillCatalog+Upcoming.swift in Sources */,
 				68618E91878F2A63559E69D3 /* SkillCatalog.swift in Sources */,
 				BFFA7466A6D65027F62E9DD5 /* SkillCategory.swift in Sources */,
+				8CEA072A5925A173C48BDB2E /* SkillProgress.swift in Sources */,
+				915F03B4A66B272F053C3628 /* SkillProgression.swift in Sources */,
+				EBC7278F44203D42E77D4748 /* SkillStreak.swift in Sources */,
 				91E09FBEA927C5B65D548293 /* SocialMediaImport.swift in Sources */,
 				98296FB29C0B9132CCB2A638 /* SpeechTranscriptionClient.swift in Sources */,
 				EB89E07070A29DEC1316D7C7 /* SpokenText.swift in Sources */,

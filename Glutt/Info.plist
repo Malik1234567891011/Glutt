@@ -30,14 +30,6 @@
 		</dict>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.omarlahmimi.glutt.wearables</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>glutt-wearables</string>
-			</array>
-		</dict>
-		<dict>
-			<key>CFBundleURLName</key>
 			<string>com.googleusercontent.apps</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
@@ -49,23 +41,6 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>fb-viewapp</string>
-	</array>
-	<key>MWDAT</key>
-	<dict>
-		<key>AppLinkURLScheme</key>
-		<string>glutt-wearables://</string>
-		<key>DAMEnabled</key>
-		<false/>
-		<key>MetaAppID</key>
-		<string>0</string>
-	</dict>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Glutt connects to your Meta glasses so Chef can see what you are cooking.</string>
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>Glutt connects to your Meta glasses so Chef can see what you are cooking.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Glutt uses the camera to scan your fridge or pantry, to estimate meals you log from photos, and to let Chef watch the pan during live cooking sessions.</string>
 	<key>NSMicrophoneUsageDescription</key>
@@ -80,16 +55,9 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>processing</string>
-		<string>bluetooth-central</string>
-		<string>bluetooth-peripheral</string>
-		<string>external-accessory</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
-	<key>UISupportedExternalAccessoryProtocols</key>
-	<array>
-		<string>com.meta.ar.wearable</string>
-	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

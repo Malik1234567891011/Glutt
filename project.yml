@@ -44,12 +44,6 @@ packages:
   # exact version — same reasoning as LiveKitWebRTC above. Developer preview:
   # 0.8 -> 0.9 removed DeviceSession.addStream entirely. Ships arm64 + simulator
   # slices, which is what lets the mock device work on the sim.
-  # See docs/meta-glasses-research-2026-08-04.md.
-  # SPIKE: pinned to 0.8.0 to reach the Bluetooth Classic camera transport.
-  # 0.9 is Wi-Fi only. See docs/glasses-transport-and-memory.md.
-  MetaWearablesDAT:
-    url: https://github.com/facebook/meta-wearables-dat-ios
-    exactVersion: "0.8.0"
   # Native Google sign-in. The browser flow would need no dependency, but the
   # Supabase Google provider is configured with a client id and no secret, which
   # is the native (id_token) setup; /auth/v1/authorize rejects the web flow with
@@ -87,99 +81,12 @@ targets:
         NSMicrophoneUsageDescription: Glutt uses the microphone so you can tell it what’s in your kitchen, and so Chef can guide you hands-free while you cook.
         NSSpeechRecognitionUsageDescription: Glutt recognizes speech on-device so you can list kitchen ingredients out loud, and so Chef only wakes when you say “Chef” — not to background chatter.
         ITSAppUsesNonExemptEncryption: false
-        # Meta Wearables Device Access Toolkit. MetaAppID "0" is the Developer
-        # Mode value (toggled in Meta AI > Settings > Your glasses), which is a
-        # different thing from a Wearables Developer Center account — that is
-        # only needed to distribute to other people, and brings ClientToken and
-        # TeamID with it. Add those when we have a release channel.
-        MWDAT:
-          AppLinkURLScheme: "glutt-wearables://"
-          MetaAppID: "0"
-          # Opt out of the Device Access Toolkit App Model.
-          #
-          # Meta's own engineer, discussion #226: "there is an issue where we can
-          # drop frames when you are using bluetooth as the transport channel and
-          # have DAM enabled. BTC transport & DAM will be the default behaviour
-          # if you update your app from the 0.7 sdk to 0.8 sdk." That is Glutt
-          # exactly: we hold the camera on Bluetooth with the MFi keys below, and
-          # DAM defaults to on in 0.8 for anyone who says nothing.
-          #
-          # Measured by `jeffhoang` on the same thread: with DAM on, frames stop
-          # dead 5 to 9 seconds in and never return, with nothing on any error
-          # channel. With this key, a 30+ minute continuous run and only the
-          # ordinary 1 to 2 second stalls that recover by themselves. Our cooks
-          # froze at 12 to 19 seconds, which is the same failure.
-          #
-          # An earlier comment here claimed the key was not read in 0.8 because
-          # the string does not appear in the framework binary. `strings` does not
-          # enumerate Swift string literals, so that showed nothing either way.
-          # GlassesDAMConfigTests asserts the real answer against the real bundle.
-          #
-          # This is why the SDK stays pinned to 0.8.0: 0.9 removed the opt-out and
-          # shipped no decoder fix.
-          DAMEnabled: false
-        # The toolkit finds Meta AI with `UIApplication.canOpenURL`, which
-        # silently returns false for any scheme not listed here. Without it the
-        # SDK reports Meta AI as not installed when it is sitting on the home
-        # screen, and registration fails with an error that names the wrong
-        # problem.
-        LSApplicationQueriesSchemes:
-          - fb-viewapp
-        # SPIKE: the Bluetooth Classic selector.
-        #
-        # `vinidlidoo` in discussion #226, after getting Wi-Fi working on 0.8:
-        # "we also had to remove the ExternalAccessory wiring
-        #  (UISupportedExternalAccessoryProtocols + the external-accessory
-        #  background mode) before the transport would engage."
-        #
-        # So these keys hold the camera on BTC and removing them is what lets
-        # softAP take over. They come from the 0.7-era integration guide; the
-        # 0.9 docs we built against dropped them, which is why Glutt has been on
-        # Wi-Fi since the first line of glasses code and has never once asked
-        # for Bluetooth.
-        #
-        # `com.meta.ar.wearable` is the MFi protocol. Corroborated by the App
-        # Store rejections on issues #114, #167 and #169, all of which are apps
-        # declaring exactly this string.
-        UISupportedExternalAccessoryProtocols:
-          - com.meta.ar.wearable
-        # The camera stream reaches the phone over Wi-Fi, which is why a camera
-        # SDK wants local network and Bonjour.
-        NSBluetoothAlwaysUsageDescription: Glutt connects to your Meta glasses so Chef can see what you are cooking.
-        NSBluetoothPeripheralUsageDescription: Glutt connects to your Meta glasses so Chef can see what you are cooking.
-        # SPIKE: NSLocalNetworkUsageDescription and NSBonjourServices removed.
-        # Both exist only to let the softAP socket layer work. Restore with the
-        # pin if this experiment fails.
-        # Meta's own sample also lists `audio` here. Deliberately omitted: Polly
-        # stands down on background on purpose (PollySessionView scenePhase), and
-        # DAT 0.9 ends the camera session on background regardless, so `audio`
-        # would buy nothing and quietly change how the cook session behaves.
-        # `bluetooth-central` and `bluetooth-peripheral` are NOT here, and must
-        # not come back. They are Core Bluetooth (BLE) background modes, and
-        # Glutt contains no Core Bluetooth at all: no `import CoreBluetooth`, no
-        # CBCentralManager, no CBPeripheral. The glasses reach the camera over
-        # Bluetooth *Classic* through ExternalAccessory, which is the
-        # `external-accessory` mode below and has nothing to do with BLE.
-        #
-        # They were added with the BTC selector on the assumption that anything
-        # Bluetooth wanted them. They bought nothing, and they cost the 1.2.2 (16)
-        # submission a rejection under guideline 2.5.4 on 2026-08-17: "we are
-        # unable to locate any Bluetooth Low Energy functionality", which was
-        # exactly correct.
         UIBackgroundModes:
           - processing
-          # SPIKE: the other half of the BTC selector.
-          - external-accessory
         CFBundleURLTypes:
           - CFBundleURLName: com.omarlahmimi.glutt
             CFBundleURLSchemes:
               - glutt
-          # Meta AI calls back here after the user approves the integration.
-          # Its own scheme, not `glutt`, so the callback can never be confused
-          # with an ordinary Glutt deep link.
-          - CFBundleURLName: com.omarlahmimi.glutt.wearables
-            CFBundleURLSchemes:
-              - glutt-wearables
           # Google sign-in callback. Must be the iOS client id reversed, exactly;
           # GoogleSignIn hands this scheme to ASWebAuthenticationSession and the
           # flow dead-ends without it. See Secrets.googleClientID.
@@ -203,21 +110,6 @@ targets:
         product: Supabase
       - package: GoogleSignIn
         product: GoogleSignIn
-      - package: MetaWearablesDAT
-        product: MWDATCore
-      - package: MetaWearablesDAT
-        product: MWDATCamera
-      # MWDATMockDevice is DELIBERATELY NOT LINKED HERE. It lives on the
-      # GluttTests target instead, which gets us the mock for automated
-      # measurement without ever putting it in a shippable app. See the harness
-      # in GluttTests/Glasses/. It statically duplicates the
-      # same internal SUPMediaStream* and FB* ObjC classes as MWDATCamera, and
-      # dyld warns that this "may cause spurious casting failures and mysterious
-      # crashes". It did: the app died the moment a real stream reached
-      # waitingForDevice. Every use of it is behind
-      # `#if canImport(MWDATMockDevice)`, so add the product back here to get the
-      # mock device and the -mockGlasses rig, and expect the crash back with it.
-
   GluttShare:
     type: app-extension
     platform: iOS
@@ -310,21 +202,6 @@ targets:
         GENERATE_INFOPLIST_FILE: true
     dependencies:
       - target: Glutt
-      # The mock device lives HERE and nowhere else. Linking it into the app
-      # duplicates MWDATCamera's internal SUPMediaStream*/FB* ObjC classes and
-      # crashes real streams; a unit-test bundle is injected into the app at
-      # test time only, so the harness gets a fake pair of glasses and no
-      # shipping build ever carries the symbols.
-      #
-      # This is what makes glasses behaviour measurable without hardware. Two
-      # non-obvious prerequisites, both from Meta on issue #197: the fixture
-      # handed to `setCameraFeed` MUST be H.265 (an H.264 file fails silently
-      # and delivers zero frames), and the test run must sign ad-hoc with
-      # CODE_SIGN_IDENTITY="-" rather than CODE_SIGNING_ALLOWED=NO, because
-      # `Wearables.configure()` does keychain work that throws without a
-      # signing identity.
-      - package: MetaWearablesDAT
-        product: MWDATMockDevice
 
 schemes:
   Glutt:

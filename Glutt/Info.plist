@@ -30,14 +30,6 @@
 		</dict>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.omarlahmimi.glutt.wearables</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>glutt-wearables</string>
-			</array>
-		</dict>
-		<dict>
-			<key>CFBundleURLName</key>
 			<string>com.googleusercontent.apps</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
@@ -55,31 +47,8 @@
 	<string>Glutt</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>fb-viewapp</string>
-	</array>
-	<key>MWDAT</key>
-	<dict>
-		<key>AppLinkURLScheme</key>
-		<string>glutt-wearables://</string>
-		<key>DAMEnabled</key>
-		<false/>
-		<key>MetaAppID</key>
-		<string>0</string>
-	</dict>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Glutt connects to your Meta glasses so Chef can see what you are cooking.</string>
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>Glutt connects to your Meta glasses so Chef can see what you are cooking.</string>
-	<key>NSBonjourServices</key>
-	<array>
-		<string>_bonjour._tcp</string>
-	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Glutt uses the camera to scan your fridge or pantry, to estimate meals you log from photos, and to let Chef watch the pan during live cooking sessions.</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>Glutt uses your local network to receive the camera view from your Meta glasses.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Glutt uses the microphone so you can tell it what’s in your kitchen, and so Chef can guide you hands-free while you cook.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
@@ -101,11 +70,6 @@
 	<array>
 		<string>BricolageGrotesque-Variable.ttf</string>
 		<string>Nunito-Variable.ttf</string>
-	</array>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>bluetooth-central</string>
-		<string>bluetooth-peripheral</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

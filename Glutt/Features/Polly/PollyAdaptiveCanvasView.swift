@@ -33,18 +33,6 @@ struct PollyAdaptiveCanvasView: View {
     /// the same thing, and flickering the pill on every look would be a lie
     /// about a distinction they do not have.
     private var chefCanSee: Bool { controller.visualSource.canSee }
-    /// The picture is coming from the cook's glasses.
-    private var usingGlasses: Bool {
-        chefCanSee && controller.visuals.activeKind == .metaGlasses
-    }
-    /// The glasses are coming up but cannot see yet.
-    ///
-    /// True for the fifteen to twenty seconds the toolkit spends standing up a
-    /// Wi-Fi link to the glasses at the start of a cook.
-    private var isConnectingGlasses: Bool {
-        controller.visuals.glassesPossible && controller.visuals.glasses.state == .starting
-    }
-
     /// Whether the canvas gives the whole screen over to the camera.
     ///
     /// Only the phone earns that. A cook wearing glasses is already looking at
@@ -52,19 +40,17 @@ struct PollyAdaptiveCanvasView: View {
     /// screen on the one thing they can see, and bury the step and the technique
     /// clip, which are the things they cannot. When the glasses are the source
     /// the canvas behaves as though no camera were on.
-    private var showsCameraFeed: Bool { chefCanSee && !usingGlasses }
+    private var showsCameraFeed: Bool { chefCanSee }
 
     /// The camera control has to say which eye is open. A cook who thinks Chef
     /// is watching through their glasses when she is actually watching a phone
     /// on the counter will keep asking about a pan she cannot see.
     private var cameraButtonSymbol: String {
-        if usingGlasses { return "eyeglasses" }
-        return showsCameraFeed ? "video.fill" : "camera.fill"
+        showsCameraFeed ? "video.fill" : "camera.fill"
     }
 
     private var cameraButtonLabel: String {
-        if usingGlasses { return "Stop Chef seeing through your glasses" }
-        return showsCameraFeed ? "Back to step video" : "Show Chef your pan"
+        showsCameraFeed ? "Back to step video" : "Show Chef your pan"
     }
     /// Shrink the step card only while a native clip is playing — never on Tools/Prep.
     private var sheetMini: Bool { nativeClip != nil && clipPlaying && !showsCameraFeed }
@@ -99,7 +85,6 @@ struct PollyAdaptiveCanvasView: View {
 
                 VStack(spacing: 0) {
                     topNav
-                    glassesIndicator
                     progressLine
                     Spacer(minLength: 8)
 
@@ -172,16 +157,11 @@ struct PollyAdaptiveCanvasView: View {
                 controller.refreshAudioLab()
                 Haptics.impact(.light)
             }
-            // Takes effect on the next cook, not this one: the audio session is
-            // configured once at connect and the Realtime transport is already
-            // holding the route. Worth flipping between two cooks of the same
-            // dish, which is how the camera-versus-voice question gets settled.
-            Button(PollyAudioLab.micOnGlasses
-                   ? "Audio: glasses (tap for phone, next cook)"
-                   : "Audio: phone (tap for glasses, next cook)") {
-                PollyAudioLab.micOnGlasses.toggle()
-                Haptics.impact(.light)
-            }
+            // The glasses/phone audio toggle went with the glasses. The flag it
+            // drove (`PollyAudioLab.micOnGlasses`) is deliberately still there
+            // and still defaults to on: despite the name it decides whether the
+            // audio session allows Bluetooth at all, which is what lets a cook
+            // wear AirPods. See docs/glasses-removal.md.
             #endif
             Button("End cooking session", role: .destructive, action: onRequestEnd)
             Button("Cancel", role: .cancel) {}
@@ -449,46 +429,6 @@ struct PollyAdaptiveCanvasView: View {
             .frame(maxWidth: .infinity)
             circleButton(system: "ellipsis", action: { showOverflow = true })
         }
-        .padding(.horizontal, CookCanvasTheme.margin)
-    }
-
-    /// The whole of the glasses UI, by design. With no preview on screen, this
-    /// is the only thing telling the cook whether Chef still has eyes, so it has
-    /// to be honest about the glasses going away as well as arriving.
-    @ViewBuilder
-    private var glassesIndicator: some View {
-        if usingGlasses {
-            glassesPill(symbol: "eyeglasses", text: "Chef can see", tint: CookCanvasTheme.green)
-        } else if isConnectingGlasses {
-            // Says what the unexplained iOS prompt was for.
-            //
-            // Chef's eyes take the better part of twenty seconds to come up,
-            // and somewhere in there iOS asks to join a network named after the
-            // glasses. Without this the cook gets a system dialog out of
-            // nowhere, mid-sentence, with nothing on screen accounting for it.
-            glassesPill(
-                symbol: "eyeglasses",
-                text: "Connecting your glasses, uses mobile data",
-                tint: CookCanvasTheme.primaryText.opacity(0.7)
-            )
-        } else if let dropped = controller.visuals.lastGlassesDropReason {
-            glassesPill(symbol: "eyeglasses.slash", text: dropped, tint: .orange)
-        }
-    }
-
-    private func glassesPill(symbol: String, text: String, tint: Color) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
-            Text(text)
-                .font(.system(size: 13, weight: .medium))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Capsule().fill(Color.black.opacity(0.45)))
         .padding(.horizontal, CookCanvasTheme.margin)
     }
 

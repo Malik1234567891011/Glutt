@@ -81,17 +81,20 @@ struct GlassesLook: Sendable {
     var succeeded: Bool { jpeg != nil }
 }
 
+/// Where a picture came from.
+///
+/// One case since the Meta glasses were removed (see docs/glasses-removal.md).
+/// Kept as an enum rather than dissolved into a bool because it is sent to Polly
+/// by name and read back in the tool layer, so a second source is an addition
+/// here rather than a change of shape everywhere.
 enum PollyVisualSourceKind: String, Sendable {
     case phoneCamera
-    case metaGlasses
 
     /// What Polly is told the picture came from. She uses this to give the right
-    /// instruction when a frame is unusable: a cook wearing glasses is told to
-    /// hold still, a cook with a propped-up phone is told to move it.
+    /// instruction when a frame is unusable.
     var toolName: String {
         switch self {
         case .phoneCamera: return "phone_camera"
-        case .metaGlasses: return "meta_glasses"
         }
     }
 }

@@ -64,14 +64,6 @@ struct GluttApp: App {
         // from PostHog on purpose: this one reports to an ad account, not to
         // us, and sends exactly one hand-written event (`StartTrial`).
         MetaAds.start()
-        // Meta glasses support, if the toolkit will have us. Never fatal: this
-        // returns having quietly given up for every user who owns no glasses.
-        GlassesSupport.shared.configure()
-        // `-mockGlasses`: pretend a pair is paired and worn, so a real cook
-        // session can be driven without hardware. No-op without the argument.
-#if canImport(MWDATMockDevice)
-        GlassesMockRig.armIfRequested()
-#endif
         notificationDelegate.router = router
         UNUserNotificationCenter.current().delegate = notificationDelegate
     }
@@ -129,10 +121,6 @@ struct GluttApp: App {
                 // via UIUserInterfaceStyle in Info.plist. Dark theme: backlog.
                 .preferredColorScheme(.light)
                 .onOpenURL { url in
-                    // Meta AI's registration callback arrives on its own scheme.
-                    // Router already ignores anything that isn't `glutt`, but
-                    // claiming it here keeps the two flows from ever crossing.
-                    guard !GlassesSupport.shared.handleCallback(url) else { return }
                     router.handle(url: url)
                 }
         }

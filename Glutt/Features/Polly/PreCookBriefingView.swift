@@ -21,9 +21,7 @@ struct PreCookBriefingView: View {
     @State private var didHandOff = false
     @State private var isHandingOff = false
     @State private var selectedChefID = PollyChefVoice.selectedID
-    @State private var selectedWatchfulness = ChefWatchfulness.selected
     /// Nil until the check finishes, so the row does not appear and then vanish.
-    @State private var glassesConnected: Bool?
 
     private let heroHeight: CGFloat = 300
 
@@ -45,7 +43,6 @@ struct PreCookBriefingView: View {
         }
         .background(Theme.Colors.background.ignoresSafeArea())
         .task { await loadBriefing() }
-        .task { glassesConnected = await GlassesSupport.shared.hasConnectedGlasses() }
         .onChange(of: narrator.didFinishNaturally) { _, finished in
             guard finished, !didHandOff else { return }
             isHandingOff = true
@@ -362,72 +359,8 @@ struct PreCookBriefingView: View {
     /// The first version put each tagline inside its own chip, copying the chef
     /// picker exactly. On a real screen that made every chip a full-width card:
     /// Perfectionist filled the row, Watchful was clipped at the edge and Hands
-    /// off was entirely off screen, so two of the three choices did not exist
-    /// unless you thought to swipe a row nothing suggests is scrollable. The
-    /// chef picker survives the same treatment only because it has two entries.
-    ///
-    /// So the taglines come out of the chips and one of them, the selected one,
-    /// sits below the row. All three names fit, the row needs no scrolling, and
-    /// the explanation is still there for whatever the cook is actually choosing.
-    private var watchfulnessPicker: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "eyeglasses")
-                    .font(.system(size: 12, weight: .bold))
-                Text("While you cook")
-                    .font(BrandFont.nunito(12, 750))
-            }
-            .foregroundStyle(Theme.Colors.muted)
-
-            HStack(spacing: 8) {
-                ForEach(ChefWatchfulness.allCases) { level in
-                    let isSelected = level == selectedWatchfulness
-                    Button {
-                        Haptics.impact(.light)
-                        selectedWatchfulness = level
-                        ChefWatchfulness.selectedID = level.rawValue
-                    } label: {
-                        Text(level.displayName)
-                            .font(BrandFont.nunito(13.5, 800))
-                            .foregroundStyle(isSelected ? Theme.Colors.creamText : Theme.Colors.heading)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.85)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(isSelected ? Theme.Colors.accent : Theme.Colors.card)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .strokeBorder(
-                                        isSelected ? Color.clear : Theme.Colors.heading.opacity(0.12),
-                                        lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("preCookBriefing.watchfulness.\(level.rawValue)")
-                    .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-                }
-            }
-
-            Text(selectedWatchfulness.tagline)
-                .font(BrandFont.nunito(12, 600))
-                .foregroundStyle(Theme.Colors.textSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.9)
-                .animation(.easeInOut(duration: 0.15), value: selectedWatchfulness)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     private var bottomBar: some View {
         VStack(spacing: 10) {
-            if glassesConnected == true {
-                watchfulnessPicker
-                    .padding(.bottom, 2)
-                    .transition(.opacity)
-            }
             if PollyChefVoice.all.count > 1 {
                 chefPicker
                     .padding(.bottom, 2)
@@ -465,7 +398,6 @@ struct PreCookBriefingView: View {
         .padding(.horizontal, 20)
         .padding(.top, 12)
         .padding(.bottom, 18)
-        .animation(.easeInOut(duration: 0.2), value: glassesConnected)
         .background(
             Theme.Colors.background
                 .shadow(color: Theme.Colors.textPrimary.opacity(0.06), radius: 16, y: -4)

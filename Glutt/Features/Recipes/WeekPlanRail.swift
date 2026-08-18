@@ -15,6 +15,30 @@ import SwiftUI
 /// screen the app already has rather than a second one built for this.
 struct WeekPlanRail: View {
     @Query(sort: \MealPlan.createdAt, order: .reverse) private var plans: [MealPlan]
+    /// Every collection that still exists, to check a plan's link against.
+    ///
+    /// `MealPlan.collection` is a to-one reference with **no inverse and no
+    /// delete rule** (see `MealPlan`), so deleting a collection does not clear
+    /// the plans pointing at it. SwiftData then hands back a live-looking object
+    /// with no backing data, and reading it is a `fatalError`, not a nil. This
+    /// rail renders on the launch tab, so one deleted collection crashed the app
+    /// before it drew a single frame.
+    ///
+    /// The real fix is an inverse on the relationship, which is a schema change
+    /// and a migration for every install. This is the containment: check the id
+    /// is still present before trusting anything else about the object.
+    @Query private var collections: [RecipeCollection]
+
+    private var liveCollectionIDs: Set<PersistentIdentifier> {
+        Set(collections.map(\.persistentModelID))
+    }
+
+    /// The plan's collection, but only when its row is genuinely still there.
+    private func liveCollection(for plan: MealPlan) -> RecipeCollection? {
+        guard let collection = plan.collection,
+              liveCollectionIDs.contains(collection.persistentModelID) else { return nil }
+        return collection
+    }
 
     var body: some View {
         if !plans.isEmpty {
@@ -26,7 +50,7 @@ struct WeekPlanRail: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 14) {
                         ForEach(plans) { plan in
-                            if let collection = plan.collection {
+                            if let collection = liveCollection(for: plan) {
                                 NavigationLink(value: collection) { card(plan) }
                                     .buttonStyle(.plain)
                                     .hapticTap()

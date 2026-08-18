@@ -235,6 +235,34 @@ enum RecipeSyncBody {
         )
     }
 
+    /// The names of the collections this recipe is in, resolved from the
+    /// **collection** side rather than from `recipe.collections`.
+    ///
+    /// Reading `recipe.collections` directly is a crash waiting to happen. A
+    /// recipe can still hold a reference to a collection whose row is gone, and
+    /// SwiftData does not hand back nil for that: it hands back a live-looking
+    /// object, and the first property you read off it is a `fatalError` that
+    /// takes the process down. On a real device that killed the app on launch
+    /// before it drew a frame, because the sync sweep runs from `RootView`'s
+    /// startup task and touches every recipe.
+    ///
+    /// Walking the other way is immune: a fetch only ever returns rows that
+    /// exist, so every collection here is real and `name` is safe to read. It
+    /// also self-heals, since a dangling reference simply stops being reported.
+    ///
+    /// The fetch is per recipe, which is not free, but collections are a handful
+    /// of rows and this runs on a background sync rather than in a view body.
+    /// Correctness first: the alternative crashed the app.
+    static func collectionNames(of recipe: Recipe) -> [String] {
+        guard let context = recipe.modelContext else { return [] }
+        let live = (try? context.fetch(FetchDescriptor<RecipeCollection>())) ?? []
+        let id = recipe.persistentModelID
+        return live
+            .filter { collection in collection.recipes.contains { $0.persistentModelID == id } }
+            .map(\.name)
+            .sorted()
+    }
+
     static func document(of recipe: Recipe) -> Document {
         Document(
             summary: recipe.summary,
@@ -261,7 +289,7 @@ enum RecipeSyncBody {
             // Sorted because a SwiftData to-many has no defined order, and an
             // order that wobbles between reads would look like an edit to the
             // hash and re-push the same recipe forever.
-            collections: recipe.collections.map(\.name).sorted(),
+            collections: collectionNames(of: recipe),
             parentRemoteID: recipe.parentRecipe?.remoteID,
             versionLabel: recipe.versionLabel,
             ingredients: recipe.ingredients

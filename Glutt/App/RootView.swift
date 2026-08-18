@@ -207,6 +207,9 @@ struct RootView: View {
                 awaitVerbalGo: launch.awaitVerbalGo
             )
         }
+        .sheet(item: $router.skillLesson) { skill in
+            SkillLessonView(skill: skill)
+        }
         .fullScreenCover(isPresented: $showPollyV2Spike) {
             PollyV2SpikeView()
         }
@@ -294,6 +297,7 @@ struct RootView: View {
         case .recipes: RecipesView()
         case .discover: DiscoverTabView()
         case .kitchen: KitchenView()
+        case .skills: SkillsView()
         }
     }
 }

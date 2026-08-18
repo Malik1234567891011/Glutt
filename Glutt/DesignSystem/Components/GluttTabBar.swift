@@ -21,7 +21,6 @@ struct GluttTabBar: View {
                 } label: {
                     VStack(spacing: 4) {
                         glyph(for: tab, active: isActive)
-                            .sized(26)
                             .foregroundColor(isActive ? Theme.Colors.activeTabGlyph : Theme.Colors.tabInactive)
                         Text(tab.label)
                             .font(BrandFont.nunito(11, isActive ? 800 : 600))
@@ -44,11 +43,20 @@ struct GluttTabBar: View {
         )
     }
 
-    private func glyph(for tab: AppTab, active: Bool) -> MS {
+    /// A `@ViewBuilder` rather than a returned `MS`, because Skills uses the
+    /// Phosphor chef hat: Material Symbols has no outline/filled pair that reads
+    /// as learning, and `fire` already means the streak elsewhere in the app.
+    @ViewBuilder
+    private func glyph(for tab: AppTab, active: Bool) -> some View {
         switch tab {
-        case .recipes:  return active ? .menuBookFill : .menuBook
-        case .discover: return active ? .autoAwesomeFill : .autoAwesome
-        case .kitchen:  return active ? .skilletFill : .skillet
+        case .recipes:  (active ? MS.menuBookFill : MS.menuBook).sized(26)
+        case .discover: (active ? MS.autoAwesomeFill : MS.autoAwesome).sized(26)
+        case .kitchen:  (active ? MS.skilletFill : MS.skillet).sized(26)
+        case .skills:
+            (active ? Ph.chefHat.fill : Ph.chefHat.regular)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 26, height: 26)
         }
     }
 }

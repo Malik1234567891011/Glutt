@@ -104,6 +104,13 @@ enum Analytics {
         case recipeViewed = "recipe_viewed"
         case recipeDeleted = "recipe_deleted"
 
+        /// A lesson was opened, and a skill was marked learned. Together they
+        /// give the drop-off between reading a skill and claiming it, and the
+        /// `category` breakdown is what decides where the next lessons get
+        /// written: there is no point authoring Sauces if nobody finishes Heat.
+        case skillOpened = "skill_opened"
+        case skillLearned = "skill_learned"
+
         /// Both cooking flows fire these, separated by `with_polly` rather than
         /// by having their own events. A live Polly cook *is* a cook, so a
         /// separate `polly_session_started` would either double count every

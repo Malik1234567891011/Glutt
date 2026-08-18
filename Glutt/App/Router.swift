@@ -3,7 +3,7 @@ import Observation
 import SwiftData
 
 enum AppTab: String, CaseIterable, Identifiable {
-    case recipes, discover, kitchen
+    case recipes, discover, kitchen, skills
     var id: String { rawValue }
 
     var label: String {
@@ -11,6 +11,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .recipes: "Recipes"
         case .discover: "Discover"
         case .kitchen: "Kitchen"
+        case .skills: "Skills"
         }
     }
 }
@@ -63,6 +64,16 @@ final class Router {
     /// the live session (a fullScreenCover) whenever this is non-nil; carries the
     /// serving scale the user chose so Polly cooks the right amounts.
     var pollyLaunch: PollyLaunch?
+    /// The skill lesson on screen, if any.
+    ///
+    /// Held here rather than in `SkillsView`'s own `@State` for the same reason
+    /// `pollyLaunch` is: marking a skill opened or learned writes to SwiftData,
+    /// that invalidates the `@Query` the Skills tab is built from, and a sheet
+    /// bound to state inside that view gets torn down mid-celebration. Router
+    /// state survives the rebuild, so the lesson stays up and the map keeps its
+    /// scroll position.
+    var skillLesson: Skill?
+
     /// True while a live Polly session is on screen. GluttApp's notification
     /// delegate suppresses foreground banners while it's set — in-session
     /// timers already render natively over the camera.
@@ -122,6 +133,7 @@ final class Router {
         case "recipes": selectedTab = .recipes
         case "discover", "plates": selectedTab = .discover
         case "kitchen": selectedTab = .kitchen
+        case "skills": selectedTab = .skills
         // Legacy links kept working: Polly now launches from a recipe, and the
         // removed Today/Plan/Progress tabs fall back to the home (Recipes) tab so
         // any lingering notification/deep link still opens somewhere sensible.

@@ -145,6 +145,19 @@ enum Analytics {
         case importStarted = "import_started"
         case importFailed = "import_failed"
 
+        /// The Discord invite. `discord_opened` is the only one that can be
+        /// trusted as a join: the app never learns who is actually in the
+        /// server, so a tap is the whole signal. The other two exist to answer
+        /// whether the repeating prompt is earning its interruption, or whether
+        /// people are just declining it every week.
+        ///
+        /// `show_count`: which showing this was, from 1.
+        case discordPromptShown = "discord_prompt_shown"
+        /// `action`: not_now / never. `show_count` as above.
+        case discordPromptDismissed = "discord_prompt_dismissed"
+        /// `source`: sheet / settings.
+        case discordOpened = "discord_opened"
+
         /// Navigation. Needed because `captureScreenViews` is off, and it is
         /// off because every SwiftUI screen is the same hosting controller.
         case tabSwitched = "tab_switched"

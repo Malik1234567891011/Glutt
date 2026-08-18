@@ -199,6 +199,7 @@
 		786C3D5915D8773BA6791D7F /* RecipeFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6AA607718196B77CD8D95CC /* RecipeFactory.swift */; };
 		793C254AF1FE91861B4F1934 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 8C1790C892C591E7E8D387AE /* Supabase */; };
 		7A516F7C0B25F4F5444BBE19 /* OnboardingComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5315436BAEC0329F2C853629 /* OnboardingComponents.swift */; };
+		7A538CF86F044F334FFC40D7 /* DiscordJoinSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD02D9ACF2D98069D14E1225 /* DiscordJoinSheet.swift */; };
 		7AFCFA833E7E7B58ADAC74FC /* DiscoverServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE3AA1385D7E9B8C5CD848EB /* DiscoverServiceTests.swift */; };
 		7C43FD8C656E237B92067C9F /* HeadlineWordStyleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE33E6863168E00B4A6635B9 /* HeadlineWordStyleTests.swift */; };
 		7CB849AE3CEF3C7A45085829 /* PinterestImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 967C2DD3625358CD8C791179 /* PinterestImportTests.swift */; };
@@ -260,6 +261,7 @@
 		A0EFBA19B054F8F6EDB99303 /* MetaAds.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A4400189273C5DCD70F508F /* MetaAds.swift */; };
 		A1F267873652834A19823397 /* PollyVoiceEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E3506739BDD42FCDF272CCB /* PollyVoiceEvent.swift */; };
 		A1FBC12E5CDC4800CF8959E5 /* SpeechTranscriptionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9305890C9C3B203EA6EDBBA8 /* SpeechTranscriptionClient.swift */; };
+		A28890EF3C8B54670E094387 /* DiscordInvite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB03DF6711612385B31FFBF /* DiscordInvite.swift */; };
 		A28F1DA9B3D145C5075CA91B /* StepClipPlayerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9109962E0D1CF2EB414F344 /* StepClipPlayerSheet.swift */; };
 		A5C9C8F35D24F4339AB59A4A /* SocialMediaImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD93233274D874B07BC71E66 /* SocialMediaImport.swift */; };
 		A5CD6756DCCE850B026D4438 /* PollyTokenService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3C1DC9472FACE2DF637235 /* PollyTokenService.swift */; };
@@ -621,6 +623,7 @@
 		7D86E21470BB8D1A4E567C2F /* RecipeChatApply.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeChatApply.swift; sourceTree = "<group>"; };
 		7DEB872DB55EE7ADF76A5A7B /* ImagePrep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePrep.swift; sourceTree = "<group>"; };
 		7F96436AB8E285AF7D3E889D /* WeekPlanRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekPlanRail.swift; sourceTree = "<group>"; };
+		7FB03DF6711612385B31FFBF /* DiscordInvite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscordInvite.swift; sourceTree = "<group>"; };
 		7FB23C5CE5AAF5F04514819E /* RequestHowToSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestHowToSheet.swift; sourceTree = "<group>"; };
 		81270C62F3A5D5904CEB2FEF /* OnboardingTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingTheme.swift; sourceTree = "<group>"; };
 		8162F086CCDA5D333CE07C99 /* DemoScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoScript.swift; sourceTree = "<group>"; };
@@ -697,6 +700,7 @@
 		AB34A264ED161A6DB27801A2 /* RecipeBodyParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeBodyParser.swift; sourceTree = "<group>"; };
 		AB3D4D4B7738F15B163FC9A7 /* ImportScreenStaging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportScreenStaging.swift; sourceTree = "<group>"; };
 		ACB6720025A90D44E306C7CE /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
+		AD02D9ACF2D98069D14E1225 /* DiscordJoinSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscordJoinSheet.swift; sourceTree = "<group>"; };
 		AE6471755924AE9ED5DAC77E /* CameraPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPicker.swift; sourceTree = "<group>"; };
 		AEA4002BF2FC7B593F833778 /* InstagramImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstagramImportTests.swift; sourceTree = "<group>"; };
 		AECDB51EACA72CE8D071EAD9 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
@@ -1019,6 +1023,7 @@
 		3AA223D98091A93BA8D5F2EF /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				AD02D9ACF2D98069D14E1225 /* DiscordJoinSheet.swift */,
 				8165290CCC188E3B7D66BDC1 /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -1190,6 +1195,7 @@
 			isa = PBXGroup;
 			children = (
 				6F29983D8888CD4C7C082CBB /* DietGuard.swift */,
+				7FB03DF6711612385B31FFBF /* DiscordInvite.swift */,
 				476DE0FF02A984E39531A7EF /* GroceryListBuilder.swift */,
 				1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */,
 				A90D25DFBAB2CE9E169D4FD2 /* MacroCaptionParser.swift */,
@@ -1805,6 +1811,8 @@
 				80D926D7FF4CDBA7FA90655E /* DevBuild.swift in Sources */,
 				28B11CE2B809E1BAEEC2D450 /* DictationTranscript.swift in Sources */,
 				FDA468B0515CCE15FA0C5D16 /* DietGuard.swift in Sources */,
+				A28890EF3C8B54670E094387 /* DiscordInvite.swift in Sources */,
+				7A538CF86F044F334FFC40D7 /* DiscordJoinSheet.swift in Sources */,
 				F48EEA8C4B150C6C5279702C /* DiscoverCardView.swift in Sources */,
 				96ED212BB7B42C7A7571B5A7 /* DiscoverFeedViewModel.swift in Sources */,
 				18852B7929DEF332DCDD0D55 /* DiscoverSaver.swift in Sources */,

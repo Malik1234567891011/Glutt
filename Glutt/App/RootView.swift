@@ -6,6 +6,7 @@ struct RootView: View {
     @Environment(Router.self) private var router
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var context
+    @Environment(\.openURL) private var openURL
     @Query(sort: \Recipe.createdAt) private var recipes: [Recipe]
     @Query private var allPrefs: [UserPrefs]
 
@@ -31,6 +32,11 @@ struct RootView: View {
     /// three states are reachable in the simulator at all.
     @State private var stagedImport: ShareImportViewModel?
 
+    /// The Discord invitation. Offered at most once per launch, and only into
+    /// an app that is otherwise idle — see `canOfferDiscord`.
+    @State private var isShowingDiscordJoin = false
+    @State private var didOfferDiscordThisLaunch = false
+
     private var needsOnboarding: Bool {
         // `router.forceOnboarding` still wins, so `-onboarding` and the Settings
         // entry point both keep working in a Debug build.
@@ -42,6 +48,24 @@ struct RootView: View {
     /// presentation below.
     private var shouldPresentPaywall: Bool {
         gate.access == .locked && !needsOnboarding
+    }
+
+    /// Whether the app is quiet enough to ask about Discord. Launch is crowded
+    /// — onboarding, the paywall, sign in, and whatever the share sheet handed
+    /// us — and an invitation stacked on any of those is an interruption rather
+    /// than an invitation. Everything here is a thing that presents *over* the
+    /// tabs, so the sheet waits its turn behind all of them.
+    private var canOfferDiscord: Bool {
+        !needsOnboarding
+            && gate.access == .unlocked
+            // Signing in with Apple is not reachable in the simulator, so the
+            // staging hook is exempt from this one condition and nothing else.
+            && (session.userID != nil || DiscordInvite.isStaged)
+            && stagedImport == nil
+            && router.pendingImportURL == nil
+            && router.pollyLaunch == nil
+            && !router.demoCookOnLaunch
+            && !showPollyV2Spike
     }
 
     var body: some View {
@@ -116,6 +140,36 @@ struct RootView: View {
             // Also on the way out: the share extension runs while the app is
             // backgrounded, and this is what lets it count what's in the kitchen.
             mirrorPantryForShareExtension()
+        }
+        .task { DiscordInvite.noteLaunch() }
+        // Cold launch only: `didOfferDiscordThisLaunch` keeps the invite from
+        // reappearing when `canOfferDiscord` flips back true mid-session, which
+        // it does every time a cook or a Polly session ends.
+        .task(id: canOfferDiscord) {
+            guard canOfferDiscord, !didOfferDiscordThisLaunch, DiscordInvite.shouldShow() else { return }
+            // A beat for the gate and sign-in covers to finish going away.
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard canOfferDiscord else { return }
+            didOfferDiscordThisLaunch = true
+            // Before presenting, not after: a process that dies with the sheet
+            // up still spent the ask, and the clock has to reflect that.
+            DiscordInvite.markShown()
+            isShowingDiscordJoin = true
+        }
+        .sheet(isPresented: $isShowingDiscordJoin) {
+            DiscordJoinSheet(
+                isFinalOffer: DiscordInvite.isFinalOffer,
+                onJoin: {
+                    DiscordInvite.markJoined()
+                    DiscordInvite.noteOpened(from: .sheet)
+                    isShowingDiscordJoin = false
+                    openURL(DiscordInvite.url)
+                },
+                onDecline: { decline in
+                    DiscordInvite.markDeclined(decline)
+                    isShowingDiscordJoin = false
+                }
+            )
         }
         .task { drainImportInbox() }
         .task { mirrorPantryForShareExtension() }

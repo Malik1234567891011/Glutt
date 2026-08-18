@@ -39,6 +39,7 @@ enum Ph: String {
     case clipboard = "clipboard"
     case clock = "clock"
     case cookingPot = "cooking-pot"
+    case discordLogo = "discord-logo"
     case dotsThree = "dots-three"
     case dotsThreeCircle = "dots-three-circle"
     case drop = "drop"

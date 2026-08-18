@@ -35,6 +35,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                communitySection
                 helpSection
                 subscriptionSection
                 accountSection
@@ -128,6 +129,30 @@ struct SettingsView: View {
 
     private var prefs: UserPrefs {
         UserPrefs.current(in: context)
+    }
+
+    // MARK: - Community
+
+    /// Above Help on purpose: the Discord is where feature requests land, and
+    /// filed under support it would read as somewhere to go when Glutt breaks.
+    private var communitySection: some View {
+        Section {
+            Button {
+                Haptics.impact(.light)
+                DiscordInvite.noteOpened(from: .settings)
+                openURL(DiscordInvite.url)
+            } label: {
+                phosphorRowLabel(
+                    "Join the Glutt Discord",
+                    icon: Ph.discordLogo.regular,
+                    tint: Theme.Colors.accent
+                )
+            }
+        } header: {
+            Text("Community")
+        } footer: {
+            Text("Tell us what to build next and get help from other Glutt cooks.")
+        }
     }
 
     // MARK: - Help / Legal

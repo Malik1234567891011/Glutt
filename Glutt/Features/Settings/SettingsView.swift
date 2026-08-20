@@ -43,10 +43,18 @@ struct SettingsView: View {
                 tasteProfileSection
                 dietarySection
                 aiSection
+#if DEBUG
+                glassesSection
+#endif
             }
             .sheet(isPresented: $isShowingImportGuide) {
                 ImportGuideView()
             }
+#if DEBUG
+            .fullScreenCover(isPresented: $isShowingGlassesSpike) {
+                GlassesSpikeView()
+            }
+#endif
             .alert("Purchases Restored", isPresented: $didRestorePurchases) {
                 Button("OK", role: .cancel) {}
             } message: {
@@ -550,6 +558,29 @@ struct SettingsView: View {
 
     // MARK: - AI
 
+#if DEBUG
+    /// Reaching the glasses spike used to mean a `-glassesSpike` launch argument,
+    /// which meant a Mac and a cable. That is useless for testing something you
+    /// wear in a kitchen, and worse, launching through devicectl holds a debug
+    /// assertion that dies when the next devicectl command runs, which looks
+    /// exactly like the app crashing.
+    ///
+    /// Debug builds only, so it can never reach anybody's App Store copy.
+    @State private var isShowingGlassesSpike = false
+
+    private var glassesSection: some View {
+        Section {
+            Button("Glasses spike") { isShowingGlassesSpike = true }
+        } header: {
+            Text("Developer")
+        } footer: {
+            Text("Ray-Ban Meta camera diagnostics. Debug builds only.")
+        }
+        // NB: the cover is deliberately NOT attached here. Form sections are
+        // lazy, so a cover owned by one dismisses itself the moment the section
+        // is recycled, taking Settings down with it. It lives on the Form.
+    }
+#endif
 
     private var aiSection: some View {
         Section {

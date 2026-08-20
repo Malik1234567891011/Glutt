@@ -130,9 +130,9 @@ final class PollySessionController {
     /// a preview goes through here, never through `camera` directly — `camera`
     /// is now just the phone hardware one of the sources happens to wrap.
     var visualSource: any PollyVisualSource
-    /// The same object, concretely typed. It coordinated two sources until the
-    /// glasses were removed and now wraps one; kept concrete because restoring a
-    /// second source is a change to the coordinator alone.
+    /// The same object, concretely typed, for the things that genuinely need to
+    /// know there is more than one source: choosing glasses over phone, and
+    /// telling the cook when the glasses went away.
     let visuals: PollyVisualSourceCoordinator
     let wakeWord: WakeWordListening
     let timers = TimerManager()
@@ -579,8 +579,10 @@ final class PollySessionController {
     private var liveConfig: RealtimeSessionConfig?
     /// Rebuilds the system prompt for a different visual source, with every
     /// other input held exactly as it was at session start.
+    private var rebuildInstructions: ((Bool) -> String)?
     /// What `liveConfig`'s prompt was actually built with, so a correction only
     /// goes out when the answer has changed.
+    private var promptAssumesContinuousSight = false
     /// How readily Chef interrupts, chosen before the cook and fixed for it.
     private(set) var watchfulness = ChefWatchfulness.default
 
@@ -701,6 +703,18 @@ final class PollySessionController {
         // 12.57s -> 10.51s on the same recipe. See docs/polly-latency-2026-08-04.md.
         let mintTask = Task { try await deps.mintToken(chef.realtimeVoice, chef.elevenLabsVoiceID != nil) }
 
+        // Glasses come up alongside the mint and the plan, for the same reason
+        // the mint does: it is slow and it has no data dependency on anything
+        // here. The camera's Wi-Fi link takes 14 to 20 seconds to establish, so
+        // starting it with the session means Chef can see by the time the cook
+        // has finished listening to her; starting it when they first ask would
+        // put that wait in the middle of a question. Nothing awaits this, and a
+        // cook with no glasses never notices it ran.
+        // Through `visuals` rather than `visualSource`: this is the one thing
+        // that is deliberately not source-agnostic, because it must never reach
+        // for the phone camera.
+        Task { await visuals.startGlassesIfAvailable() }
+
         // 1. Execution plan (compiler never fails — it falls back to linear).
         phase = .compiling
         PollyDebugLog.shared.log("session: compiling plan for \"\(recipe.title)\"")
@@ -735,7 +749,11 @@ final class PollySessionController {
                     captured: false,
                     source: capture.source?.toolName,
                     failureReason: capture.rejection?.rawValue ?? "camera_unavailable",
-                    suggestion: capture.rejection?.suggestion
+                    // A glasses session that died under us is the one failure the
+                    // cook can actually fix, so say that rather than the generic
+                    // "no picture".
+                    suggestion: self.visuals.lastGlassesDropReason
+                        ?? capture.rejection?.suggestion
                         ?? PollyFrameOutcome.unavailable.suggestion
                 )
             }
@@ -748,6 +766,10 @@ final class PollySessionController {
                 try await self.transport?.send(.createUserImage(dataURI: dataURI, itemId: nil))
                 PollyDebugLog.shared.log(
                     "visual: sent \(capture.source?.toolName ?? "?") frame for \"\(request.reason)\"")
+                // Keep the picture itself, not just the fact of it. Whether the
+                // glasses resolve a red onion from a yellow one is still an open
+                // question and no amount of logging answers it.
+                GlassesRunLog.shared.saveFrame(jpeg, reason: request.reason)
                 return PollyFrameOutcome(
                     captured: true,
                     source: capture.source?.toolName,
@@ -869,11 +891,12 @@ final class PollySessionController {
                 ownedTools: ownedTools,
                 heardBriefing: heardBriefing,
                 awaitVerbalGo: awaitVerbalGo,
-                // Always false since the glasses were removed: the phone camera
-                // is off until the cook asks, so Chef never sees continuously.
-                // The parameter and its prompt branch are kept in
-                // `PollyPromptBuilder` for whenever a continuous source returns.
-                seesContinuously: false,
+                // Read here rather than assumed: the glasses come up in
+                // parallel with the plan and the token, and by this point they
+                // have usually won that race. When they have not, she gets the
+                // phone wording and the first successful look corrects her,
+                // because the frame result names its own source.
+                seesContinuously: visuals.activeKind == .metaGlasses,
                 watchfulness: watchfulness,
                 chef: chef),
             tools: PollyToolRegistry.toolDefinitions,
@@ -883,6 +906,25 @@ final class PollySessionController {
             audioPinnedAtMint: true,
             textOnlyOutput: chef.elevenLabsVoiceID != nil)
         liveConfig = config
+        promptAssumesContinuousSight = visuals.activeKind == .metaGlasses
+        // Values captured, not `self`: the rebuild must reproduce the prompt
+        // exactly as it was at session start apart from the one flag, and
+        // reading these off the controller later would silently pick up state
+        // that has moved on.
+        let briefingHeard = heardBriefing
+        let verbalGo = awaitVerbalGo
+        let level = watchfulness
+        rebuildInstructions = { [recipe] sees in
+            PollyPromptBuilder.instructions(
+                recipe: recipe, plan: plan, pantryMatch: pantryMatch,
+                prefs: prefs, memories: memories, pastSessions: pastSessions,
+                ownedTools: ownedTools,
+                heardBriefing: briefingHeard,
+                awaitVerbalGo: verbalGo,
+                seesContinuously: sees,
+                watchfulness: level,
+                chef: chef)
+        }
 
         let transport = deps.makeTransport()
         self.transport = transport
@@ -922,6 +964,7 @@ final class PollySessionController {
 
         phase = .live
         PollyDebugLog.shared.log("session: LIVE")
+        await refreshSeeingRulesIfNeeded()
         consumeEvents(from: transport, context: context)
         startSessionClock(context: context)
 
@@ -1465,6 +1508,36 @@ final class PollySessionController {
             followUpDeadline = proposed
         }
         if listeningMode == .followUp { listeningMode = .listening }
+    }
+
+    /// Re-send the system prompt when what Chef can see stops matching what she
+    /// was told she can see.
+    ///
+    /// The prompt is built immediately after the token mint, and the glasses
+    /// finish connecting about six tenths of a second later. That race was
+    /// assumed to be won and is in fact lost every time, so a cook wearing
+    /// glasses got the phone-camera instructions and Chef told them "I can't
+    /// see you unless you turn the camera on" while their stream was live.
+    ///
+    /// Correcting after the fact rather than waiting for the glasses before
+    /// connecting, because the wait would be dead air on every single cook to
+    /// fix a prompt that costs nothing to replace. It also covers the case a
+    /// pre-connect check never could: glasses that drop or arrive mid-cook.
+    private func refreshSeeingRulesIfNeeded() async {
+        guard let transport, let rebuild = rebuildInstructions, var config = liveConfig else { return }
+        let seesNow = visuals.activeKind == .metaGlasses
+        guard seesNow != promptAssumesContinuousSight else { return }
+
+        config.instructions = rebuild(seesNow)
+        liveConfig = config
+        promptAssumesContinuousSight = seesNow
+        do {
+            try await transport.send(.sessionUpdate(config))
+            PollyDebugLog.shared.log(
+                "session: seeing rules updated — \(seesNow ? "glasses, sees continuously" : "phone camera, off until asked")")
+        } catch {
+            PollyDebugLog.shared.log("session: could not update seeing rules — \(error.localizedDescription)")
+        }
     }
 
     private func startFollowUpWatcher() {

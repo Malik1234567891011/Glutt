@@ -3,6 +3,26 @@
 2026-08-06. Supersedes the conclusions in `glasses-memory-investigation.md`, which
 is kept for its measurement history but whose headline finding is now retracted.
 
+> **READ THIS FIRST, added 2026-08-20.** The transport question below was
+> answered four times and three of those answers were wrong. The retractions
+> cite each other and §1b and §2 can each be read as overturning the other, so it
+> is genuinely possible to leave this document believing the opposite of what is
+> true. The settled answer, in commit order:
+>
+> | When | Commit | Conclusion |
+> | --- | --- | --- |
+> | 2026-08-08 | `478ef3f` | "Bluetooth is not reachable." **Wrong.** The test blocked the Wi-Fi join while leaving the app configured for Wi-Fi, which is not the same as configuring for Bluetooth. |
+> | 2026-08-09 | `aeadecb` | Bluetooth **is** reachable, via two Info.plist keys. First frame 1.8s against 15 to 20s. This part still stands. |
+> | 2026-08-16 | `b41efdf` | Bluetooth is better and still cannot ship: `com.meta.ar.wearable` is an MFi protocol and Meta declined to authorise this bundle id on issue #266. Wi-Fi ships. |
+>
+> So: **§1b is retracted, and the retraction paragraphs at the top of §2 are
+> correct.** Everything in §2 *below* those paragraphs is the old wrong text,
+> kept for the record.
+>
+> Current state and the exact keys are in
+> [glasses-bluetooth.md](glasses-bluetooth.md), which is shorter and is the one
+> to read before changing anything.
+
 ---
 
 ## 0. THE ANSWER: it was our bug, and the camera is cheap
@@ -225,6 +245,13 @@ sat in `waitingForDevice` and delivered zero frames, with `capturePhoto`
 returning false. The Bluetooth control channel works. The media path needs the
 softAP and has no fallback.
 
+> **RETRACTED 2026-08-09 by `aeadecb`.** The conclusion below is wrong. This
+> test blocked the Wi-Fi join while the app was still configured for Wi-Fi,
+> which is not the same thing as configuring it for Bluetooth. Of course it
+> produced a session that started and a stream that never delivered a frame.
+> The selector is two Info.plist keys and is described in §2's retraction
+> paragraphs and in glasses-bluetooth.md.
+
 So: **there is no public way to select the BTC media transport in 0.8.0 or
 0.9.0.** Meta says streaming apps must use it; the SDK offers no way to ask.
 That contradiction is worth putting to them directly, and is the one open
@@ -243,7 +270,7 @@ both errors were acted on and both cost weeks.
 **Retraction 1, the transport.** Bluetooth Classic is selectable and Glutt now
 runs on it. `UISupportedExternalAccessoryProtocols = com.meta.ar.wearable` plus
 the `external-accessory` background mode holds the camera on BTC and keeps the
-phone on its own Wi-Fi. See §1b, itself retracted. First frame in 1.8s rather
+phone on its own Wi-Fi. This supersedes §1b, which reached the opposite conclusion from a test that was set up wrong. First frame in 1.8s rather
 than fifteen.
 
 **Retraction 2, `DAMEnabled`.** The key *is* read by 0.8.0, which is the version

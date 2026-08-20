@@ -27,6 +27,9 @@ struct RootView: View {
     /// spike before the v2 merge.
     @State private var showPollyV2Spike = ProcessInfo.processInfo.arguments.contains("-pollyV2Spike")
 
+    /// Meta glasses camera spike (`-glassesSpike`). Same terms as the Polly v2
+    /// spike above: scaffolding, deleted once the visual source lands.
+    @State private var showGlassesSpike = ProcessInfo.processInfo.arguments.contains("-glassesSpike")
 
     /// `-importScreen`: the share extension's sheet, staged over the app so its
     /// three states are reachable in the simulator at all.
@@ -212,6 +215,9 @@ struct RootView: View {
         }
         .fullScreenCover(isPresented: $showPollyV2Spike) {
             PollyV2SpikeView()
+        }
+        .fullScreenCover(isPresented: $showGlassesSpike) {
+            GlassesSpikeView()
         }
         // `-importScreen importing|saved|failed`: the share extension's sheet,
         // staged over the app. See ImportScreenStaging.

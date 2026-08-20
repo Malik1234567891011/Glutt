@@ -111,7 +111,7 @@ final class PollyToolRegistry {
         ),
         RealtimeToolDefinition(
             name: "start_timer",
-            description: "Start a countdown timer with a short label the cook will recognize.",
+            description: "Start a countdown timer. ONLY when the cook has asked for one, or has just agreed to one you offered. Never on your own initiative for a wait step.",
             parameters: schema(
                 properties: [
                     "label": .object([

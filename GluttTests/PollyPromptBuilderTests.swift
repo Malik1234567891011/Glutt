@@ -406,4 +406,42 @@ final class PollyPromptBuilderTests: XCTestCase {
         XCTAssertFalse(prompt.contains("Durable kitchen fact number \(PollyConfig.memoryFactLimit)"),
                        "facts past the cap must not leak into the prompt")
     }
+
+    // MARK: - No monologues
+
+    /// A cook said "I'm using 1.5lb chicken not 3" and she read back the new
+    /// amount for every single ingredient in the recipe. The amounts list is a
+    /// reference she speaks *from*, one item at a time, not a script.
+    func testSheIsToldNeverToReadTheAmountsListAloud() {
+        let prompt = instructions(recipe: makeRecipe())
+        XCTAssertTrue(prompt.contains("NEVER read this list out loud"))
+        XCTAssertTrue(prompt.contains("Do NOT list the new amount for each ingredient"))
+    }
+
+    /// Rescaling still has to actually happen. The fix is about how much she
+    /// says, not about her quietly keeping the old numbers.
+    func testRescalingIsStillRequiredJustNotNarrated() {
+        let prompt = instructions(recipe: makeRecipe())
+        XCTAssertTrue(prompt.contains("use it for every amount from then on"))
+        XCTAssertTrue(prompt.contains("ONE short line back"),
+                      "she confirms the change, she just does not enumerate it")
+    }
+
+    /// The same failure shows up as reading out equipment, substitutions and
+    /// step lists, so the rule is general and lives with the speaking style.
+    func testTheNoListRuleIsGeneralNotJustAboutAmounts() {
+        let prompt = instructions(recipe: makeRecipe())
+        XCTAssertTrue(prompt.contains("NEVER read a list out loud"))
+    }
+
+    /// She still has the numbers. Removing them would trade a talkative chef
+    /// for a wrong one.
+    func testTheAmountsAreStillInThePromptForHerToUse() {
+        let recipe = makeRecipe()
+        let prompt = instructions(recipe: recipe)
+        XCTAssertTrue(prompt.contains("500 g chicken thighs")
+                        || prompt.contains("chicken thighs"),
+                      "the reference list itself must survive")
+        XCTAssertTrue(prompt.contains("ALWAYS say the amount from this list"))
+    }
 }

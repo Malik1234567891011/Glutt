@@ -1,3 +1,4 @@
+import AVFoundation
 import XCTest
 import SwiftData
 @testable import Glutt
@@ -73,6 +74,30 @@ final class FakeRealtimeTransport: RealtimeTransporting, @unchecked Sendable {
 
 // MARK: - Tests
 
+/// Stands in for the on-device recogniser, which needs Speech authorization and
+/// a real mic. Lets a test say "Chef" at an exact moment.
+@MainActor
+final class FakeWakeWordListener: WakeWordListening {
+    var onWake: (() -> Void)?
+    var onPartialTranscript: ((String) -> Void)?
+    var onListeningChange: ((Bool) -> Void)?
+    var isAvailable: Bool { true }
+
+    private(set) var isSuppressed = false
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+
+    func requestAuthorization() async -> Bool { true }
+    func start() { startCount += 1; onListeningChange?(true) }
+    func stop() { stopCount += 1; onListeningChange?(false) }
+    func restart() {}
+    func setSuppressed(_ suppressed: Bool) { isSuppressed = suppressed }
+    nonisolated func append(_ buffer: AVAudioPCMBuffer) {}
+
+    /// The cook says the word.
+    func say() { onWake?() }
+}
+
 @MainActor
 final class PollySessionControllerTests: XCTestCase {
     private var container: ModelContainer!
@@ -138,7 +163,8 @@ final class PollySessionControllerTests: XCTestCase {
         recipe: Recipe,
         transport: FakeRealtimeTransport,
         mintToken: (() async throws -> PollySessionToken)? = nil,
-        now: (() -> Date)? = nil
+        now: (() -> Date)? = nil,
+        wakeWord: WakeWordListening? = nil
     ) -> PollySessionController {
         let mint: () async throws -> PollySessionToken = mintToken ?? { Self.fixtureToken }
         let deps = PollySessionController.Dependencies(
@@ -151,7 +177,8 @@ final class PollySessionControllerTests: XCTestCase {
             reportSessionUsage: { _, _, _ in },
             now: now ?? { Date(timeIntervalSince1970: 1_751_400_000) }
         )
-        return PollySessionController(recipe: recipe, scale: 1.0, deps: deps)
+        return PollySessionController(
+            recipe: recipe, scale: 1.0, deps: deps, wakeWord: wakeWord)
     }
 
     /// Deterministically waits for the controller's main-actor event task to
@@ -711,6 +738,105 @@ final class PollySessionControllerTests: XCTestCase {
 
         controller.updateMediaState(.finished(segmentID: "seg-1"))
         XCTAssertFalse(controller.micHeldForClipAudio, "finishing gives the mic back")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    // MARK: Saying "Chef" over her
+
+    /// The bug: she could not be interrupted by voice. `isPollySpeaking` muted
+    /// the wake listener, so "Chef" spoken over her never reached `onWake`, and
+    /// the cancel path in `wakeUp()` never ran. The only way out was shouting
+    /// past the transport's RMS gate or waiting her out.
+    func testSayingChefWhileSheIsSpeakingCutsHerOff() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let wake = FakeWakeWordListener()
+        let controller = makeController(recipe: recipe, transport: transport, wakeWord: wake)
+        await controller.start(context: context, requireMic: false)
+
+        transport.push(.outputAudioStarted)
+        await waitUntil({ controller.isPollySpeaking }, "she is speaking")
+
+        wake.say()
+
+        await waitUntil({
+            transport.sent.contains { if case .responseCancel = $0 { return true }; return false }
+        }, "saying Chef over her must cancel her response")
+        XCTAssertTrue(
+            transport.sent.contains { if case .outputAudioBufferClear = $0 { return true }; return false },
+            "the audio already buffered must be cleared, or she keeps talking after the cancel")
+        XCTAssertEqual(controller.listeningMode, .listening,
+                       "having just silenced her, the mic must be open for what comes next")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    /// The listener is told she is speaking so her own voice is not captioned as
+    /// the cook's words. That must not go back to swallowing the wake.
+    func testSuppressionStillLetsTheCookInterrupt() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let wake = FakeWakeWordListener()
+        let controller = makeController(recipe: recipe, transport: transport, wakeWord: wake)
+        await controller.start(context: context, requireMic: false)
+
+        transport.push(.outputAudioStarted)
+        await waitUntil({ controller.isPollySpeaking }, "she is speaking")
+        let suppressed = wake.isSuppressed
+        XCTAssertTrue(suppressed, "captions from her own voice are still suppressed")
+
+        wake.say()
+        await waitUntil({
+            transport.sent.contains { if case .responseCancel = $0 { return true }; return false }
+        }, "a suppressed listener must still be able to interrupt her")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    /// Her prompt forbids the word and the wake feed is post-AEC, but if she ever
+    /// does say "chef" and it leaks back through the speaker, she must not
+    /// interrupt herself mid-sentence.
+    func testSheDoesNotWakeHerselfOnHerOwnVoice() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let wake = FakeWakeWordListener()
+        let controller = makeController(recipe: recipe, transport: transport, wakeWord: wake)
+        await controller.start(context: context, requireMic: false)
+
+        transport.push(.outputAudioStarted)
+        transport.push(.outputTranscriptDelta(itemId: "a1", delta: "Nice work, chef."))
+        await waitUntil({ controller.pollyCaption.contains("chef") }, "her caption carries the word")
+
+        wake.say()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        XCTAssertFalse(
+            transport.sent.contains { if case .responseCancel = $0 { return true }; return false },
+            "her own voice saying the word must never cancel her")
+
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    /// The cook can still interrupt on a later utterance in the same turn: the
+    /// veto is scoped to what she is saying, not to the whole session.
+    func testInterruptWorksOnceHerCaptionMovesOn() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let wake = FakeWakeWordListener()
+        let controller = makeController(recipe: recipe, transport: transport, wakeWord: wake)
+        await controller.start(context: context, requireMic: false)
+
+        transport.push(.outputAudioStarted)
+        transport.push(.outputTranscriptDelta(itemId: "a1", delta: "Nice work, chef."))
+        await waitUntil({ controller.pollyCaption.contains("chef") }, "her caption carries the word")
+        transport.push(.outputTranscriptDelta(itemId: "a2", delta: "Now add the garlic."))
+        await waitUntil({ !controller.pollyCaption.contains("chef") }, "her caption moved on")
+
+        wake.say()
+        await waitUntil({
+            transport.sent.contains { if case .responseCancel = $0 { return true }; return false }
+        }, "the cook must be able to cut in once she is no longer saying the word")
 
         await controller.end(context: context, endedEarly: true)
     }

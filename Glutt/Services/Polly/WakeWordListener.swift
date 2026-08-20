@@ -66,6 +66,35 @@ enum WakeWordMatcher {
         wakeEndIndices(words(transcript)).count
     }
 
+    /// What a partial transcript should cause.
+    ///
+    /// Pulled out of the listener because this is the rule that broke barge-in:
+    /// while she was speaking the whole transcript was dropped, wake included,
+    /// so "Chef" over her never reached the session and she could not be cut
+    /// off. Captioning and waking are separate decisions and only the first one
+    /// should stop while she talks.
+    struct Outcome: Equatable {
+        /// Show this transcript as the cook's live words.
+        var caption: Bool
+        /// Treat it as a summons.
+        var wake: Bool
+    }
+
+    /// - Parameter alreadyFired: wakes already acted on in this recognition
+    ///   segment. A continuous recogniser keeps every past "Chef" in its running
+    ///   transcript, so a new one is a rising count, not `contains`.
+    static func outcome(
+        transcript: String,
+        alreadyFired: Int,
+        sheIsSpeaking: Bool
+    ) -> (outcome: Outcome, wakeCount: Int) {
+        let count = wakeCount(transcript)
+        return (
+            Outcome(caption: !sheIsSpeaking, wake: count > alreadyFired),
+            count
+        )
+    }
+
     /// The question the cook asked after the wake phrase, for the live caption.
     /// Everything up to and including the last wake phrase is dropped; if nothing
     /// follows yet, the whole transcript is shown (so "Hey Chef…" reads live).
@@ -101,10 +130,12 @@ protocol WakeWordListening: AnyObject {
     /// Begins a fresh recognition segment (clears the running transcript so the
     /// next "Chef" wakes). Called each time the session returns to dormant.
     func restart()
-    /// Go deaf while the assistant is audibly speaking, and hear again shortly
-    /// after she stops. The mic stays live through her turns so the cook can
-    /// barge in, which means a one-word wake would otherwise fire on her own
-    /// voice coming back through the speaker.
+    /// Tell the listener the assistant is audibly speaking.
+    ///
+    /// Stops her own voice being captioned as the cook's words, and clears the
+    /// in-flight segment plus a short tail when she stops so trailing partials
+    /// cannot surface late. It deliberately does **not** stop a wake: saying
+    /// "Chef" over her is how the cook cuts her off.
     func setSuppressed(_ suppressed: Bool)
     /// Feed a raw mic buffer. Safe to call from the audio render thread.
     nonisolated func append(_ buffer: AVAudioPCMBuffer)
@@ -350,13 +381,40 @@ final class WakeWordListener: WakeWordListening {
 
     private func handle(_ transcript: String, gen: Int) {
         guard gen == generation else { return }   // stale task
-        // Almost certainly her own voice off the speaker, so it is neither a wake
-        // nor something to caption as the cook's words.
-        guard !isSuppressed else { return }
+
+        let (decision, count) = WakeWordMatcher.outcome(
+            transcript: transcript,
+            alreadyFired: firedWakeCount,
+            sheIsSpeaking: isSuppressed
+        )
+        let isNewWake = decision.wake
+        if isNewWake { firedWakeCount = count }
+
+        // While she is speaking, most of what lands here is her own voice off
+        // the speaker, so it must never be captioned as the cook's words.
+        //
+        // A wake is the exception, and it used to be swallowed with everything
+        // else. That is what made her impossible to cut off: the cook said
+        // "Chef" over her, this returned early, `onWake` never fired, and the
+        // interrupt path in `wakeUp()` that cancels her response never ran. The
+        // only way back in was shouting past the transport's RMS gate.
+        //
+        // Letting it through is safe now in a way it was not when the
+        // suppression was written. These buffers come from the WebRTC audio
+        // processing module's **capture-post** delegate, so the echo canceller
+        // has already subtracted her playback, and her prompt forbids her from
+        // ever saying the word (see `PollyPromptBuilder`). The session adds one
+        // more check on top: it drops a wake that matches what she is saying
+        // right now.
+        guard decision.caption else {
+            guard isNewWake else { return }
+            PollyDebugLog.shared.log("wake: heard \"Chef\" over her — barge in")
+            onWake?()
+            return
+        }
+
         onPartialTranscript?(transcript)
-        let count = WakeWordMatcher.wakeCount(transcript)
-        guard count > firedWakeCount else { return }
-        firedWakeCount = count
+        guard isNewWake else { return }
         PollyDebugLog.shared.log("wake: heard \"Chef\" in \"\(transcript.suffix(40))\"")
         onWake?()
     }

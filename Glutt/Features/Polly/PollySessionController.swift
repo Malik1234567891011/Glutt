@@ -929,9 +929,18 @@ final class PollySessionController {
         // on-device for "Hey Chef". Trailer handoff is different — open listening so
         // the cook can say "let's cook" without saying her name first.
         wakeWord.onWake = { [weak self] in
+            guard let self else { return }
+            // Last line of defence against her waking herself. The wake feed is
+            // post-AEC and her prompt forbids the word, so this should never
+            // fire, but a wake landing at the exact moment she says it is the
+            // one failure that would make her interrupt herself mid-sentence.
+            if self.isPollySpeaking, WakeWordMatcher.containsWake(self.pollyCaption) {
+                PollyDebugLog.shared.log("wake: ignored, she is saying the word herself")
+                return
+            }
             PollyDebugLog.shared.event(.wakeDetected)
             Analytics.capture(.pollyWakeWord)
-            self?.wakeUp()
+            self.wakeUp()
         }
         wakeWord.onPartialTranscript = { [weak self] text in
             guard let self else { return }
@@ -1200,7 +1209,8 @@ final class PollySessionController {
     /// shows the Listening UI, and arms a longer initial listen window.
     func wakeUp() {
         guard phase == .live, !isHardMuted else { return }
-        // "Hey Chef" spoken over her = interrupt her, even if already listening.
+        // "Chef" spoken over her = interrupt her, even if already listening.
+        let wasSpeaking = isPollySpeaking
         if isPollySpeaking {
             PollyDebugLog.shared.log("gate: wake during her turn — cancelling her response")
             // With a cloned voice her audio is OUR player, so the server has
@@ -1214,12 +1224,23 @@ final class PollySessionController {
                 try? await transport?.send(.outputAudioBufferClear)
             }
         }
-        // Already Listening but mic still gated (greeting hold / half-duplex):
-        // re-arm instead of ignoring the second "Hey Chef".
+        // Already Listening but mic still gated (greeting hold / half-duplex),
+        // or we just cut her off: re-arm instead of ignoring the wake.
+        //
+        // `isMicServerGated` alone is not enough to decide. Interrupting her
+        // cancels her response above, and if the gate happened to be open
+        // already this returned without opening a listening window or flipping
+        // the UI, so she went quiet and then nothing was listening. Having just
+        // silenced her, the cook is certainly about to speak.
         if listeningMode != .dormant {
-            if webrtc?.isMicServerGated == true {
-                PollyDebugLog.shared.log("gate: re-arm wake while Listening but server-deaf")
+            if wasSpeaking || webrtc?.isMicServerGated == true {
+                PollyDebugLog.shared.log(
+                    wasSpeaking
+                        ? "gate: re-arm after cutting her off"
+                        : "gate: re-arm wake while Listening but server-deaf")
                 webrtc?.forceMicOpenForWake()
+                listeningMode = .listening
+                liveTranscript = ""
                 openFollowUpWindow(
                     seconds: PollyConfig.initialListenWindowSeconds,
                     expectingAnswer: false,

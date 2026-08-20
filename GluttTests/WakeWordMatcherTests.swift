@@ -77,3 +77,55 @@ final class WakeWordMatcherTests: XCTestCase {
                        "each bare name is its own ask")
     }
 }
+
+// MARK: - Barge-in gate
+
+/// The rule that made her impossible to interrupt: while she was speaking the
+/// listener dropped the whole transcript, so a wake never reached the session
+/// and the cancel path never ran.
+final class WakeGateOutcomeTests: XCTestCase {
+
+    func testChefOverHerStillWakes() {
+        let (decision, _) = WakeWordMatcher.outcome(
+            transcript: "chef", alreadyFired: 0, sheIsSpeaking: true)
+        XCTAssertTrue(decision.wake, "saying Chef over her is how the cook cuts her off")
+    }
+
+    func testHerVoiceIsNeverCaptionedAsTheCook() {
+        let (decision, _) = WakeWordMatcher.outcome(
+            transcript: "add the garlic now", alreadyFired: 0, sheIsSpeaking: true)
+        XCTAssertFalse(decision.caption,
+                       "her own voice off the speaker must not show as the cook's words")
+        XCTAssertFalse(decision.wake, "no wake word, no wake")
+    }
+
+    func testNormalTranscriptCaptionsAndWakes() {
+        let (decision, count) = WakeWordMatcher.outcome(
+            transcript: "chef how long", alreadyFired: 0, sheIsSpeaking: false)
+        XCTAssertTrue(decision.caption)
+        XCTAssertTrue(decision.wake)
+        XCTAssertEqual(count, 1)
+    }
+
+    /// A continuous recogniser keeps every past "Chef" in its running
+    /// transcript, so one summons must not fire on every later partial.
+    func testTheSameWakeDoesNotFireTwice() {
+        let (decision, count) = WakeWordMatcher.outcome(
+            transcript: "chef how long do I leave it",
+            alreadyFired: 1,
+            sheIsSpeaking: false)
+        XCTAssertFalse(decision.wake, "already acted on this one")
+        XCTAssertEqual(count, 1)
+    }
+
+    /// Interrupting twice in one of her turns has to work: she keeps talking
+    /// through the first if the cancel loses a race.
+    func testASecondChefInTheSameSegmentWakesAgain() {
+        let (decision, count) = WakeWordMatcher.outcome(
+            transcript: "chef wait chef",
+            alreadyFired: 1,
+            sheIsSpeaking: true)
+        XCTAssertTrue(decision.wake)
+        XCTAssertEqual(count, 2)
+    }
+}

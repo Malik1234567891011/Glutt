@@ -327,6 +327,31 @@ struct CookPlan: Codable, Equatable {
     }
 
     /// Drop measure-only / seasoning rows from LLM or stale cache plans.
+    /// Prep text that tells the cook nothing.
+    ///
+    /// "Cut to size the onions" is the real example. It reads like an
+    /// instruction and contains no instruction: there is no size, no shape, and
+    /// no way to know what the dish wants. The compiler produces these when the
+    /// source recipe was vague and it declined to commit, which is exactly the
+    /// moment the app should be deciding for the cook instead of passing the
+    /// shrug along.
+    ///
+    /// A prep is vague when it hedges ("as needed") or names an action with no
+    /// shape or size attached ("cut", "prepare"). Anything that says what the
+    /// food should end up looking like — "dice", "cut into 1-inch cubes", "slice
+    /// thinly", "cut into florets" — is specific and left alone.
+    static func isVaguePrep(_ prep: String) -> Bool {
+        let text = prep.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return true }
+        let hedges = ["to size", "as needed", "as desired", "as required",
+                      "accordingly", "appropriately", "if needed", "to taste"]
+        if hedges.contains(where: text.contains) { return true }
+        // Bare verbs. "cut" alone is vague; "cut into florets" is not.
+        let bareVerbs: Set<String> = ["cut", "cut up", "prepare", "prep", "prepped",
+                                      "ready", "clean", "process", "handle", "sort out"]
+        return bareVerbs.contains(text)
+    }
+
     static func boardWorkOnly(_ mise: [MiseItem]) -> [MiseItem] {
         mise.compactMap { item in
             let name = item.name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -345,6 +370,13 @@ struct CookPlan: Codable, Equatable {
                 || prepLower.contains("teaspoon")
                 || prepLower.contains("tablespoon") {
                 return nil
+            }
+            // A vague verb is worse than nothing: it occupies a line on the
+            // Prep step and leaves the cook with a whole onion and no decision.
+            // Substitute what we know that ingredient wants, and if we do not
+            // know, drop it rather than say "cut to size".
+            if isVaguePrep(prep) {
+                return prepAction(for: name).map { MiseItem(name: name, prep: $0) }
             }
             return MiseItem(name: name, prep: prep)
         }
@@ -402,6 +434,15 @@ struct CookPlan: Codable, Equatable {
         let mince = ["garlic", "ginger"]
         if mince.contains(where: { name.contains($0) }) { return "mince" }
 
+        let florets = ["broccoli", "cauliflower", "romanesco"]
+        if florets.contains(where: { name.contains($0) }) { return "cut into florets" }
+
+        let slice = ["mushroom", "aubergine", "eggplant", "fennel", "radish"]
+        if slice.contains(where: { name.contains($0) }) { return "slice" }
+
+        let trim = ["green bean", "asparagus", "spring onion", "sugar snap", "mangetout"]
+        if trim.contains(where: { name.contains($0) }) { return "trim" }
+
         let chop = ["parsley", "cilantro", "fresh coriander", "basil", "mint",
                     "fresh thyme", "fresh rosemary", "lettuce", "cabbage", "kale", "spinach"]
         if chop.contains(where: { name.contains($0) }) { return "chop" }
@@ -426,14 +467,53 @@ struct CookPlan: Codable, Equatable {
         return "Pull out your \(shown)\(extra). Tell me when they're on the counter."
     }
 
+    /// One board instruction, in English a person would say.
+    ///
+    /// Naive `"\(prep) the \(name)"` was fine while every prep was a single word
+    /// ("dice the onion"), and started producing "cut into florets the broccoli"
+    /// as soon as real cuts arrived. Splitting the verb off the rest and putting
+    /// the ingredient between them handles both, and "pat the chicken dry" reads
+    /// better than "pat dry the chicken" too.
+    static func phrase(for item: MiseItem) -> String {
+        let prep = item.prep.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = midSentence(item.name)
+        guard !prep.isEmpty else { return name }
+        var words = prep.split(separator: " ").map(String.init)
+        let verb = words.removeFirst()
+        // Only rearrange around a verb we recognise. Anything else keeps the
+        // old shape rather than risking "at the chicken room temperature".
+        guard boardVerbs.contains(verb.lowercased()) else {
+            return "\(prep) the \(name)"
+        }
+        let tail = words.joined(separator: " ")
+        return tail.isEmpty
+            ? "\(verb) the \(name)"
+            : "\(verb) the \(name) \(tail)"
+    }
+
+    /// Ingredient names are stored title-cased for the list UI, which reads as a
+    /// typo inside a sentence: "dice the Chicken breast". Only the first letter
+    /// is touched, so "Parmesan" mid-name and anything all-caps survive.
+    private static func midSentence(_ name: String) -> String {
+        guard let first = name.first, first.isUppercase else { return name }
+        // An acronym is deliberate, not title case. Tested on the FIRST WORD:
+        // checking the rest of the whole string saw the "sauce" in "BBQ sauce"
+        // and produced "bBQ sauce".
+        let firstWord = name.prefix { !$0.isWhitespace }
+        if firstWord.count > 1, !firstWord.contains(where: \.isLowercase) { return name }
+        return first.lowercased() + name.dropFirst()
+    }
+
+    private static let boardVerbs: Set<String> = [
+        "cut", "dice", "slice", "chop", "mince", "mash", "grate", "peel", "trim",
+        "halve", "quarter", "julienne", "shred", "crush", "pat", "tear", "segment",
+        "zest", "devein", "debone", "butterfly", "crumble", "wash", "rinse", "drain",
+    ]
+
     static func prepInstruction(mise: [MiseItem], equipment: [String] = []) -> String {
         var parts: [String] = []
         if !mise.isEmpty {
-            let list = mise.map { item in
-                let prep = item.prep.trimmingCharacters(in: .whitespacesAndNewlines)
-                if prep.isEmpty { return item.name }
-                return "\(prep) the \(item.name)"
-            }
+            let list = mise.map { phrase(for: $0) }
             if list.count == 1 {
                 parts.append("Before any heat: \(list[0]).")
             } else if list.count == 2 {
@@ -463,4 +543,140 @@ struct CookPlan: Codable, Equatable {
         guard words.count > 6 else { return text }
         return words.prefix(6).joined(separator: " ") + "…"
     }
+}
+
+// MARK: - Scheduling
+
+/// Whether the plan actually cooks, or merely transcribes.
+///
+/// A cook reads a recipe as a schedule; most written recipes are not one. The
+/// case that prompted this: "chicken in the oven, 20 minutes", then "potatoes in
+/// the oven, 30 minutes". Followed literally that is fifty minutes of oven time
+/// and cold chicken, when the honest answer is potatoes first and the chicken
+/// joining them ten minutes later so both come out together.
+///
+/// This is deliberately a **detector, not a fixer**. Reordering steps
+/// automatically means deciding that two things really can share an oven at one
+/// temperature, which is a judgement about the food, and getting it wrong ruins
+/// dinner rather than merely reading badly. So the compiler is taught to
+/// schedule (see `CookPlanCompiler`) and this exists to prove whether it did.
+extension CookPlan {
+
+    /// A thing only one dish can occupy at a time.
+    ///
+    /// Keyword matching rather than anything the model declares, because it has
+    /// to work on the `linear` fallback and on plans cached before any of this
+    /// existed. Deliberately narrow: a false "these share an oven" is worse than
+    /// a miss, since it would flag correct plans as broken.
+    enum Appliance: String, CaseIterable, Sendable {
+        case oven, stovetop, grill, airFryer, microwave, slowCooker
+
+        var spokenName: String {
+            switch self {
+            case .oven: "oven"
+            case .stovetop: "hob"
+            case .grill: "grill"
+            case .airFryer: "air fryer"
+            case .microwave: "microwave"
+            case .slowCooker: "slow cooker"
+            }
+        }
+
+        fileprivate var keywords: [String] {
+            switch self {
+            case .oven: ["oven", "bake", "baking", "roast", "roasting", "sheet pan", "tray bake"]
+            case .stovetop: ["hob", "stovetop", "stove top", "burner", "saucepan", "skillet", "frying pan"]
+            case .grill: ["grill", "griddle", "broil", "broiler", "barbecue", "bbq"]
+            case .airFryer: ["air fryer", "air-fry", "airfry"]
+            case .microwave: ["microwave"]
+            case .slowCooker: ["slow cooker", "crock pot", "crockpot"]
+            }
+        }
+    }
+
+    /// Something a good chef would have said and this plan does not.
+    struct SchedulingIssue: Equatable {
+        enum Kind: Equatable {
+            /// Two things go into one appliance one after the other, and the one
+            /// told to go in second needs longer. The cook ends up waiting out
+            /// both in series, and whatever went in first is cold or overdone.
+            case slowerItemGoesInSecond(Appliance)
+            /// Hands-on work queued after a long unattended wait it could have
+            /// happened during. Not wrong, just slow, so it is a weaker signal
+            /// than the one above.
+            case handsFreeTimeWasted(seconds: Int)
+        }
+
+        let kind: Kind
+        let earlierStepID: String
+        let laterStepID: String
+    }
+
+    /// How long a step ties up an appliance. `timerSeconds` is the unattended
+    /// wait and is what matters here; `estimatedSeconds` is hands-on time.
+    private static func occupancySeconds(_ step: PlanStep) -> Int? {
+        step.timerSeconds ?? (step.kind == .passive ? step.estimatedSeconds : nil)
+    }
+
+    static func appliance(for step: PlanStep) -> Appliance? {
+        let haystack = (step.title + " " + step.instruction).lowercased()
+        // Longest keyword first so "air fryer" is not read as a stovetop "fryer"
+        // and "slow cooker" is not lost to a bare "cooker".
+        let matches = Appliance.allCases
+            .flatMap { appliance in appliance.keywords.map { (appliance, $0) } }
+            .filter { haystack.contains($0.1) }
+            .sorted { $0.1.count > $1.1.count }
+        return matches.first?.0
+    }
+
+    /// Everything questionable about this plan's timing, in step order.
+    var schedulingIssues: [SchedulingIssue] {
+        var issues: [SchedulingIssue] = []
+        let cookSteps = steps.filter { !Self.isSetupStep($0) }
+
+        // Same appliance, later step waits longer. Compared pairwise across the
+        // whole plan rather than only adjacent steps, because a stir or a
+        // seasoning step routinely sits between the two oven instructions.
+        for (offset, earlier) in cookSteps.enumerated() {
+            guard let appliance = Self.appliance(for: earlier),
+                  let earlierWait = Self.occupancySeconds(earlier), earlierWait > 0
+            else { continue }
+            for later in cookSteps.dropFirst(offset + 1) {
+                guard Self.appliance(for: later) == appliance,
+                      let laterWait = Self.occupancySeconds(later), laterWait > 0
+                else { continue }
+                if laterWait > earlierWait {
+                    issues.append(SchedulingIssue(
+                        kind: .slowerItemGoesInSecond(appliance),
+                        earlierStepID: earlier.id,
+                        laterStepID: later.id))
+                }
+                // One pairing per earlier step. Chaining every later step onto
+                // it turns one mistake into a pile of duplicates.
+                break
+            }
+        }
+
+        // Hands-on work stuck behind a long wait.
+        for (offset, wait) in cookSteps.enumerated() {
+            guard wait.kind == .passive,
+                  let seconds = Self.occupancySeconds(wait),
+                  seconds >= Self.wastedTimeThresholdSeconds,
+                  let next = cookSteps.dropFirst(offset + 1).first,
+                  next.kind == .active,
+                  // Only when it genuinely could run in parallel: a step that
+                  // depends on the wait finishing obviously cannot.
+                  !next.dependsOn.contains(wait.id)
+            else { continue }
+            issues.append(SchedulingIssue(
+                kind: .handsFreeTimeWasted(seconds: seconds),
+                earlierStepID: wait.id,
+                laterStepID: next.id))
+        }
+
+        return issues
+    }
+
+    /// Below this a wait is not worth interrupting to do something else.
+    static let wastedTimeThresholdSeconds = 8 * 60
 }

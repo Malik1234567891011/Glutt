@@ -21,7 +21,11 @@ enum CookPlanCompiler {
     /// Bump when `ensuringLeadingPrep` / setup-step semantics change so a
     /// previously cached plan (e.g. one that dropped cold `kind: prep` steps
     /// and left Crème Brûlée without clip targets) is not reused.
-    private static let cacheEpoch = 2
+    ///
+    /// 3: the prompt learned to schedule rather than transcribe. Every plan
+    /// cached before this was compiled under "preserve the recipe's order",
+    /// which is exactly what put the potatoes in the oven after the chicken.
+    private static let cacheEpoch = 3
 
     /// Content hash of everything that shapes a plan: title, step texts,
     /// ingredient names, and the serving scale. Stable across launches
@@ -89,6 +93,8 @@ enum CookPlanCompiler {
             var plan = try await llm(systemPrompt, userPrompt(recipe: recipe, scale: scale))
             plan.isFallback = false
             plan = plan.ensuringLeadingPrep()
+            plan = try await repairingSchedule(
+                plan, recipe: recipe, scale: scale, llm: llm)
             store(plan, forKey: key)
             PollyDebugLog.shared.log("plan: compiled via LLM, stored (\(plan.steps.count) steps)")
             return plan
@@ -97,6 +103,83 @@ enum CookPlanCompiler {
             PollyDebugLog.shared.log("plan: LLM compile FAILED (\(error.localizedDescription)) — linear fallback, not cached")
             return CookPlan.linear(from: recipe, scale: scale)
         }
+    }
+
+    // MARK: - Schedule repair
+
+    /// One second pass, only when the plan came back with the mistake this is
+    /// all about.
+    ///
+    /// The scheduling rules in the system prompt are the fix; this is how we
+    /// know they worked. A prompt instruction is a hope, and "put the slower
+    /// dish in first" is exactly the kind of rule a model follows on most
+    /// recipes and quietly drops on the one with three things going into an
+    /// oven. `CookPlan.schedulingIssues` can see the mistake deterministically,
+    /// so the compiler checks its own homework before caching it forever.
+    ///
+    /// Costs nothing on a correct plan: no issues, no second call. Only
+    /// `slowerItemGoesInSecond` triggers it, because that one produces cold
+    /// food, while wasted hands-free time only produces a slower cook and is
+    /// not worth a round trip or the risk of a worse rewrite.
+    private static func repairingSchedule(
+        _ plan: CookPlan,
+        recipe: Recipe,
+        scale: Double,
+        llm: (String, String) async throws -> CookPlan
+    ) async throws -> CookPlan {
+        let conflicts = plan.schedulingIssues.filter {
+            if case .slowerItemGoesInSecond = $0.kind { return true }
+            return false
+        }
+        guard !conflicts.isEmpty else { return plan }
+
+        let complaints = conflicts.map { issue -> String in
+            guard case .slowerItemGoesInSecond(let appliance) = issue.kind else { return "" }
+            return "- Step \"\(issue.earlierStepID)\" and step \"\(issue.laterStepID)\" both use the "
+                + "\(appliance.spokenName), and \"\(issue.laterStepID)\" needs longer but is told to "
+                + "start second. Put the longer one in first and have the other join it later so "
+                + "they finish together."
+        }.joined(separator: "\n")
+
+        PollyDebugLog.shared.log("plan: \(conflicts.count) scheduling conflict(s) — repairing")
+
+        let repairPrompt = userPrompt(recipe: recipe, scale: scale) + """
+
+
+        A first attempt at this plan had these scheduling mistakes:
+        \(complaints)
+
+        Produce the plan again, correctly scheduled. Change only the ordering and the timings
+        needed to fix the above. Keep every other step, its wording and its ids as they were.
+        """
+
+        var repaired = try await llm(systemPrompt, repairPrompt)
+        repaired.isFallback = false
+        repaired = repaired.ensuringLeadingPrep()
+
+        // Keep the repair only if it actually helped. A second pass that trades
+        // one conflict for two, or drops half the steps to make the detector
+        // happy, is worse than the plan we already had.
+        let before = conflicts.count
+        let after = repaired.schedulingIssues.filter {
+            if case .slowerItemGoesInSecond = $0.kind { return true }
+            return false
+        }.count
+        // Proportional, not a flat tolerance. A fixed "one step" allowance let a
+        // rewrite that collapsed a two-step plan into one pass, and losing half
+        // the recipe is the worst possible way to score well on the detector.
+        // Merging the two appliance steps into one staggered instruction is
+        // legitimate, so a small loss on a long plan is allowed.
+        let floor = Int((Double(plan.steps.count) * 0.75).rounded(.up))
+        let lostSteps = repaired.steps.count < floor
+        guard after < before, !lostSteps else {
+            PollyDebugLog.shared.log(
+                "plan: repair rejected (conflicts \(before) → \(after), steps "
+                    + "\(plan.steps.count) → \(repaired.steps.count))")
+            return plan
+        }
+        PollyDebugLog.shared.log("plan: repaired (conflicts \(before) → \(after))")
+        return repaired
     }
 
     // MARK: - Prompts
@@ -119,7 +202,14 @@ enum CookPlanCompiler {
     - servings: the scaled serving count you were given.
     - mise: KNIFE / BOARD work only — wash, peel, dice, slice, chop, mince, pat dry, \
     room-temp proteins. Do NOT put spices, salt, pepper, oils, vinegars, stocks, or \
-    "measure 1 tsp cumin" in mise. Spices are measured in the cook step when added.
+    "measure 1 tsp cumin" in mise. Spices are measured in the cook step when added. \
+    Every "prep" MUST say what the food ends up looking like: "dice", "cut into 1-inch \
+    cubes", "slice thinly", "cut into florets", "mince". NEVER write a vague prep — no \
+    "cut to size", "cut", "prepare", "as needed", "chop as needed". If the recipe does not \
+    specify, choose the cut this dish actually wants and say it; a stir fry wants thin \
+    slices, a stew wants chunks, a salsa wants fine dice. Deciding is your job. If you \
+    genuinely cannot tell, leave the ingredient out of mise entirely rather than guessing \
+    in words that mean nothing.
     - equipment: the pans, trays, knives, boards, and tools to pull out before starting.
     - steps: the recipe as an ordered graph. "id" is a short stable slug like "tools", \
     "prep", "s1", "s2"; "index" is the 0-based order.
@@ -149,8 +239,29 @@ enum CookPlanCompiler {
     - After Prep is done, cooking steps assume board work is finished: say "add the diced \
       onion", NOT "dice the onion and add it". Do not bury knife work inside heat steps.
     - Keep setup checklists SHORT — never dump spices, measuring, and tools into Prep.
-    - Preserve the recipe's intent and order; split run-on instructions into single \
-    actions; do NOT invent ingredients or steps that aren't implied by the source.
+    - Preserve the recipe's intent; split run-on instructions into single actions; do NOT \
+    invent ingredients or steps that aren't implied by the source.
+
+    Scheduling — this is the difference between a recipe and a plan:
+    - You are writing the order the cook should ACTUALLY work in, not the order the source \
+    happened to list. Written recipes describe one dish at a time; a cook has one oven, one \
+    hob and two hands.
+    - SHARED APPLIANCE: when two things go in the same oven, air fryer, grill or slow cooker, \
+    the one that needs LONGEST goes in FIRST, and the shorter one joins it later so they \
+    finish together. Chicken 20 min and potatoes 30 min is: potatoes in, then chicken in after \
+    10 minutes, both out together. Never tell the cook to start the slower item second: \
+    followed literally that is 50 minutes and the first thing out is cold.
+    - Say the staggering out loud in the instruction ("potatoes in now, they need 30; the \
+    chicken joins them in 10"), and set timerSeconds to the wait until the NEXT action, not \
+    the total cook time.
+    - If two things genuinely cannot share (different temperatures, no room), say which one \
+    goes first and that the other waits. Do not silently interleave them.
+    - DEAD TIME: hands-on work that does not depend on a wait finishing belongs INSIDE that \
+    wait, not queued after it. If something bakes 30 minutes, the sauce, the salad and the \
+    washing up happen during it. Order those steps between the start of the wait and its \
+    timer, and use dependsOn to say what truly must wait.
+    - Only overlap where a real cook would. Do not send them away from a pan that needs \
+    stirring, or split a step that needs their full attention.
     - Keep instructions short, imperative, and natural to speak aloud.
     - Keep amounts IN the cook instruction: "add 1 tbsp salt", not "add the salt". If the \
     recipe gives no amount for an ingredient, don't invent a precise number — say "to \

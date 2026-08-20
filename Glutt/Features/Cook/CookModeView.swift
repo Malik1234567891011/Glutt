@@ -3,11 +3,19 @@ import SwiftUI
 
 /// Full-screen step-by-step cooking. Big text, screen stays awake,
 /// per-step ingredients and timers, swipe or tap to navigate.
+///
+/// Runs off the same compiled `CookPlan` as the voice cook rather than the raw
+/// recipe steps. It used to read `recipe.sortedSteps` directly, which meant the
+/// two cook surfaces told different stories: Polly opened with Tools and Prep
+/// and this one dropped the cook straight into "heat the oil" with an unpeeled
+/// onion on the board. It also inherited whatever running order the source
+/// recipe happened to have, including the one where the chicken goes in the
+/// oven for 20 minutes and the potatoes follow it for 30.
 struct CookModeView: View {
     @Environment(\.dismiss) private var dismiss
     let recipe: Recipe
     /// Serving scale carried over from the detail screen.
-    var scale: Double = 1
+    let scale: Double
 
     @State private var stepIndex = 0
     @State private var timerManager = TimerManager()
@@ -20,8 +28,22 @@ struct CookModeView: View {
     @State private var startedCookingAt = Date()
     @State private var reachedFinish = false
 
-    private var steps: [RecipeStep] { recipe.sortedSteps }
+    /// Starts as the deterministic linear plan so the first frame is instant and
+    /// offline still works. `ensuringLeadingPrep` runs on that too, so even the
+    /// no-AI path opens with Tools and Prep.
+    @State private var plan: CookPlan
+
+    private var steps: [CookPlan.PlanStep] { plan.steps }
     private var isLastStep: Bool { stepIndex >= steps.count - 1 }
+    private var setupCount: Int { plan.leadingSetupCount }
+    /// What the cook counts. Tools and Prep are not "step 1 of 9".
+    private var cookStepTotal: Int { max(1, steps.count - setupCount) }
+
+    init(recipe: Recipe, scale: Double = 1) {
+        self.recipe = recipe
+        self.scale = scale
+        _plan = State(initialValue: CookPlan.linear(from: recipe, scale: scale))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,8 +51,8 @@ struct CookModeView: View {
             progressBar
 
             TabView(selection: $stepIndex) {
-                ForEach(Array(steps.enumerated()), id: \.element.persistentModelID) { index, step in
-                    stepPage(step)
+                ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                    stepPage(step, index: index)
                         .tag(index)
                 }
             }
@@ -44,6 +66,15 @@ struct CookModeView: View {
             bottomBar
         }
         .background(Theme.Colors.background)
+        // Usually instant: the detail screen warms this cache while the cook is
+        // still reading. Swapped in only while they are still on the first
+        // page, because re-ordering the steps under someone who is already
+        // cooking is worse than letting them finish on the linear plan.
+        .task {
+            let compiled = await CookPlanCompiler.compile(recipe: recipe, scale: scale)
+            guard stepIndex == 0, !compiled.isFallback else { return }
+            plan = compiled
+        }
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
             startedCookingAt = .now
@@ -107,7 +138,7 @@ struct CookModeView: View {
                     .font(.system(size: 13, weight: .heavy))
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .lineLimit(1)
-                Text("Step \(stepIndex + 1) of \(steps.count)")
+                Text(stepCounterLabel)
                     .font(.system(size: 11.5, weight: .bold))
                     .foregroundStyle(Theme.Colors.textSecondary)
             }
@@ -144,27 +175,33 @@ struct CookModeView: View {
 
     // MARK: - Step page
 
-    private func stepPage(_ step: RecipeStep) -> some View {
+    private func stepPage(_ step: CookPlan.PlanStep, index: Int) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                 HStack(alignment: .top, spacing: Theme.Spacing.sm) {
-                    Text("\(step.index + 1)")
-                        .font(.gluttHeadline).foregroundStyle(.white)
-                        .frame(width: 32, height: 32)
-                        .background(Theme.Colors.accent).clipShape(Circle())
+                    stepBadge(step, index: index)
                     Spacer()
                 }
 
-                Text(step.text)
+                Text(CookModeView.silentInstruction(step.instruction))
                     .font(.gluttCookStep)
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                if let duration = step.durationSeconds {
-                    timerChip(for: step, duration: duration)
+                if let look = step.visualCheck, !look.isEmpty {
+                    calloutRow("LOOK FOR", look, tint: Theme.Colors.accent)
                 }
 
-                let used = step.ingredientsUsed(from: recipe.ingredients)
+                if let duration = step.timerSeconds ?? step.estimatedSeconds,
+                   duration > 0, step.kind == .passive {
+                    timerChip(for: step, index: index, duration: duration)
+                }
+
+                if let recovery = step.recovery, !recovery.isEmpty {
+                    calloutRow("IF IT GOES WRONG", recovery, tint: Theme.Colors.warning)
+                }
+
+                let used = ingredients(for: step)
                 if !used.isEmpty {
                     VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                         Text("FOR THIS STEP")
@@ -192,11 +229,11 @@ struct CookModeView: View {
         }
     }
 
-    private func timerChip(for step: RecipeStep, duration: Int) -> some View {
+    private func timerChip(for step: CookPlan.PlanStep, index: Int, duration: Int) -> some View {
         Button {
             Haptics.selection()
             timerManager.start(
-                label: "Step \(step.index + 1): \(String(step.text.prefix(40)))",
+                label: "\(badgeText(step, index: index)): \(String(step.title.prefix(40)))",
                 seconds: duration
             )
         } label: {
@@ -306,6 +343,101 @@ struct CookModeView: View {
         .padding(Theme.Spacing.md)
     }
 
+    // MARK: - Step labelling
+
+    /// Tools and Prep are setup, not "step 1". Mirrors the voice cook's
+    /// numbering (`PollySessionSubviews.stepPage`) so the same dish reads the
+    /// same way whichever way the cook runs it.
+    private func badgeText(_ step: CookPlan.PlanStep, index: Int) -> String {
+        if step.id == CookPlan.toolsStepID { return "Tools" }
+        if step.id == CookPlan.prepStepID { return "Prep" }
+        return "\(max(1, index + 1 - setupCount))"
+    }
+
+    private var stepCounterLabel: String {
+        guard steps.indices.contains(stepIndex) else { return "" }
+        let step = steps[stepIndex]
+        if step.id == CookPlan.toolsStepID { return "Tools" }
+        if step.id == CookPlan.prepStepID { return "Prep" }
+        return "Step \(max(1, stepIndex + 1 - setupCount)) of \(cookStepTotal)"
+    }
+
+    @ViewBuilder
+    private func stepBadge(_ step: CookPlan.PlanStep, index: Int) -> some View {
+        let text = badgeText(step, index: index)
+        let isSetup = CookPlan.isSetupStep(step)
+        Text(text)
+            .font(.gluttHeadline).foregroundStyle(.white)
+            .padding(.horizontal, isSetup ? 14 : 0)
+            .frame(minWidth: 32, minHeight: 32)
+            .background(
+                Capsule().fill(isSetup ? Theme.Colors.muted : Theme.Colors.accent)
+            )
+    }
+
+    /// The setup steps are written to be spoken by Polly and end by asking the
+    /// cook to say when they are done ("Tell me when they're on the counter").
+    /// On this screen there is nobody to tell, so that sentence reads as a bug.
+    /// Stripped here rather than in `CookPlan`, because the voice cook wants it
+    /// and the plan is shared.
+    static func silentInstruction(_ text: String) -> String {
+        let sentences = text.split(separator: ".", omittingEmptySubsequences: false)
+        let kept = sentences.filter { sentence in
+            let lowered = sentence.trimmingCharacters(in: .whitespaces).lowercased()
+            return !lowered.hasPrefix("tell me when") && !lowered.hasPrefix("let me know")
+        }
+        let rebuilt = kept.joined(separator: ".").trimmingCharacters(in: .whitespaces)
+        // Never hand back nothing: if the whole instruction was the aside, the
+        // original is still better than a blank step.
+        return rebuilt.isEmpty ? text : rebuilt
+    }
+
+    private func calloutRow(_ label: String, _ text: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(label)
+                .font(.system(size: 12, weight: .heavy))
+                .textCase(.uppercase)
+                .foregroundStyle(tint)
+            Text(text)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(Theme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.photo, style: .continuous))
+    }
+
+    /// What this step touches. The compiler names them (`ingredientNames`), and
+    /// only when it gives us nothing do we fall back to matching words in the
+    /// text, which is what the raw-step version always did.
+    private func ingredients(for step: CookPlan.PlanStep) -> [RecipeIngredient] {
+        let all = recipe.ingredients
+        if !step.ingredientNames.isEmpty {
+            let wanted = Set(step.ingredientNames.map { $0.lowercased() })
+            let named = all.filter { ingredient in
+                wanted.contains(ingredient.name.lowercased())
+                    || wanted.contains(ingredient.canonicalName.lowercased())
+            }
+            if !named.isEmpty { return named.sorted { $0.sortIndex < $1.sortIndex } }
+        }
+        return CookModeView.ingredientsMentioned(in: step.instruction, from: all)
+    }
+
+    /// Name-in-text matching, shared with the old raw-step path.
+    static func ingredientsMentioned(
+        in text: String, from ingredients: [RecipeIngredient]
+    ) -> [RecipeIngredient] {
+        let lowered = text.lowercased()
+        return ingredients
+            .filter { ingredient in
+                let words = ingredient.canonicalName.split(separator: " ").map(String.init)
+                return words.contains { $0.count > 2 && lowered.contains($0) }
+            }
+            .sorted { $0.sortIndex < $1.sortIndex }
+    }
+
     // MARK: - Ingredients sheet
 
     private var ingredientsSheet: some View {
@@ -353,13 +485,10 @@ struct CookModeView: View {
 extension RecipeStep {
     /// Ingredients referenced by this step, matched by name appearing in the step text.
     /// Heuristic on purpose — no model change needed, and import sources never link steps to ingredients.
+    ///
+    /// Still used by the linear plan builder and the clip matcher. Cook mode now
+    /// prefers the compiler's `ingredientNames` and only falls back to this.
     func ingredientsUsed(from ingredients: [RecipeIngredient]) -> [RecipeIngredient] {
-        let lowered = text.lowercased()
-        return ingredients
-            .filter { ingredient in
-                let words = ingredient.canonicalName.split(separator: " ").map(String.init)
-                return words.contains { $0.count > 2 && lowered.contains($0) }
-            }
-            .sorted { $0.sortIndex < $1.sortIndex }
+        CookModeView.ingredientsMentioned(in: text, from: ingredients)
     }
 }

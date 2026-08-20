@@ -268,3 +268,243 @@ final class CookPlanTests: XCTestCase {
         XCTAssertTrue(plan.isFallback)
     }
 }
+
+// MARK: - Scheduling
+
+/// The complaint that prompted this: a recipe told the cook to put chicken in
+/// the oven for 20 minutes and then, as the next step, potatoes in for 30.
+final class CookPlanSchedulingTests: XCTestCase {
+
+    private func step(
+        _ id: String,
+        _ index: Int,
+        _ instruction: String,
+        kind: CookPlan.StepKind = .passive,
+        timer: Int? = nil,
+        dependsOn: [String] = []
+    ) -> CookPlan.PlanStep {
+        CookPlan.PlanStep(
+            id: id, index: index, title: instruction, instruction: instruction,
+            kind: kind, estimatedSeconds: timer, timerSeconds: timer, dependsOn: dependsOn)
+    }
+
+    private func plan(_ steps: [CookPlan.PlanStep]) -> CookPlan {
+        CookPlan(title: "Test", servings: 2, mise: [], steps: steps)
+    }
+
+    func testCatchesTheSlowerDishGoingIntoTheOvenSecond() {
+        let subject = plan([
+            step("s1", 0, "Put the chicken in the oven", timer: 20 * 60),
+            step("s2", 1, "Put the potatoes in the oven", timer: 30 * 60),
+        ])
+        let issues = subject.schedulingIssues
+        XCTAssertEqual(issues.count, 1)
+        XCTAssertEqual(issues.first?.kind, .slowerItemGoesInSecond(.oven))
+        XCTAssertEqual(issues.first?.earlierStepID, "s1")
+        XCTAssertEqual(issues.first?.laterStepID, "s2")
+    }
+
+    func testTheCorrectOrderIsNotFlagged() {
+        let subject = plan([
+            step("s1", 0, "Put the potatoes in the oven", timer: 30 * 60),
+            step("s2", 1, "Add the chicken to the oven", timer: 20 * 60),
+        ])
+        XCTAssertTrue(subject.schedulingIssues.isEmpty,
+                      "longest thing in first is exactly right and must never be flagged")
+    }
+
+    /// A stir or a seasoning step routinely sits between the two oven
+    /// instructions, so adjacency is not the test.
+    func testCatchesItAcrossAnInterveningStep() {
+        let subject = plan([
+            step("s1", 0, "Roast the chicken", timer: 20 * 60),
+            step("s2", 1, "Season the potatoes", kind: .active),
+            step("s3", 2, "Roast the potatoes", timer: 30 * 60),
+        ])
+        XCTAssertEqual(subject.schedulingIssues.first?.kind, .slowerItemGoesInSecond(.oven))
+    }
+
+    /// Two different appliances are not competing for anything.
+    func testDifferentAppliancesAreNotAConflict() {
+        let subject = plan([
+            step("s1", 0, "Bake the chicken in the oven", timer: 20 * 60),
+            step("s2", 1, "Simmer the sauce in a saucepan", timer: 30 * 60),
+        ])
+        XCTAssertTrue(subject.schedulingIssues.filter {
+            if case .slowerItemGoesInSecond = $0.kind { return true }
+            return false
+        }.isEmpty)
+    }
+
+    func testAirFryerIsNotReadAsAStovetop() {
+        XCTAssertEqual(
+            CookPlan.appliance(for: step("s1", 0, "Air fryer at 200C")), .airFryer)
+        XCTAssertEqual(
+            CookPlan.appliance(for: step("s1", 0, "Slow cooker on low")), .slowCooker)
+    }
+
+    func testFlagsHandsOnWorkQueuedBehindALongWait() {
+        let subject = plan([
+            step("s1", 0, "Bake for 40 minutes", timer: 40 * 60),
+            step("s2", 1, "Chop the parsley", kind: .active),
+        ])
+        XCTAssertEqual(subject.schedulingIssues.first?.kind,
+                       .handsFreeTimeWasted(seconds: 40 * 60))
+    }
+
+    /// Work that genuinely needs the wait to finish cannot move.
+    func testWorkThatDependsOnTheWaitIsNotFlagged() {
+        let subject = plan([
+            step("s1", 0, "Bake for 40 minutes", timer: 40 * 60),
+            step("s2", 1, "Slice the rested roast", kind: .active, dependsOn: ["s1"]),
+        ])
+        XCTAssertTrue(subject.schedulingIssues.isEmpty)
+    }
+
+    /// A short wait is not worth sending the cook away for.
+    func testAShortWaitIsLeftAlone() {
+        let subject = plan([
+            step("s1", 0, "Simmer for 3 minutes", timer: 3 * 60),
+            step("s2", 1, "Chop the parsley", kind: .active),
+        ])
+        XCTAssertTrue(subject.schedulingIssues.isEmpty)
+    }
+
+    /// Setup rows are not cooking and must never take part.
+    func testSetupStepsAreIgnored() {
+        let subject = plan([
+            CookPlan.PlanStep(id: CookPlan.prepStepID, index: 0, title: "Prep",
+                              instruction: "Dice the onion", kind: .prep),
+            step("s1", 1, "Bake the chicken", timer: 20 * 60),
+        ])
+        XCTAssertTrue(subject.schedulingIssues.isEmpty)
+    }
+}
+
+/// The setup steps are written for Polly to say out loud. Step-by-step cook has
+/// nobody to tell.
+final class CookModeSilentInstructionTests: XCTestCase {
+
+    func testDropsTheSpokenAside() {
+        XCTAssertEqual(
+            CookModeView.silentInstruction(
+                "Pull out your skillet, whisk. Tell me when they're on the counter."),
+            "Pull out your skillet, whisk.")
+    }
+
+    func testDropsItFromTheMiddleAndKeepsTheRest() {
+        XCTAssertEqual(
+            CookModeView.silentInstruction(
+                "Before any heat: dice the onion. Tell me when the board is ready. Stage your pan."),
+            "Before any heat: dice the onion. Stage your pan.")
+    }
+
+    func testLeavesANormalInstructionAlone() {
+        let text = "Sear the chicken skin side down for 6 minutes"
+        XCTAssertEqual(CookModeView.silentInstruction(text), text)
+    }
+
+    /// Never blank the step out.
+    func testAnInstructionThatIsOnlyTheAsideSurvives() {
+        let text = "Tell me when the board is ready."
+        XCTAssertEqual(CookModeView.silentInstruction(text), text)
+    }
+}
+
+/// "Cut to size the onions" reads like an instruction and contains none.
+final class CookPlanVaguePrepTests: XCTestCase {
+
+    func testRecognisesTheVagueOnes() {
+        for prep in ["cut to size", "cut", "prepare", "prep", "as needed",
+                     "chop as needed", "cut accordingly", ""] {
+            XCTAssertTrue(CookPlan.isVaguePrep(prep), "\"\(prep)\" says nothing")
+        }
+    }
+
+    func testLeavesRealInstructionsAlone() {
+        for prep in ["dice", "mince", "cut into florets", "cut into 1-inch cubes",
+                     "slice thinly", "pat dry"] {
+            XCTAssertFalse(CookPlan.isVaguePrep(prep), "\"\(prep)\" is a real instruction")
+        }
+    }
+
+    /// The compiler's shrug is replaced by what we know the ingredient wants.
+    func testVaguePrepIsReplacedWithTheRealCut() {
+        let cleaned = CookPlan.boardWorkOnly([
+            CookPlan.MiseItem(name: "onion", prep: "cut to size"),
+            CookPlan.MiseItem(name: "broccoli", prep: "cut"),
+            CookPlan.MiseItem(name: "garlic", prep: "prepare"),
+        ])
+        XCTAssertEqual(cleaned.first { $0.name == "onion" }?.prep, "dice")
+        XCTAssertEqual(cleaned.first { $0.name == "broccoli" }?.prep, "cut into florets")
+        XCTAssertEqual(cleaned.first { $0.name == "garlic" }?.prep, "mince")
+    }
+
+    /// When we cannot say what to do either, saying nothing beats saying
+    /// "cut to size".
+    func testAnUnknownIngredientWithVaguePrepIsDropped() {
+        let cleaned = CookPlan.boardWorkOnly([
+            CookPlan.MiseItem(name: "gochujang", prep: "cut to size"),
+        ])
+        XCTAssertTrue(cleaned.isEmpty)
+    }
+
+    func testASpecificCutSurvivesUntouched() {
+        let cleaned = CookPlan.boardWorkOnly([
+            CookPlan.MiseItem(name: "carrot", prep: "cut into 2cm batons"),
+        ])
+        XCTAssertEqual(cleaned.first?.prep, "cut into 2cm batons")
+    }
+
+    /// The rendered Prep line is what the cook actually reads.
+    func testThePrepStepNeverReadsCutToSize() {
+        let instruction = CookPlan.prepInstruction(
+            mise: CookPlan.boardWorkOnly([
+                CookPlan.MiseItem(name: "onion", prep: "cut to size"),
+                CookPlan.MiseItem(name: "broccoli", prep: "cut to size"),
+            ]))
+        XCTAssertFalse(instruction.lowercased().contains("cut to size"))
+        XCTAssertTrue(instruction.contains("dice the onion"))
+        XCTAssertTrue(instruction.contains("cut the broccoli into florets"))
+    }
+
+    /// The verb goes first, the ingredient second, the shape last.
+    func testPhrasingReadsLikeEnglish() {
+        let cases: [(String, String, String)] = [
+            ("onion", "dice", "dice the onion"),
+            ("broccoli", "cut into florets", "cut the broccoli into florets"),
+            ("potato", "cut into 1-inch cubes", "cut the potato into 1-inch cubes"),
+            ("mushroom", "slice thinly", "slice the mushroom thinly"),
+            ("chicken thighs", "pat dry", "pat the chicken thighs dry"),
+        ]
+        for (name, prep, expected) in cases {
+            XCTAssertEqual(
+                CookPlan.phrase(for: CookPlan.MiseItem(name: name, prep: prep)), expected)
+        }
+    }
+
+    /// Names are title-cased for the list UI and read as typos in a sentence.
+    func testTheIngredientIsLowercasedInsideTheSentence() {
+        XCTAssertEqual(
+            CookPlan.phrase(for: CookPlan.MiseItem(name: "Chicken breast", prep: "dice")),
+            "dice the chicken breast")
+        XCTAssertEqual(
+            CookPlan.phrase(for: CookPlan.MiseItem(name: "Cherry tomatoes", prep: "halve")),
+            "halve the cherry tomatoes")
+    }
+
+    /// An all-caps name is a deliberate choice, not title case.
+    func testAnAllCapsNameIsLeftAlone() {
+        XCTAssertEqual(
+            CookPlan.phrase(for: CookPlan.MiseItem(name: "BBQ sauce", prep: "")),
+            "BBQ sauce")
+    }
+
+    /// An unrecognised opening word keeps the old shape rather than being
+    /// rearranged into nonsense.
+    func testAnUnknownPrepIsNotRearranged() {
+        XCTAssertEqual(
+            CookPlan.phrase(for: CookPlan.MiseItem(name: "butter", prep: "bring to room temp")),
+            "bring to room temp the butter")
+    }
+}

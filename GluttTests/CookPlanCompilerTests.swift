@@ -135,4 +135,121 @@ final class CookPlanCompilerTests: XCTestCase {
         let key = CookPlanCompiler.cacheKey(recipe: recipe, scale: 1.0)
         XCTAssertNil(CookPlanCompiler.cachedPlan(forKey: key), "fallback plans must never be cached")
     }
+
+    // MARK: - Schedule repair
+
+    /// Two things into one oven, slower one told to go in second.
+    private func ovenClashPlan() throws -> CookPlan {
+        let json = """
+        {"title": "Roast", "servings": 2, "mise": [], "equipment": [],
+         "steps": [{"id": "s1", "index": 0, "title": "Chicken in",
+                    "instruction": "Put the chicken in the oven.", "kind": "passive",
+                    "timerSeconds": 1200, "dependsOn": []},
+                   {"id": "s2", "index": 1, "title": "Potatoes in",
+                    "instruction": "Put the potatoes in the oven.", "kind": "passive",
+                    "timerSeconds": 1800, "dependsOn": []}]}
+        """
+        return try JSONDecoder().decode(CookPlan.self, from: Data(json.utf8))
+    }
+
+    private func ovenFixedPlan() throws -> CookPlan {
+        let json = """
+        {"title": "Roast", "servings": 2, "mise": [], "equipment": [],
+         "steps": [{"id": "s2", "index": 0, "title": "Potatoes in",
+                    "instruction": "Potatoes in now, they need 30 minutes.", "kind": "passive",
+                    "timerSeconds": 600, "dependsOn": []},
+                   {"id": "s1", "index": 1, "title": "Chicken joins",
+                    "instruction": "Add the chicken, both come out together.", "kind": "passive",
+                    "timerSeconds": 1200, "dependsOn": []}]}
+        """
+        return try JSONDecoder().decode(CookPlan.self, from: Data(json.utf8))
+    }
+
+    /// The whole point: a plan that puts the slower dish in second must not be
+    /// cached and served for the life of the recipe.
+    func testAnOvenClashTriggersASecondPassAndKeepsTheFix() async throws {
+        let recipe = makeRecipe()
+        let clash = try ovenClashPlan()
+        let fixed = try ovenFixedPlan()
+        var prompts: [String] = []
+
+        let plan = await CookPlanCompiler.compile(recipe: recipe, scale: 1.0) { _, user in
+            prompts.append(user)
+            return prompts.count == 1 ? clash : fixed
+        }
+
+        XCTAssertEqual(prompts.count, 2, "the clash must be sent back for repair")
+        XCTAssertTrue(prompts[1].contains("scheduling mistakes"),
+                      "the repair prompt must name what was wrong")
+        XCTAssertTrue(prompts[1].contains("oven"))
+        XCTAssertTrue(plan.schedulingIssues.filter {
+            if case .slowerItemGoesInSecond = $0.kind { return true }
+            return false
+        }.isEmpty, "the repaired plan is the one that gets kept")
+    }
+
+    /// A correctly scheduled plan must not pay for a second call.
+    func testACleanPlanIsCompiledOnce() async throws {
+        let recipe = makeRecipe()
+        let fixed = try ovenFixedPlan()
+        var calls = 0
+
+        _ = await CookPlanCompiler.compile(recipe: recipe, scale: 1.0) { _, _ in
+            calls += 1
+            return fixed
+        }
+
+        XCTAssertEqual(calls, 1, "no conflicts, no repair round trip")
+    }
+
+    /// A repair that does not actually help must be thrown away rather than
+    /// trusted just because it came second.
+    func testARepairThatDoesNotHelpIsRejected() async throws {
+        let recipe = makeRecipe()
+        let clash = try ovenClashPlan()
+        var calls = 0
+
+        let plan = await CookPlanCompiler.compile(recipe: recipe, scale: 1.0) { _, _ in
+            calls += 1
+            return clash          // the model returns the same broken plan
+        }
+
+        XCTAssertEqual(calls, 2)
+        XCTAssertEqual(plan.steps.filter { !CookPlan.isSetupStep($0) }.count, 2,
+                       "we keep the original rather than a no-better rewrite")
+    }
+
+    /// A "fix" that deletes most of the recipe scores perfectly on the detector
+    /// and is useless in a kitchen.
+    func testARepairThatDropsStepsIsRejected() async throws {
+        let recipe = makeRecipe()
+        let clash = try ovenClashPlan()
+        let gutted = try JSONDecoder().decode(CookPlan.self, from: Data("""
+        {"title": "Roast", "servings": 2, "mise": [], "equipment": [],
+         "steps": [{"id": "s1", "index": 0, "title": "Cook it",
+                    "instruction": "Put everything in the oven.", "kind": "passive",
+                    "timerSeconds": 1800, "dependsOn": []}]}
+        """.utf8))
+        var calls = 0
+
+        let plan = await CookPlanCompiler.compile(recipe: recipe, scale: 1.0) { _, _ in
+            calls += 1
+            return calls == 1 ? clash : gutted
+        }
+
+        XCTAssertEqual(plan.steps.filter { !CookPlan.isSetupStep($0) }.count, 2,
+                       "losing steps is worse than a bad running order")
+    }
+
+    /// The repair must never run when the plan came from the offline path.
+    func testTheLinearFallbackIsNotSentForRepair() async {
+        let recipe = makeRecipe()
+        var calls = 0
+        let plan = await CookPlanCompiler.compile(recipe: recipe, scale: 1.0) { _, _ in
+            calls += 1
+            throw Boom()
+        }
+        XCTAssertEqual(calls, 1, "a failed compile must not then pay for a repair call")
+        XCTAssertTrue(plan.isFallback)
+    }
 }

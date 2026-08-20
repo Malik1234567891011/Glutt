@@ -97,6 +97,12 @@
       "skillPath": "skills/engineering/research/SKILL.md",
       "computedHash": "bd3e2c6826671d82c86ed0da3dac3370ebcf63b0fe847f91bb444e1fb7dac21b"
     },
+    "superwall-editor": {
+      "source": "superwall/skills",
+      "sourceType": "github",
+      "skillPath": "skills/superwall-editor/SKILL.md",
+      "computedHash": "ac2ecc762d3f30ab429048d15df745b7c7fd303bf6400d4429d3de55cb12f082"
+    },
     "to-tickets": {
       "source": "mattpocock/skills",
       "sourceType": "github",

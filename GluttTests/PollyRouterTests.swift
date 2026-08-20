@@ -5,12 +5,12 @@ import XCTest
 final class PollyRouterTests: XCTestCase {
 
     func testDiscoverTabExistsSecondWithLabel() {
-        XCTAssertEqual(AppTab.allCases.count, 3)
+        XCTAssertEqual(AppTab.allCases.count, 4)
         XCTAssertEqual(AppTab.allCases[1], .discover)
         XCTAssertEqual(AppTab.discover.label, "Discover")
         XCTAssertEqual(
             AppTab.allCases.map(\.id),
-            ["recipes", "discover", "kitchen"]
+            ["recipes", "discover", "kitchen", "skills"]
         )
     }
 

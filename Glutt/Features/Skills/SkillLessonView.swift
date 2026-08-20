@@ -38,6 +38,10 @@ struct SkillLessonView: View {
                         steps(lesson.steps)
                         watchFors(lesson.watchFors)
                         whyItMatters(lesson.whyItMatters)
+                        // Polly sits after the teaching, not before it. The
+                        // lesson answers the question they came with; she is
+                        // for the one reading it gave them.
+                        SkillAskPollyView(skill: skill)
                     } else {
                         comingSoon
                     }
@@ -243,9 +247,23 @@ struct SkillLessonView: View {
         }
     }
 
+    /// True when this skill was the last unlearned one in its region.
+    ///
+    /// Finishing a region is the only moment on the map that is worth more than
+    /// a line of text: it is the whole point of drawing regions instead of a
+    /// list. Everything else stays deliberately quiet.
+    private var justFinishedRegion: Bool {
+        guard justLearned, let category else { return false }
+        return SkillProgression.learnedCount(in: category, learnedIDs: reader.learnedIDs)
+            == category.learnableCount
+    }
+
     /// Tasteful, not an arcade. A line, the XP, and the obvious next thing.
     private var learnedBanner: some View {
         VStack(spacing: 10) {
+            if justFinishedRegion, let category {
+                regionComplete(category)
+            }
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 18, weight: .semibold))
@@ -277,5 +295,31 @@ struct SkillLessonView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    /// The milestone. Polly celebrating, the region's name, and nothing else:
+    /// no confetti, no modal, no badge shelf to go and look at later.
+    private func regionComplete(_ category: SkillCategory) -> some View {
+        HStack(spacing: 12) {
+            Image("bearCelebrating")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 54)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("\(category.name) complete")
+                    .font(BrandFont.nunito(15.5, 800))
+                    .foregroundStyle(Theme.Colors.heading)
+                Text("All \(category.learnableCount) of them. That is a whole area of cooking you have under you now.")
+                    .font(BrandFont.nunito(12.5, 600))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(category.theme.wash)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.group, style: .continuous))
+        .transition(.scale(scale: 0.9).combined(with: .opacity))
     }
 }

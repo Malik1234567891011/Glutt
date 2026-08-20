@@ -51,7 +51,7 @@ struct SkillsView: View {
                 Spacer()
                 if reader.streak > 0 { streakChip }
             }
-            progressCard
+            progressLine
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
@@ -70,49 +70,42 @@ struct SkillsView: View {
         .padding(.top, 6)
     }
 
-    /// Level, the bar toward the next one, and the bear. One card rather than
-    /// four separate stats, so progression reads at a glance.
-    private var progressCard: some View {
+    /// Level, skills learned and the bar toward the next level, as one quiet
+    /// line rather than a card.
+    ///
+    /// This used to be a white rounded rectangle with the bear inside it, which
+    /// pushed the map below the fold and turned the mascot into a profile
+    /// photo. XP, level and skills learned are supporting information; the map
+    /// is the product, so they get one line and the bear went to the path.
+    private var progressLine: some View {
         let bar = reader.levelProgress
-        return HStack(spacing: 14) {
-            Image("gluttBear")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(Theme.Colors.surface2))
-                .clipShape(Circle())
-
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    Text("Level \(bar.level)")
-                        .font(BrandFont.nunito(15, 800))
-                        .foregroundStyle(Theme.Colors.heading)
-                    Text(reader.learnedCount == 1 ? "1 skill learned" : "\(reader.learnedCount) skills learned")
-                        .font(BrandFont.nunito(12.5, 700))
-                        .foregroundStyle(Theme.Colors.muted)
-                }
-                GeometryReader { proxy in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Theme.Colors.surface2)
-                        Capsule()
-                            .fill(Theme.Colors.accent)
-                            .frame(width: max(6, proxy.size.width * fraction(bar)))
-                    }
-                }
-                .frame(height: 8)
-                Text("\(bar.needed - bar.into) XP to level \(bar.level + 1)")
+        return VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 6) {
+                Text("Level \(bar.level)")
+                    .font(BrandFont.nunito(14.5, 800))
+                    .foregroundStyle(Theme.Colors.heading)
+                Text("·")
+                    .foregroundStyle(Theme.Colors.muted)
+                Text(reader.learnedCount == 1 ? "1 skill" : "\(reader.learnedCount) skills")
+                    .font(BrandFont.nunito(14, 700))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                Spacer(minLength: 0)
+                Text("\(bar.needed - bar.into) XP to \(bar.level + 1)")
                     .font(BrandFont.nunito(11.5, 700))
                     .foregroundStyle(Theme.Colors.muted)
+                    .lineLimit(1)
+                    .fixedSize()
             }
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.Colors.surface2)
+                    Capsule()
+                        .fill(Theme.Colors.accent)
+                        .frame(width: max(5, proxy.size.width * fraction(bar)))
+                }
+            }
+            .frame(height: 7)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.Colors.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.group, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.group, style: .continuous)
-                .strokeBorder(Theme.Colors.textPrimary.opacity(0.06), lineWidth: 1)
-        )
     }
 
     private func fraction(_ bar: (level: Int, into: Int, needed: Int)) -> CGFloat {
@@ -129,6 +122,9 @@ struct SkillsView: View {
                 Haptics.impact(.light)
                 open(first)
             } label: {
+                HStack(alignment: .center, spacing: 12) {
+                Image("bearSpoon")
+                    .resizable().scaledToFit().frame(height: 78)
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Start your cooking journey")
                         .font(BrandFont.bricolage(19, 700))
@@ -148,6 +144,7 @@ struct SkillsView: View {
                     .padding(.horizontal, 16).padding(.vertical, 10)
                     .background(Capsule().fill(Theme.Colors.accent))
                     .padding(.top, 2)
+                }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)

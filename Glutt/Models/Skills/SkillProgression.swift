@@ -70,8 +70,14 @@ enum SkillProgression {
     ) -> SkillState {
         if learnedIDs.contains(skill.id) { return .learned }
         if !skill.isAuthored { return .comingSoon }
-        if inProgressIDs.contains(skill.id) { return .inProgress }
+        // Recommendation beats in-progress, and the order is the whole point.
+        // It used to be the other way around, so opening a lesson and backing
+        // out downgraded that node from the loudest thing on the map to a quiet
+        // outline, permanently. The map then pointed at nothing and Polly, who
+        // stands beside the recommended node, vanished with it. Having started
+        // something is more reason to point at it, not less.
         if skill.id == recommendedID { return .recommended }
+        if inProgressIDs.contains(skill.id) { return .inProgress }
         return .notStarted
     }
 

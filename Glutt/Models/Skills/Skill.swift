@@ -14,6 +14,19 @@ struct Skill: Identifiable, Hashable, Sendable {
     let id: String
     let categoryID: String
     let title: String
+    /// What the node says on the map. The full `title` is for the lesson.
+    ///
+    /// Separate because they want different things. "Know When Food Is Done" is
+    /// the right lesson title and a terrible map label: wrapped to three lines
+    /// around a circle it turns a spacious map into a cramped one. "Doneness"
+    /// says the same thing in one line and lets the node breathe.
+    let shortName: String
+    /// SF Symbol drawn inside the node.
+    ///
+    /// Nodes used to be identical dots, which made the map impossible to
+    /// remember. A glyph per skill means a cook recognises the thermometer or
+    /// the flame on sight, which is what turns a list of circles into a place.
+    let glyph: String
     /// One line, shown under the title on the lesson screen and in the
     /// Continue Learning card. Not a lesson, a promise.
     let shortDescription: String
@@ -45,6 +58,8 @@ struct Skill: Identifiable, Hashable, Sendable {
         id: String,
         categoryID: String,
         title: String,
+        shortName: String? = nil,
+        glyph: String = "circle.fill",
         shortDescription: String,
         difficulty: SkillDifficulty = .beginner,
         estimatedMinutes: Int = 2,
@@ -57,6 +72,8 @@ struct Skill: Identifiable, Hashable, Sendable {
         self.id = id
         self.categoryID = categoryID
         self.title = title
+        self.shortName = shortName ?? title
+        self.glyph = glyph
         self.shortDescription = shortDescription
         self.difficulty = difficulty
         self.estimatedMinutes = estimatedMinutes

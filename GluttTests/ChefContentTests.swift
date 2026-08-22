@@ -25,15 +25,19 @@ final class ChefContentTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: "glutt.chefContent.contentVersion")
     }
 
+    /// Five each, except the two that exist to carry a single clip pilot.
     func testEveryChefHasFiveDishes() {
-        XCTAssertEqual(ChefContent.chefs.count, 4)
+        XCTAssertEqual(ChefContent.chefs.count, 5)
         for chef in ChefContent.chefs {
             let count = ChefContent.dishes(for: chef).count
-            if chef.id == "gordon-ramsay" {
+            switch chef.id {
+            case "gordon-ramsay":
                 XCTAssertEqual(count, 6, "Gordon should ship six (Wellington + Eggs Benedict pilots)")
-            } else if chef.id == "preppy-kitchen" {
+            case "preppy-kitchen":
                 XCTAssertEqual(count, 1, "Preppy Kitchen should ship the Crème Brûlée pilot")
-            } else {
+            case "kitchen-sanctuary":
+                XCTAssertEqual(count, 1, "Kitchen Sanctuary should ship the gnocchi demo dish")
+            default:
                 XCTAssertEqual(count, 5, "\(chef.name) should ship five")
             }
         }
@@ -44,7 +48,7 @@ final class ChefContentTests: XCTestCase {
         ChefContent.install(context: context)
 
         let recipes = try context.fetch(FetchDescriptor<Recipe>())
-        XCTAssertEqual(recipes.count, 17)
+        XCTAssertEqual(recipes.count, 18)
 
         let wellington = recipes.first { $0.title == "Beef Wellington" }
         XCTAssertEqual(wellington?.chefSlug, "gordon-ramsay")
@@ -74,7 +78,7 @@ final class ChefContentTests: XCTestCase {
         ChefContent.install(context: context)
 
         let recipes = try context.fetch(FetchDescriptor<Recipe>())
-        XCTAssertEqual(recipes.count, 17)
+        XCTAssertEqual(recipes.count, 18)
     }
 
     func testRankedReturnsTheFiveInPackOrder() throws {

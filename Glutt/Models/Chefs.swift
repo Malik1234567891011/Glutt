@@ -63,6 +63,13 @@ enum ChefContent {
             portraitAsset: "chefJoshuaWeissman"
         ),
         Chef(
+            id: "kitchen-sanctuary",
+            name: "Nicky's Kitchen Sanctuary",
+            credit: "Nicky Corbishley",
+            // No licensed headshot yet — rail falls back to initials.
+            portraitAsset: nil
+        ),
+        Chef(
             id: "preppy-kitchen",
             name: "Preppy Kitchen",
             credit: "John Kanell",
@@ -108,7 +115,10 @@ enum ChefContent {
     ///    — some library rows lost them across bundle-id / version churn and
     ///    Polly's canvas then had nothing to fetch clips for.
     /// 6: Preppy Kitchen + Crème Brûlée YouTube clip pilot.
-    private static let contentVersion = 6
+    /// 7: Kitchen Sanctuary + Gnocchi with Brown Butter and Sage, the live demo
+    ///    dish. Its step text carries the doneness cues verbatim so they survive
+    ///    even if the cook plan is ever recompiled from the recipe.
+    private static let contentVersion = 7
     private static let contentVersionKey = "glutt.chefContent.contentVersion"
 
     /// Idempotent: inserts missing chef dishes and refreshes their copy when
@@ -217,6 +227,7 @@ enum ChefContent {
         "nick-digiovanni": nickDiGiovanni,
         "joshua-weissman": joshuaWeissman,
         "preppy-kitchen": preppyKitchen,
+        "kitchen-sanctuary": kitchenSanctuary,
     ]
 
     // MARK: Gordon Ramsay
@@ -701,6 +712,54 @@ enum ChefContent {
                 ("When you are ready to serve, blot any moisture off the tops, sprinkle a thin even layer of sugar to the edges, and torch with sweeping motions until amber. Serve immediately so the crust stays crisp.", 180),
             ],
             sourceURL: "https://www.youtube.com/watch?v=6tSdlo0r0Io"
+        ),
+    ]
+
+    // MARK: Kitchen Sanctuary
+
+    /// The live demo dish. Quantities are Nicky's exactly, from
+    /// kitchensanctuary.com/gnocchi-brown-butter-sage.
+    ///
+    /// The step text is longer than the source's, on purpose and only where the
+    /// source leaves a judgement unspoken. Every risky moment in this dish is a
+    /// *look* rather than a time: gnocchi are done when they float, the pan is
+    /// ready when a water droplet skitters, butter is browned about fifteen
+    /// seconds before it is burnt. Those cues live here as well as in the
+    /// bundled cook plan, so a recompile cannot quietly lose them.
+    private static let kitchenSanctuary: [Dish] = [
+        Dish(
+            title: "Gnocchi with Brown Butter and Sage",
+            summary: "Pillowy gnocchi in nutty brown butter with crisp sage and lemon",
+            servings: 4, prepMinutes: 5, cookMinutes: 10,
+            difficulty: .beginner,
+            tags: ["Signature", "Dinner", "Italian"],
+            imageAsset: "chefGnocchiBrownButter",
+            ingredients: [
+                ("Fresh gnocchi", 500, "g"),
+                ("Olive oil", 2, "tbsp"),
+                ("Unsalted butter", 75, "g"),
+                ("Fresh sage leaves", 20, nil),
+                ("Garlic", 2, "clove"),
+                ("Salt", 0.25, "tsp"),
+                ("Black pepper", 0.25, "tsp"),
+                ("Lemon", 1, nil),
+                ("Parmesan", nil, nil),
+            ],
+            steps: [
+                ("Get a pan of well salted water on to boil, and while it comes up, finely slice 2 cloves of garlic and pick 20 sage leaves off their stems. Zest the lemon and halve it.", 300),
+                ("Drop the gnocchi into the boiling water. They are ready the moment they float and bob on the surface, which takes about 2 minutes. Floating is the whole signal, and leaving them in after that turns them gluey.", 120),
+                ("Lift the gnocchi out with a slotted spoon into a bowl. Keep them, not the water.", nil),
+                ("Heat 2 tbsp olive oil in a frying pan over medium-high. Test it before the gnocchi go in: flick in a few drops of water, and they should skitter and bead across the surface. If they vanish with a crack the pan is too hot, so take it off the heat for thirty seconds.", 120),
+                ("Fry the gnocchi with a pinch of salt and pepper for 5 to 6 minutes, turning them, until golden and crisp on two sides. Give them room or they steam instead of colouring.", 360),
+                ("Tip the gnocchi back into the bowl and wipe the pan out if anything caught.", nil),
+                ("Turn the heat down to medium and melt 75g of butter. It will foam, and then the foam will subside. Watch the milk solids at the bottom: the moment they turn the colour of a hazelnut and it smells nutty, it is done, about 2 to 3 minutes. Black flecks and a sharp smell mean it has gone past, and burnt butter cannot be brought back.", 180),
+                ("Drop in the sage leaves. They will crackle and go still and crisp in about 2 minutes, and the flavour mellows as they fry.", 120),
+                ("Add the sliced garlic and stir it for 1 minute, no longer. It only wants to smell sweet, and garlic in hot butter turns bitter fast.", 60),
+                ("Return the gnocchi to the pan with a quarter teaspoon each of salt and pepper, and stir for 1 minute to coat everything in the butter.", 60),
+                ("Take the pan off the heat, then add the lemon zest and the juice of half the lemon and stir it through. Off the heat so the lemon stays bright.", nil),
+                ("Divide between bowls and finish with grated parmesan and a good grind of black pepper. Serve straight away while the sage is still crisp.", nil),
+            ],
+            sourceURL: "https://www.youtube.com/watch?v=3sUJwjvmzk8"
         ),
     ]
 }

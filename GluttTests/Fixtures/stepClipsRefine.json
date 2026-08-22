@@ -1,0 +1,33 @@
+{
+  "youtube_video_id": "3sUJwjvmzk8",
+  "youtube_url": "https://www.youtube.com/watch?v=3sUJwjvmzk8",
+  "recipe_title": "Gnocchi with Brown Butter and Sage",
+  "clips": [
+    {
+      "step_id": "s2",
+      "start_seconds": 40,
+      "end_seconds": 52,
+      "duration_seconds": 12,
+      "watch_label": "Boil the gnocchi",
+      "notice": "Boil the gnocchi until they float to the surface, which takes about 2 minutes.",
+      "confidence": 1,
+      "match_type": "grounded"
+    },
+    {
+      "step_id": "s3",
+      "start_seconds": 53,
+      "end_seconds": 61,
+      "duration_seconds": 8,
+      "watch_label": "Lift them out",
+      "notice": "Use a slotted spoon to transfer the gnocchi to a bowl.",
+      "confidence": 1,
+      "match_type": "grounded"
+    }
+  ],
+  "model": "gemini-2.5-flash",
+  "method": "grounded_av_refined",
+  "duration_seconds": null,
+  "refined": 0,
+  "cached": false,
+  "phase": "refine"
+}

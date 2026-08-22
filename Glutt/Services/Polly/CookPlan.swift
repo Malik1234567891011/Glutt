@@ -586,6 +586,7 @@ struct CookPlan: Codable, Equatable {
         "cut", "dice", "slice", "chop", "mince", "mash", "grate", "peel", "trim",
         "halve", "quarter", "julienne", "shred", "crush", "pat", "tear", "segment",
         "zest", "devein", "debone", "butterfly", "crumble", "wash", "rinse", "drain",
+        "pick", "stem", "separate",
     ]
 
     static func prepInstruction(mise: [MiseItem], equipment: [String] = []) -> String {

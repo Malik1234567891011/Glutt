@@ -147,3 +147,91 @@ final class GlassesSupport: @unchecked Sendable {
         return true
     }
 }
+
+// MARK: - The one session
+
+/// The single `DeviceSession` for the whole process.
+///
+/// The glasses allow exactly one session per device, and until this existed two
+/// places created them independently: the cook session's
+/// `MetaGlassesVisualSource`, and the Debug spike screen. Neither could see the
+/// other's, so the second one to ask got `sessionAlreadyExists` and gave up,
+/// falling back to the phone camera while a perfectly good stream was still
+/// delivering frames at 7fps to nobody.
+///
+/// Waiting it out was already attempted and could not work. `MetaGlassesVisualSource`
+/// kept a `retiringSession` and waited for it to reach `.stopped` before creating
+/// the next one, which is right, but that property lives on an instance that is
+/// rebuilt for every cook. A fresh instance has nothing to wait for and creates
+/// straight into someone else's live session. The wait has to outlive the thing
+/// doing the waiting, so it lives here.
+///
+/// Adopting rather than recreating is also the cheaper answer. Standing a session
+/// and camera up costs 1.8s on Bluetooth and fifteen to twenty on the softAP, so
+/// a second cook in the same launch now starts seeing immediately instead of
+/// paying that again.
+@MainActor
+final class GlassesSessionBroker {
+    static let shared = GlassesSessionBroker()
+
+    private var live: DeviceSession?
+    private var retiring: DeviceSession?
+
+    private init() {}
+
+    /// The session that is actually up, if there is one.
+    var liveSession: DeviceSession? {
+        guard let live, live.state == .started || live.state == .starting else { return nil }
+        return live
+    }
+
+    /// The live session, or a new one. `adopted` is true when an existing
+    /// session was handed back, in which case the caller must NOT call `start()`
+    /// on it again.
+    func acquire(selector: AutoDeviceSelector) async throws -> (session: DeviceSession, adopted: Bool) {
+        if let existing = liveSession {
+            PollyDebugLog.shared.log("glasses: adopted the live session (\(String(describing: existing.state)))")
+            return (existing, true)
+        }
+        // Whatever was there is not usable. Let go of it before asking for more,
+        // or the create lands inside its teardown.
+        if let stale = live {
+            live = nil
+            retiring = stale
+        }
+        await waitForRelease()
+        let created = try Wearables.shared.createSession(deviceSelector: selector)
+        live = created
+        return (created, false)
+    }
+
+    /// Give the session back. Only the holder can retire it, so a cook ending
+    /// cannot pull the device out from under the spike screen or the reverse.
+    func retire(_ session: DeviceSession) {
+        guard live === session else {
+            PollyDebugLog.shared.log("glasses: retire ignored, not the live session")
+            return
+        }
+        live = nil
+        retiring = session
+        session.stop()
+    }
+
+    /// `stop()` is fire-and-forget in 0.8, so the next `createSession` races the
+    /// teardown and throws. This is that race, waited out in the one place that
+    /// survives the objects doing the racing.
+    private func waitForRelease(timeout: TimeInterval = 6) async {
+        guard let retiring else { return }
+        self.retiring = nil
+        let startedAt = Date()
+        let deadline = startedAt.addingTimeInterval(timeout)
+        while Date() < deadline, retiring.state != .stopped, retiring.state != .idle {
+            try? await Task.sleep(for: .milliseconds(150))
+        }
+        let waited = Date().timeIntervalSince(startedAt)
+        guard waited > 0.15 else { return }
+        PollyDebugLog.shared.log(String(
+            format: "glasses: waited %.1fs for the old session to let go (now %@)",
+            waited, String(describing: retiring.state)))
+    }
+}

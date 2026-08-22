@@ -107,21 +107,23 @@ final class MetaGlassesVisualSource: PollyVisualSource {
             return
         }
 
-        // A session we stopped a moment ago is still tearing down, and 0.8 made
-        // `stop()` fire-and-forget, so creating the next one immediately loses
-        // the race and throws `sessionAlreadyExists`. Every automatic recovery in
-        // the last cook died exactly here.
-        await waitForSessionRelease()
-
         do {
-            let session = try Wearables.shared.createSession(deviceSelector: selector)
+            // One session per device, and it is brokered process-wide. This used
+            // to create unconditionally and wait only on a session THIS instance
+            // had stopped, which meant a fresh instance walked straight into the
+            // live session left by the previous cook or the spike screen and
+            // died on `sessionAlreadyExists` while that session carried on
+            // streaming to nobody.
+            let (session, adopted) = try await GlassesSessionBroker.shared.acquire(selector: selector)
             self.session = session
             observeSession(session)
-            try session.start()
-            guard await waitForStarted(session) else {
-                state = .unavailable(reason: "The glasses did not connect.")
-                teardown()
-                return
+            if !adopted {
+                try session.start()
+                guard await waitForStarted(session) else {
+                    state = .unavailable(reason: "The glasses did not connect.")
+                    teardown()
+                    return
+                }
             }
             // Open the camera here and leave it open for the cook.
             //
@@ -439,30 +441,6 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         return state == .streaming
     }
 
-    /// Block until the session we just stopped has actually stopped.
-    ///
-    /// 0.8 made `DeviceSession.stop()` synchronous and fire-and-forget, so the
-    /// object reports `.stopping` for a while after the call returns and the
-    /// device still considers the session live. Creating the next one inside that
-    /// window throws `sessionAlreadyExists`, which is what happened on both
-    /// automatic recoveries in the last cook and left the cook blind for the rest
-    /// of it. Documented by another developer on issue #227 a month before we hit
-    /// it.
-    private func waitForSessionRelease(timeout: TimeInterval = 6) async {
-        guard let retiring = retiringSession else { return }
-        retiringSession = nil
-        let startedAt = Date()
-        let deadline = startedAt.addingTimeInterval(timeout)
-        while Date() < deadline, retiring.state != .stopped, retiring.state != .idle {
-            try? await Task.sleep(for: .milliseconds(150))
-        }
-        let waited = Date().timeIntervalSince(startedAt)
-        guard waited > 0.15 else { return }
-        PollyDebugLog.shared.log(String(
-            format: "glasses: waited %.1fs for the old session to let go (now %@)",
-            waited, String(describing: retiring.state)))
-    }
-
     private func waitForDevice(selector: AutoDeviceSelector, timeout: TimeInterval = 4) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
@@ -496,10 +474,11 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         resumePhoto(nil)
         camera?.stop()
         camera = nil
-        // Kept, not dropped: the next `start()` has to wait for this one to
-        // finish stopping, and a nil'd reference cannot be asked.
-        retiringSession = session
-        session?.stop()
+        // The broker owns the stop and the wait that follows it, because both
+        // have to outlive this object: a new cook builds a new instance, and an
+        // instance that has been deallocated cannot be asked whether the session
+        // it stopped has finished stopping.
+        if let session { GlassesSessionBroker.shared.retire(session) }
         session = nil
     }
 
@@ -597,7 +576,6 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     private var stallWatchdog: Task<Void, Never>?
     /// The session we most recently asked to stop, kept only long enough to see
     /// it actually reach `.stopped`.
-    private var retiringSession: DeviceSession?
 
     /// Notices the feed going quiet and says so once, with the audio route
     /// attached.

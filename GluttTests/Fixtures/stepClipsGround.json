@@ -1,0 +1,40 @@
+{
+  "youtube_video_id": "3sUJwjvmzk8",
+  "youtube_url": "https://www.youtube.com/watch?v=3sUJwjvmzk8",
+  "recipe_title": "Gnocchi with Brown Butter and Sage",
+  "clips": [
+    {
+      "step_id": "s2",
+      "youtube_video_id": "3sUJwjvmzk8",
+      "start_seconds": 40,
+      "end_seconds": 52,
+      "duration_seconds": 12,
+      "match_type": "grounded",
+      "confidence": 1,
+      "watch_label": "Boil the gnocchi",
+      "notice": "Boil the gnocchi until they float to the surface, which takes about 2 minutes.",
+      "primary_action": "Hands dropping gnocchi into a pot of boiling water, gnocchi boiling and floating to the surface.",
+      "visual_cue": "Place 500 grams, which is about 1.1 pounds of fresh gnocchi in a large pan of boiling water. And boil the gnocchi until it floats.",
+      "action_still_ongoing_at_end": false
+    },
+    {
+      "step_id": "s3",
+      "youtube_video_id": "3sUJwjvmzk8",
+      "start_seconds": 53,
+      "end_seconds": 61,
+      "duration_seconds": 8,
+      "match_type": "grounded",
+      "confidence": 1,
+      "watch_label": "Lift them out",
+      "notice": "Use a slotted spoon to transfer the gnocchi to a bowl.",
+      "primary_action": "A slotted spoon lifting cooked gnocchi from the boiling water and transferring it into a black bowl.",
+      "visual_cue": "Then remove with a slotted spoon and place in a bowl.",
+      "action_still_ongoing_at_end": false
+    }
+  ],
+  "model": "gemini-2.5-flash",
+  "method": "grounded_av",
+  "duration_seconds": null,
+  "cached": false,
+  "phase": "ground"
+}

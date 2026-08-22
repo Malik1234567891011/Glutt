@@ -31,6 +31,11 @@ final class PollyDebugLog: @unchecked Sendable {
     /// past the cap so a runaway session can't balloon memory.
     func log(_ message: String) {
         let stamp = String(format: "+%.2fs", clock().timeIntervalSince(startLocked()))
+        #if DEBUG
+        // Mirrored to stdout so a session can be diagnosed from the runtime log
+        // without tapping through the app to copy it out.
+        print("POLLY \(stamp) \(message)")
+        #endif
         lock.lock(); defer { lock.unlock() }
         lines.append("\(stamp) \(message)")
         if lines.count > cap {

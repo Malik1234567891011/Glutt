@@ -61,6 +61,39 @@ enum CookPlanCompiler {
         )
     }
 
+    // MARK: - Bundled plans
+
+    /// Recipes whose cook plan ships with the app instead of being compiled.
+    ///
+    /// Compiling is an LLM call, so the same recipe can produce a different plan
+    /// on any two runs: different wording, a different split of steps, and, the
+    /// part that matters, a `visualCheck` that may or may not mention the thing
+    /// the cook actually needs to look for. That is an acceptable trade for the
+    /// library at large and a bad one for a dish being cooked in front of an
+    /// audience, where the whole point is that Chef says "they are ready the
+    /// moment they float" at the right second.
+    ///
+    /// So this dish gets a hand-written plan, checked in, used verbatim. Keyed by
+    /// recipe title because that is what identifies a bundled dish across
+    /// installs; `sourceURL` would be tidier but is re-stamped by content
+    /// versions and has gone missing before (see `ChefContent.contentVersion` 5).
+    ///
+    /// Nothing else changes: the plan is a normal `CookPlan`, it still goes
+    /// through `ensuringLeadingPrep`, and the cook has no idea. Delete the entry
+    /// and the compiler takes over again.
+    static let bundledPlans: [String: String] = [
+        "Gnocchi with Brown Butter and Sage": "CookPlan-gnocchi-brown-butter-sage",
+    ]
+
+    static func bundledPlan(for recipe: Recipe, bundle: Bundle = .main) -> CookPlan? {
+        guard let resource = bundledPlans[recipe.title],
+              let url = bundle.url(forResource: resource, withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let plan = try? JSONDecoder().decode(CookPlan.self, from: data)
+        else { return nil }
+        return plan
+    }
+
     // MARK: - Compile
 
     /// Cache hit → cached plan. Otherwise one LLM call; success is stored
@@ -74,6 +107,15 @@ enum CookPlanCompiler {
                                               temperature: 0.2, timeout: 45)
         }
     ) async -> CookPlan {
+        // Before the cache and before the network: a bundled plan is the answer,
+        // every time, offline included.
+        if var bundled = bundledPlan(for: recipe) {
+            bundled.isFallback = false
+            let prepared = bundled.ensuringLeadingPrep()
+            PollyDebugLog.shared.log("plan: bundled plan for \"\(recipe.title)\" (\(prepared.steps.count) steps)")
+            return prepared
+        }
+
         let key = cacheKey(recipe: recipe, scale: scale)
         if let cached = cachedPlan(forKey: key) {
             let upgraded = cached.ensuringLeadingPrep()

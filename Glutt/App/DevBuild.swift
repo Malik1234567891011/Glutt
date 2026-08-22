@@ -40,6 +40,29 @@ enum DevBuild {
     static let realGatesEnvironmentKey = "GLUTT_REAL_GATES"
     static let relaxGatesEnvironmentKey = "GLUTT_RELAX_GATES"
 
+    /// Pretend a pair of Meta glasses is connected, without any hardware.
+    ///
+    /// The "how Chef treats seeing" picker (Perfectionist / Watchful / Hands
+    /// off) is drawn in the pre-cook briefing only when
+    /// `GlassesSupport.hasConnectedGlasses()` says yes, which needs a real pair
+    /// registered and awake. `MWDATMockDevice` cannot stand in: it is linked to
+    /// the test target only, because its duplicate ObjC symbols with
+    /// `MWDATCamera` crash real streams. So without this the entire setting was
+    /// unreachable on a phone with nothing paired, which is how it came to look
+    /// like the feature had been lost.
+    ///
+    /// Fakes the ANSWER, not a camera. Nothing downstream delivers a frame.
+    static let fakeGlassesArgument = "-fakeGlasses"
+    static let fakeGlassesEnvironmentKey = "GLUTT_FAKE_GLASSES"
+
+    static var fakeGlasses: Bool {
+        #if DEBUG
+        return isSet(fakeGlassesArgument, fakeGlassesEnvironmentKey)
+        #else
+        return false
+        #endif
+    }
+
     private static func isSet(_ argument: String, _ environmentKey: String) -> Bool {
         if ProcessInfo.processInfo.arguments.contains(argument) { return true }
         return ProcessInfo.processInfo.environment[environmentKey] == "1"

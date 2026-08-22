@@ -93,6 +93,9 @@ final class GlassesSupport: @unchecked Sendable {
     /// Costs a moment because the selector resolves by observing rather than by
     /// asking, which is why `MetaGlassesVisualSource.start` waits on it too.
     func hasConnectedGlasses(timeout: TimeInterval = 2) async -> Bool {
+        // `-fakeGlasses` / `GLUTT_FAKE_GLASSES=1`, Debug only. See `DevBuild`
+        // for why this exists and what it does not do.
+        if DevBuild.fakeGlasses { return true }
         guard isAvailable else { return false }
         let selector = AutoDeviceSelector(wearables: Wearables.shared)
         let deadline = Date().addingTimeInterval(timeout)

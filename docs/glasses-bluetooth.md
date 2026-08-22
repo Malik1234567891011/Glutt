@@ -128,6 +128,33 @@ An earlier comment claimed 0.8 does not read the key at all, on the strength of
 `strings` output. `strings` does not enumerate Swift string literals, so that
 observation could not tell "not read" from "not visible to grep".
 
+## Seeing the three "how Chef treats seeing" modes without glasses
+
+Perfectionist / Watchful / Hands off (`ChefWatchfulness`) are drawn in the
+pre-cook briefing, and **only when a real pair is connected**:
+`PreCookBriefingView` renders the picker `if glassesConnected == true`, which
+comes from `GlassesSupport.hasConnectedGlasses()`.
+
+That gate is deliberate. Offering "Chef watches everything" to someone with no
+camera is a promise about a cook that cannot happen. It also means that on a
+phone with nothing paired the setting is completely invisible, which reads
+exactly like the feature having been lost, and `MWDATMockDevice` cannot stand in
+because it is linked to the test target only.
+
+So, Debug builds only:
+
+```bash
+# simulator
+-fakeGlasses
+# device (launch arguments containing an "l" are shredded by devicectl)
+GLUTT_FAKE_GLASSES=1
+```
+
+`DevBuild.fakeGlasses` makes `hasConnectedGlasses()` answer yes. It fakes the
+ANSWER, not a camera: `MetaGlassesVisualSource.start` still waits on a real
+device selector and will time out, so use it to see and choose a mode, not to
+test vision.
+
 ## Running it
 
 The spike screen is Debug-only, in Settings under Developer. `-mockGlasses`

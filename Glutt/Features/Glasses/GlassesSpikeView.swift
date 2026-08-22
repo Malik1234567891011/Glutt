@@ -901,12 +901,18 @@ final class GlassesSpikeModel {
                 return append("! no eligible device appeared. Power on and unfold first.")
             }
             do {
-                let session = try Wearables.shared.createSession(deviceSelector: selector)
+                // Through the broker, so the spike and a cook session cannot own
+                // two sessions for one device. Whichever asks second adopts.
+                let (session, adopted) = try await GlassesSessionBroker.shared.acquire(selector: selector)
                 self.session = session
                 sessionStatus = describe(session.state)
                 observeSession(session)
-                try session.start()
-                append("session.start() accepted, waiting for .started")
+                if adopted {
+                    append("adopted the session already running (\(describe(session.state)))")
+                } else {
+                    try session.start()
+                    append("session.start() accepted, waiting for .started")
+                }
                 append("memory at session start: \(MemoryProbe.summary)")
             } catch {
                 append("! session failed: \(message(error))")
@@ -984,7 +990,7 @@ final class GlassesSpikeModel {
 
         camera?.stop()
         camera = nil
-        session?.stop()
+        if let session { GlassesSessionBroker.shared.retire(session) }
         session = nil
         sessionStatus = "none"
         streamStatus = "none"

@@ -10,6 +10,18 @@ import { config } from "./config.js";
 import { store } from "./store.js";
 import { reviewHTML } from "./reviewPage.js";
 
+/// Pilot path -> YouTube/TikTok id. A map rather than a chain of ternaries,
+/// which is what it was: adding the gnocchi demo meant a fourth nested branch
+/// and a hand-edited log line that had already drifted.
+const PILOT_ROUTES = {
+  "/v1/pilot/eggs-benedict": "gBJjRYk0yC0",
+  "/v1/pilot/beef-wellington": "Cyskqnp1j64",
+  "/v1/pilot/creme-brulee": "6tSdlo0r0Io",
+  "/v1/pilot/tiktok-scrambled-eggs": "7333706662634704161",
+  "/v1/pilot/gnocchi-brown-butter": "3sUJwjvmzk8",
+};
+
+
 const ROOT_OBJECTS = path.join(config.dataDir, "objects");
 
 async function readBody(req) {
@@ -109,20 +121,9 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { ok: true, segment: seg });
     }
 
-    if (
-      url.pathname === "/v1/pilot/eggs-benedict"
-      || url.pathname === "/v1/pilot/beef-wellington"
-      || url.pathname === "/v1/pilot/creme-brulee"
-      || url.pathname === "/v1/pilot/tiktok-scrambled-eggs"
-    ) {
+    if (PILOT_ROUTES[url.pathname]) {
       await store.load();
-      const externalId = url.pathname.endsWith("beef-wellington")
-        ? "Cyskqnp1j64"
-        : url.pathname.endsWith("creme-brulee")
-          ? "6tSdlo0r0Io"
-          : url.pathname.endsWith("tiktok-scrambled-eggs")
-            ? "7333706662634704161"
-            : "gBJjRYk0yC0";
+      const externalId = PILOT_ROUTES[url.pathname];
       const asset = Object.values(store.data.source_assets).find(
         (a) => a.external_id === externalId && a.status !== "revoked"
       );
@@ -220,6 +221,6 @@ await store.load();
 server.listen(config.localPlaybackPort, "0.0.0.0", () => {
   console.log(`[local-playback] http://127.0.0.1:${config.localPlaybackPort}`);
   console.log(
-    `[local-playback] pilots: /v1/pilot/eggs-benedict · /v1/pilot/beef-wellington · /v1/pilot/creme-brulee · /v1/pilot/tiktok-scrambled-eggs`
+    `[local-playback] pilots: ${Object.keys(PILOT_ROUTES).join(" · ")}`
   );
 });

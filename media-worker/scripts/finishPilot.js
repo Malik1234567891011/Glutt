@@ -16,12 +16,14 @@ const FIXTURES = {
   gBJjRYk0yC0: () => import("../fixtures/eggsBenedictSegments.js").then((m) => m.eggsBenedictSegments),
   Cyskqnp1j64: () => import("../fixtures/beefWellingtonSegments.js").then((m) => m.beefWellingtonSegments),
   "6tSdlo0r0Io": () => import("../fixtures/cremeBruleeSegments.js").then((m) => m.cremeBruleeSegments),
+  "3sUJwjvmzk8": () =>
+    import("../fixtures/gnocchiBrownButterSegments.js").then((m) => m.gnocchiBrownButterSegments),
 };
 
 async function main() {
   const externalId = process.argv[2];
   if (!externalId || !FIXTURES[externalId]) {
-    console.error("usage: node scripts/finishPilot.js <gBJjRYk0yC0|Cyskqnp1j64|6tSdlo0r0Io>");
+    console.error(`usage: node scripts/finishPilot.js <${Object.keys(FIXTURES).join("|")}>`);
     process.exit(1);
   }
   await store.load();

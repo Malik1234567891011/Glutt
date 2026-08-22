@@ -65,7 +65,13 @@ struct PollyAdaptiveCanvasView: View {
         return showsCameraFeed ? "Back to step video" : "Show Chef your pan"
     }
     /// Shrink the step card only while a native clip is playing — never on Tools/Prep.
-    private var sheetMini: Bool { nativeClip != nil && clipPlaying && !showsCameraFeed }
+    /// The step card shrinks to a strip so the video is actually watchable.
+    ///
+    /// Was gated on `nativeClip`, which meant it only ever happened for dishes
+    /// whose clips are materialised MP4s on the server. Anything falling back to
+    /// a Gemini-grounded YouTube window, which is most recipes and every new one,
+    /// played its video behind a full-height card. `hasClip` counts both.
+    private var sheetMini: Bool { hasClip && clipPlaying && !showsCameraFeed }
     /// Missing-ingredients screen Polly talks through before Tools.
     private var showingPreflight: Bool {
         !controller.preflightDismissed && !controller.missingIngredients.isEmpty
@@ -236,7 +242,13 @@ struct PollyAdaptiveCanvasView: View {
             controller.syncClipPlaybackForCurrentStep()
             // Local mirror — restart token also bumps nonce when a clip exists.
             if controller.nativeClipForCurrentStep() == nil {
-                clipPlaying = false
+                // A native clip reports its own playback state through
+                // `mediaState`. A YouTube window reports nothing: it simply
+                // autoplays once it is on the canvas. Reading "no native clip"
+                // as "nothing is playing" meant `clipPlaying` was forced false
+                // on every step change, so the card never shrank for a
+                // YouTube-backed clip even while the video played behind it.
+                clipPlaying = youtubeClip != nil && controller.clipPlaybackDesired
                 replayNonce += 1
             }
         }

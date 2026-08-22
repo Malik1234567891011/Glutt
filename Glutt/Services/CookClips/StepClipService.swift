@@ -82,11 +82,18 @@ actor StepClipService {
 
     // MARK: - HTTP
 
+    /// Video length, so grounding cannot place a clip past the end.
+    ///
+    /// Worth more than it looks. Asked to ground the gnocchi video with no entry
+    /// here, the model returned windows at 4:17 and 5:19 with confidence 1 on a
+    /// video that is 3:56 long. Both would have played nothing. Anything added
+    /// to `NativeClipService.localPaths` or shipped as a pilot belongs here too.
     private func knownDuration(for youtubeURL: String) -> Int? {
         switch YouTubeEmbed.videoId(from: youtubeURL) {
         case "gBJjRYk0yC0": return 274
         case "Cyskqnp1j64": return 471
         case "6tSdlo0r0Io": return 481
+        case "3sUJwjvmzk8": return 236
         default: return nil
         }
     }

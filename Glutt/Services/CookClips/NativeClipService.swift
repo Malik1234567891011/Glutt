@@ -30,6 +30,7 @@ actor NativeClipService {
         "Cyskqnp1j64": "/v1/pilot/beef-wellington",
         "6tSdlo0r0Io": "/v1/pilot/creme-brulee",
         "7333706662634704161": "/v1/pilot/tiktok-scrambled-eggs",
+        "3sUJwjvmzk8": "/v1/pilot/gnocchi-brown-butter",
     ]
 
     /// v2: v1 entries held signed URLs with no expiry and are not salvageable.
@@ -39,8 +40,12 @@ actor NativeClipService {
     /// a stale caption, it is the wrong video on the wrong step. A phone holding
     /// an old entry once matched "minutes" in a boil step against a garlic
     /// segment's keywords and played the garlic clip there.
+    ///
+    /// v3 was this rule being learned twice. The gnocchi pilot gained a tenth
+    /// segment, the pan coming up to heat, and cached v2 responses kept serving
+    /// nine, so the pan-test step went on borrowing the frying clip.
     private func cacheKey(for mediaID: String) -> String {
-        "glutt.nativeClips.\(mediaID).v2"
+        "glutt.nativeClips.\(mediaID).v3"
     }
 
     /// Re-sign this long before the URLs lapse — a cook can sit on one step for

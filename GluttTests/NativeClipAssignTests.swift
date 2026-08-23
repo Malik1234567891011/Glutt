@@ -1,93 +1,68 @@
 import XCTest
 @testable import Glutt
 
-/// Shared dessert words ("vanilla", "cream", "sugar", "custard") used to make
-/// the same pilot clip win for several steps. Assignment must stay 1:1.
+/// Clip assignment on the gnocchi demo, which is where this went wrong in a way
+/// nobody would have caught by reading the code.
 final class NativeClipAssignTests: XCTestCase {
 
-    private func clip(
-        id: String,
-        keywords: [String],
-        start: Double,
-        end: Double
-    ) -> NativeStepClip {
+    private func clip(_ id: String, _ keywords: [String]) -> NativeStepClip {
         NativeStepClip(
-            segmentID: id,
-            startSeconds: start,
-            endSeconds: end,
-            durationSeconds: end - start,
-            watchLabel: id,
-            teachingLabel: id,
-            notice: "",
-            visualCue: "",
-            stepKeywords: keywords,
-            presentationMode: "blurFill",
-            playbackURL: URL(string: "https://example.com/\(id).mp4")!,
-            thumbnailURL: nil,
-            masterURL: nil,
-            usesVirtualRange: false,
-            creatorAttribution: "Preppy Kitchen"
-        )
+            segmentID: id, startSeconds: 0, endSeconds: 10, durationSeconds: 10,
+            watchLabel: id, teachingLabel: id, notice: "", visualCue: "cue for \(id)",
+            stepKeywords: keywords, presentationMode: "blurFill",
+            playbackURL: URL(string: "http://localhost/\(id).mp4")!,
+            thumbnailURL: nil, masterURL: nil, usesVirtualRange: false,
+            creatorAttribution: nil)
     }
 
-    func testAssignClipsNeverReusesASegmentWhenKeywordsOverlap() async {
-        let pilot = NativePilotClipsResponse(
-            sourceAssetID: "asset",
-            status: "ready",
-            durationSeconds: 481,
-            title: "Crème Brûlée",
-            clips: [
-                clip(id: "vanilla", keywords: ["vanilla", "bean", "scrape", "split", "seeds"], start: 17, end: 48),
-                clip(id: "cream", keywords: ["cream", "simmer", "steep", "infuse", "scald", "vanilla"], start: 49, end: 86),
-                clip(id: "yolks", keywords: ["yolk", "sugar", "salt", "whisk", "separate"], start: 95, end: 150),
-                clip(id: "strain", keywords: ["strain", "sieve", "custard", "pour", "temper"], start: 161, end: 218),
-                clip(id: "bake", keywords: ["ramekin", "bake", "water bath", "oven", "wobble"], start: 228, end: 289),
-                clip(id: "torch", keywords: ["torch", "sugar", "caramel", "brulee", "amber"], start: 321, end: 400),
-            ],
-            expiresIn: 3600
-        )
-        // Titles/instructions that all mention overlapping dessert vocabulary —
-        // the bug assigned "vanilla" or "cream" to three of these.
-        let steps: [(id: String, title: String, instruction: String)] = [
-            ("s1", "Prepare vanilla bean", "Split the vanilla bean and scrape the seeds for the cream."),
-            ("s2", "Heat cream with vanilla", "Simmer the cream with the vanilla until scalded, then steep."),
-            ("s3", "Whisk yolks with sugar", "Whisk egg yolks with sugar and salt."),
-            ("s4", "Strain the custard", "Strain the warm cream into the yolks, then strain the custard again."),
-            ("s5", "Bake in a water bath", "Fill ramekins and bake in a water bath until the centers wobble."),
-            ("s6", "Torch the sugar", "Sprinkle sugar and torch until amber caramel — the crème brûlée top."),
-        ]
-
-        let map = await NativeClipService.shared.assignClips(to: steps, from: pilot)
-        XCTAssertEqual(map.count, 6)
-        let ids = steps.compactMap { map[$0.id]?.segmentID }
-        XCTAssertEqual(ids.count, 6)
-        XCTAssertEqual(Set(ids).count, 6, "each cook step must get a different clip, got \(ids)")
-        XCTAssertEqual(map["s1"]?.segmentID, "vanilla")
-        XCTAssertEqual(map["s2"]?.segmentID, "cream")
-        XCTAssertEqual(map["s6"]?.segmentID, "torch")
+    private var pilot: NativePilotClipsResponse {
+        response([
+            clip("boil", ["float", "floats", "slotted"]),
+            clip("garlic", ["garlic", "sliced", "minute"]),
+            clip("butter", ["butter", "brown", "nutty"]),
+        ])
     }
 
-    func testAssignClipsFillsGapsWithoutDuplicating() async {
-        let pilot = NativePilotClipsResponse(
-            sourceAssetID: "asset",
-            status: "ready",
-            durationSeconds: 100,
-            title: "Test",
-            clips: [
-                clip(id: "a", keywords: ["zzzz"], start: 0, end: 10),
-                clip(id: "b", keywords: ["uniquephrase"], start: 10, end: 20),
-                clip(id: "c", keywords: ["yyyy"], start: 20, end: 30),
+    private func response(_ clips: [NativeStepClip]) -> NativePilotClipsResponse {
+        NativePilotClipsResponse(
+            sourceAssetID: "asset", status: "ready", durationSeconds: 236,
+            title: "Test", clips: clips, expiresIn: nil)
+    }
+
+    /// The bug. "Water on" matches nothing, and used to be handed whichever clip
+    /// was next in the list, which was the garlic one. The canvas then played
+    /// garlic frying full screen AND printed the garlic cue as the step's
+    /// description, so filling a pan with water read as "pale gold at the edges
+    /// and must not go brown".
+    func testAStepWithNoMatchGetsNoClip() async {
+        let map = await NativeClipService.shared.assignClips(
+            to: [
+                (id: "s1", title: "Water on", instruction: "Fill a large pan with water and salt it well."),
+                (id: "s2", title: "Boil the gnocchi", instruction: "They are done when they float, then out with a slotted spoon."),
             ],
-            expiresIn: nil
-        )
-        let steps: [(id: String, title: String, instruction: String)] = [
-            ("s1", "No match here", "Nothing relevant."),
-            ("s2", "Has the phrase", "Do the uniquephrase carefully."),
-            ("s3", "Also no match", "Still nothing."),
-        ]
-        let map = await NativeClipService.shared.assignClips(to: steps, from: pilot)
-        XCTAssertEqual(map["s2"]?.segmentID, "b")
-        XCTAssertEqual(Set(map.values.map(\.segmentID)).count, 3)
-        XCTAssertEqual(map.count, 3)
+            from: pilot)
+        XCTAssertNil(map["s1"], "filling a pan with water has nothing to show")
+        XCTAssertEqual(map["s2"]?.segmentID, "boil")
+    }
+
+    /// "boil" must not match the "oil" keyword. The word-boundary regex is what
+    /// stops it, and it is the sort of thing that silently regresses.
+    func testBoilDoesNotMatchOil() async {
+        let map = await NativeClipService.shared.assignClips(
+            to: [(id: "s1", title: "Water on", instruction: "Put it on to boil.")],
+            from: response([clip("oil", ["oil", "heat"])]))
+        XCTAssertNil(map["s1"], "\"boil\" contains \"oil\" and must not match it")
+    }
+
+    /// One segment per step, still.
+    func testASegmentIsNeverUsedTwice() async {
+        let map = await NativeClipService.shared.assignClips(
+            to: [
+                (id: "s1", title: "Garlic in", instruction: "Add the sliced garlic."),
+                (id: "s2", title: "More garlic", instruction: "Add the sliced garlic again."),
+            ],
+            from: pilot)
+        XCTAssertEqual(map["s1"]?.segmentID, "garlic")
+        XCTAssertNil(map["s2"], "the second step cannot reuse the same segment")
     }
 }

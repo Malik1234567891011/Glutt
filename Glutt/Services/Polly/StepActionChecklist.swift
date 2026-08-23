@@ -38,10 +38,14 @@ enum StepActionChecklist {
                 let name = mise.name.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !name.isEmpty else { continue }
                 let text: String
+                // Same phrasing rule as the Prep step's own sentence, so the
+                // checklist does not read "Slice finely the garlic" beside an
+                // instruction that says "slice the garlic finely".
                 if prep.isEmpty {
                     text = "Ready: \(name)"
                 } else {
-                    text = "\(prep.prefix(1).uppercased() + prep.dropFirst()) the \(name)"
+                    let phrase = CookPlan.phrase(for: mise)
+                    text = phrase.prefix(1).uppercased() + phrase.dropFirst()
                 }
                 rows.append(Item(id: "mise-\(i)", text: text))
             }

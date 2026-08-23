@@ -59,9 +59,16 @@ final class GnocchiDemoPlanTests: XCTestCase {
     }
 
     /// "Does the chef call us out when the gnocchi is floating?"
+    ///
+    /// Boiling and lifting out are one step. They were two, and that asked the
+    /// cook to watch them float, then stand there waiting to be told to fish
+    /// them out of the water they are going gluey in.
     func testFloatingIsTheDonenessCue() throws {
         let boil = try step("s2")
         XCTAssertTrue(boil.instruction.lowercased().contains("float"))
+        XCTAssertTrue(boil.instruction.lowercased().contains("slotted spoon"),
+                      "floating and lifting out are the same moment")
+        XCTAssertTrue(boil.instruction.lowercased().contains("do not wait for me"))
         let look = try XCTUnwrap(boil.visualCheck).lowercased()
         XCTAssertTrue(look.contains("float") || look.contains("bob"))
         XCTAssertTrue(look.contains("gluey"), "and why leaving them matters")
@@ -71,7 +78,7 @@ final class GnocchiDemoPlanTests: XCTestCase {
     /// "Does he tell us to test the pan with water first, and what it should
     /// look like at the right temperature?"
     func testTheWaterTestIsItsOwnStepWithAVisualCue() throws {
-        let test = try step("s4")
+        let test = try step("s3")
         XCTAssertTrue(test.instruction.lowercased().contains("water"))
         let look = try XCTUnwrap(test.visualCheck).lowercased()
         XCTAssertTrue(look.contains("skitter") || look.contains("bead"),
@@ -85,7 +92,7 @@ final class GnocchiDemoPlanTests: XCTestCase {
     /// Browned is the goal and burnt is the failure, roughly fifteen seconds
     /// apart, so both have to be described.
     func testBrownButterDescribesBothTheTargetAndTheFailure() throws {
-        let butter = try step("s7")
+        let butter = try step("s5")
         let look = try XCTUnwrap(butter.visualCheck).lowercased()
         XCTAssertTrue(look.contains("foam"))
         XCTAssertTrue(look.contains("hazelnut") || look.contains("nutty"))
@@ -97,13 +104,13 @@ final class GnocchiDemoPlanTests: XCTestCase {
     }
 
     func testGarlicCarriesItsOwnWarning() throws {
-        let garlic = try step("s9")
+        let garlic = try step("s7")
         XCTAssertEqual(garlic.timerSeconds, 60)
         XCTAssertTrue(try XCTUnwrap(garlic.recovery).lowercased().contains("bitter"))
     }
 
     func testLemonGoesInOffTheHeat() throws {
-        XCTAssertTrue(try step("s11").instruction.lowercased().contains("off the heat"))
+        XCTAssertTrue(try step("s9").instruction.lowercased().contains("off the heat"))
     }
 
     // MARK: Shape
@@ -114,6 +121,26 @@ final class GnocchiDemoPlanTests: XCTestCase {
         let cookSteps = try plan().steps.filter { !CookPlan.isSetupStep($0) }
         XCTAssertEqual(cookSteps.first?.id, "s1")
         XCTAssertTrue(try XCTUnwrap(cookSteps.first).instruction.lowercased().contains("boil"))
+    }
+
+    /// Every step that ends on a judgement has to say what the cook is waiting
+    /// for, or they have no idea when to ask for the next one.
+    func testEveryJudgementStepSaysWhenToMoveOn() throws {
+        for id in ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"] {
+            let text = try step(id).instruction.lowercased()
+            XCTAssertTrue(
+                text.contains("tell me") || text.contains("do not wait for me"),
+                "step \(id) never tells the cook when to move on")
+        }
+    }
+
+    /// The pan gets tested twice, and the second one is the one that saves the
+    /// butter: the pan you just fried gnocchi in is too hot for it.
+    func testThePanIsRetestedBeforeTheButter() throws {
+        let butter = try step("s5").instruction.lowercased()
+        XCTAssertTrue(butter.contains("down to medium"), "the target heat is restated")
+        XCTAssertTrue(butter.contains("test it again"))
+        XCTAssertTrue(butter.contains("too hot for butter"), "and why")
     }
 
     /// The scheduling detector must be happy with a plan we hand-wrote.

@@ -34,12 +34,16 @@ actor NativeClipService {
     ]
 
     /// v2: v1 entries held signed URLs with no expiry and are not salvageable.
-    /// v3: the gnocchi pilot gained a tenth segment (the pan coming up to heat)
-    ///     and a cached v2 response kept serving nine, so the pan-test step went
-    ///     on borrowing the frying clip. Bump whenever a pilot's segment list
-    ///     changes, not just when the URL shape does.
+    /// v3: the gnocchi pilot gained a segment (the pan coming up to heat) and a
+    ///     cached v2 response kept serving the old list, so the pan-test step
+    ///     went on borrowing the frying clip.
+    /// v4: boil and lift merged into one clip. A cached v3 still held the
+    ///     separate `lift` segment, and the merged step matched that instead, so
+    ///     "Boil the gnocchi, then lift them out" read as "slotted spoon, not a
+    ///     colander". Bump whenever a pilot's segment LIST changes, not only
+    ///     when the URL shape does.
     private func cacheKey(for mediaID: String) -> String {
-        "glutt.nativeClips.\(mediaID).v3"
+        "glutt.nativeClips.\(mediaID).v4"
     }
 
     /// Re-sign this long before the URLs lapse — a cook can sit on one step for
@@ -153,18 +157,18 @@ actor NativeClipService {
             map[step.id] = clip
             used.insert(clip.segmentID)
         }
-        if response.clips.isEmpty || cookSteps.isEmpty { return map }
-        var next = 0
-        for step in cookSteps where map[step.id] == nil {
-            while next < response.clips.count, used.contains(response.clips[next].segmentID) {
-                next += 1
-            }
-            guard next < response.clips.count else { break }
-            let clip = response.clips[next]
-            map[step.id] = clip
-            used.insert(clip.segmentID)
-            next += 1
-        }
+        // A step with no keyword match gets NO clip.
+        //
+        // This used to hand every leftover clip to every unmatched step in list
+        // order, on the theory that an unused clip is a waste. It is not: the
+        // canvas plays the assigned clip full screen AND shows that clip's
+        // `visual_cue` as the step's description, so a wrong assignment is not a
+        // slightly-off illustration, it is a step that shows the wrong video and
+        // reads as the wrong instruction. "Water on" was being taught to look
+        // for garlic that is "pale gold at the edges and must not go brown".
+        //
+        // Some steps genuinely have nothing to show. Filling a pan with water is
+        // one. Silence is the correct output.
         return map
     }
 

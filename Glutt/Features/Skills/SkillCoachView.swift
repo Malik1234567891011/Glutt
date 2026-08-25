@@ -31,6 +31,7 @@ struct SkillCoachView: View {
                 centrepiece
                 Spacer(minLength: 0)
                 transcript
+                listeningDock
                 footer
             }
             .padding(Theme.Spacing.lg)
@@ -68,12 +69,7 @@ struct SkillCoachView: View {
         case .holding(let progress):
             HoldRing(progress: progress, seconds: check.holdSeconds)
         case .analysing:
-            VStack(spacing: Theme.Spacing.md) {
-                ProgressView().controlSize(.large).tint(Theme.Colors.accent)
-                Text("Polly is checking your grip")
-                    .font(.headline)
-                    .foregroundStyle(Theme.Colors.textPrimary)
-            }
+            LookingAnimation()
         case .learned:
             resultBadge(
                 glyph: "checkmark.seal.fill",
@@ -128,14 +124,49 @@ struct SkillCoachView: View {
         }
     }
 
+    /// The same promise the cook screen makes: you can see when she is hearing
+    /// you. Without it a cook talks into a phone that gives no sign it is on,
+    /// which is the moment they go back to pressing buttons.
+    private var listeningDock: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            VoiceBars(state: barState)
+            Text(dockCopy)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.Colors.textPrimary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.vertical, Theme.Spacing.sm)
+        .background(Theme.Colors.card, in: Capsule())
+    }
+
+    private var barState: VoiceBars.State {
+        guard let session else { return .idle }
+        if session.isSpeaking { return .speaking }
+        if case .analysing = session.stage { return .thinking }
+        if session.isThinking { return .thinking }
+        return session.isListening ? .listening : .idle
+    }
+
+    private var dockCopy: String {
+        guard let session, session.phase == .live else { return "Connecting" }
+        if session.isSpeaking { return "Polly is talking" }
+        if case .holding = session.stage { return "Hold still" }
+        if case .analysing = session.stage { return "Looking at your hand" }
+        if session.isThinking { return "Thinking" }
+        return session.isListening ? "Listening, just talk to her" : "One moment"
+    }
+
     @ViewBuilder private var footer: some View {
         VStack(spacing: Theme.Spacing.sm) {
             if session?.stage == .visionUnavailable {
                 Button("Try the check again") { session?.checkNow() }
                     .buttonStyle(SecondaryButtonStyle())
             } else if session?.canCheck == true {
+                // Secondary, deliberately. Asking her out loud is the interaction;
+                // this is the fallback for a noisy kitchen, not the way in.
                 Button("Check my grip") { session?.checkNow() }
-                    .buttonStyle(PrimaryButtonStyle())
+                    .buttonStyle(SecondaryButtonStyle())
             }
             Button("Done") { dismiss() }
                 .buttonStyle(SecondaryButtonStyle())
@@ -188,5 +219,96 @@ private struct HoldRing: View {
             }
         }
         .frame(width: 156, height: 156)
+    }
+}
+
+/// Five bars that say which way the conversation is flowing.
+///
+/// Lifted in spirit from the cook canvas dock, because a cook who has used the
+/// app once already knows what these mean, and inventing a second visual
+/// language for the same fact would be worse than copying.
+struct VoiceBars: View {
+    enum State { case idle, listening, speaking, thinking }
+
+    let state: State
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 0.12)) { timeline in
+            let t = timeline.date.timeIntervalSinceReferenceDate
+            HStack(spacing: 3) {
+                ForEach(0..<5, id: \.self) { i in
+                    Capsule()
+                        .fill(tint)
+                        .frame(width: 3, height: height(index: i, t: t))
+                }
+            }
+            .frame(width: 28, height: 24)
+        }
+    }
+
+    private var tint: Color {
+        switch state {
+        case .idle: Theme.Colors.mutedSoft
+        case .listening, .speaking: Theme.Colors.accent
+        case .thinking: Theme.Colors.amber
+        }
+    }
+
+    private func height(index: Int, t: Double) -> CGFloat {
+        let base: CGFloat
+        switch state {
+        case .listening: base = 8 + CGFloat((sin(t * 8 + Double(index)) + 1) * 7)
+        case .speaking: base = 6 + CGFloat((sin(t * 6 + Double(index)) + 1) * 6)
+        case .thinking: base = 5 + CGFloat((sin(t * 3 + Double(index)) + 1) * 3)
+        case .idle: base = 4 + (index == 2 ? 3 : 0)
+        }
+        return max(4, min(22, base))
+    }
+}
+
+/// What "Polly is looking at your hand" looks like.
+///
+/// A spinner says the app is busy. This is meant to say something different and
+/// more specific: somebody is examining the thing you are holding. The ring
+/// sweeps like a pass over the hand rather than spinning like a wait, and the
+/// text names what is being looked at, because the five seconds of holding still
+/// have to feel like part of the lesson rather than the price of it.
+private struct LookingAnimation: View {
+    @State private var sweep = false
+    @State private var pulse = false
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.lg) {
+            ZStack {
+                Circle()
+                    .fill(Theme.Colors.greenTint)
+                    .frame(width: 156, height: 156)
+                    .scaleEffect(pulse ? 1.04 : 0.96)
+
+                Circle()
+                    .trim(from: 0, to: 0.22)
+                    .stroke(
+                        Theme.Colors.accent,
+                        style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                    .frame(width: 156, height: 156)
+                    .rotationEffect(.degrees(sweep ? 360 : 0))
+
+                Image(systemName: "hand.raised.fingers.spread")
+                    .font(.system(size: 46, weight: .light))
+                    .foregroundStyle(Theme.Colors.accent)
+                    .opacity(pulse ? 1 : 0.65)
+            }
+            Text("Looking at your grip")
+                .font(.headline)
+                .foregroundStyle(Theme.Colors.textPrimary)
+        }
+        .onAppear {
+            withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) {
+                sweep = true
+            }
+            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+        }
     }
 }

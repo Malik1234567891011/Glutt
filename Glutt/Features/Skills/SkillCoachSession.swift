@@ -82,8 +82,23 @@ final class SkillCoachSession {
     private(set) var attempts: [SkillAttempt] = []
     /// True while she is talking, so the screen can show it and the ring can wait.
     private(set) var isSpeaking = false
+    /// A turn is in flight: she is deciding, or a look is being assessed.
+    private(set) var isThinking = false
 
     var canCheck: Bool { phase == .live && stage == .teaching }
+
+    /// Whether the microphone is actually open to the server right now.
+    ///
+    /// Read from the transport rather than tracked here, because the governor
+    /// combines several things to decide it and a second copy would drift. The
+    /// screen showing "listening" while the server hears silence is the exact
+    /// bug this avoids.
+    var isListening: Bool {
+        guard phase == .live, !isSpeaking, !isThinking else { return false }
+        if case .holding = stage { return false }
+        if case .analysing = stage { return false }
+        return true
+    }
 
     // MARK: - Guts
 
@@ -102,6 +117,15 @@ final class SkillCoachSession {
     /// escape, because a third identical request is where a cook decides the
     /// feature is broken.
     private var unusableViews = 0
+
+    /// What the last look concluded, in the words we want said.
+    ///
+    /// Kept because a bare `response.create` after a tool call she made mid
+    /// sentence very often produces nothing: from the model's point of view it
+    /// already spoke this turn. The result of actually looking at somebody is
+    /// the one thing that must never be silently dropped, so the follow up is
+    /// steered with the sentence rather than hoped for.
+    private var pendingSay = ""
 
     init(
         skill: Skill,
@@ -215,10 +239,21 @@ final class SkillCoachSession {
         }
     }
 
+    /// Tool work runs off the event loop.
+    ///
+    /// `check_the_hold` takes five seconds of holding plus a vision round trip,
+    /// and awaiting that inside `for await event in transport.events` stops the
+    /// session hearing anything at all for the duration: transcripts, speech
+    /// events and her own audio state all queue up behind a hand that is being
+    /// photographed. One tool call was freezing the conversation for ten
+    /// seconds.
+    private var toolTask: Task<Void, Never>?
+
     private func handle(_ event: RealtimeServerEvent) async {
         switch event {
         case .outputAudioStarted:
             isSpeaking = true
+            PollyDebugLog.shared.log("skill: she is speaking")
         case .outputAudioStopped:
             isSpeaking = false
             // Back to a state that can be checked again. She has just delivered
@@ -226,12 +261,27 @@ final class SkillCoachSession {
             // another look. Without this the check runs exactly once per lesson,
             // which is the opposite of the loop this whole thing is built on.
             if case .coaching = stage { stage = .teaching }
+            PollyDebugLog.shared.log(
+                "skill: she stopped, mic should be open (stage=\(stage))")
         case .outputTranscriptDelta(_, let delta):
             caption += delta
+        case .inputTranscript(_, let text):
+            // Logged because "she is not listening to me" is otherwise
+            // indistinguishable from "she heard me and chose not to answer",
+            // and those need completely different fixes.
+            PollyDebugLog.shared.log("skill: heard \"\(text)\"")
         case .responseCreated:
             caption = ""
-        case .responseDone(_, let calls, _):
-            for call in calls { await run(call) }
+        case .responseDone(let status, let calls, _):
+            isThinking = !calls.isEmpty
+            // Only act on a completed response. A cancelled one can carry
+            // partial calls, and running them talks over whoever interrupted.
+            guard status == "completed", !calls.isEmpty else { return }
+            toolTask?.cancel()
+            toolTask = Task { [weak self] in
+                guard let self else { return }
+                for call in calls { await self.run(call) }
+            }
         case .error(let code, let message):
             PollyDebugLog.shared.log("skill: realtime error \(code ?? "?") — \(message)")
         default:
@@ -254,7 +304,25 @@ final class SkillCoachSession {
 
     private func reply(to call: RealtimeFunctionCall, with output: String) async {
         try? await transport?.send(.createFunctionOutput(callId: call.callId, output: output))
-        try? await transport?.send(.responseCreate)
+
+        // Steered rather than open ended. She called this tool in the same
+        // breath as "hold it there for five seconds", so as far as the model is
+        // concerned it has already spoken this turn and a bare response.create
+        // frequently returns silence. The cook is standing there holding a
+        // knife waiting to be told what happened, so the one thing that cannot
+        // be left to chance is that she says it.
+        if pendingSay.isEmpty {
+            try? await transport?.send(.responseCreate)
+        } else {
+            let line = pendingSay
+            pendingSay = ""
+            try? await transport?.send(.responseCreateWithInstructions(
+                "You have just looked at their hand. Tell them what you found now, in your own "
+                + "words, leading with this and nothing else: \"\(line)\" "
+                + "Keep it to a sentence or two. Do not add a second correction, do not repeat "
+                + "the instruction you gave before the hold, and do not thank them for waiting."))
+        }
+        isThinking = false
     }
 
     // MARK: - The check
@@ -488,6 +556,11 @@ final class SkillCoachSession {
     }
 
     private func json(_ body: [String: String], evidence: [String] = []) -> String {
+        // Every payload carries the line she owes the cook, so the follow up can
+        // be steered with it. Captured here rather than at each call site
+        // because a result that silently fails to get said is the worst bug this
+        // feature can have, and it should not depend on remembering.
+        pendingSay = body["say"] ?? ""
         var object: [String: Any] = body
         if !evidence.isEmpty { object["evidence"] = evidence }
         object["attemptsSoFar"] = attempts.count

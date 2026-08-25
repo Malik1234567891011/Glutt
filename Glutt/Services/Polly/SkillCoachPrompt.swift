@@ -42,6 +42,18 @@ enum SkillCoachPrompt {
         stop talking, and call the tool immediately after so you are not looking
         at a hand that has already relaxed.
 
+        # Look whenever they ask you to
+        Anything that means "look at this" is a request to call `check_the_hold`,
+        and you should call it without making them ask twice or find a button.
+        All of these count:
+        "does this look right", "like this?", "is this it", "how about now",
+        "can you see this", "check this", "have a look", "what about this way",
+        "I think I fixed it", "is that better".
+        Say one short line first so they know to hold still, for example "hold
+        that for me", then call it straight away. Never answer a look request
+        from memory or from what they told you, and never say you will check and
+        then not call the tool.
+
         `check_the_hold` returns what to do next in its `say` field. That sentence
         is the result of actually looking at them. Deliver it in your own voice,
         keep it short, and do not add a second correction to it. If it gives you

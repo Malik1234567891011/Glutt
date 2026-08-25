@@ -2,26 +2,34 @@
   "title": "Gnocchi with Brown Butter and Sage",
   "servings": 4,
   "equipment": [
-    "large pan for boiling",
+    "large pot for boiling",
     "frying pan",
-    "slotted spoon",
+    "fine mesh sieve",
+    "bowl",
+    "spatula or wooden spoon",
     "knife",
     "cutting board",
+    "teaspoon",
     "microplane or fine grater"
   ],
   "mise": [
-    { "name": "garlic", "prep": "slice finely" },
-    { "name": "fresh sage leaves", "prep": "pick" },
-    { "name": "lemon", "prep": "zest" }
+    {
+      "name": "fresh sage leaves",
+      "prep": "pick"
+    },
+    {
+      "name": "lemon",
+      "prep": "zest, then halve"
+    }
   ],
   "steps": [
     {
       "id": "tools",
       "index": 0,
       "title": "Tools",
-      "instruction": "Pull out a large pan for boiling, a frying pan, a slotted spoon, a knife and board, and something to zest a lemon with.",
+      "instruction": "Pull out a large pot for boiling, a frying pan, a fine mesh sieve, a bowl, a spatula, a knife and board for the lemon, a teaspoon, and something to zest with.",
       "kind": "prep",
-      "estimatedSeconds": 60,
+      "estimatedSeconds": 75,
       "timerSeconds": null,
       "dependsOn": [],
       "visualCheck": null,
@@ -32,24 +40,31 @@
       "id": "prep",
       "index": 1,
       "title": "Prep",
-      "instruction": "Before any heat: slice the garlic finely, pick the sage leaves off their stems, and zest the lemon.",
+      "instruction": "Before any heat: pick the sage leaves off their stems, and zest the lemon, then halve it.",
       "kind": "prep",
-      "estimatedSeconds": 180,
+      "estimatedSeconds": 120,
       "timerSeconds": null,
-      "dependsOn": ["tools"],
+      "dependsOn": [
+        "tools"
+      ],
       "visualCheck": null,
       "recovery": null,
-      "ingredientNames": ["Garlic", "Fresh sage leaves", "Lemon"]
+      "ingredientNames": [
+        "Fresh sage leaves",
+        "Lemon"
+      ]
     },
     {
       "id": "s1",
       "index": 2,
       "title": "Water on",
-      "instruction": "Fill a large pan with water, salt it well, and put it on high. It goes on first because it is the slowest thing here. Tell me when it is at a rolling boil.",
+      "instruction": "Fill a large pot with water, salt it well, and put it on high. It goes on first because it is the slowest thing here. Say Chef to get my attention, then tell me when it is at a rolling boil.",
       "kind": "active",
       "estimatedSeconds": 300,
       "timerSeconds": null,
-      "dependsOn": ["prep"],
+      "dependsOn": [
+        "prep"
+      ],
       "visualCheck": "A rolling boil is big bubbles breaking across the whole surface, not a few rising from the bottom.",
       "recovery": null,
       "ingredientNames": []
@@ -57,93 +72,132 @@
     {
       "id": "s2",
       "index": 3,
-      "title": "Boil, then lift out",
-      "instruction": "Drop the gnocchi into the boiling water. They are done the moment they float, about 2 minutes, and they come straight out with the slotted spoon into a bowl. Do not wait for me: when they float, lift them.",
+      "title": "Boil, then drain",
+      "instruction": "Drop the gnocchi into the boiling water. They are done the moment they float, about 2 minutes, and they go straight into the sieve to drain, then into the bowl. Do not wait for me: when they float, drain them, then say Chef and tell me.",
       "kind": "checkpoint",
       "estimatedSeconds": 150,
       "timerSeconds": 120,
-      "dependsOn": ["s1"],
+      "dependsOn": [
+        "s1"
+      ],
       "visualCheck": "They sink at first, then rise and bob on the surface, and it happens all at once. Floating is the signal. Leave them in after that and they go gluey.",
-      "recovery": "If they have been swimming a while and feel soft, get them out now and be gentle with them in the pan. They will still crisp up.",
-      "ingredientNames": ["Fresh gnocchi"]
+      "recovery": "If they have been swimming a while and feel soft, drain them now and be gentle with them in the pan. They will still crisp up.",
+      "ingredientNames": [
+        "Fresh gnocchi"
+      ],
+      "clipSegmentID": "seg-gnocchi-boil"
     },
     {
       "id": "s3",
       "index": 4,
       "title": "Oil in, bring the pan up to heat",
-      "instruction": "Frying pan on medium-high, then 2 tbsp of olive oil straight in, and let it come up for a minute or two. Before the gnocchi go anywhere near it, flick in two or three drops of water and watch what they do. Tell me when the pan is ready.",
+      "instruction": "Frying pan on medium-high, then 2 tbsp of olive oil straight in, and let it come up for a minute or two. Before the gnocchi go anywhere near it, flick in two or three drops of water and watch what they do. The pan is ready when they skitter and bead across the surface.",
       "kind": "checkpoint",
       "estimatedSeconds": 150,
       "timerSeconds": null,
-      "dependsOn": ["s2"],
+      "dependsOn": [
+        "s2"
+      ],
       "visualCheck": "Ready is when the drops skitter and bead across the surface and take a second or two to go. If they sit and steam it is not hot enough yet. If they vanish instantly with a sharp crack it is too hot.",
       "recovery": "Too hot is the one to fix, because the same pan browns the butter later and a pan that is too hot burns it. Take it off the heat for thirty seconds and test again.",
-      "ingredientNames": ["Olive oil"]
+      "ingredientNames": [
+        "Olive oil"
+      ],
+      "clipSegmentID": "seg-gnocchi-oil"
     },
     {
       "id": "s4",
       "index": 5,
       "title": "Fry the gnocchi",
-      "instruction": "Gnocchi into the hot oil with a pinch of salt and pepper. Five to six minutes, turning them so they colour on two sides. Tell me when they are golden and I will take you on.",
+      "instruction": "Gnocchi into the hot oil with a pinch of salt and pepper. Five to six minutes, turning them so they colour on two sides. They are ready when they are deep golden and crisp on the flat sides.",
       "kind": "active",
       "estimatedSeconds": 360,
       "timerSeconds": 360,
-      "dependsOn": ["s3"],
+      "dependsOn": [
+        "s3"
+      ],
       "visualCheck": "Deep golden and crisp on the flat sides, still soft in the middle.",
       "recovery": "If they are steaming rather than colouring the pan is crowded. Cook them in two batches instead.",
-      "ingredientNames": ["Fresh gnocchi", "Salt", "Black pepper"]
+      "ingredientNames": [
+        "Fresh gnocchi",
+        "Salt",
+        "Black pepper"
+      ],
+      "clipSegmentID": "seg-gnocchi-fry"
     },
     {
       "id": "s5",
       "index": 6,
       "title": "Brown the butter",
-      "instruction": "Gnocchi back into the bowl, and wipe the pan if anything caught. Now turn the heat DOWN to medium and let the pan settle for thirty seconds, because the pan you just fried in is too hot for butter. Test it again with a drop of water, and when it skitters rather than cracks, put 75g of butter in. Two to three minutes. Tell me when it smells nutty.",
+      "instruction": "Gnocchi back into the bowl, and wipe the pan if anything caught. Now turn the heat DOWN to medium and let the pan settle for thirty seconds, because the pan you just fried in is too hot for butter. Test it again with a drop of water, and when it skitters rather than cracks, put 75g of butter in. Two to three minutes, and it is there when it smells nutty rather than buttery.",
       "kind": "checkpoint",
       "estimatedSeconds": 240,
       "timerSeconds": 180,
-      "dependsOn": ["s4"],
+      "dependsOn": [
+        "s4"
+      ],
       "visualCheck": "It melts, foams up, and then the foam subsides. Watch the milk solids on the bottom: when they turn the colour of a hazelnut and it smells nutty rather than buttery, that is your moment.",
       "recovery": "Black flecks and a sharp, acrid smell mean it has gone past browned to burnt, and burnt butter cannot be brought back. Tip it out, wipe the pan, and start the butter again. Losing 75g of butter is much better than serving it.",
-      "ingredientNames": ["Unsalted butter"]
+      "ingredientNames": [
+        "Unsalted butter"
+      ],
+      "clipSegmentID": "seg-gnocchi-brownbutter"
     },
     {
       "id": "s6",
       "index": 7,
       "title": "Crisp the sage",
-      "instruction": "Sage leaves straight into the browned butter. About 2 minutes. Tell me when they have stopped crackling.",
+      "instruction": "Sage leaves straight into the browned butter. About 2 minutes. They are done when they stop crackling.",
       "kind": "active",
       "estimatedSeconds": 120,
       "timerSeconds": 120,
-      "dependsOn": ["s5"],
+      "dependsOn": [
+        "s5"
+      ],
       "visualCheck": "They crackle when they go in, then go quiet, darken and stiffen. Crisp, not browned.",
       "recovery": null,
-      "ingredientNames": ["Fresh sage leaves"]
+      "ingredientNames": [
+        "Fresh sage leaves"
+      ],
+      "clipSegmentID": "seg-gnocchi-sage"
     },
     {
       "id": "s7",
       "index": 8,
-      "title": "Garlic, one minute",
-      "instruction": "Sliced garlic in, stirring, for one minute and no longer. Keep the heat where it is. Tell me when it smells sweet.",
+      "title": "Garlic, thirty seconds",
+      "instruction": "The video shows sliced garlic, but we are using minced garlic from a tube instead. Heat down to low first, because it is wet and will spit. Two teaspoons in, stirring it through so it does not sit in one spot. Thirty seconds is plenty, since it needs about half the time sliced garlic would. It is done when it smells sweet and has melted into the butter.",
       "kind": "active",
-      "estimatedSeconds": 60,
-      "timerSeconds": 60,
-      "dependsOn": ["s6"],
-      "visualCheck": "Pale gold at the edges and sweet smelling. It must not go brown.",
-      "recovery": "Garlic in hot butter goes bitter fast. If it is colouring quickly, pull the pan off the heat and keep stirring in the residual warmth.",
-      "ingredientNames": ["Garlic"]
+      "estimatedSeconds": 45,
+      "timerSeconds": 30,
+      "dependsOn": [
+        "s6"
+      ],
+      "visualCheck": "Minced garlic has no edges to watch, so go by smell: sweet and mellow rather than sharp. If you can see it darkening in the butter, it has already gone too far.",
+      "recovery": "Minced garlic burns faster than slices, and burnt garlic in butter goes bitter. If it is darkening, pull the pan off the heat and keep stirring in the residual warmth.",
+      "ingredientNames": [
+        "Minced garlic"
+      ],
+      "clipSegmentID": "seg-gnocchi-garlic"
     },
     {
       "id": "s8",
       "index": 9,
       "title": "Bring it together",
-      "instruction": "Gnocchi back into the pan with a quarter teaspoon each of salt and pepper. Stir for a minute, until everything is coated. Tell me when they are glossy.",
+      "instruction": "Gnocchi back into the pan with the heat up to medium again, and a quarter teaspoon each of salt and pepper. Stir for a minute, until every piece is glossy with butter.",
       "kind": "active",
       "estimatedSeconds": 60,
       "timerSeconds": 60,
-      "dependsOn": ["s7"],
+      "dependsOn": [
+        "s7"
+      ],
       "visualCheck": "Every piece glossy with butter, sage through it rather than sitting on top.",
       "recovery": null,
-      "ingredientNames": ["Fresh gnocchi", "Salt", "Black pepper"]
+      "ingredientNames": [
+        "Fresh gnocchi",
+        "Salt",
+        "Black pepper"
+      ],
+      "clipSegmentID": "seg-gnocchi-combine"
     },
     {
       "id": "s9",
@@ -153,10 +207,15 @@
       "kind": "active",
       "estimatedSeconds": 45,
       "timerSeconds": null,
-      "dependsOn": ["s8"],
+      "dependsOn": [
+        "s8"
+      ],
       "visualCheck": null,
       "recovery": null,
-      "ingredientNames": ["Lemon"]
+      "ingredientNames": [
+        "Lemon"
+      ],
+      "clipSegmentID": "seg-gnocchi-lemon"
     },
     {
       "id": "s10",
@@ -166,10 +225,16 @@
       "kind": "active",
       "estimatedSeconds": 60,
       "timerSeconds": null,
-      "dependsOn": ["s9"],
+      "dependsOn": [
+        "s9"
+      ],
       "visualCheck": null,
       "recovery": null,
-      "ingredientNames": ["Parmesan", "Black pepper"]
+      "ingredientNames": [
+        "Parmesan",
+        "Black pepper"
+      ],
+      "clipSegmentID": "seg-gnocchi-serve"
     }
   ]
 }

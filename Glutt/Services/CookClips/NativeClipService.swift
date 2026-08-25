@@ -42,8 +42,17 @@ actor NativeClipService {
     ///     "Boil the gnocchi, then lift them out" read as "slotted spoon, not a
     ///     colander". Bump whenever a pilot's segment LIST changes, not only
     ///     when the URL shape does.
+    /// v5: and whenever a segment's `step_keywords` or `visual_cue` change,
+    ///     which v4 did not cover and should have. The gnocchi segments were
+    ///     re-cut for minced garlic and a sieve; a phone holding a v4 entry kept
+    ///     matching on the old keywords, and "minutes" in the boil step scored
+    ///     higher against the old garlic keyword set than "float" did against
+    ///     boil. The boil step played the garlic clip, the garlic step played
+    ///     nothing, and the caption still described a slotted spoon. Assignment
+    ///     is computed FROM this payload, so stale metadata is not a stale
+    ///     caption, it is the wrong video on the wrong step.
     private func cacheKey(for mediaID: String) -> String {
-        "glutt.nativeClips.\(mediaID).v4"
+        "glutt.nativeClips.\(mediaID).v5"
     }
 
     /// Re-sign this long before the URLs lapse — a cook can sit on one step for
@@ -62,11 +71,24 @@ actor NativeClipService {
         let key = cacheKey(for: mediaID)
         if !force, let cached = loadCache(key: key) { return cached }
 
+        // The local media-worker is a dev convenience, not a dependency.
+        //
+        // This used to `try` straight out of the function, so a laptop that had
+        // changed Wi-Fi, gone to sleep, or simply been closed did not fall back
+        // to the proxy: it threw, and the caller's only remaining option was the
+        // YouTube path. That is a real cook watching a worse version of the
+        // feature because a machine they do not own moved network. Prefer local,
+        // then the proxy, and only then let the caller reach for YouTube.
         if let local = localBaseURL, let path = Self.localPaths[mediaID] {
-            let decoded = try await fetchLocalPilot(base: local, path: path)
-            let rewritten = rewriteLocalhostURLs(in: decoded, using: local)
-            saveCache(rewritten, key: key)
-            return rewritten
+            do {
+                let decoded = try await fetchLocalPilot(base: local, path: path)
+                let rewritten = rewriteLocalhostURLs(in: decoded, using: local)
+                saveCache(rewritten, key: key)
+                return rewritten
+            } catch {
+                PollyDebugLog.shared.log(
+                    "clips: local media-worker unreachable (\(error.localizedDescription)) — trying the proxy")
+            }
         }
 
         let decoded = try await fetchProxyClips(externalID: mediaID)
@@ -143,10 +165,37 @@ actor NativeClipService {
     /// already-taken segments), then fill gaps from leftover clips in pilot order.
     func assignClips(
         to cookSteps: [(id: String, title: String, instruction: String)],
-        from response: NativePilotClipsResponse
+        from response: NativePilotClipsResponse,
+        pinned: [String: String] = [:]
     ) -> [String: NativeStepClip] {
         var map: [String: NativeStepClip] = [:]
         var used = Set<String>()
+
+        // A plan that names its clips is not a hint, it is the answer.
+        //
+        // Keyword scoring is what you do when nobody knows the pairing. For a
+        // bundled dish somebody does, and letting the scorer overrule them costs
+        // exactly what it cost here: the word "minutes" in the boil step outscored
+        // "float", the boil step played the garlic clip, and the garlic step
+        // played nothing. So when any step is pinned the whole plan is treated as
+        // specified — an unpinned step plays nothing rather than being handed a
+        // leftover, and a pinned step whose segment is missing plays nothing
+        // rather than the next best guess.
+        if !pinned.isEmpty {
+            let bySegment = Dictionary(
+                response.clips.map { ($0.segmentID, $0) }, uniquingKeysWith: { first, _ in first })
+            for step in cookSteps {
+                guard let wanted = pinned[step.id], let clip = bySegment[wanted] else { continue }
+                guard used.insert(clip.segmentID).inserted else {
+                    PollyDebugLog.shared.log(
+                        "clips: step \(step.id) pinned to \(wanted), already used — left empty")
+                    continue
+                }
+                map[step.id] = clip
+            }
+            return map
+        }
+
         for step in cookSteps {
             guard let clip = clipMatching(
                 stepTitle: step.title,

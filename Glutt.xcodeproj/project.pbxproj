@@ -51,6 +51,7 @@
 		117E3A32C7436BA162B16443 /* RecipeAdjuster.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65CA9BF4B9DCA0A18E7D5C4 /* RecipeAdjuster.swift */; };
 		117E9C022592C581920CEFBE /* Recipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5BE7E113C0145B67F0556D3 /* Recipe.swift */; };
 		117F06F09C345AB979D64EE0 /* StepActionChecklistTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D4F33FEA43DB20961D28522 /* StepActionChecklistTests.swift */; };
+		1251381535010382534B59A4 /* PollyToolRegistryLookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66F49E739B274F58015967FF /* PollyToolRegistryLookTests.swift */; };
 		126EB43D4FB3CB8CAA7FCA94 /* AIActionPromptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5F10C9946EA22B0FE0129A1 /* AIActionPromptTests.swift */; };
 		1276983212983AF94BA94EE7 /* Secrets.local.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1C02C4D8335DCE0D430E20BF /* Secrets.local.plist */; };
 		131C3DACF378C0414EF77EAC /* AskGlutt.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5B5723E393D9FB40BC41F13 /* AskGlutt.swift */; };
@@ -138,6 +139,7 @@
 		44B723DB733539BF19473A05 /* Restaurants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8285083DF7D93C8B9614A3FE /* Restaurants.swift */; };
 		45454CC6069E42834813518B /* IngredientLineParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB6518A327FD79D55E715D5 /* IngredientLineParser.swift */; };
 		4555CCCF97EF706EE428D9FC /* PollyMemoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B94ABCDAED53B1B546E05EF4 /* PollyMemoryStore.swift */; };
+		462521C6ECA0ECA86EB767B0 /* BriefingNarratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86758215B5F05FEF1C7886B3 /* BriefingNarratorTests.swift */; };
 		47CA4B0E6B9F7F7BD4ABE64C /* UnitConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E76DBE2577BBC32D76A29AB /* UnitConverter.swift */; };
 		4814E8173C4A8A9A262E2758 /* ImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC01B13A70FB5DB5FC8569B7 /* ImportSheet.swift */; };
 		48672C214D36836ED9916CA2 /* Buttons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 420CD47E5C2004D61B7D0B32 /* Buttons.swift */; };
@@ -145,6 +147,7 @@
 		496B45BC07B3D929584A833D /* CookRecapBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFA5CE3D78B241983305606C /* CookRecapBuilder.swift */; };
 		49C190F8824D0A73728E04FF /* VisualFramePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7453B55900C6573E8046F4 /* VisualFramePipeline.swift */; };
 		4AE39AFD4624E614CF4518BA /* Polly.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA085E71905734A9011A2E33 /* Polly.swift */; };
+		4B18C15B591BF9B109935781 /* GnocchiClipMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1370B83AE7FD7ABDEB47687 /* GnocchiClipMappingTests.swift */; };
 		4B642F3ABF9E931C1F8D5604 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CF0F20EF027AE118381BF8D /* RootView.swift */; };
 		4EF0411FB979079A053463BA /* MWDATCamera in Frameworks */ = {isa = PBXBuildFile; productRef = 4327F6B4CA3C35C6318DAD18 /* MWDATCamera */; };
 		506F2ACDC07A7DF03B2BB349 /* GluttStepper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C030DE72417F905FCF9840A /* GluttStepper.swift */; };
@@ -617,6 +620,7 @@
 		64F7F2A22B83DDFADE81025A /* RecipeIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeIdentity.swift; sourceTree = "<group>"; };
 		653F9DE97C55056813E76980 /* HowToGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HowToGeneratorTests.swift; sourceTree = "<group>"; };
 		65FE09E5997ABD5A67C11372 /* RecipeFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeFactoryTests.swift; sourceTree = "<group>"; };
+		66F49E739B274F58015967FF /* PollyToolRegistryLookTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyToolRegistryLookTests.swift; sourceTree = "<group>"; };
 		6815E861AC272B08314E8EE3 /* PlatesServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesServiceTests.swift; sourceTree = "<group>"; };
 		681E8F39983440A8907907AB /* SubstituteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubstituteSheet.swift; sourceTree = "<group>"; };
 		686B936DCDB29F97AD25509A /* ConversationalGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationalGate.swift; sourceTree = "<group>"; };
@@ -669,6 +673,7 @@
 		85C9F86DA4B5C54F41EE48EA /* SyncTime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTime.swift; sourceTree = "<group>"; };
 		85FE9EE4772423EE7FF3C13B /* InventDishView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventDishView.swift; sourceTree = "<group>"; };
 		86682BDF2281AFC52C3BCFB6 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+		86758215B5F05FEF1C7886B3 /* BriefingNarratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefingNarratorTests.swift; sourceTree = "<group>"; };
 		8698DCD08A81A61E726A7F59 /* SupabaseBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseBackend.swift; sourceTree = "<group>"; };
 		86AF68B5E21FB9F75B865388 /* GluttShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GluttShare.entitlements; sourceTree = "<group>"; };
 		8794BB18435540A0BF64D9A7 /* AppleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignIn.swift; sourceTree = "<group>"; };
@@ -715,6 +720,7 @@
 		9DDECE4B39D1229473B5DFA9 /* PlatesLauncherCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesLauncherCard.swift; sourceTree = "<group>"; };
 		9E3A210F8AF35E346B89F89E /* NativeClipModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeClipModels.swift; sourceTree = "<group>"; };
 		A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeHTMLParser.swift; sourceTree = "<group>"; };
+		A1370B83AE7FD7ABDEB47687 /* GnocchiClipMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GnocchiClipMappingTests.swift; sourceTree = "<group>"; };
 		A2333EA3B0F39F9356AC2C07 /* SubscriptionGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionGate.swift; sourceTree = "<group>"; };
 		A34662C1AB1C5078CE9DA61C /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
 		A45301997FCD1BF1A6D7095C /* PollySessionControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollySessionControllerTests.swift; sourceTree = "<group>"; };
@@ -981,6 +987,7 @@
 			children = (
 				B5F10C9946EA22B0FE0129A1 /* AIActionPromptTests.swift */,
 				D6DBBA225C30ED379583817F /* AskGluttTests.swift */,
+				86758215B5F05FEF1C7886B3 /* BriefingNarratorTests.swift */,
 				CDB9677DD2A567BDA5E16554 /* ChefContentTests.swift */,
 				F406358A50C96BEAE9687E9A /* ChefWatchfulnessTests.swift */,
 				08AC449BF12F35D4E4B81855 /* ConversationalGateTests.swift */,
@@ -998,6 +1005,7 @@
 				06DC77B86C51C5605387CE5C /* DiscoverVideoTests.swift */,
 				528768F4E45A7F8D5E44D4CB /* FakeLLMTransport.swift */,
 				9849E4D814CBE9FB1D1E619C /* GluttTests.swift */,
+				A1370B83AE7FD7ABDEB47687 /* GnocchiClipMappingTests.swift */,
 				80C3AEE0E6ADBABD974F73A2 /* GnocchiDemoPlanTests.swift */,
 				DE33E6863168E00B4A6635B9 /* HeadlineWordStyleTests.swift */,
 				653F9DE97C55056813E76980 /* HowToGeneratorTests.swift */,
@@ -1032,6 +1040,7 @@
 				A45301997FCD1BF1A6D7095C /* PollySessionControllerTests.swift */,
 				4CF5A6F597B95BCD4FF3BBC8 /* PollySpeechClientTests.swift */,
 				CBC6E1BC83BAD99543EF0A36 /* PollyTokenServiceTests.swift */,
+				66F49E739B274F58015967FF /* PollyToolRegistryLookTests.swift */,
 				B27E1FC5F02528DF1B978776 /* PollyToolRegistryTests.swift */,
 				D220BF4C17B5D8BDF6AF5766 /* PollyVoiceEventTests.swift */,
 				E0928ADDCDC60C9C38655861 /* RealtimeEventCodecTests.swift */,
@@ -1792,6 +1801,7 @@
 			files = (
 				126EB43D4FB3CB8CAA7FCA94 /* AIActionPromptTests.swift in Sources */,
 				D30CEDD01973C4AA7AA4F1BD /* AskGluttTests.swift in Sources */,
+				462521C6ECA0ECA86EB767B0 /* BriefingNarratorTests.swift in Sources */,
 				0374C8BD0D6321B35F78582C /* ChefContentTests.swift in Sources */,
 				C8F2A46DCD4E158496C3743A /* ChefWatchfulnessTests.swift in Sources */,
 				1C0AD550808BE9C56D35B333 /* ConversationalGateTests.swift in Sources */,
@@ -1811,6 +1821,7 @@
 				8304A73B5853D24942C795BD /* GlassesDAMConfigTests.swift in Sources */,
 				3C026D0D2F10BF06EF165E50 /* GlassesMemoryMatrixTests.swift in Sources */,
 				40C39A65B30A85E2207F4D44 /* GluttTests.swift in Sources */,
+				4B18C15B591BF9B109935781 /* GnocchiClipMappingTests.swift in Sources */,
 				E77B66798AA8D0DCA48177B9 /* GnocchiDemoPlanTests.swift in Sources */,
 				7C43FD8C656E237B92067C9F /* HeadlineWordStyleTests.swift in Sources */,
 				9588B6D113428F6FCF016C92 /* HowToGeneratorTests.swift in Sources */,
@@ -1845,6 +1856,7 @@
 				697330B415E9565AA6123D7A /* PollySessionControllerTests.swift in Sources */,
 				008CE2B630A65B24F5876A20 /* PollySpeechClientTests.swift in Sources */,
 				DA1190A56E0B55047C8B20EA /* PollyTokenServiceTests.swift in Sources */,
+				1251381535010382534B59A4 /* PollyToolRegistryLookTests.swift in Sources */,
 				5D8679AA456EAD7B6590B239 /* PollyToolRegistryTests.swift in Sources */,
 				AF71C27F1A6CB388E0B083B3 /* PollyVoiceEventTests.swift in Sources */,
 				7D2869291F568419AD02BEF7 /* RealtimeEventCodecTests.swift in Sources */,

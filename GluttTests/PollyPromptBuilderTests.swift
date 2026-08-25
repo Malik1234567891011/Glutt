@@ -219,6 +219,42 @@ final class PollyPromptBuilderTests: XCTestCase {
         XCTAssertTrue(prompt.localizedCaseInsensitiveContains("do not narrate"))
     }
 
+    /// Verifying a claim must never become a gate the cook cannot get past.
+    ///
+    /// A frame that does not show the tools is not evidence they are missing,
+    /// it usually means they are out of shot. Chef was holding cooks at the
+    /// Tools step over exactly that, re-asking for something already on the
+    /// counter, so she now has to offer the override in the same breath and
+    /// take their word the first time they give it.
+    func testGlassesCookCanOverrideWhatChefCannotSee() {
+        let prompt = instructions(recipe: makeRecipe(), seesContinuously: true)
+
+        XCTAssertTrue(prompt.contains("NOT SEEING IT IS NOT THE SAME AS IT NOT BEING THERE"))
+        XCTAssertTrue(prompt.contains("IF THEY SAY IT IS THERE, IT IS THERE"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("out of view"),
+                      "the override has to be offered, not waited for")
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("take your word"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("never ask them to prove"),
+                      "and she must not re-check what they already vouched for")
+        // The override is for a look that already failed. Read as a general
+        // licence to take their word it removes the looking, which is what
+        // happened: "the water is at a rolling boil" advanced the step with no
+        // frame requested and nothing said about it.
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("never a reason to skip the first one"))
+    }
+
+    /// A look the cook never hears about is a look they cannot tell from no look
+    /// at all. Reporting a step done has to come back with a verdict.
+    func testGlassesCookHearsWhatChefSaw() {
+        let prompt = instructions(recipe: makeRecipe(), seesContinuously: true)
+
+        XCTAssertTrue(prompt.contains("SAY WHAT YOU SAW"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("rolling boil"),
+                      "the doneness report is the case that matters")
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("visualCheck"),
+                      "and she judges it against the step's own cue")
+    }
+
     // MARK: - Watchfulness
 
     /// The three levels have to be genuinely different instructions, not the

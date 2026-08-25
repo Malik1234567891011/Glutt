@@ -114,7 +114,10 @@ final class CookPlanCompilerTests: XCTestCase {
         }
         XCTAssertEqual(llmCalls, 1)
         XCTAssertFalse(first.isFallback)
-        let expected = fixture.ensuringLeadingPrep()
+        // Same inputs compile() uses: prep amounts come from the recipe's own
+        // ingredient list, so an expectation built without them is not the
+        // plan a cook would ever see.
+        let expected = fixture.ensuringLeadingPrep(ingredients: recipe.ingredients)
         XCTAssertEqual(first, expected, "compile must guarantee a leading Prep step")
         XCTAssertTrue(first.hasLeadingPrep)
         XCTAssertTrue(capturedUser.contains("Shakshuka"), "user prompt must carry the recipe")

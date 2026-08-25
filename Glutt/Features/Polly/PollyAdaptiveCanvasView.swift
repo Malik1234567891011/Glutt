@@ -131,6 +131,7 @@ struct PollyAdaptiveCanvasView: View {
         .animation(.easeInOut(duration: 0.22), value: controller.isPollySpeaking)
         .animation(.easeInOut(duration: 0.22), value: sheetExpanded)
         .animation(.easeInOut(duration: 0.22), value: showingPreflight)
+        .animation(.easeInOut(duration: 0.22), value: controller.isEngaged)
         .confirmationDialog("Video source", isPresented: $showAttribution, titleVisibility: .visible) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -891,6 +892,8 @@ struct PollyAdaptiveCanvasView: View {
             }
             .buttonStyle(.plain)
 
+            stopListeningControl
+
             Button {
                 Haptics.selection()
                 Task {
@@ -921,6 +924,44 @@ struct PollyAdaptiveCanvasView: View {
                 .fill(CookCanvasTheme.elevated.opacity(0.96))
                 .shadow(color: .black.opacity(0.35), radius: 16, y: 8)
         )
+    }
+
+    /// The way out when Chef has been listening too long.
+    ///
+    /// Only present while she is actually listening. It is a small escape hatch
+    /// for a state the cook can see and does not want, not a permanent control,
+    /// and leaving it on screen the rest of the time would be a button that
+    /// mostly does nothing sitting beside the one that matters.
+    ///
+    /// It sits inside the dock rather than under it. Under it was 26pt below the
+    /// dock capsule, and the dock is already the last thing above the home
+    /// indicator, so the button rendered off the bottom of the display: present
+    /// in the view tree, invisible and untappable. Inside the dock it is on
+    /// screen at every size, and `fixedSize` keeps it from being the thing that
+    /// gets truncated when the dock copy is long.
+    ///
+    /// Not the mic button: hard mute takes the wake word with it, so a cook who
+    /// reached for this and got that would have no way back.
+    @ViewBuilder
+    private var stopListeningControl: some View {
+        if controller.isEngaged, !showingPreflight {
+            Button {
+                Haptics.impact(.light)
+                controller.stopListening()
+            } label: {
+                Text("Stop listening")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(CookCanvasTheme.mutedText)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Color.white.opacity(0.10)))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("cook.stopListening")
+            .transition(.opacity)
+        }
     }
 
     private var waveform: some View {

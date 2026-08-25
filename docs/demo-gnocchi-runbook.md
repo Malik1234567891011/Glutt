@@ -3,102 +3,119 @@
 The dish is Nicky's, from Kitchen Sanctuary:
 [recipe](https://www.kitchensanctuary.com/gnocchi-brown-butter-sage/) ·
 [video](https://www.youtube.com/watch?v=3sUJwjvmzk8). It ships as bundled chef
-content, its cook plan is hand-written and checked in, and its clips come from
-the real grounding pipeline.
+content, its cook plan is hand-written and checked in, and its clips are
+materialized MP4s served from Supabase.
 
 Fifteen minutes, four servings, one pan of water and one frying pan. It was
 chosen well: every risky moment is a *look* rather than a time, which is exactly
 what the app is for.
 
+Last verified 2026-08-24 against `bring-meta-glasses-back`.
+
 ---
 
 ## Before you go live
 
-Do these in order. The last two are the ones that actually matter.
+1. **Install the build with no dev flags.** In particular **not**
+   `GLUTT_FAKE_GLASSES=1`: that makes `hasConnectedGlasses()` answer yes with
+   nothing paired, so you get the seeing-mode picker and then a camera that
+   never delivers a frame.
+2. **Open the app and confirm you land on Recipes.** The sign-in wall in
+   `RootView` is full screen and has **no dismiss** unless a sign-in error
+   happens to surface the "Continue without an account" link. Signed out at
+   demo time means stuck.
+3. **Grant mic and speech** on a throwaway cook, not during the demo.
+4. **Network.** Clips are signed URLs that expire, and a stale cache is dropped
+   and re-signed, so **clips need internet at demo time** however well you warm
+   them. Polly's realtime session needs it too. The cook plan does not: it is
+   bundled, so every step and cue below works with no connection at all.
+5. **Check the log took.** One cook, then look for
+   `clips: native 3sUJwjvmzk8 assigned 9/10 steps, 9 unique segments (pilot=9)`.
+   Nine of ten is correct, see below.
 
-1. **Install the build.** `bring-meta-glasses-back`, or whichever branch this
-   merges into.
-2. **Sign in, or dismiss the sign-in sheet.** On a fresh install it covers the
-   bottom third of the Recipes tab, and it will cover the demo too.
-3. **Grant mic and speech** on the first cook, not during the demo.
-4. **Warm the clips. This is the important one.** Clip windows are cached in
-   `UserDefaults` keyed `glutt.stepClips.v5.<videoId>.<hash>`, which means a
-   **reinstall wipes them**. So warm AFTER the final install: open the dish,
-   start Cook with Chef, and leave it for **90 seconds**. Two Gemini calls run
-   back to back, ground then refine, about 50 to 70 seconds total. Once cached
-   it is instant forever.
-5. **Check it took.** In the debug log you want
-   `clips: indexed 10 step clips`. If you instead see `clips: index failed`,
-   the warm did not work and clips will not appear.
-6. **Network.** Clips play from YouTube live; there is no offline copy. Polly
-   also needs the network for the realtime session. Nothing else does: the cook
-   plan is bundled, so the steps and every cue below work with no connection at
-   all.
+You do **not** need the Mac, the media-worker, or `npm run serve-local`. Clips
+come from Supabase. If `Secrets.local.plist` has a `mediaPlaybackBaseURL`, the
+app prefers that and falls back to the proxy when it is unreachable, but for a
+demo it is cleaner to have no override so rehearsal uses the same path as the
+demo.
 
 ---
 
 ## What to say, and what it demonstrates
 
-The plan is 14 steps: Tools, Prep, then twelve cook steps. Numbering in the app
-excludes Tools and Prep, so "Step 1" is Water on.
+The plan is **12 steps**: Tools, Prep, then ten cook steps. Two numbers are on
+screen and they differ on purpose: the header counts all twelve
+("Step 3 of 12"), the card badge counts only cook steps ("STEP 1"). Below is by
+card badge.
 
 | Beat | What you do | What it shows |
 | --- | --- | --- |
 | Open the dish | Recipes → Nicky's Kitchen Sanctuary → the gnocchi | Bundled chef content, pantry match reads "4 of 9" |
 | Cook with Chef | Tap it | Pre-cook briefing, missing ingredients, chef picker |
-| **Seeing mode** | Pick Perfectionist / Watchful / Hands off | Only appears with glasses connected. See the note below |
-| Tools | "All set" | Setup before heat, which most recipes skip |
-| Prep | Board work | Garlic sliced, sage picked, lemon zested, all before the heat |
-| **Water first** | Step 1 | The scheduler: the slowest thing goes on first |
-| **Gnocchi float** | Step 2 | The best moment in the demo. See below |
-| **Water test** | Step 4 | The save. See below |
-| Fry | Step 5 | Clip: gnocchi going into the pan, 1:56 to 2:17 |
-| **Brown butter** | Step 7 | The centrepiece. Clip 2:31 to 3:26, and the recovery |
-| Sage | Step 8 | Clip 3:26 to 3:35, crackle then crisp |
-| Garlic | Step 9 | One minute, and why |
-| Lemon | Step 11 | Off the heat, and why |
+| **Seeing mode** | Perfectionist / Watchful / Hands off | Only drawn with glasses connected |
+| Tools | "All set" | Setup before heat, which most recipes skip. Nine tools: pot for boiling and pan for frying, sieve to drain, bowl, spatula, knife and board for the lemon, teaspoon, zester |
+| Prep | Board work | Sage picked, lemon zested and halved, before any heat. Two items, not three: the garlic is pre-minced |
+| **Water first** | Step 1 | The scheduler: the slowest thing goes on first. No clip here, deliberately |
+| **Gnocchi float** | Step 2 | The best moment in the demo. Float, then drain in the sieve. See below |
+| **Water test** | Step 3 | The save. See below |
+| Fry | Step 4 | Clip: gnocchi into the pan |
+| **Brown butter** | Step 5 | The centrepiece, and the recovery |
+| Sage | Step 6 | Crackle, then quiet |
+| Garlic | Step 7 | Thirty seconds, and why. Chef says out loud that the clip shows slices and yours is minced |
+| Lemon | Step 9 | Off the heat, and why |
+
+### Step 1 has no clip, on purpose
+
+Nine of the ten cook steps get a clip. "Water on" gets none, because the video
+has no honest shot of it. `assignClips` used to force leftovers onto unmatched
+steps in list order, which put the **garlic** clip on "Water on" along with its
+cue. The positional fallback is gone. An empty first step is the correct
+behaviour, not a missing clip.
 
 ### The three set pieces
 
 **The gnocchi float** (step 2). Say: *"Chef, how do I know when the gnocchi are
-done?"* She has this as a `checkpoint`, not a timer, and the cue is written as
-"they sink at first, then rise and bob on the surface. Floating is the signal,
-and it happens all at once. Leave them in after that and they go gluey." If you
-have the glasses on, this is the moment to ask her to look.
+done?"* It is a `checkpoint`, not a timer: they sink, then rise all at once,
+floating is the signal, and leaving them in after that makes them gluey.
 
-**The water test** (step 4). Say: *"Is the pan ready?"* This step exists because
-you asked for it, and it is not in Nicky's video: flick in a few drops, they
-should skitter and bead and take a second or two to go. Vanishing instantly with
-a crack means too hot. The recovery line names the stakes out loud, that too hot
-here is what burns the butter two steps later. Good place to say the app is
-teaching, not reading.
+**The water test** (step 3). Say: *"Is the pan ready?"* Not in Nicky's video:
+flick in a few drops, they should skitter and bead. Vanishing instantly with a
+crack is too hot, and the recovery names the stakes out loud, that too hot here
+is what burns the butter two steps later.
 
-**The brown butter** (step 7). The whole dish turns on about fifteen seconds.
-Say: *"How do I know when it's done?"* Cue: it melts, foams, the foam subsides,
-and the milk solids on the bottom go hazelnut and smell nutty. Then ask
-*"what if I burn it?"* Recovery: black flecks and a sharp smell mean burnt,
-burnt butter cannot be brought back, tip it and start again, losing 75g of
-butter beats serving it. A 55 second clip runs alongside.
+**The brown butter** (step 5). The dish turns on about fifteen seconds. Ask
+*"how do I know when it's done?"* then *"what if I burn it?"* Recovery: black
+flecks and a sharp smell mean burnt, burnt butter cannot be brought back, tip it
+and start again.
 
-### Things worth doing if the moment is there
+### Worth doing if the moment is there
 
 - **Interrupt her.** Say "Chef" over the middle of a long answer. She stops
-  mid-sentence and listens. This only started working this week.
+  mid-sentence and listens. **Only "Chef" does this** — talking over her with
+  anything else deliberately does not interrupt.
+- **She stops listening when she stops talking.** There is no open mic after an
+  answer any more. Every turn starts with "Chef". Steps 1 and 2 teach this in
+  their copy and the later steps do not repeat it.
+- **Stop listening.** A small grey control appears in the dock while she is
+  listening. It closes the turn without taking the wake word with it.
 - **Change the amounts.** "I've only got half a pack of gnocchi." She rescales
   and says one line back rather than reading the whole list.
-- **Ask for a timer.** She will not start one uninvited any more, she offers.
-- **Step by step.** Back out and tap "Or cook step by step" to show the same
-  plan, same Tools and Prep, without the voice.
+- **Ask for a timer.** She offers rather than starting one uninvited.
+- **Step by step.** Back out and tap "Or cook step by step" for the same plan
+  without the voice.
 
 ---
 
 ## The seeing modes
 
 Perfectionist / Watchful / Hands off are drawn in the pre-cook briefing **only
-when glasses are connected**. With the glasses on, they appear on their own.
-Without them, launch with `GLUTT_FAKE_GLASSES=1` on device, or `-fakeGlasses` on
-the simulator, and the picker appears. That fakes the answer, not a camera, so do
-not then ask her to look through the glasses.
+when glasses are connected**, because offering "Chef watches everything" to
+someone with no camera is a promise about a cook that cannot happen.
+
+`GLUTT_FAKE_GLASSES=1` (device) or `-fakeGlasses` (simulator) fakes the
+**answer, not a camera**, so the picker appears but nothing delivers a frame.
+Use it to see and choose a mode, never to demo vision, and never on the build
+you demo with.
 
 ---
 
@@ -106,46 +123,43 @@ not then ask her to look through the glasses.
 
 | Symptom | Cause | What to do live |
 | --- | --- | --- |
-| No clips at any step | The warm did not take, or no network | Carry on. Every cue is in the plan and is spoken regardless. Do not stop to debug |
+| No clips at any step | No network, or signed URLs lapsed and could not re-sign | Carry on. Every cue is in the plan and is spoken regardless. Do not stop to debug |
+| Clips on some steps only | Fell through to the YouTube path | Same. It matches fewer steps but still plays |
 | She says she cannot see | Glasses session not adopted | Say it is looking through the phone instead and tap the camera button |
-| Long pause before she talks | Realtime session connecting | It is 6 to 10 seconds on a cold start. Fill it, it will not fail |
-| She recommends the wrong step | Steps got out of order | "Chef, go to step 7" |
-| She talks too long | Fell back to old prompt behaviour | Say "Chef" over her, which now cuts her off |
+| Long pause before she talks | Realtime session connecting | 6 to 10 seconds cold. Fill it, it will not fail |
+| She recommends the wrong step | Steps out of order | "Chef, go to step 7" |
+| She listens forever | Should not happen now, 25s ceiling | Tap "Stop listening" in the dock |
 
 ---
 
 ## Why this dish is safe
 
-Everything the demo depends on is checked in rather than generated at runtime:
-
 - **The plan is bundled.** `Glutt/Resources/CookPlan-gnocchi-brown-butter-sage.json`,
   loaded by `CookPlanCompiler.bundledPlan(for:)` before the cache and before the
-  network. The compiler is an LLM call and would otherwise produce a slightly
-  different plan every run, which is fine for the library and not fine for a
-  dish being cooked in front of an audience.
+  network, so it is identical every run.
 - **The cues are authored**, not hoped for. `GnocchiDemoPlanTests` asserts the
-  float cue, the water test with its "skitter" and "too hot" wording, the brown
-  butter target and failure, the garlic warning, the lemon going in off the heat,
-  the water going on first, and that the plan has no scheduling problems.
-- **The quantities are Nicky's**, asserted against the source: 500g gnocchi, 75g
-  butter, 20 sage leaves, 2 cloves.
-- **The clips are real**, from the grounding pipeline rather than hand-typed
-  timestamps, because `StepClipFallbacks` is deliberately empty on the principle
-  that windows come from the grounded AV pipeline.
+  float cue, the water test wording, the brown butter target and failure, the
+  garlic warning, the lemon off the heat, the water going on first, and that the
+  plan has no scheduling problems.
+- **The clip mapping is pinned.** `GnocchiClipMappingTests` fetches the real
+  pilot and asserts every step lands on its own segment, that nothing is reused,
+  and that "Water on" stays empty.
+- **The quantities are Nicky's**, with one deliberate exception: 500g gnocchi,
+  75g butter, 20 sage leaves, and 2 tsp of minced garlic from a tube where she
+  slices 2 cloves. Pre-minced is already cut, so it takes half the time and
+  burns sooner, and it is wet, so it spits going into hot butter.
 
-## One bug this uncovered
+## Two things that were armed and are not any more
 
-Clips were broken for every uncached recipe in the app, not just this one. The
-proxy's two phases return different shapes: `ground` includes
-`youtube_video_id`, `primary_action` and `visual_cue`, and `refine` omits all
-three. `StepClip` required them, so refine threw `keyNotFound`, the whole fetch
-threw with it, and the cook silently got no clips after paying for two Gemini
-calls. The only trace was one line in the debug log.
+**The scripted "YOU DONUT" cue.** `DemoScript` was enabled in every Debug build,
+matched against the on-device recognizer's partial transcripts (which run even
+while Chef is dormant, so no wake word needed), and triggered on "serve" —
+the name of the last step in this recipe. It also deleted the matching turn, so
+a genuine "when do I serve this?" disappeared instead of being answered. Now
+`isEnabled = false`. Turn it on only for a take you are directing, and narrow
+`triggers` to a phrase nobody says by accident first.
 
-Decoding is now tolerant of the fields the two phases disagree about, with the
-video id backfilled from the response root, and `StepClipDecodingTests` pins both
-real payloads. Timings stay required, so a genuinely broken clip is still dropped
-rather than played from zero.
-
-Worth knowing because it means clips have probably been silently missing on any
-recipe whose cache was cold, for as long as the proxy has returned that shape.
+**The local-only clip path.** `NativeClipService` used to throw straight past the
+proxy when the local media-worker was unreachable, so a laptop that changed
+Wi-Fi silently downgraded the demo to YouTube. It now tries local, then the
+proxy, then lets the caller fall back.

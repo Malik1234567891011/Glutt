@@ -25,6 +25,20 @@ final class GnocchiDemoPlanTests: XCTestCase {
         return recipe
     }
 
+    /// The same dish with Nicky's ingredient list on it, which is where the prep
+    /// amounts come from.
+    private func stockedGnocchiRecipe() throws -> Recipe {
+        let recipe = gnocchiRecipe()
+        let chef = try XCTUnwrap(ChefContent.chef(id: "kitchen-sanctuary"))
+        let dish = try XCTUnwrap(
+            ChefContent.dishes(for: chef).first { $0.title == recipe.title })
+        recipe.ingredients = dish.ingredients.enumerated().map { index, line in
+            RecipeIngredient(name: line.name, quantity: line.quantity, unit: line.unit,
+                             sortIndex: index)
+        }
+        return recipe
+    }
+
     private func plan() throws -> CookPlan {
         try XCTUnwrap(CookPlanCompiler.bundledPlan(for: gnocchiRecipe()),
                       "the bundled plan must be in the app bundle")
@@ -66,8 +80,10 @@ final class GnocchiDemoPlanTests: XCTestCase {
     func testFloatingIsTheDonenessCue() throws {
         let boil = try step("s2")
         XCTAssertTrue(boil.instruction.lowercased().contains("float"))
-        XCTAssertTrue(boil.instruction.lowercased().contains("slotted spoon"),
-                      "floating and lifting out are the same moment")
+        XCTAssertTrue(boil.instruction.lowercased().contains("sieve"),
+                      "floating and draining are the same moment")
+        XCTAssertFalse(boil.instruction.lowercased().contains("slotted"),
+                       "they drain in a sieve now, and Malik does not own a slotted spoon")
         XCTAssertTrue(boil.instruction.lowercased().contains("do not wait for me"))
         let look = try XCTUnwrap(boil.visualCheck).lowercased()
         XCTAssertTrue(look.contains("float") || look.contains("bob"))
@@ -103,9 +119,18 @@ final class GnocchiDemoPlanTests: XCTestCase {
         XCTAssertEqual(butter.kind, .checkpoint)
     }
 
+    /// Pre-minced garlic from a tube, not cloves. It is already cut, so it
+    /// takes half the time and burns sooner, and it is wet, so it spits going
+    /// into hot butter. The clip still shows Nicky's slices, so the step has to
+    /// say out loud that we are doing it differently.
     func testGarlicCarriesItsOwnWarning() throws {
         let garlic = try step("s7")
-        XCTAssertEqual(garlic.timerSeconds, 60)
+        XCTAssertEqual(garlic.timerSeconds, 30, "minced garlic needs half the time slices do")
+        let text = garlic.instruction.lowercased()
+        XCTAssertTrue(text.contains("minced garlic"))
+        XCTAssertTrue(text.contains("video shows sliced garlic"),
+                      "the clip shows slices, so the difference must be named")
+        XCTAssertTrue(text.contains("spit"), "wet garlic in hot butter spits")
         XCTAssertTrue(try XCTUnwrap(garlic.recovery).lowercased().contains("bitter"))
     }
 
@@ -124,13 +149,48 @@ final class GnocchiDemoPlanTests: XCTestCase {
     }
 
     /// Every step that ends on a judgement has to say what the cook is waiting
-    /// for, or they have no idea when to ask for the next one.
-    func testEveryJudgementStepSaysWhenToMoveOn() throws {
-        for id in ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"] {
+    /// for, or they have no idea when to ask for the next one. This is the
+    /// condition itself, not the mechanic for reporting it.
+    func testEveryJudgementStepSaysWhatToWaitFor() throws {
+        let cue = [
+            "s1": "rolling boil", "s2": "float", "s3": "skitter",
+            "s4": "golden", "s5": "nutty", "s6": "crackling",
+            "s7": "sweet", "s8": "glossy",
+        ]
+        for (id, word) in cue {
             let text = try step(id).instruction.lowercased()
             XCTAssertTrue(
-                text.contains("tell me") || text.contains("do not wait for me"),
-                "step \(id) never tells the cook when to move on")
+                text.contains(word),
+                "step \(id) never says what the cook is waiting for (\(word))")
+        }
+    }
+
+    /// Teach the wake word, then stop saying it.
+    ///
+    /// Every step used to end "Say Chef when it is golden", which read as though
+    /// "Chef" were itself the report. It is not: it opens the mic, and the cook
+    /// still has to say the thing afterwards. Worse, eight steps of the same
+    /// trailing sentence is noise to anyone who has cooked with the app once.
+    /// So the opening two steps name both halves and the rest carry the
+    /// condition alone.
+    func testTheWakeWordIsTaughtOnceAndNotRepeatedEveryStep() throws {
+        for id in ["s1", "s2"] {
+            let text = try step(id).instruction.lowercased()
+            XCTAssertTrue(text.contains("say chef"), "step \(id) should teach the wake word")
+            XCTAssertTrue(
+                text.contains("tell me"),
+                "step \(id) must show that Chef opens the mic and the report is separate")
+        }
+        for id in ["s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"] {
+            let text = try step(id).instruction.lowercased()
+            XCTAssertFalse(
+                text.contains("say chef"),
+                "step \(id) repeats the mechanic the cook already learned")
+            // "tell me" with no "say Chef" beside it is the other failure: it
+            // promises an open mic that closed when she stopped talking.
+            XCTAssertFalse(
+                text.contains("tell me"),
+                "step \(id) implies the mic is open when it is not")
         }
     }
 
@@ -141,6 +201,42 @@ final class GnocchiDemoPlanTests: XCTestCase {
         XCTAssertTrue(butter.contains("down to medium"), "the target heat is restated")
         XCTAssertTrue(butter.contains("test it again"))
         XCTAssertTrue(butter.contains("too hot for butter"), "and why")
+    }
+
+    /// "Pick the fresh sage leaves" and nothing else made the cook stop and ask
+    /// how many, which is the one question the recipe already answers. The prep
+    /// step and its checklist now carry the amount.
+    func testPrepSaysHowMuchOfEachThing() throws {
+        let recipe = try stockedGnocchiRecipe()
+        let plan = try XCTUnwrap(CookPlanCompiler.bundledPlan(for: recipe))
+            .ensuringLeadingPrep(ingredients: recipe.ingredients)
+        let prep = try XCTUnwrap(plan.steps.first { $0.id == CookPlan.prepStepID })
+
+        XCTAssertTrue(prep.instruction.contains("20"), "twenty sage leaves, not \"the sage\"")
+        XCTAssertFalse(prep.instruction.lowercased().contains("the fresh sage leaves"),
+                       "the bare name is what sent them looking")
+
+        // The tappable rows are built from the same phrase and must agree.
+        let rows = StepActionChecklist.items(for: prep, plan: plan).map(\.text)
+        XCTAssertTrue(rows.contains { $0.contains("20") && $0.localizedCaseInsensitiveContains("sage") },
+                      "checklist rows: \(rows)")
+    }
+
+    /// A pot boils and a pan fries. They were both "pan" once, which reads as one
+    /// tool doing two jobs at two temperatures. The sieve replaced the slotted
+    /// spoon outright, and bowl and spatula were being used by the steps without
+    /// ever being pulled out.
+    func testTheToolListIsWhatTheCookActuallyNeeds() throws {
+        let gear = try plan().equipment.map { $0.lowercased() }
+
+        XCTAssertTrue(gear.contains { $0.contains("pot") }, "water boils in a pot")
+        XCTAssertTrue(gear.contains { $0.contains("frying pan") }, "and the gnocchi fry in a pan")
+        XCTAssertTrue(gear.contains { $0.contains("sieve") })
+        XCTAssertTrue(gear.contains { $0.contains("bowl") }, "the gnocchi rest in it twice")
+        XCTAssertTrue(gear.contains { $0.contains("spatula") || $0.contains("wooden spoon") })
+        XCTAssertFalse(gear.contains { $0.contains("slotted") })
+        // Knife and board earn their place on one job only, halving the lemon.
+        XCTAssertTrue(gear.contains { $0.contains("knife") })
     }
 
     /// The scheduling detector must be happy with a plan we hand-wrote.
@@ -155,8 +251,12 @@ final class GnocchiDemoPlanTests: XCTestCase {
         XCTAssertEqual(prepared.leadingSetupCount, 2)
         let prep = try XCTUnwrap(prepared.steps.first { $0.id == CookPlan.prepStepID })
         let text = prep.instruction.lowercased()
-        XCTAssertTrue(text.contains("garlic"))
+        // Garlic comes pre-minced from a tube, so there is nothing to prep. It
+        // used to be sliced here, and leaving it in sent the cook to the board
+        // for an ingredient that is ready in the fridge.
+        XCTAssertFalse(text.contains("garlic"), "pre-minced garlic needs no board work")
         XCTAssertTrue(text.contains("zest"))
+        XCTAssertTrue(text.contains("halve"), "the lemon is halved here, not hunted for at s9")
         // Sage was silently dropped here once: `isSeasoningOrPourable` reads a
         // bare "sage" as the dried jar, and only "fresh ..." is exempt. Picking
         // twenty leaves is very much board work.
@@ -192,6 +292,8 @@ final class GnocchiDemoPlanTests: XCTestCase {
         XCTAssertEqual(amount("Fresh gnocchi")?.1, "g")
         XCTAssertEqual(amount("Unsalted butter")?.0, 75)
         XCTAssertEqual(amount("Fresh sage leaves")?.0, 20)
-        XCTAssertEqual(amount("Garlic")?.0, 2)
+        // Ours, not Nicky's: she slices 2 cloves, we squeeze 2 tsp from a tube.
+        XCTAssertEqual(amount("Minced garlic")?.0, 2)
+        XCTAssertEqual(amount("Minced garlic")?.1, "tsp")
     }
 }

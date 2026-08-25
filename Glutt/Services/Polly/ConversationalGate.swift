@@ -25,6 +25,13 @@ enum ConversationalGate {
         var onSetupStep: Bool
         /// Active recipe / step / timer words for soft topical match.
         var topicWords: [String]
+        /// The cook said the wake word and this is what they said next.
+        ///
+        /// Addressing her by name is the least ambiguous signal there is, and it
+        /// has to outrank every heuristic that guesses at addressee. "Chef, go
+        /// back to step one" was being read as self-talk and deleted, twice in a
+        /// row, which looks exactly like the assistant has stopped working.
+        var wokenByWakeWord: Bool = false
     }
 
     /// Clear stop / leave-me-alone phrases (normalized: no apostrophes).
@@ -76,6 +83,7 @@ enum ConversationalGate {
         "we can start", "lets start", "let us start",
         "i have everything", "ive got everything",
         "we can go", "lets go", "go ahead", "after i",
+        "go back", "back to step", "go to step", "take me back", "repeat",
     ]
 
     /// Interrupt-while-speaking commands (stricter barge-in).
@@ -137,10 +145,16 @@ enum ConversationalGate {
             return .uncertain
         }
 
-        if looksLikeSelfTalk(text) { return .selfTalk }
+        // Everything below here is addressee guesswork, and guesswork must not
+        // overrule the cook saying her name. Muttering "okay so, step one" to
+        // yourself and telling her "go back to step one" are the same words; the
+        // wake word is what separates them, so once it has been said, commit.
+        if looksLikeSelfTalk(text) {
+            return context.wokenByWakeWord ? .directFollowUp : .selfTalk
+        }
 
         if looksLikeBackground(text, topicWords: context.topicWords) {
-            return .background
+            return context.wokenByWakeWord ? .directFollowUp : .background
         }
 
         // Soft topical / pronoun continuation right after Polly spoke.
@@ -162,6 +176,13 @@ enum ConversationalGate {
     }
 
     /// True when the utterance is a clear barge-in while Polly is talking.
+    /// NO LONGER CONSULTED FOR BARGE-IN, as of the 2026-08 test session.
+    ///
+    /// Cutting Chef off mid-sentence is the wake word's job and nothing else:
+    /// this judged a transcript confident enough to interrupt on, which meant
+    /// somebody else in the room could stop her talking. Kept, with its tests,
+    /// because the judgement itself is sound and the next thing that wants
+    /// "is this addressed to us" should start here rather than reinvent it.
     static func isClearInterruption(_ raw: String) -> Bool {
         let hadQuestionMark = raw.contains("?")
         let text = normalize(raw)
@@ -173,6 +194,25 @@ enum ConversationalGate {
         if WakeWordMatcher.containsWakePhrase(text) { return true }
         if hadQuestionMark || looksLikeDirectFollowUp(text) { return true }
         return false
+    }
+
+    /// Whether what we heard reads as something asked of Chef, rather than a
+    /// scrap of a conversation with somebody else in the room.
+    ///
+    /// Used at the listening ceiling, where the choice is between answering a
+    /// real question the cook asked before turning away, and staying out of a
+    /// conversation that was never ours. Deliberately stricter than the ordinary
+    /// turn gate: by the time this runs the cook has been talking for
+    /// twenty-five seconds, so most of the transcript is likely to be the other
+    /// conversation, and answering the wrong half is worse than saying nothing.
+    static func looksAddressedToChef(_ raw: String) -> Bool {
+        let text = normalize(raw)
+        guard !text.isEmpty else { return false }
+        // Two words is not a question, it is an offcut.
+        guard text.split(separator: " ").count >= 3 else { return false }
+        if WakeWordMatcher.containsWake(text) { return true }
+        if raw.contains("?") { return true }
+        return looksLikeDirectFollowUp(text)
     }
 
     /// Trailing words that usually mean the cook is still thinking — hold before

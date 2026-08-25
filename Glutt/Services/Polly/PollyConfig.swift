@@ -95,6 +95,17 @@ enum PollyConfig {
     static let followUpPollIntervalMs: UInt64 = 200
     /// Absolute idle while engaged (no valid interaction) before quietly closing.
     static let maxEngagedIdleSeconds: TimeInterval = 45
+    /// Hard ceiling on one listening turn, measured from the wake and NOT
+    /// extended by the cook speaking.
+    ///
+    /// The idle cap above cannot catch the case this exists for. A cook says
+    /// "Chef, how long should the butter brown", then turns and talks to
+    /// somebody in the room: every sentence they say counts as activity and
+    /// pushes the deadline out, so the mic stays open for as long as the
+    /// conversation lasts. Twenty five seconds is long enough for anyone to
+    /// finish asking a real question, including a pause to think, and short
+    /// enough that a chat with a family member does not hold Chef hostage.
+    static let maxListeningSeconds: TimeInterval = 25
     /// When a transcript looks unfinished ("and", "uh", …), delay commitment
     /// this long so a continuation can arrive before we answer.
     static let unfinishedTurnHoldMs: UInt64 = 750

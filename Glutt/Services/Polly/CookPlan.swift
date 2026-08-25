@@ -11,6 +11,24 @@ struct CookPlan: Codable, Equatable {
     struct MiseItem: Codable, Equatable {
         let name: String
         let prep: String
+        /// How much, already formatted ("20", "2 tbsp"). Optional because the
+        /// LLM does not produce it and older cached plans predate it.
+        let amount: String?
+
+        init(name: String, prep: String, amount: String? = nil) {
+            self.name = name
+            self.prep = prep
+            self.amount = amount
+        }
+
+        enum CodingKeys: String, CodingKey { case name, prep, amount }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            name = try c.decode(String.self, forKey: .name)
+            prep = try c.decodeIfPresent(String.self, forKey: .prep) ?? ""
+            amount = try c.decodeIfPresent(String.self, forKey: .amount)
+        }
     }
 
     struct PlanStep: Codable, Equatable, Identifiable {
@@ -25,6 +43,16 @@ struct CookPlan: Codable, Equatable {
         let visualCheck: String?
         let recovery: String?
         let ingredientNames: [String]
+        /// The clip this step must play, when we already know the answer.
+        ///
+        /// Clip assignment is otherwise keyword-scored against the segment's
+        /// `step_keywords`, which is the only option for a plan written by the
+        /// model, but it is guesswork and it drifts: rewording a step or a
+        /// keyword re-scores every pairing. For a bundled dish being cooked in
+        /// front of an audience, guessing is the wrong tool. Naming the segment
+        /// makes the pairing a fact, and a step with no name here plays nothing
+        /// rather than borrowing someone else's clip.
+        let clipSegmentID: String?
 
         init(
             id: String,
@@ -37,7 +65,8 @@ struct CookPlan: Codable, Equatable {
             dependsOn: [String] = [],
             visualCheck: String? = nil,
             recovery: String? = nil,
-            ingredientNames: [String] = []
+            ingredientNames: [String] = [],
+            clipSegmentID: String? = nil
         ) {
             self.id = id
             self.index = index
@@ -50,6 +79,7 @@ struct CookPlan: Codable, Equatable {
             self.visualCheck = visualCheck
             self.recovery = recovery
             self.ingredientNames = ingredientNames
+            self.clipSegmentID = clipSegmentID
         }
 
         // Optional-tolerant decoding (PlateCard pattern): the LLM may omit any
@@ -58,6 +88,7 @@ struct CookPlan: Codable, Equatable {
         enum CodingKeys: String, CodingKey {
             case id, index, title, instruction, kind, estimatedSeconds
             case timerSeconds, dependsOn, visualCheck, recovery, ingredientNames
+            case clipSegmentID
         }
 
         init(from decoder: Decoder) throws {
@@ -74,6 +105,7 @@ struct CookPlan: Codable, Equatable {
             visualCheck = try c.decodeIfPresent(String.self, forKey: .visualCheck)
             recovery = try c.decodeIfPresent(String.self, forKey: .recovery)
             ingredientNames = try c.decodeIfPresent([String].self, forKey: .ingredientNames) ?? []
+            clipSegmentID = try c.decodeIfPresent(String.self, forKey: .clipSegmentID)
         }
     }
 
@@ -125,7 +157,7 @@ struct CookPlan: Codable, Equatable {
     /// passive (Polly starts the timer); everything else is active.
     /// Always prepends Tools + Prep when there is gear / board work.
     static func linear(from recipe: Recipe, scale: Double) -> CookPlan {
-        let mise = synthesizeMise(from: recipe.ingredients)
+        let mise = synthesizeMise(from: recipe.ingredients, scale: scale)
         let steps = recipe.sortedSteps.enumerated().map { offset, step in
             PlanStep(
                 id: "s\(offset + 1)",
@@ -146,15 +178,18 @@ struct CookPlan: Codable, Equatable {
             steps: steps,
             isFallback: true
         )
-        return plan.ensuringLeadingPrep()
+        return plan.ensuringLeadingPrep(ingredients: recipe.ingredients, scale: scale)
     }
 
     /// Guarantees short leading setup steps before any heat:
     /// 1) Tools (stage gear) when `equipment` is non-empty
     /// 2) Prep (knife/board only) when `mise` has real board work
     /// Spices/oils/measuring never land in Prep — those happen at cook time.
-    func ensuringLeadingPrep() -> CookPlan {
-        let cleanedMise = Self.boardWorkOnly(mise)
+    func ensuringLeadingPrep(
+        ingredients: [RecipeIngredient] = [], scale: Double = 1
+    ) -> CookPlan {
+        let cleanedMise = Self.withAmounts(
+            Self.boardWorkOnly(mise), from: ingredients, scale: scale)
         let gear = equipment
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -277,7 +312,8 @@ struct CookPlan: Codable, Equatable {
             dependsOn: step.dependsOn,
             visualCheck: step.visualCheck,
             recovery: step.recovery,
-            ingredientNames: step.ingredientNames
+            ingredientNames: step.ingredientNames,
+            clipSegmentID: step.clipSegmentID
         )
     }
 
@@ -309,21 +345,57 @@ struct CookPlan: Codable, Equatable {
             dependsOn: depends,
             visualCheck: step.visualCheck,
             recovery: step.recovery,
-            ingredientNames: step.ingredientNames
+            ingredientNames: step.ingredientNames,
+            clipSegmentID: step.clipSegmentID
         )
     }
 
     /// Coarse mise for the no-AI path: knife/board work for produce & proteins only.
     /// Spices, oils, and "measure X" never belong here — measure when you cook.
-    static func synthesizeMise(from ingredients: [RecipeIngredient]) -> [MiseItem] {
+    static func synthesizeMise(from ingredients: [RecipeIngredient], scale: Double = 1) -> [MiseItem] {
         ingredients
             .sorted { $0.sortIndex < $1.sortIndex }
             .compactMap { ingredient -> MiseItem? in
                 let name = ingredient.name.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !name.isEmpty else { return nil }
                 guard let action = prepAction(for: name) else { return nil }
-                return MiseItem(name: name, prep: action)
+                return MiseItem(
+                    name: name,
+                    prep: action,
+                    amount: UnitConverter.display(
+                        quantity: ingredient.quantity, unit: ingredient.unit, scale: scale))
             }
+    }
+
+    /// Fill in how much, from the recipe's own ingredient list.
+    ///
+    /// The compiler's mise schema has no quantity field and the LLM was never
+    /// asked for one, so every prep row read "pick the fresh sage leaves" and
+    /// left the cook to go and look it up. The number is already sitting in the
+    /// recipe, so take it from there rather than teaching the model a new field
+    /// it would get wrong on cached plans anyway.
+    ///
+    /// An amount already on the item wins, so a hand-written bundled plan can
+    /// still say something the ingredient line cannot ("a handful").
+    static func withAmounts(
+        _ mise: [MiseItem], from ingredients: [RecipeIngredient], scale: Double = 1
+    ) -> [MiseItem] {
+        guard !ingredients.isEmpty else { return mise }
+        return mise.map { item in
+            guard (item.amount?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "").isEmpty
+            else { return item }
+            let name = item.name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { return item }
+            let canonical = IngredientCanonicalizer.canonicalize(name)
+            let match = ingredients.first { $0.name.lowercased() == name }
+                ?? ingredients.first { $0.canonicalName.lowercased() == canonical.lowercased() }
+                ?? ingredients.first { $0.name.lowercased().contains(name) || name.contains($0.name.lowercased()) }
+            guard let match,
+                  let amount = UnitConverter.display(
+                    quantity: match.quantity, unit: match.unit, scale: scale)
+            else { return item }
+            return MiseItem(name: item.name, prep: item.prep, amount: amount)
+        }
     }
 
     /// Drop measure-only / seasoning rows from LLM or stale cache plans.
@@ -361,7 +433,7 @@ struct CookPlan: Codable, Equatable {
             let prepLower = prep.lowercased()
             if prepLower.isEmpty {
                 // Bare name with no knife action — keep only if it looks like produce/protein.
-                return prepAction(for: name).map { MiseItem(name: name, prep: $0) }
+                return prepAction(for: name).map { MiseItem(name: name, prep: $0, amount: item.amount) }
             }
             if prepLower.contains("measure")
                 || prepLower.contains("portion")
@@ -376,9 +448,9 @@ struct CookPlan: Codable, Equatable {
             // Substitute what we know that ingredient wants, and if we do not
             // know, drop it rather than say "cut to size".
             if isVaguePrep(prep) {
-                return prepAction(for: name).map { MiseItem(name: name, prep: $0) }
+                return prepAction(for: name).map { MiseItem(name: name, prep: $0, amount: item.amount) }
             }
-            return MiseItem(name: name, prep: prep)
+            return MiseItem(name: name, prep: prep, amount: item.amount)
         }
     }
 
@@ -477,18 +549,24 @@ struct CookPlan: Codable, Equatable {
     static func phrase(for item: MiseItem) -> String {
         let prep = item.prep.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = midSentence(item.name)
-        guard !prep.isEmpty else { return name }
+        let trimmedAmount = item.amount?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let amount: String? = trimmedAmount.isEmpty ? nil : trimmedAmount
+        guard !prep.isEmpty else { return amount.map { "\($0) \(name)" } ?? name }
         var words = prep.split(separator: " ").map(String.init)
         let verb = words.removeFirst()
         // Only rearrange around a verb we recognise. Anything else keeps the
         // old shape rather than risking "at the chicken room temperature".
         guard boardVerbs.contains(verb.lowercased()) else {
-            return "\(prep) the \(name)"
+            return amount.map { "\(prep) \($0) \(name)" } ?? "\(prep) the \(name)"
         }
         let tail = words.joined(separator: " ")
+        // "pick 20 fresh sage leaves", not "pick the fresh sage leaves". Without
+        // the number the cook has to stop and ask the one question the app can
+        // already answer, which is the opposite of a prep list.
+        let object = amount.map { "\($0) \(name)" } ?? "the \(name)"
         return tail.isEmpty
-            ? "\(verb) the \(name)"
-            : "\(verb) the \(name) \(tail)"
+            ? "\(verb) \(object)"
+            : "\(verb) \(object) \(tail)"
     }
 
     /// Ingredient names are stored title-cased for the list UI, which reads as a

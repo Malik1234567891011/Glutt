@@ -47,7 +47,7 @@ struct SkillAskPollyView: View {
             if isThinking {
                 HStack(spacing: 8) {
                     SkillTypingDots()
-                    Text("Polly is thinking")
+                    Text("Chef is thinking")
                         .font(BrandFont.nunito(13, 600))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
@@ -85,7 +85,7 @@ struct SkillAskPollyView: View {
                 .scaledToFit()
                 .frame(height: 42)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Ask Polly")
+                Text("Ask Chef")
                     .font(BrandFont.nunito(15, 800))
                     .foregroundStyle(Theme.Colors.heading)
                 Text("She knows this lesson. Ask her anything about it.")
@@ -199,7 +199,7 @@ struct SkillAskPollyView: View {
                 )
                 RecipeChatStore.append(role: .assistant, text: reply, family: family, in: context)
             } catch {
-                failure = "Polly couldn't answer that one. Try again in a moment."
+                failure = "Chef couldn't answer that one. Try again in a moment."
             }
         }
     }

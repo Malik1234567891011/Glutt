@@ -125,18 +125,18 @@ struct SkillLessonView: View {
     @ViewBuilder private func checkCallout(_ check: SkillVisualCheck) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             Label(
-                isMastered ? "Polly has seen you do this" : "Let Polly check your grip",
+                isMastered ? "Chef has seen you do this" : "Let Chef check your grip",
                 systemImage: isMastered ? "checkmark.seal.fill" : "eye")
                 .font(.headline)
                 .foregroundStyle(isMastered ? Theme.Colors.accent : Theme.Colors.heading)
 
-            Text("Put your glasses on, pick up your knife, and look down at your hand. "
-                 + "She will watch for \(Int(check.holdSeconds)) seconds and tell you the one "
-                 + "thing worth changing.")
+            Text("Put your glasses on and pick up your knife. She talks you through it, and "
+                 + "when you ask her to look she watches for \(Int(check.holdSeconds)) seconds "
+                 + "and tells you the one thing worth changing.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.Colors.textSecondary)
 
-            Button(isMastered ? "Check it again" : "Check my grip") { isCoaching = true }
+            Button(isMastered ? "Practise it again" : "Learn it with Chef") { isCoaching = true }
                 .buttonStyle(PrimaryButtonStyle())
                 .padding(.top, Theme.Spacing.xs)
         }

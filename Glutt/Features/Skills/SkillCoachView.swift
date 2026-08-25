@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UIKit
 
 /// The screen a cook looks at while Polly is teaching them to hold a knife.
 ///
@@ -21,6 +22,7 @@ struct SkillCoachView: View {
     @State private var visuals = PollyVisualSourceCoordinator(
         phone: PhoneCameraVisualSource(camera: PollyCameraController()))
     @State private var session: SkillCoachSession?
+    @State private var copiedLog = false
 
     var body: some View {
         ZStack {
@@ -150,32 +152,56 @@ struct SkillCoachView: View {
 
     private var dockCopy: String {
         guard let session, session.phase == .live else { return "Connecting" }
-        if session.isSpeaking { return "Polly is talking" }
+        if session.isSpeaking { return "Chef is talking" }
         if case .holding = session.stage { return "Hold still" }
         if case .analysing = session.stage { return "Looking at your hand" }
         if session.isThinking { return "Thinking" }
-        return session.isListening ? "Listening, just talk to her" : "One moment"
+        if session.isListening { return "Listening" }
+        return session.wakeWordAvailable ? "Say “Chef” to talk" : "Not listening"
     }
 
+    /// No check button.
+    ///
+    /// There was one and it was the wrong shape: a cook with a knife in one hand
+    /// and glasses on their face should not be hunting for a control, and having
+    /// it there made asking out loud look optional. Say "Chef, does this look
+    /// right" and she looks.
     @ViewBuilder private var footer: some View {
         VStack(spacing: Theme.Spacing.sm) {
-            if session?.stage == .visionUnavailable {
-                Button("Try the check again") { session?.checkNow() }
+            Text(promptLine)
+                .font(.footnote)
+                .foregroundStyle(Theme.Colors.muted)
+                .multilineTextAlignment(.center)
+            HStack(spacing: Theme.Spacing.sm) {
+                Button("Done") { dismiss() }
                     .buttonStyle(SecondaryButtonStyle())
-            } else if session?.canCheck == true {
-                // Secondary, deliberately. Asking her out loud is the interaction;
-                // this is the fallback for a noisy kitchen, not the way in.
-                Button("Check my grip") { session?.checkNow() }
-                    .buttonStyle(SecondaryButtonStyle())
-            }
-            Button("Done") { dismiss() }
+                Button {
+                    UIPasteboard.general.string = PollyDebugLog.shared.dump()
+                    copiedLog = true
+                } label: {
+                    Image(systemName: copiedLog ? "checkmark" : "doc.on.clipboard")
+                        .frame(width: 44, height: 44)
+                }
                 .buttonStyle(SecondaryButtonStyle())
+                .accessibilityLabel("Copy debug log")
+            }
         }
+    }
+
+    /// What to say, spelled out, because a screen that only listens has to tell
+    /// you that it is listening AND what to say into it.
+    private var promptLine: String {
+        guard let session, session.phase == .live else { return "" }
+        if !session.wakeWordAvailable {
+            return "The wake word is not available on this device right now."
+        }
+        if session.isAwake { return "Go ahead, she is listening." }
+        return "Say “Chef” to talk. Try “Chef, does this look right?”"
     }
 
     private var statusLine: String {
         switch session?.phase {
-        case .idle, .connecting, .none: "Getting Polly ready"
+        case .idle, .connecting, .none: "Getting Chef ready"
         case .failed(let why): why
         case .ended: "Lesson finished"
         case .live:
@@ -183,7 +209,9 @@ struct SkillCoachView: View {
             case .holding: "Hold still"
             case .analysing: "Looking"
             case .safetyStop: "Put the knife down"
-            default: "Talk to her whenever you like"
+            default: (session?.isAwake ?? false)
+                ? "Go ahead"
+                : "Say “Chef” whenever you want her"
             }
         }
     }

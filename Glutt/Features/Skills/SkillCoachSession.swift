@@ -15,12 +15,12 @@ import SwiftData
 /// mint, the visual source, and the assessor. What is different is the shape of
 /// the conversation.
 ///
-/// **No wake word here, on purpose.** A cook mid-recipe is doing something else
-/// and Chef has to be summoned; a cook in a lesson is standing still, looking at
-/// their own hand, doing nothing but this. Making them say "Chef" before every
-/// "wait, like this?" would be ceremony in the one place the conversation should
-/// feel like a person is next to you. The mic stays open while she is not
-/// speaking.
+/// **Same wake word as a cook.** It was built without one, on the theory that a
+/// lesson is a focused activity and being summoned is ceremony. That was wrong
+/// in practice for the reason it is right in a recipe: a kitchen is noisy, the
+/// cook talks to other people, and an always open mic turns every stray sentence
+/// into a turn. It is also simply what this app has taught people to expect, and
+/// inventing a second rule for the same gesture is worse than the ceremony.
 @MainActor
 @Observable
 final class SkillCoachSession {
@@ -84,6 +84,10 @@ final class SkillCoachSession {
     private(set) var isSpeaking = false
     /// A turn is in flight: she is deciding, or a look is being assessed.
     private(set) var isThinking = false
+    /// The on-device recogniser is up and the wake word will actually work.
+    private(set) var wakeWordAvailable = false
+    /// The cook said "Chef" and the mic is open to the server.
+    private(set) var isAwake = false
 
     var canCheck: Bool { phase == .live && stage == .teaching }
 
@@ -94,7 +98,7 @@ final class SkillCoachSession {
     /// screen showing "listening" while the server hears silence is the exact
     /// bug this avoids.
     var isListening: Bool {
-        guard phase == .live, !isSpeaking, !isThinking else { return false }
+        guard phase == .live, isAwake, !isSpeaking, !isThinking else { return false }
         if case .holding = stage { return false }
         if case .analysing = stage { return false }
         return true
@@ -107,6 +111,8 @@ final class SkillCoachSession {
     private let visuals: PollyVisualSourceCoordinator
     private let deps: Dependencies
 
+    private let wakeWord: WakeWordListening
+    private var dormancyTask: Task<Void, Never>?
     private var transport: RealtimeTransporting?
     private var eventTask: Task<Void, Never>?
     private var holdTask: Task<Void, Never>?
@@ -131,11 +137,13 @@ final class SkillCoachSession {
         skill: Skill,
         check: SkillVisualCheck,
         visuals: PollyVisualSourceCoordinator,
+        wakeWord: WakeWordListening? = nil,
         deps: Dependencies = .live
     ) {
         self.skill = skill
         self.check = check
         self.visuals = visuals
+        self.wakeWord = wakeWord ?? WakeWordListener()
         self.deps = deps
     }
 
@@ -145,7 +153,10 @@ final class SkillCoachSession {
         guard phase == .idle else { return }
         self.context = context
         phase = .connecting
-        PollyDebugLog.shared.log("skill: starting lesson \(skill.id)")
+        // Fresh log per lesson: the copy button is for sending one session to
+        // somebody, and a paste that starts three cooks ago is unreadable.
+        PollyDebugLog.shared.reset()
+        PollyDebugLog.shared.log("skill: starting lesson \(skill.id) — \(skill.title)")
 
         // Mic first, because WebRTC starts capturing at connect and a denied
         // permission surfaces there as an audio failure with no explanation.
@@ -153,7 +164,7 @@ final class SkillCoachSession {
         // to fall back to.
         guard await AVAudioApplication.requestRecordPermission() else {
             phase = .failed(
-                "Polly needs the microphone to teach you. Turn it on in Settings and come back.")
+                "Chef needs the microphone to teach you. Turn it on in Settings and come back.")
             PollyDebugLog.shared.log("skill: mic permission DENIED")
             return
         }
@@ -174,6 +185,14 @@ final class SkillCoachSession {
 
         let transport = deps.makeTransport()
         self.transport = transport
+        // The wake listener hears the room through the capture tap, and it has
+        // to be attached before connect: WebRTC starts capturing during
+        // negotiation, and a tap wired afterwards misses the words spoken while
+        // the screen was still saying "getting Chef ready".
+        if let webrtc = transport as? RealtimeWebRTCTransport {
+            let wake = wakeWord
+            webrtc.onCaptureBuffer = { buffer in wake.append(buffer) }
+        }
         let config = RealtimeSessionConfig(
             instructions: SkillCoachPrompt.instructions(
                 skill: skill,
@@ -200,17 +219,74 @@ final class SkillCoachSession {
         stage = .teaching
         consumeEvents(from: transport)
 
-        // Mic open and stays open. See the type comment: there is no wake word
-        // in a lesson, so the only thing that closes it is her talking.
+        // Wake word up before she says anything, so "Chef" lands even during her
+        // opening line.
+        _ = await wakeWord.requestAuthorization()
+        wakeWord.onWake = { [weak self] in
+            guard let self else { return }
+            // She must not wake herself. The feed is post AEC and her prompt
+            // avoids the word, but a wake landing exactly as she says it is the
+            // one failure that makes her interrupt her own sentence.
+            if self.isSpeaking, WakeWordMatcher.containsWake(self.caption) {
+                PollyDebugLog.shared.log("skill: wake ignored, she said it herself")
+                return
+            }
+            self.wakeUp()
+        }
+        wakeWord.onListeningChange = { [weak self] listening in
+            self?.wakeWordAvailable = listening
+            PollyDebugLog.shared.log("skill: wake word \(listening ? "listening" : "unavailable")")
+        }
+        wakeWord.start()
+        wakeWordAvailable = wakeWord.isAvailable
+
+        // Dormant until spoken to, exactly like a cook. The mic is held closed
+        // through her opening line as well, because the AEC convergence window
+        // is where her own voice can come back as the cook's.
         (transport as? RealtimeWebRTCTransport)?.holdMicForGreeting()
-        (transport as? RealtimeWebRTCTransport)?.setMicMode(.open)
+        (transport as? RealtimeWebRTCTransport)?.setMicMode(.dormant)
 
         try? await transport.send(.responseCreateSpeechOnly)
-        PollyDebugLog.shared.log("skill: live, opening line requested")
+        PollyDebugLog.shared.log(
+            "skill: live, dormant, wake word \(wakeWordAvailable ? "ready" : "UNAVAILABLE")")
+    }
+
+    /// "Chef" was heard. Open the mic and start the clock.
+    private func wakeUp() {
+        guard phase == .live else { return }
+        isAwake = true
+        (transport as? RealtimeWebRTCTransport)?.forceMicOpenForWake()
+        PollyDebugLog.shared.log("skill: AWAKE, mic open")
+        armDormancy(after: PollyConfig.initialListenWindowSeconds)
+    }
+
+    /// Back to waiting for the word.
+    private func goDormant(reason: String) {
+        dormancyTask?.cancel()
+        dormancyTask = nil
+        guard isAwake else { return }
+        isAwake = false
+        (transport as? RealtimeWebRTCTransport)?.setMicMode(.dormant)
+        PollyDebugLog.shared.log("skill: dormant (\(reason))")
+    }
+
+    /// Close the mic again if nothing comes of it. Without this a single "Chef"
+    /// leaves the mic open for the rest of the lesson, which is the thing the
+    /// wake word exists to prevent.
+    private func armDormancy(after seconds: TimeInterval) {
+        dormancyTask?.cancel()
+        dormancyTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled else { return }
+            self?.goDormant(reason: "nothing said")
+        }
     }
 
     func end() async {
+        dormancyTask?.cancel()
+        wakeWord.stop()
         holdTask?.cancel()
+        toolTask?.cancel()
         eventTask?.cancel()
         await transport?.close()
         transport = nil
@@ -218,8 +294,8 @@ final class SkillCoachSession {
         PollyDebugLog.shared.log("skill: lesson ended after \(attempts.count) attempt(s)")
     }
 
-    /// The button on the lesson screen, for a cook who would rather tap than
-    /// wait to be asked. Runs exactly the same path Polly's tool call does.
+    /// Kept for the retry path and for tests. There is no button any more: the
+    /// way a cook asks to be looked at is to ask.
     func checkNow() {
         guard canCheck else { return }
         holdTask?.cancel()
@@ -253,6 +329,7 @@ final class SkillCoachSession {
         switch event {
         case .outputAudioStarted:
             isSpeaking = true
+            wakeWord.setSuppressed(true)
             PollyDebugLog.shared.log("skill: she is speaking")
         case .outputAudioStopped:
             isSpeaking = false
@@ -261,8 +338,12 @@ final class SkillCoachSession {
             // another look. Without this the check runs exactly once per lesson,
             // which is the opposite of the loop this whole thing is built on.
             if case .coaching = stage { stage = .teaching }
+            wakeWord.setSuppressed(false)
+            // She has answered, so the turn is over. Give them a window to come
+            // straight back without saying the word again, then close.
+            if isAwake { armDormancy(after: PollyConfig.initialListenWindowSeconds) }
             PollyDebugLog.shared.log(
-                "skill: she stopped, mic should be open (stage=\(stage))")
+                "skill: she stopped (awake=\(isAwake) stage=\(stage))")
         case .outputTranscriptDelta(_, let delta):
             caption += delta
         case .inputTranscript(_, let text):
@@ -270,6 +351,9 @@ final class SkillCoachSession {
             // indistinguishable from "she heard me and chose not to answer",
             // and those need completely different fixes.
             PollyDebugLog.shared.log("skill: heard \"\(text)\"")
+            // They said something real, so do not close the mic underneath them
+            // while she is still working out the answer.
+            if isAwake { armDormancy(after: PollyConfig.maxListeningSeconds) }
         case .responseCreated:
             caption = ""
         case .responseDone(let status, let calls, _):
@@ -331,6 +415,10 @@ final class SkillCoachSession {
     private func runHoldAndAssess(announce: Bool) async -> String {
         let started = deps.now()
         stage = .holding(progress: 0)
+        // Holding still is not silence to be timed out. Keep the turn alive
+        // across the hold and the assessment so the answer does not arrive to a
+        // closed mic.
+        if isAwake { armDormancy(after: check.holdSeconds + PollyConfig.maxListeningSeconds) }
 
         let capture = await SkillHoldCapture.run(
             check: check,

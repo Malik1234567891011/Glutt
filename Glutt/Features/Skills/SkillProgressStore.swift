@@ -25,6 +25,65 @@ enum SkillProgressStore {
         try? context.save()
     }
 
+    /// Records one attempt at a watchable skill, and promotes the skill's state
+    /// to match what just happened.
+    ///
+    /// Both writes live here for the reason the type comment gives: an attempt
+    /// that advanced somebody to mastered and did not say so is a bug nobody
+    /// notices for a week. A passing attempt also marks the skill learned, since
+    /// being watched doing it correctly is a strictly stronger claim than
+    /// tapping a button to say you can.
+    @discardableResult
+    static func recordAttempt(
+        _ attempt: SkillAttempt,
+        skill: Skill,
+        in context: ModelContext
+    ) -> Bool {
+        context.insert(attempt)
+
+        // Attempting it at all counts as starting, for a cook who went straight
+        // to the check without reading the lesson first.
+        let row: SkillProgress
+        if let existing = self.row(for: skill.id, in: context) {
+            row = existing
+            if row.startedAt == nil { row.startedAt = attempt.startedAt }
+        } else {
+            row = SkillProgress(skillID: skill.id, startedAt: attempt.startedAt)
+            context.insert(row)
+        }
+
+        var becameMastered = false
+        if attempt.isPass {
+            if row.masteredAt == nil {
+                row.masteredAt = attempt.startedAt
+                becameMastered = true
+            }
+            if row.learnedAt == nil {
+                row.learnedAt = attempt.startedAt
+                row.xpAwarded = skill.xp
+                SkillStreak.recordLearned()
+                Analytics.capture(.skillLearned, [
+                    "category": skill.categoryID,
+                    "difficulty": skill.difficulty.rawValue,
+                    "challenge": skill.isChallenge,
+                    "verified": true,
+                ])
+            }
+        }
+
+        try? context.save()
+        return becameMastered
+    }
+
+    /// Every attempt at one skill, newest first.
+    static func attempts(for skillID: String, in context: ModelContext) -> [SkillAttempt] {
+        let descriptor = FetchDescriptor<SkillAttempt>(
+            predicate: #Predicate { $0.skillID == skillID },
+            sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
+        )
+        return (try? context.fetch(descriptor)) ?? []
+    }
+
     /// Marks a skill learned, awards its XP and advances the streak.
     ///
     /// Idempotent: tapping "I've got it" twice must not pay twice, which is

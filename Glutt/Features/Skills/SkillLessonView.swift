@@ -13,11 +13,17 @@ struct SkillLessonView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query private var progressRows: [SkillProgress]
+    @Query(sort: \SkillAttempt.startedAt, order: .reverse) private var allAttempts: [SkillAttempt]
 
     @State private var justLearned = false
     @State private var awarded = 0
+    @State private var isCoaching = false
 
     private var reader: SkillsProgressReader { SkillsProgressReader(progress: progressRows) }
+    private var attempts: [SkillAttempt] { allAttempts.filter { $0.skillID == skill.id } }
+    private var isMastered: Bool {
+        progressRows.first { $0.skillID == skill.id }?.isMastered ?? false
+    }
     private var isLearned: Bool { reader.learnedIDs.contains(skill.id) }
     private var category: SkillCategory? { SkillCatalog.category(of: skill) }
     private var unmet: [Skill] {
@@ -36,6 +42,14 @@ struct SkillLessonView: View {
                         if !unmet.isEmpty { recommendedFirst }
                         section("What you're learning", body: lesson.summary)
                         steps(lesson.steps)
+                        // The invitation sits directly under the steps, not at
+                        // the bottom. Reading three steps and then being asked
+                        // to try them is the whole shape of the lesson; putting
+                        // it after "why this matters" turns it into a footnote.
+                        if let check = skill.visualCheck {
+                            checkCallout(check)
+                        }
+                        attemptHistory
                         watchFors(lesson.watchFors)
                         whyItMatters(lesson.whyItMatters)
                         // Polly sits after the teaching, not before it. The
@@ -99,6 +113,92 @@ struct SkillLessonView: View {
             .foregroundStyle(tint)
             .padding(.horizontal, 11).padding(.vertical, 5)
             .background(Capsule().fill(background))
+    }
+
+    // MARK: The check
+
+    /// The thing that makes this a lesson rather than an article.
+    ///
+    /// Deliberately loud, and deliberately honest about what it needs: a cook
+    /// without glasses should not tap this and discover halfway through that it
+    /// was never going to work.
+    @ViewBuilder private func checkCallout(_ check: SkillVisualCheck) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Label(
+                isMastered ? "Polly has seen you do this" : "Let Polly check your grip",
+                systemImage: isMastered ? "checkmark.seal.fill" : "eye")
+                .font(.headline)
+                .foregroundStyle(isMastered ? Theme.Colors.accent : Theme.Colors.heading)
+
+            Text("Put your glasses on, pick up your knife, and look down at your hand. "
+                 + "She will watch for \(Int(check.holdSeconds)) seconds and tell you the one "
+                 + "thing worth changing.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.Colors.textSecondary)
+
+            Button(isMastered ? "Check it again" : "Check my grip") { isCoaching = true }
+                .buttonStyle(PrimaryButtonStyle())
+                .padding(.top, Theme.Spacing.xs)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.md)
+        .background(
+            Theme.Colors.greenTint,
+            in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+        .fullScreenCover(isPresented: $isCoaching) {
+            SkillCoachView(skill: skill, check: check)
+        }
+    }
+
+    /// What happened the last few times, in the cook's own history.
+    ///
+    /// Every attempt, not just the good ones. "Could not see your thumb" sitting
+    /// in the list is the difference between a system that admits what it does
+    /// not know and one that quietly drops the evidence.
+    @ViewBuilder private var attemptHistory: some View {
+        if !attempts.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                Text("Your attempts")
+                    .font(.headline)
+                    .foregroundStyle(Theme.Colors.heading)
+                ForEach(attempts.prefix(5)) { attempt in
+                    HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+                        Text(attempt.outcome.label)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(tint(for: attempt.outcome))
+                            .frame(width: 92, alignment: .leading)
+                        Text(attempt.note)
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                if practisedSeconds > 0 {
+                    Text("\(attempts.count) attempts, about \(practisedMinutes) practising.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Colors.muted)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Spacing.md)
+            .background(Theme.Colors.card, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+        }
+    }
+
+    private var practisedSeconds: Int { Int(attempts.reduce(0) { $0 + $1.seconds }) }
+
+    private var practisedMinutes: String {
+        practisedSeconds < 60 ? "\(practisedSeconds) seconds" : "\(practisedSeconds / 60) minutes"
+    }
+
+    private func tint(for outcome: SkillAttemptOutcome) -> Color {
+        switch outcome {
+        case .passed: Theme.Colors.accent
+        case .corrected: Theme.Colors.amber
+        case .inconclusive: Theme.Colors.muted
+        case .wrongEquipment: Theme.Colors.muted
+        case .stoppedForSafety: Theme.Colors.tomato
+        }
     }
 
     // MARK: Sections

@@ -95,6 +95,7 @@ struct GluttApp: App {
             PollyCookLog.self,
             RecipeChatMessage.self,
             SkillProgress.self,
+            SkillAttempt.self,
             SyncTombstone.self,
         ])
         do {

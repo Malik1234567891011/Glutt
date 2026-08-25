@@ -1,0 +1,406 @@
+import XCTest
+import SwiftData
+@testable import Glutt
+
+/// The rules that decide what a cook hears about their own hands.
+///
+/// All of this is deliberately reachable without a camera, a knife or a network,
+/// because the failure mode that matters most here is a confident sentence about
+/// a finger nobody saw, and that is a logic bug rather than a vision bug.
+final class SkillVisualCoachingTests: XCTestCase {
+
+    private let check = SkillVisualCheck.chefKnifeGrip
+
+    // MARK: - Fixtures
+
+    private func assessment(
+        overall: SkillVisualAssessment.Overall,
+        confidence: Double = 0.9,
+        visible: Bool = true,
+        issue: String? = nil,
+        safety: Bool = false,
+        safetyConfidence: Double = 0.95,
+        supported: Bool = true,
+        equipmentConfidence: Double = 0.9,
+        equipment: String = "chef's knife",
+        evidence: [String] = ["thumb on the blade face near the heel"]
+    ) -> SkillVisualAssessment {
+        var visibility: [String: SkillVisualAssessment.Visibility] = [:]
+        for region in check.requiredVisibility {
+            visibility[region.rawValue] = visible ? .sufficient : .insufficient
+        }
+        return SkillVisualAssessment(
+            equipment: .init(
+                reading: equipment, supported: supported, confidence: equipmentConfidence),
+            visibility: visibility,
+            safety: .init(
+                immediateConcern: safety,
+                description: safety ? "index finger resting on the cutting edge" : nil,
+                confidence: safetyConfidence),
+            overall: overall,
+            confidence: confidence,
+            primaryIssueKey: issue,
+            observedEvidence: evidence)
+    }
+
+    // MARK: - Seeing comes before judging
+
+    /// The distinction the whole feature rests on. A view we could not use must
+    /// never come out as a criticism of the cook.
+    func testAPoorViewIsNeverReportedAsAPoorGrip() {
+        let blind = assessment(overall: .needsAdjustment, visible: false, issue: "pointerGrip")
+
+        let outcome = SkillCoachDecision.decide(blind, check: check)
+
+        guard case .cannotSee(let regions) = outcome else {
+            return XCTFail("expected cannotSee, got \(outcome)")
+        }
+        XCTAssertEqual(Set(regions), Set(check.requiredVisibility),
+                       "and it should name what it could not see")
+    }
+
+    /// `cannotAssess` is the model's own way of saying it does not know, and it
+    /// outranks anything else it happened to fill in.
+    func testCannotAssessIsHonoured() {
+        let unsure = assessment(overall: .cannotAssess, issue: "handleGrip")
+        XCTAssertEqual(
+            SkillCoachDecision.decide(unsure, check: check),
+            .cannotSee(regions: []))
+    }
+
+    /// Below the rubric's floor she says she cannot see well enough, which is
+    /// true, rather than a correction we would not stand behind.
+    func testLowConfidenceIsTreatedAsNotSeeingRatherThanAsAFault() {
+        let shaky = assessment(
+            overall: .needsAdjustment,
+            confidence: check.rubric.confidenceFloor - 0.01,
+            issue: "pointerGrip")
+
+        guard case .cannotSee = SkillCoachDecision.decide(shaky, check: check) else {
+            return XCTFail("a low confidence reading must not become a correction")
+        }
+    }
+
+    // MARK: - Safety
+
+    func testAVisibleDangerStopsEverything() {
+        let dangerous = assessment(overall: .needsAdjustment, issue: "pointerGrip", safety: true)
+
+        guard case .safetyStop(let reason) = SkillCoachDecision.decide(dangerous, check: check) else {
+            return XCTFail("a finger on the edge outranks every other finding")
+        }
+        XCTAssertTrue(reason.contains("edge"))
+    }
+
+    /// A safety stop nobody believes is worse than none: it teaches the cook to
+    /// ignore the next one.
+    func testAnUnconfidentSafetyReadingDoesNotStopTheLesson() {
+        let maybe = assessment(
+            overall: .needsAdjustment, issue: "pointerGrip",
+            safety: true, safetyConfidence: 0.4)
+
+        guard case .correct = SkillCoachDecision.decide(maybe, check: check) else {
+            return XCTFail("expected the ordinary correction path")
+        }
+    }
+
+    // MARK: - Equipment
+
+    func testTheWrongKnifeIsSaidRatherThanCoached() {
+        let paring = assessment(
+            overall: .unsupportedEquipment, supported: false, equipment: "paring knife")
+
+        XCTAssertEqual(
+            SkillCoachDecision.decide(paring, check: check),
+            .unsupportedEquipment(reading: "paring knife"))
+    }
+
+    /// Every correction in this rubric is written for a chef's knife, so an
+    /// unsure knife reading must not be enough to send a cook a chef's knife
+    /// correction for a cleaver.
+    func testAnUnsureKnifeReadingDoesNotTriggerTheWrongKnifeSpeech() {
+        let unsure = assessment(
+            overall: .needsAdjustment, issue: "handleGrip",
+            supported: false, equipmentConfidence: 0.3)
+
+        guard case .correct = SkillCoachDecision.decide(unsure, check: check) else {
+            return XCTFail("a guess about the knife should not become an announcement")
+        }
+    }
+
+    // MARK: - One correction, in our words
+
+    func testACorrectionUsesTheAuthoredSentenceNotTheModels() {
+        let outcome = SkillCoachDecision.decide(
+            assessment(overall: .needsAdjustment, issue: "pointerGrip"), check: check)
+
+        guard case .correct(let key, let certainty) = outcome else {
+            return XCTFail("expected a correction, got \(outcome)")
+        }
+        XCTAssertEqual(certainty, .confident)
+        let mistake = try? XCTUnwrap(SkillCoachDecision.mistake(for: key, in: check))
+        XCTAssertTrue(mistake?.correction.contains("Curl it down") ?? false,
+                      "the words the cook hears are the ones we wrote")
+    }
+
+    /// Medium confidence changes the register, not the verdict.
+    func testMediumConfidenceHedges() {
+        let outcome = SkillCoachDecision.decide(
+            assessment(overall: .needsAdjustment, confidence: 0.6, issue: "handleGrip"),
+            check: check)
+
+        XCTAssertEqual(outcome, .correct(mistakeKey: "handleGrip", certainty: .tentative))
+    }
+
+    /// A key we do not have words for is treated as no issue at all. We would
+    /// rather miss a correction than invent one.
+    func testAnUnknownIssueKeyIsNotPassedThrough() {
+        let outcome = SkillCoachDecision.decide(
+            assessment(overall: .needsAdjustment, issue: "elbowTooHigh"), check: check)
+
+        XCTAssertEqual(outcome, .passed(isVariation: false))
+    }
+
+    // MARK: - Passing
+
+    /// The case that decides whether this feels like an instructor or a pose
+    /// classifier: a grip that is not the reference but is in control.
+    func testAnAcceptableVariationIsAPassAndNotACorrection() {
+        let outcome = SkillCoachDecision.decide(
+            assessment(overall: .acceptableVariation), check: check)
+
+        XCTAssertEqual(outcome, .passed(isVariation: true))
+    }
+
+    func testNotesReadLikeSomethingAPersonWrote() {
+        let passed = assessment(overall: .ready, evidence: ["three fingers wrapped on the handle"])
+        let note = SkillCoachDecision.note(
+            for: .passed(isVariation: false), assessment: passed, check: check)
+        XCTAssertTrue(note.contains("Clean pinch grip"))
+        XCTAssertTrue(note.contains("three fingers"))
+
+        let blind = assessment(overall: .cannotAssess, visible: false)
+        let blindNote = SkillCoachDecision.note(
+            for: .cannotSee(regions: [.thumb]), assessment: blind, check: check)
+        XCTAssertTrue(blindNote.contains("thumb"))
+        XCTAssertFalse(blindNote.lowercased().contains("wrong"),
+                       "a view we could not use is not the cook doing badly")
+    }
+
+    // MARK: - Decoding
+
+    /// The model omits fields. A partial answer still lets us say "I could not
+    /// see"; a thrown error lets us say nothing at all.
+    func testAPartialAnswerDecodesRatherThanThrowing() throws {
+        let json = #"{"overall":"cannotAssess"}"#
+        let decoded = try JSONDecoder().decode(
+            SkillVisualAssessment.self, from: Data(json.utf8))
+
+        XCTAssertEqual(decoded.overall, .cannotAssess)
+        XCTAssertEqual(decoded.confidence, 0)
+        XCTAssertTrue(decoded.observedEvidence.isEmpty)
+    }
+
+    /// Models emit the string "null" often enough that treating it as a real key
+    /// would send cooks a correction named `null`.
+    func testTheStringNullIsNotAnIssueKey() throws {
+        let json = #"{"overall":"ready","primaryIssueKey":"null","confidence":0.9}"#
+        let decoded = try JSONDecoder().decode(
+            SkillVisualAssessment.self, from: Data(json.utf8))
+
+        XCTAssertNil(decoded.primaryIssueKey)
+    }
+
+    func testPartialVisibilityStillCountsAsSeeingIt() {
+        var visibility: [String: SkillVisualAssessment.Visibility] = [:]
+        for region in check.requiredVisibility { visibility[region.rawValue] = .partial }
+        let squinting = SkillVisualAssessment(
+            equipment: .init(reading: "chef's knife", supported: true, confidence: 0.9),
+            visibility: visibility,
+            overall: .ready,
+            confidence: 0.9)
+
+        XCTAssertTrue(squinting.sawEnough(for: check),
+                      "demanding a perfect view of every finger would loop real cooks forever")
+    }
+
+    // MARK: - The rubric itself
+
+    func testTheKnifeGripRubricIsCoherent() {
+        let keys = check.rubric.rankedMistakes.map(\.key)
+        XCTAssertEqual(Set(keys).count, keys.count, "duplicate keys make ranking meaningless")
+        XCTAssertFalse(check.rubric.acceptableVariations.isEmpty,
+                       "without these it is a pose classifier")
+        XCTAssertTrue(
+            check.rubric.notVisuallyAssessable.contains { $0.lowercased().contains("squeez") },
+            "grip pressure is the thing a photo cannot show and she must not claim")
+        XCTAssertTrue(
+            check.rubric.unsupportedEquipment.contains("Paring knife"))
+        // The two habits this lesson is most likely to meet, in priority order.
+        XCTAssertEqual(keys.first, "handleGrip")
+        XCTAssertTrue(keys.contains("pointerGrip"))
+        // Both are wrong-for-this-lesson rather than wrong, and the coaching has
+        // to know the difference or it tells a fish cook they are holding a
+        // knife incorrectly.
+        for key in ["handleGrip", "pointerGrip"] {
+            XCTAssertTrue(
+                SkillCoachDecision.mistake(for: key, in: check)?.isContextual ?? false,
+                "\(key) exists legitimately elsewhere")
+        }
+    }
+
+    func testTheKnifeGripSkillIsWiredToTheCheck() throws {
+        let skill = try XCTUnwrap(SkillCatalog.skill("knife.grip"))
+        XCTAssertTrue(skill.isWatchable)
+        XCTAssertEqual(skill.visualCheck?.id, "knife.grip.pinch")
+    }
+
+    // MARK: - Capture
+
+    @MainActor
+    func testTheSharpestFramesWin() {
+        let frames = [Data(count: 10), Data(count: 90), Data(count: 50), Data(count: 70)]
+        let kept = SkillHoldCapture.sharpest(frames, keeping: 3)
+
+        XCTAssertEqual(kept.map(\.count), [90, 70, 50])
+    }
+
+    // MARK: - Prompt
+
+    /// The assessor is the model that has to name a key, so the keys go to it
+    /// and not to the voice. The coach never sees them: it is handed a finished
+    /// sentence, which is what stops it inventing a sixth mistake.
+    func testTheAssessorPromptCarriesTheWholeRubric() {
+        let prompt = SkillVisualAssessor.systemPrompt(check: check)
+
+        for mistake in check.rubric.rankedMistakes {
+            XCTAssertTrue(prompt.contains(mistake.key), "missing \(mistake.key)")
+        }
+        for variation in check.rubric.acceptableVariations {
+            XCTAssertTrue(prompt.contains(variation), "an acceptable variation was dropped")
+        }
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("at most ONE"),
+                      "it must not return a list of five things to fix")
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("cannotAssess"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("false correction is worse"))
+    }
+
+    func testTheCoachPromptIsAboutDeliveryRatherThanJudgement() throws {
+        let skill = try XCTUnwrap(SkillCatalog.skill("knife.grip"))
+        let prompt = SkillCoachPrompt.instructions(
+            skill: skill, check: check, seesContinuously: true)
+
+        XCTAssertTrue(prompt.contains("check_the_hold"))
+        XCTAssertTrue(prompt.contains("finish_lesson"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("never give two corrections"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("never say a technique is"),
+                      "she must not certify safety from a photograph")
+        // The lesson's own steps, so she teaches what the screen says.
+        for step in skill.lesson?.steps ?? [] {
+            XCTAssertTrue(prompt.contains(step), "the written lesson must reach her")
+        }
+        // And none of the internal keys, which are not words anybody says.
+        for mistake in check.rubric.rankedMistakes {
+            XCTAssertFalse(prompt.contains(mistake.key),
+                           "\(mistake.key) is an assessor key, not something to say out loud")
+        }
+    }
+
+    /// Without glasses she is told plainly that she cannot look, because the
+    /// alternative is an instructor who pretends to have watched.
+    func testWithoutGlassesShePromisesNothing() throws {
+        let skill = try XCTUnwrap(SkillCatalog.skill("knife.grip"))
+        let prompt = SkillCoachPrompt.instructions(
+            skill: skill, check: check, seesContinuously: false)
+
+        XCTAssertTrue(prompt.contains("You cannot see them"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("do not pretend"))
+    }
+}
+
+/// Progress, which is the part a cook keeps.
+@MainActor
+final class SkillAttemptProgressTests: XCTestCase {
+
+    private var container: ModelContainer!
+
+    override func setUpWithError() throws {
+        container = try ModelContainer(
+            for: Schema([SkillProgress.self, SkillAttempt.self]),
+            configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
+    }
+
+    override func tearDownWithError() throws { container = nil }
+
+    private var skill: Skill {
+        SkillCatalog.skill("knife.grip") ?? SkillCatalog.allSkills[0]
+    }
+
+    private func attempt(_ outcome: SkillAttemptOutcome, seconds: Double = 5) -> SkillAttempt {
+        SkillAttempt(
+            skillID: skill.id, checkID: "knife.grip.pinch", seconds: seconds,
+            outcome: outcome, note: "note")
+    }
+
+    /// Being watched doing it correctly is a stronger claim than tapping a
+    /// button, so it grants both.
+    func testAPassMastersAndLearnsInOneGo() {
+        let context = container.mainContext
+
+        let mastered = SkillProgressStore.recordAttempt(
+            attempt(.passed), skill: skill, in: context)
+
+        XCTAssertTrue(mastered)
+        let row = SkillProgressStore.row(for: skill.id, in: context)
+        XCTAssertTrue(row?.isMastered ?? false)
+        XCTAssertTrue(row?.isLearned ?? false)
+        XCTAssertEqual(row?.xpAwarded, skill.xp)
+    }
+
+    /// XP is paid once no matter how many times they show her.
+    func testPractisingAgainDoesNotPayTwice() {
+        let context = container.mainContext
+        SkillProgressStore.recordAttempt(attempt(.passed), skill: skill, in: context)
+
+        let secondTime = SkillProgressStore.recordAttempt(
+            attempt(.passed), skill: skill, in: context)
+
+        XCTAssertFalse(secondTime, "already mastered")
+        let row = SkillProgressStore.row(for: skill.id, in: context)
+        XCTAssertEqual(row?.xpAwarded, skill.xp)
+        XCTAssertEqual(SkillProgressStore.attempts(for: skill.id, in: context).count, 2)
+    }
+
+    /// An attempt Polly could not see says nothing about the cook, and must not
+    /// quietly promote them.
+    func testAnUnseenAttemptCountsAsPracticeAndNothingElse() {
+        let context = container.mainContext
+
+        SkillProgressStore.recordAttempt(attempt(.inconclusive), skill: skill, in: context)
+
+        let row = SkillProgressStore.row(for: skill.id, in: context)
+        XCTAssertFalse(row?.isMastered ?? true)
+        XCTAssertFalse(row?.isLearned ?? true)
+        XCTAssertNotNil(row?.startedAt, "but they did turn up and try")
+        XCTAssertEqual(SkillProgressStore.attempts(for: skill.id, in: context).count, 1)
+    }
+
+    /// Practice time is what a later mastery rule will be built from, so the
+    /// seconds have to survive.
+    func testPracticeTimeAccumulates() {
+        let context = container.mainContext
+        SkillProgressStore.recordAttempt(attempt(.corrected, seconds: 5), skill: skill, in: context)
+        SkillProgressStore.recordAttempt(attempt(.passed, seconds: 6), skill: skill, in: context)
+
+        let total = SkillProgressStore.attempts(for: skill.id, in: context)
+            .reduce(0) { $0 + $1.seconds }
+        XCTAssertEqual(total, 11, accuracy: 0.01)
+    }
+
+    func testOutcomesKnowWhetherTheyReflectOnTheCook() {
+        XCTAssertTrue(attempt(.passed).reflectsOnCook)
+        XCTAssertTrue(attempt(.corrected).reflectsOnCook)
+        XCTAssertFalse(attempt(.inconclusive).reflectsOnCook)
+        XCTAssertFalse(attempt(.wrongEquipment).reflectsOnCook)
+    }
+}

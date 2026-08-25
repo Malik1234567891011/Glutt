@@ -22,6 +22,15 @@ final class SkillProgress {
     /// When the cook marked it learned. Nil means started but not finished.
     var learnedAt: Date?
 
+    /// When Polly watched them do it properly.
+    ///
+    /// Deliberately separate from `learnedAt`, because they are different
+    /// claims. Learned is "I have been taught this and I say I can do it".
+    /// Mastered is "this was seen, and it was right". Only the second one is
+    /// worth anything to a cook wondering whether they actually hold a knife
+    /// correctly, and only the second one is a thing no article can give them.
+    var masteredAt: Date?
+
     /// XP as awarded at the time, not recomputed from the catalog.
     ///
     /// A snapshot on purpose: `SkillXP` exists to be retuned, and retuning it
@@ -29,14 +38,22 @@ final class SkillProgress {
     /// rewriting someone's level overnight.
     var xpAwarded: Int
 
-    init(skillID: String, startedAt: Date? = .now, learnedAt: Date? = nil, xpAwarded: Int = 0) {
+    init(
+        skillID: String,
+        startedAt: Date? = .now,
+        learnedAt: Date? = nil,
+        masteredAt: Date? = nil,
+        xpAwarded: Int = 0
+    ) {
         self.skillID = skillID
         self.startedAt = startedAt
         self.learnedAt = learnedAt
+        self.masteredAt = masteredAt
         self.xpAwarded = xpAwarded
     }
 
     var isLearned: Bool { learnedAt != nil }
+    var isMastered: Bool { masteredAt != nil }
     var isInProgress: Bool { learnedAt == nil && startedAt != nil }
 }
 

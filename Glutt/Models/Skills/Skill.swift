@@ -42,6 +42,13 @@ struct Skill: Identifiable, Hashable, Sendable {
     /// optional with no schema change and no UI change.
     let lesson: SkillLesson?
 
+    /// What Polly can watch the cook do, when she can watch anything.
+    ///
+    /// Nil for every skill that is still only reading. A skill with one is a
+    /// *physical* skill: it can be taught, attempted, seen and corrected, and
+    /// its progress means something a tap on a button never did.
+    let visualCheck: SkillVisualCheck?
+
     /// Mastery node: combines several smaller skills and is drawn larger.
     let isChallenge: Bool
 
@@ -65,6 +72,7 @@ struct Skill: Identifiable, Hashable, Sendable {
         estimatedMinutes: Int = 2,
         prerequisiteIDs: [String] = [],
         lesson: SkillLesson? = nil,
+        visualCheck: SkillVisualCheck? = nil,
         isChallenge: Bool = false,
         animationAsset: String? = nil,
         column: SkillColumn = .center
@@ -79,6 +87,7 @@ struct Skill: Identifiable, Hashable, Sendable {
         self.estimatedMinutes = estimatedMinutes
         self.prerequisiteIDs = prerequisiteIDs
         self.lesson = lesson
+        self.visualCheck = visualCheck
         self.isChallenge = isChallenge
         self.animationAsset = animationAsset
         self.column = column
@@ -90,6 +99,9 @@ struct Skill: Identifiable, Hashable, Sendable {
 
     /// Whether there is anything to read yet.
     var isAuthored: Bool { lesson != nil }
+
+    /// Whether Polly can watch this one being done.
+    var isWatchable: Bool { visualCheck != nil }
 }
 
 enum SkillDifficulty: String, Sendable, CaseIterable {

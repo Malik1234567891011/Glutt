@@ -36,6 +36,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Control comes from the front of the blade. Holding further back means steering the knife from the wrong end and pressing harder to make up for it."
                 ),
+                visualCheck: .chefKnifeGrip,
                 column: .center
             ),
             Skill(

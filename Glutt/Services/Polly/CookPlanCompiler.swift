@@ -76,7 +76,8 @@ enum CookPlanCompiler {
     ) async -> CookPlan {
         let key = cacheKey(recipe: recipe, scale: scale)
         if let cached = cachedPlan(forKey: key) {
-            let upgraded = cached.ensuringLeadingPrep()
+            let upgraded = cached.ensuringLeadingPrep(
+                ingredients: recipe.ingredients, scale: scale)
             if upgraded != cached {
                 store(upgraded, forKey: key)
                 PollyDebugLog.shared.log("plan: cache HIT, upgraded with Prep (\(key.prefix(8)))")
@@ -92,7 +93,7 @@ enum CookPlanCompiler {
         do {
             var plan = try await llm(systemPrompt, userPrompt(recipe: recipe, scale: scale))
             plan.isFallback = false
-            plan = plan.ensuringLeadingPrep()
+            plan = plan.ensuringLeadingPrep(ingredients: recipe.ingredients, scale: scale)
             plan = try await repairingSchedule(
                 plan, recipe: recipe, scale: scale, llm: llm)
             store(plan, forKey: key)
@@ -155,7 +156,7 @@ enum CookPlanCompiler {
 
         var repaired = try await llm(systemPrompt, repairPrompt)
         repaired.isFallback = false
-        repaired = repaired.ensuringLeadingPrep()
+        repaired = repaired.ensuringLeadingPrep(ingredients: recipe.ingredients, scale: scale)
 
         // Keep the repair only if it actually helped. A second pass that trades
         // one conflict for two, or drops half the steps to make the detector

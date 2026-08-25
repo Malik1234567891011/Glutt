@@ -96,6 +96,10 @@ final class FakeWakeWordListener: WakeWordListening {
 
     /// The cook says the word.
     func say() { onWake?() }
+
+    /// The recognizer's running transcript, which is what the listening ceiling
+    /// reads when it decides whether anything was actually asked of her.
+    func hear(_ text: String) { onPartialTranscript?(text) }
 }
 
 @MainActor
@@ -838,6 +842,205 @@ final class PollySessionControllerTests: XCTestCase {
             transport.sent.contains { if case .responseCancel = $0 { return true }; return false }
         }, "the cook must be able to cut in once she is no longer saying the word")
 
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    // MARK: Listening discipline (from the 2026-08 test session)
+
+    /// She stops talking, she stops listening. The mic used to stay open for 7
+    /// seconds after every answer, which in a real kitchen mostly caught the
+    /// cook talking to somebody else in the room.
+    func testSheGoesDormantAsSoonAsSheFinishesSpeaking() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let wake = FakeWakeWordListener()
+        let controller = makeController(recipe: recipe, transport: transport, wakeWord: wake)
+        await controller.start(context: context, requireMic: false)
+
+        wake.say()
+        await waitUntil({ controller.listeningMode == .listening }, "wake opens the mic")
+
+        transport.push(.outputAudioStarted)
+        await waitUntil({ controller.isPollySpeaking }, "she is speaking")
+        transport.push(.responseDone(status: "completed", calls: []))
+        transport.push(.outputAudioStopped)
+
+        await waitUntil({ controller.listeningMode == .dormant },
+                        "the mic must close with her mouth, not linger")
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    /// And the way back in is the wake word, still.
+    func testChefStillWakesAfterSheHasFinished() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let wake = FakeWakeWordListener()
+        let controller = makeController(recipe: recipe, transport: transport, wakeWord: wake)
+        await controller.start(context: context, requireMic: false)
+
+        transport.push(.outputAudioStarted)
+        await waitUntil({ controller.isPollySpeaking }, "she is speaking")
+        transport.push(.responseDone(status: "completed", calls: []))
+        transport.push(.outputAudioStopped)
+        await waitUntil({ controller.listeningMode == .dormant }, "dormant after speaking")
+
+        wake.say()
+        await waitUntil({ controller.listeningMode == .listening },
+                        "\"Chef\" must still open the mic from dormant")
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    /// The cook asks a question and then turns to talk to family. Every sentence
+    /// they say used to push the deadline out, so the mic stayed open for the
+    /// length of the conversation.
+    func testListeningIsCappedRegardlessOfHowMuchTheRoomTalks() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let wake = FakeWakeWordListener()
+        var clock = Date(timeIntervalSince1970: 1_751_400_000)
+        let controller = makeController(
+            recipe: recipe, transport: transport, now: { clock }, wakeWord: wake)
+        await controller.start(context: context, requireMic: false)
+
+        wake.say()
+        await waitUntil({ controller.listeningMode == .listening }, "wake opens the mic")
+
+        // Somebody keeps talking, well past the ceiling.
+        clock = clock.addingTimeInterval(PollyConfig.maxListeningSeconds + 5)
+        transport.push(.speechStarted)
+
+        await waitUntil({ controller.listeningMode == .dormant },
+                        "the ceiling must close the turn even while speech continues",
+                        timeout: 5)
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    /// The other half of the ceiling. "How long should the butter brown" then two
+    /// minutes of talking to a family member: the question WAS asked, so closing
+    /// silently would be the app ignoring it. It answers what it actually heard.
+    func testCeilingStillAnswersAQuestionThatWasGenuinelyAsked() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let wake = FakeWakeWordListener()
+        var clock = Date(timeIntervalSince1970: 1_751_400_000)
+        let controller = makeController(
+            recipe: recipe, transport: transport, now: { clock }, wakeWord: wake)
+        await controller.start(context: context, requireMic: false)
+
+        wake.say()
+        await waitUntil({ controller.listeningMode == .listening }, "wake opens the mic")
+
+        let before = transport.sent.filter { if case .responseCreate = $0 { return true }; return false }.count
+        wake.hear("how long should the butter brown?")
+        await waitUntil({ !controller.liveTranscript.isEmpty }, "the question landed")
+
+        clock = clock.addingTimeInterval(PollyConfig.maxListeningSeconds + 5)
+        transport.push(.speechStarted)
+
+        await waitUntil({
+            transport.sent.filter { if case .responseCreate = $0 { return true }; return false }.count > before
+        }, "she must answer the question she actually heard", timeout: 5)
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    /// Skip summary, then the session starts, and the trailer keeps reading the
+    /// recipe over the top of Chef. The rule is the session silences it, so this
+    /// starts one that is genuinely mid-sentence and checks `start` shuts it up.
+    func testStartingASessionSilencesALiveBriefing() async throws {
+        var speech = PollySpeechClient()
+        speech.baseURL = "https://example.invalid"
+        speech.clientKey = "test"
+        speech.transport = { _ in
+            try await Task.sleep(nanoseconds: 30_000_000_000)
+            throw CancellationError()
+        }
+        let narrator = BriefingNarrator(speech: speech)
+        narrator.narrate(CookBriefing(
+            dishTitle: "Gnocchi with Brown Butter and Sage",
+            timeLabel: "15 min",
+            servings: 4,
+            beats: [.init(id: "b1", title: "Water on", detail: "Salted water",
+                          kind: .active, spokenLine: "Water goes on first.")],
+            miseLine: nil, gearLine: nil,
+            introLine: "Quick look at what you're making.",
+            outroLine: "That's the whole cook."))
+        XCTAssertTrue(narrator.isSpeaking, "the trailer is mid-sentence")
+
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let controller = makeController(recipe: recipe, transport: transport)
+        await controller.start(context: context, requireMic: false)
+
+        XCTAssertFalse(narrator.isSpeaking,
+                       "the trailer must not still be reading the recipe over her")
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    /// The late-transcript re-open was a second way in that needed no "Chef".
+    /// Any sentence the room produced while she was dormant re-engaged her and
+    /// got an answer, which is the whole thing this rule exists to stop.
+    func testRoomTalkWithNoRecentWakeDoesNotOpenATurn() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let wake = FakeWakeWordListener()
+        let controller = makeController(recipe: recipe, transport: transport, wakeWord: wake)
+        await controller.start(context: context, requireMic: false)
+        await waitUntil({ controller.listeningMode == .dormant }, "she starts dormant")
+
+        let before = transport.sent.filter { if case .responseCreate = $0 { return true }; return false }.count
+        transport.push(.speechStarted)
+        transport.push(.inputTranscript(itemId: "i1", text: "Can you pass me the salt?"))
+        try? await Task.sleep(nanoseconds: 400_000_000)
+
+        XCTAssertEqual(controller.listeningMode, .dormant,
+                       "nobody said Chef, so nothing should have opened")
+        let after = transport.sent.filter { if case .responseCreate = $0 { return true }; return false }.count
+        XCTAssertEqual(after, before,
+                       "she must not answer a question that was asked of somebody else")
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    /// Talking over her must NOT cut her off. Only "Chef" does that.
+    func testSpeechDuringHerTurnDoesNotInterruptHer() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let wake = FakeWakeWordListener()
+        let controller = makeController(recipe: recipe, transport: transport, wakeWord: wake)
+        await controller.start(context: context, requireMic: false)
+
+        transport.push(.outputAudioStarted)
+        await waitUntil({ controller.isPollySpeaking }, "she is speaking")
+
+        transport.push(.speechStarted)
+        transport.push(.inputTranscript(itemId: "i1", text: "Should I flip it now?"))
+        try? await Task.sleep(nanoseconds: 400_000_000)
+
+        XCTAssertFalse(
+            transport.sent.contains { if case .responseCancel = $0 { return true }; return false },
+            "a confident question from the room must not stop her mid-sentence")
+        XCTAssertTrue(controller.isPollySpeaking)
+        await controller.end(context: context, endedEarly: true)
+    }
+
+    /// The escape hatch closes the turn without taking the wake word with it,
+    /// which is what separates it from the mic button.
+    func testStopListeningClosesTheTurnButLeavesTheWakeWordWorking() async throws {
+        let recipe = insertRecipe()
+        let transport = FakeRealtimeTransport()
+        let wake = FakeWakeWordListener()
+        let controller = makeController(recipe: recipe, transport: transport, wakeWord: wake)
+        await controller.start(context: context, requireMic: false)
+
+        wake.say()
+        await waitUntil({ controller.listeningMode == .listening }, "wake opens the mic")
+
+        controller.stopListening()
+        XCTAssertEqual(controller.listeningMode, .dormant)
+        XCTAssertFalse(controller.isHardMuted, "this is not the mic button")
+
+        wake.say()
+        await waitUntil({ controller.listeningMode == .listening },
+                        "\"Chef\" must still work after stopping listening")
         await controller.end(context: context, endedEarly: true)
     }
 }

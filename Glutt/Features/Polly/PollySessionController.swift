@@ -158,6 +158,9 @@ final class PollySessionController {
     /// Consecutive uncertain/background rejects — close session if too many.
     private var consecutiveRejects = 0
     private var unfinishedHoldTask: Task<Void, Never>?
+    /// When the current listening turn opened. Never pushed out by the cook
+    /// speaking, which is the whole point: see `closeIfListeningTooLong`.
+    private var listeningStartedAt: Date?
 
     var stepIndex: Int { registry?.state.stepIndex ?? 0 }
 
@@ -493,9 +496,16 @@ final class PollySessionController {
                 let cookSteps = plan.steps.filter { !CookPlan.isSetupStep($0) }
                 // Unique assignment — shared dessert words used to pin the same
                 // clip onto three steps; assignClips never reuses a segment.
+                // A bundled plan names the clip each step must play; anything
+                // else falls back to keyword scoring.
+                let pinned = Dictionary(
+                    uniqueKeysWithValues: cookSteps.compactMap { step in
+                        step.clipSegmentID.map { (step.id, $0) }
+                    })
                 let nativeMap = await NativeClipService.shared.assignClips(
                     to: cookSteps.map { (id: $0.id, title: $0.title, instruction: $0.instruction) },
-                    from: pilot
+                    from: pilot,
+                    pinned: pinned
                 )
                 let uniqueSegments = Set(nativeMap.values.map(\.segmentID))
                 PollyDebugLog.shared.log(
@@ -701,6 +711,12 @@ final class PollySessionController {
         // 12.57s -> 10.51s on the same recipe. See docs/polly-latency-2026-08-04.md.
         let mintTask = Task { try await deps.mintToken(chef.realtimeVoice, chef.elevenLabsVoiceID != nil) }
 
+        // Whatever the briefing was doing, it stops here. The trailer and Chef
+        // reading the recipe over each other is the single worst thing the cook
+        // screen can do, so it is enforced at the start of the session rather
+        // than trusted to the view that was speaking.
+        BriefingNarrator.stopAll()
+
         // 1. Execution plan (compiler never fails — it falls back to linear).
         phase = .compiling
         PollyDebugLog.shared.log("session: compiling plan for \"\(recipe.title)\"")
@@ -722,6 +738,10 @@ final class PollySessionController {
         let registry = PollyToolRegistry(
             plan: plan, recipe: recipe, pantry: pantry, prefs: prefs,
             timers: timers, context: context)
+        // Left at its default here. The only source on this branch is the phone
+        // camera, which is off until the cook taps it, so there is no continuous
+        // sight to enforce a look against. A source that streams for the whole
+        // session sets this true and the refusal in `mark_step_done` comes alive.
         registry.onRequestFrame = { [weak self] request in
             guard let self else { return .unavailable }
             let capture = await self.visuals.preparedFrame(
@@ -940,7 +960,7 @@ final class PollySessionController {
             }
             PollyDebugLog.shared.event(.wakeDetected)
             Analytics.capture(.pollyWakeWord)
-            self.wakeUp()
+            self.wakeUp(source: .wakeWord)
         }
         wakeWord.onPartialTranscript = { [weak self] text in
             guard let self else { return }
@@ -1203,15 +1223,50 @@ final class PollySessionController {
         case idleMax = "idle_max"
         case hardMute = "hard_mute"
         case manual
+        /// She finished speaking. The mic closes with her mouth.
+        case answered
+        /// The cook asked something and then kept talking, to somebody else.
+        case listenedTooLong = "listened_too_long"
+        /// The "Stop listening" control on the cook canvas.
+        case stopListening = "stop_listening"
     }
 
     /// Un-gate: "Hey Chef" was heard (or the pill tapped). Opens the Realtime input,
     /// shows the Listening UI, and arms a longer initial listen window.
-    func wakeUp() {
+    /// The "Stop listening" control on the cook canvas.
+    ///
+    /// Deliberately not the mic button. Hard mute silences the wake word too, so
+    /// a cook who used it to escape one over-long listen would find Chef deaf
+    /// for the rest of the cook and no obvious way back. This closes the current
+    /// turn and leaves "Chef" working.
+    func stopListening() {
+        guard isEngaged else { return }
+        PollyDebugLog.shared.log("gate: cook stopped listening")
+        returnToDormant(reason: .stopListening)
+    }
+
+    /// Why the mic is opening. This decides one thing: whether she may be cut
+    /// off mid-sentence. Only a heard "Chef" and a deliberate tap qualify. A
+    /// transcript that merely arrived late is somebody talking in the room, and
+    /// the room does not get to interrupt her.
+    enum WakeSource {
+        case wakeWord
+        case manual
+        case lateTranscript
+
+        var mayInterrupt: Bool {
+            switch self {
+            case .wakeWord, .manual: return true
+            case .lateTranscript: return false
+            }
+        }
+    }
+
+    func wakeUp(source: WakeSource = .manual) {
         guard phase == .live, !isHardMuted else { return }
         // "Chef" spoken over her = interrupt her, even if already listening.
-        let wasSpeaking = isPollySpeaking
-        if isPollySpeaking {
+        let wasSpeaking = isPollySpeaking && source.mayInterrupt
+        if wasSpeaking {
             PollyDebugLog.shared.log("gate: wake during her turn — cancelling her response")
             // With a cloned voice her audio is OUR player, so the server has
             // nothing to clear and the cancels below left her talking straight
@@ -1241,6 +1296,7 @@ final class PollySessionController {
                 webrtc?.forceMicOpenForWake()
                 listeningMode = .listening
                 liveTranscript = ""
+                listeningStartedAt = deps.now()
                 openFollowUpWindow(
                     seconds: PollyConfig.initialListenWindowSeconds,
                     expectingAnswer: false,
@@ -1252,6 +1308,7 @@ final class PollySessionController {
         let now = deps.now()
         lastWakeWordAt = now
         lastValidInteractionAt = now
+        listeningStartedAt = now
         consecutiveRejects = 0
         awaitingTranscript = false
         listeningMode = .listening
@@ -1366,6 +1423,7 @@ final class PollySessionController {
         followUpDeadline = nil
         expectsAnswer = false
         awaitingTranscript = false
+        listeningStartedAt = nil
         listeningMode = .dormant
         liveTranscript = ""
         audio.isMuted = true
@@ -1474,6 +1532,10 @@ final class PollySessionController {
                 try? await Task.sleep(for: .milliseconds(PollyConfig.followUpPollIntervalMs))
                 guard let self else { return }
                 guard phase == .live, isEngaged, !isHardMuted else { return }
+                // The hard ceiling is checked FIRST, above the mid-utterance
+                // guard below, because the guard is exactly what lets a room
+                // full of talking hold the mic open forever.
+                if await closeIfListeningTooLong() { return }
                 // Don't close while the cook is mid-utterance, waiting on ASR,
                 // Polly is busy, or a tool/response round-trip is still in flight.
                 if isListening || awaitingTranscript || isPollySpeaking || isThinking
@@ -1497,6 +1559,35 @@ final class PollySessionController {
         }
     }
 
+    /// True when the turn was ended here.
+    ///
+    /// At the ceiling there are two honest outcomes and they are not the same.
+    /// If what we heard actually reads as something asked of Chef, answer it:
+    /// the cook did ask, they just carried on talking afterwards, and silence
+    /// would be the app ignoring a real question. If it does not, close quietly
+    /// without answering, because the alternative is Chef replying to half of
+    /// somebody else's conversation.
+    private func closeIfListeningTooLong() async -> Bool {
+        guard let startedAt = listeningStartedAt else { return false }
+        guard deps.now().timeIntervalSince(startedAt) >= PollyConfig.maxListeningSeconds else {
+            return false
+        }
+        let heard = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let question = WakeWordMatcher.strippedQuestion(heard)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        listeningStartedAt = nil
+        if ConversationalGate.looksAddressedToChef(question) {
+            PollyDebugLog.shared.log(
+                "gate: listening ceiling — answering what was actually asked (\(question.prefix(60)))")
+            await commitUserTurn(wasSpeaking: false)
+            return true
+        }
+        PollyDebugLog.shared.log("gate: listening ceiling — nothing addressed to us, closing quietly")
+        returnToDormant(reason: .listenedTooLong)
+        return true
+    }
+
     private func cancelDormancyTimer() {
         dormancyTask?.cancel()
         dormancyTask = nil
@@ -1514,19 +1605,20 @@ final class PollySessionController {
         isHoldingForAssistant = false
         isThinking = false
         PollyDebugLog.shared.event(.assistantSpeechEnd)
-        // Greeting while dormant: remember the question, stay asleep.
+        // She stops talking, she stops listening. Every time.
+        //
+        // This used to hold the mic open for 7 seconds after any answer, and 14
+        // when she had asked something, so the cook could carry on the
+        // conversation without saying her name. In a real kitchen that window
+        // is mostly other people: it caught the cook talking to whoever else is
+        // in the room, and answering that is worse than missing it.
+        //
+        // The cost is real and worth stating: a question SHE asks now needs
+        // "Chef" to answer. Her prompt is written to account for it, and one
+        // predictable rule beats a mic that is sometimes live for reasons the
+        // cook cannot see.
         guard shouldReengage || isEngaged else { return }
-        if listeningMode == .dormant {
-            listeningMode = .followUp
-            audio.isMuted = false
-            webrtc?.setMicMode(.open)
-            PollyDebugLog.shared.log("gate: re-engaged after assistant speech")
-        }
-        openFollowUpWindow(
-            seconds: expectingAnswer
-                ? PollyConfig.expectedAnswerWindowSeconds
-                : PollyConfig.followUpWindowSeconds,
-            expectingAnswer: expectingAnswer)
+        returnToDormant(reason: .answered)
     }
 
     private func gateContext() -> ConversationalGate.Context {
@@ -1551,8 +1643,16 @@ final class PollySessionController {
             expectsAnswer: expectsAnswer || (lastAssistantAskedQuestion && spokeRecently),
             pollySpokeRecently: spokeRecently || isPollySpeaking,
             onSetupStep: onSetup,
-            topicWords: Array(Set(topic)).filter { $0.count >= 3 }
+            topicWords: Array(Set(topic)).filter { $0.count >= 3 },
+            wokenByWakeWord: wakeIsStillRecent
         )
+    }
+
+    /// A transcript arriving within one listening window of the last "Chef" is
+    /// still that turn, just late. Beyond it, it is the room.
+    private var wakeIsStillRecent: Bool {
+        guard let last = lastWakeWordAt else { return false }
+        return deps.now().timeIntervalSince(last) <= PollyConfig.maxListeningSeconds
     }
 
     private func handleGatedTranscript(itemId: String?, text: String) async {
@@ -1561,8 +1661,15 @@ final class PollySessionController {
         guard !trimmed.isEmpty else { return }
         // Late transcript after a race-to-dormant: re-open briefly so we don't
         // drop "tools are on the counter" that arrived a beat late.
-        if !isEngaged, phase == .live, !isHardMuted {
-            wakeUp()
+        //
+        // Two guards, both learned the hard way. It only re-opens if a wake is
+        // still recent, because otherwise this path was a second way in that
+        // needed no "Chef" at all: any sentence the room produced re-engaged
+        // her. And it never re-opens over her own voice, because engaging there
+        // ran the interrupt inside `wakeUp` and cut her off mid-answer for a
+        // sentence that was never addressed to us.
+        if !isEngaged, phase == .live, !isHardMuted, !isPollySpeaking, wakeIsStillRecent {
+            wakeUp(source: .lateTranscript)
         }
         guard isEngaged else { return }
         // A newer transcript supersedes any unfinished-hold from the prior fragment.
@@ -1645,7 +1752,10 @@ final class PollySessionController {
             PollyDebugLog.shared.log("gate: uncertain → asking Polly to judge it")
             PollyDebugLog.shared.event(.followUpAccepted, ["reason": "uncertain-deferred"])
             consecutiveRejects = 0
-            await commitUserTurn(wasSpeaking: isPollySpeaking && bargeInCandidate)
+            // Never `true`. An uncertain sentence is the least confident thing
+            // the gate produces, and cutting her off for it is the exact
+            // failure the wake-word-only rule exists to stop.
+            await commitUserTurn(wasSpeaking: false)
             bargeInCandidate = false
             return
 
@@ -1687,30 +1797,32 @@ final class PollySessionController {
                         PollyDebugLog.shared.log("gate: unfinished hold — user still speaking, defer")
                         return
                     }
-                    let shouldBarge = self.isPollySpeaking && (
-                        self.bargeInCandidate || ConversationalGate.isClearInterruption(trimmed))
-                    if shouldBarge {
-                        PollyDebugLog.shared.event(.bargeInAccepted)
-                    }
+                    // Cutting her off is the wake word's job and nothing else.
+                    // See the note at the sibling call below.
                     PollyDebugLog.shared.event(.followUpAccepted, ["reason": "directFollowUp"])
-                    await self.commitUserTurn(wasSpeaking: shouldBarge)
+                    await self.commitUserTurn(wasSpeaking: false)
                     self.bargeInCandidate = false
                 }
                 return
             }
-            let shouldBarge = isPollySpeaking && (
-                bargeInCandidate || ConversationalGate.isClearInterruption(trimmed))
-            if shouldBarge {
-                PollyDebugLog.shared.event(.bargeInAccepted)
-            }
+            // Only "Chef" may interrupt her.
+            //
+            // This used to cut her off on raw VAD during her turn, or on any
+            // transcript the gate judged a clear interruption. Both mean she
+            // stops mid-sentence because somebody in the room said something
+            // confident, which is exactly the failure the wake word exists to
+            // prevent. `wakeUp()` owns interruption now: it cancels the
+            // response, clears the buffered audio and reopens the mic, and it
+            // only runs on a heard "Chef".
             PollyDebugLog.shared.event(.followUpAccepted, ["reason": decision.rawValue])
-            await commitUserTurn(wasSpeaking: shouldBarge)
+            await commitUserTurn(wasSpeaking: false)
         }
 
         bargeInCandidate = false
     }
 
     private func commitUserTurn(wasSpeaking: Bool) async {
+        listeningStartedAt = nil
         expectsAnswer = false
         lastAssistantAskedQuestion = false
         noteUserActivity()

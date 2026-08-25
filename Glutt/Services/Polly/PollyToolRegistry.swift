@@ -44,6 +44,17 @@ final class PollyToolRegistry {
     /// Controller hook: play / pause / mute / unmute the current step clip.
     var onControlStepVideo: ((String) -> [String: Any])?
 
+    /// The cook is wearing streaming glasses, so a look costs nothing and there
+    /// is no excuse for advancing a judgement step unseen.
+    var seesContinuously: Bool = false
+
+    /// Steps she has actually put eyes on this session.
+    private var framedStepIDs: Set<String> = []
+    /// Steps where advancing has already been refused once. One refusal per step
+    /// is the whole mechanism: it reliably produces a look, and it can never
+    /// strand a cook who genuinely wants to move on.
+    private var lookEnforcedStepIDs: Set<String> = []
+
     private let plan: CookPlan
     private let recipe: Recipe
     private let pantry: [PantryItem]
@@ -391,6 +402,7 @@ final class PollyToolRegistry {
     }
 
     private func markStepDone() -> String {
+        if let refusal = refusalToAdvanceUnseen() { return refusal }
         if completeCurrentStep() {
             // Same ending as the green button in the step sheet. Reporting
             // `done` to the model isn't enough on its own: the recap only opens
@@ -401,6 +413,39 @@ final class PollyToolRegistry {
             return Self.json(["done": true])
         }
         return Self.json(stepPayload(at: state.stepIndex))
+    }
+
+    /// Refuse, once, to close a judgement step she has not looked at.
+    ///
+    /// The prompt asked her to look before agreeing and she stopped doing it:
+    /// "the water is at a rolling boil" came back as `mark_step_done` with no
+    /// frame requested and nothing said about what she saw. To the cook that is
+    /// indistinguishable from an assistant that is not watching at all, which is
+    /// the entire proposition of wearing the glasses.
+    ///
+    /// So the rule moves out of the prompt and into the tool. Only judgement
+    /// steps are covered — a step with a `visualCheck` is one where something can
+    /// go wrong on camera — and only while the glasses are actually streaming.
+    /// It refuses at most ONCE per step: the cook who says "it is fine, move on"
+    /// still gets to move on, they just get one honest look first.
+    private func refusalToAdvanceUnseen() -> String? {
+        guard seesContinuously, !plan.steps.isEmpty else { return nil }
+        let step = plan.steps[clampedIndex(state.stepIndex)]
+        guard let check = step.visualCheck?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !check.isEmpty else { return nil }
+        guard !framedStepIDs.contains(step.id),
+              !lookEnforcedStepIDs.contains(step.id) else { return nil }
+        lookEnforcedStepIDs.insert(step.id)
+        PollyDebugLog.shared.log("tools: mark_step_done refused — \(step.id) not looked at yet")
+        return Self.json([
+            "done": false,
+            "error": "look_first",
+            "reason": "You have not looked at this step and the glasses are streaming.",
+            "required": "Call request_camera_frame now. Then tell the cook what you actually saw, "
+                + "judged against visual_check, before calling mark_step_done again.",
+            "visual_check": check,
+            "recovery": step.recovery ?? "",
+        ])
     }
 
     /// Mark the current step complete and advance. Returns `true` when that was
@@ -637,6 +682,9 @@ final class PollyToolRegistry {
         var payload: [String: Any] = ["captured": outcome.captured]
         if let source = outcome.source { payload["source"] = source }
         if outcome.captured {
+            if !plan.steps.isEmpty {
+                framedStepIDs.insert(plan.steps[clampedIndex(state.stepIndex)].id)
+            }
             if let frameID = outcome.frameID { payload["frame_id"] = frameID }
             if let age = outcome.ageMillis { payload["age_ms"] = age }
             // Echoed so the model can check the picture against its own request

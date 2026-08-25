@@ -22,11 +22,19 @@ enum DemoScript {
     ///
     /// Consequence worth knowing: this is off in every Release build, and the
     /// `Glutt Beta` scheme is Release. Film the demo from the `Glutt` scheme.
-    #if DEBUG
-    static let isEnabled = true
-    #else
+    // Off, deliberately, including in Debug.
+    //
+    // It fires from the on-device recognizer's partial transcripts, which run
+    // even while Chef is dormant, so no wake word is needed and the cook has no
+    // way to see it coming. "Serve" is the trigger and "Serve" is the name of a
+    // step in a recipe we demo, which meant a shouted line landing in the middle
+    // of a cook nobody had asked for. The second cost is quieter and worse: the
+    // Realtime branch deletes the matching turn, so a genuine "when do I serve
+    // this?" disappeared instead of being answered.
+    //
+    // Flip to `true` only for a take you are directing, and narrow `triggers` to
+    // a phrase nobody says by accident before you do.
     static let isEnabled = false
-    #endif
 
     struct Cue {
         /// Whole words, matched case-insensitively. Substrings never match, so

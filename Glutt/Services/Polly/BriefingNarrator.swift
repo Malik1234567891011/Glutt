@@ -32,9 +32,31 @@ final class BriefingNarrator: NSObject, AVAudioPlayerDelegate {
     /// underneath it, and so the briefing matches the live session that follows.
     private var chef: PollyChefVoice = .default
 
+    /// Every narrator that has started speaking, so a cook session can silence
+    /// the lot without having to be handed the one that happens to be alive.
+    ///
+    /// A briefing is owned by a view that is being dismissed at the exact moment
+    /// the session starts, which is the worst possible time to be relying on
+    /// somebody remembering to pass a reference along. The requirement is that
+    /// the trailer stops when the session starts, no matter which path got
+    /// there, so it is enforced from the session rather than from the view.
+    private static var liveNarrators: [WeakNarrator] = []
+    private struct WeakNarrator { weak var value: BriefingNarrator? }
+
+    /// Silence every briefing. Called by `PollySessionController.start`.
+    static func stopAll() {
+        let live = liveNarrators.compactMap(\.value)
+        liveNarrators.removeAll()
+        guard !live.isEmpty else { return }
+        for narrator in live { narrator.stop() }
+        PollyDebugLog.shared.log("briefing: stopped \(live.count) narrator(s) for the session")
+    }
+
     init(speech: PollySpeechClient = .live) {
         self.speech = speech
         super.init()
+        Self.liveNarrators.removeAll { $0.value == nil }
+        Self.liveNarrators.append(WeakNarrator(value: self))
     }
 
     /// Speak the briefing chunk-by-chunk. Cancels any in-flight narration first.
@@ -166,21 +188,35 @@ final class BriefingNarrator: NSObject, AVAudioPlayerDelegate {
     // MARK: - Playback
 
     private func playMP3(_ data: Data) async {
+        // Checked here, not only by the caller.
+        //
+        // This is what talked over the live cook session. `stop()` nils
+        // `self.player` and releases the audio session, but a stop landing
+        // between building this player and calling `play()` was invisible from
+        // in here: the method carried on, assigned the fresh player over the nil
+        // and started it, so "Skip summary" handed the trailer a brand new
+        // player a fraction of a second after cancelling the old one. Chef and
+        // her own trailer then read the recipe at each other.
+        guard !cancelled else { return }
         finishPlayWait()
         do {
             let player = try AVAudioPlayer(data: data)
             player.delegate = self
             player.prepareToPlay()
+            // The await above and the work below both yield, so re-check rather
+            // than trusting the guard at the top.
+            guard !cancelled else { return }
             self.player = player
             await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
                 self.playContinuation = cont
-                if !player.play() {
+                if cancelled || !player.play() {
                     self.finishPlayWait()
                 }
             }
         } catch {
             // Skip unreadable audio; caller will move on.
         }
+        player?.stop()
         player = nil
     }
 

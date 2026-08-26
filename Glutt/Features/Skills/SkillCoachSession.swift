@@ -124,6 +124,10 @@ final class SkillCoachSession {
     /// feature is broken.
     private var unusableViews = 0
 
+    /// A response is generating. Asking for a second one while the first is in
+    /// flight is rejected by the server and loses the turn.
+    private var responseInFlight = false
+
     /// What the last look concluded, in the words we want said.
     ///
     /// Kept because a bare `response.create` after a tool call she made mid
@@ -251,6 +255,18 @@ final class SkillCoachSession {
             "skill: live, dormant, wake word \(wakeWordAvailable ? "ready" : "UNAVAILABLE")")
     }
 
+    /// Turn what the cook just said into a turn she answers.
+    private func commitTurn() async {
+        guard phase == .live, !responseInFlight else {
+            PollyDebugLog.shared.log("skill: turn not committed (response already in flight)")
+            return
+        }
+        responseInFlight = true
+        isThinking = true
+        try? await transport?.send(.responseCreate)
+        PollyDebugLog.shared.log("skill: committed turn → response.create")
+    }
+
     /// "Chef" was heard. Open the mic and start the clock.
     private func wakeUp() {
         guard phase == .live else { return }
@@ -288,6 +304,16 @@ final class SkillCoachSession {
         holdTask?.cancel()
         toolTask?.cancel()
         eventTask?.cancel()
+        // Wait for the check to actually unwind before returning.
+        //
+        // Cancelling is not stopping: a hold that is mid-flight still falls
+        // through to recording an attempt, and if the screen has gone that write
+        // lands on a context nobody owns any more. Cheap to wait for, and the
+        // alternative is a crash whose stack points at whatever ran next.
+        await holdTask?.value
+        await toolTask?.value
+        holdTask = nil
+        toolTask = nil
         await transport?.close()
         transport = nil
         if case .failed = phase {} else { phase = .ended }
@@ -354,9 +380,20 @@ final class SkillCoachSession {
             // They said something real, so do not close the mic underneath them
             // while she is still working out the answer.
             if isAwake { armDormancy(after: PollyConfig.maxListeningSeconds) }
+            // AND ASK HER TO ANSWER IT.
+            //
+            // This is what was missing, and it is why she heard two questions in
+            // a row and said nothing to either. The audio plane is pinned at
+            // mint and does not create a response when the cook stops talking,
+            // so the turn only becomes a turn when the client says so. The cook
+            // session has always done this from its gate; this one was waiting
+            // for a server that was never going to speak first.
+            await commitTurn()
         case .responseCreated:
+            responseInFlight = true
             caption = ""
         case .responseDone(let status, let calls, _):
+            responseInFlight = false
             isThinking = !calls.isEmpty
             // Only act on a completed response. A cancelled one can carry
             // partial calls, and running them talks over whoever interrupted.
@@ -395,6 +432,7 @@ final class SkillCoachSession {
         // frequently returns silence. The cook is standing there holding a
         // knife waiting to be told what happened, so the one thing that cannot
         // be left to chance is that she says it.
+        responseInFlight = true
         if pendingSay.isEmpty {
             try? await transport?.send(.responseCreate)
         } else {
@@ -413,6 +451,16 @@ final class SkillCoachSession {
 
     /// Hold, look, decide, record. The one path both the tool and the button use.
     private func runHoldAndAssess(announce: Bool) async -> String {
+        // Let her finish saying "hold that for me" first.
+        //
+        // The tool call and the sentence that introduces it are the same
+        // response, so without this the five seconds start while she is still
+        // talking and the cook is being counted down at before they have been
+        // told to hold anything.
+        if let webrtc = transport as? RealtimeWebRTCTransport {
+            await webrtc.waitUntilAssistantQuiet(timeoutSeconds: 6)
+        }
+
         let started = deps.now()
         stage = .holding(progress: 0)
         // Holding still is not silence to be timed out. Keep the turn alive
@@ -597,6 +645,9 @@ final class SkillCoachSession {
 
     // MARK: - Recording
 
+    /// Nothing is written after the lesson is over. A cancelled check unwinds
+    /// through here, and an attempt recorded against a screen the cook has
+    /// already left is at best noise in their history.
     private func record(
         outcome: SkillAttemptOutcome,
         note: String,
@@ -616,6 +667,7 @@ final class SkillCoachSession {
             mistakeKey: mistakeKey,
             equipmentReading: equipment,
             confidence: confidence)
+        guard phase == .live, !Task.isCancelled else { return }
         attempts.append(attempt)
         guard let context else { return }
         let mastered = SkillProgressStore.recordAttempt(attempt, skill: skill, in: context)

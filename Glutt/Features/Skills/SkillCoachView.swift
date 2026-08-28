@@ -68,8 +68,6 @@ struct SkillCoachView: View {
     /// The ring, or whatever has replaced it.
     @ViewBuilder private var centrepiece: some View {
         switch session?.stage ?? .teaching {
-        case .holding(let progress):
-            HoldRing(progress: progress, seconds: check.holdSeconds)
         case .analysing:
             LookingAnimation()
         case .learned:
@@ -153,7 +151,6 @@ struct SkillCoachView: View {
     private var dockCopy: String {
         guard let session, session.phase == .live else { return "Connecting" }
         if session.isSpeaking { return "Chef is talking" }
-        if case .holding = session.stage { return "Hold still" }
         if case .analysing = session.stage { return "Looking at your hand" }
         if session.isThinking { return "Thinking" }
         if session.isListening { return "Listening" }
@@ -206,7 +203,6 @@ struct SkillCoachView: View {
         case .ended: "Lesson finished"
         case .live:
             switch session?.stage {
-            case .holding: "Hold still"
             case .analysing: "Looking"
             case .safetyStop: "Put the knife down"
             default: (session?.isAwake ?? false)

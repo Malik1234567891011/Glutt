@@ -349,14 +349,50 @@ final class SkillVisualCoachingTests: XCTestCase {
         XCTAssertEqual(skill.visualCheck?.id, "knife.grip.pinch")
     }
 
-    // MARK: - Capture
+    // MARK: - Asking to be looked at
 
-    @MainActor
-    func testTheSharpestFramesWin() {
-        let frames = [Data(count: 10), Data(count: 90), Data(count: 50), Data(count: 70)]
-        let kept = SkillHoldCapture.sharpest(frames, keeping: 3)
+    /// Reading the request ourselves is what lets the looking start before she
+    /// has answered, which is most of the seventeen seconds that used to sit
+    /// between the question and the verdict.
+    func testWhatCountsAsAskingToBeSeen() {
+        for asked in [
+            "does this look right?",
+            "Chef, how does this look",
+            "like this?",
+            "is that better",
+            "can you check my grip",
+            "have a look at this",
+            "I fixed it, how about now",
+            "watch me do it",
+            "am I holding it right",
+            "tell me how it looks",
+        ] {
+            XCTAssertTrue(
+                SkillLookRequest.isAskingToBeSeen(asked), "should have started looking: \(asked)")
+        }
 
-        XCTAssertEqual(kept.map(\.count), [90, 70, 50])
+        for notAsked in [
+            "this feels really awkward",
+            "my hand hurts a bit",
+            "why am I touching the blade",
+            "okay",
+            "I usually just hold the handle because that is how my dad did it and he cooked "
+                + "every night for about twenty years",
+        ] {
+            XCTAssertFalse(
+                SkillLookRequest.isAskingToBeSeen(notAsked),
+                "should not have burned a look on: \(notAsked)")
+        }
+    }
+
+    /// A long sentence that names looking is still a request; a long sentence
+    /// that merely mentions "this" is a story.
+    func testLengthOnlyMattersWithoutALookVerb() {
+        XCTAssertTrue(SkillLookRequest.isAskingToBeSeen(
+            "can you look at my hand and tell me whether the thumb is anywhere near right"))
+        XCTAssertFalse(SkillLookRequest.isAskingToBeSeen(
+            "is this the kind of thing my grandmother would have done when she was teaching "
+                + "me to cook on a Sunday"))
     }
 
     // MARK: - Prompt

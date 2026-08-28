@@ -40,9 +40,8 @@ final class SkillCoachSession {
     enum Stage: Equatable {
         /// Connecting, or she is teaching. Nothing for the cook to do but listen.
         case teaching
-        /// The five seconds. `progress` drives the ring.
-        case holding(progress: Double)
-        /// Frames are in, the assessor is thinking.
+        /// She is looking. There is no hold to sit through: the frames already
+        /// exist, so this covers the vision call and nothing else.
         case analysing
         /// She has just said something about what she saw.
         case coaching(outcome: SkillAttemptOutcome)
@@ -99,14 +98,12 @@ final class SkillCoachSession {
     /// bug this avoids.
     /// A look is in progress, so nothing else gets to close the mic.
     private var isMidCheck: Bool {
-        if case .holding = stage { return true }
         if case .analysing = stage { return true }
         return false
     }
 
     var isListening: Bool {
         guard phase == .live, isAwake, !isSpeaking, !isThinking else { return false }
-        if case .holding = stage { return false }
         if case .analysing = stage { return false }
         return true
     }
@@ -122,6 +119,11 @@ final class SkillCoachSession {
     private var dormancyTask: Task<Void, Never>?
     /// Keeps trying to bring the glasses up for as long as the lesson lasts.
     private var glassesTask: Task<Void, Never>?
+    /// The last few seconds of what they were looking at, kept warm.
+    private let frames: SkillFrameRing
+    /// A look started the moment they asked, before she had answered.
+    private var earlyLook: Task<SkillVisualAssessment, Error>?
+    private var earlyLookStartedAt: Date?
     /// The live session config, so the prompt can be re-sent when what she can
     /// see changes.
     private var liveConfig: RealtimeSessionConfig?
@@ -168,6 +170,7 @@ final class SkillCoachSession {
         self.visuals = visuals
         self.wakeWord = wakeWord ?? WakeWordListener()
         self.deps = deps
+        self.frames = SkillFrameRing(visuals: visuals, clock: deps.now)
     }
 
     // MARK: - Lifecycle
@@ -250,6 +253,7 @@ final class SkillCoachSession {
         promptAssumesSight = visuals.activeKind == .metaGlasses
         phase = .live
         stage = .teaching
+        frames.start()
         consumeEvents(from: transport)
 
         // Wake word up before she says anything, so "Chef" lands even during her
@@ -373,6 +377,8 @@ final class SkillCoachSession {
     }
 
     func end() async {
+        frames.stop()
+        earlyLook?.cancel()
         glassesTask?.cancel()
         dormancyTask?.cancel()
         wakeWord.stop()
@@ -464,6 +470,14 @@ final class SkillCoachSession {
             // They said something real, so do not close the mic underneath them
             // while she is still working out the answer.
             if isAwake { armDormancy(after: PollyConfig.maxListeningSeconds) }
+            // Start looking now, not when she gets round to it.
+            //
+            // She takes a second or two to decide to call the tool and another
+            // second or two to say "let me have a look", and every bit of that is
+            // the cook holding a knife up at nothing. Reading the request
+            // ourselves means the eyes and the mouth start at the same moment.
+            if SkillLookRequest.isAskingToBeSeen(text) { beginEarlyLook() }
+
             // AND ASK HER TO ANSWER IT.
             //
             // This is what was missing, and it is why she heard two questions in
@@ -539,7 +553,49 @@ final class SkillCoachSession {
 
     // MARK: - The check
 
-    /// Hold, look, decide, record. The one path both the tool and the button use.
+    /// Look now, from frames we already have.
+    ///
+    /// No countdown and no hold. See `SkillFrameRing`: the camera has been
+    /// streaming since the lesson opened, so a look is a read from memory. The
+    /// only thing worth waiting for is the vision call, and even that has
+    /// usually been running since the cook finished their sentence.
+    private func beginEarlyLook() {
+        guard phase == .live, earlyLook == nil, visuals.activeKind != nil else { return }
+        stage = .analysing
+        earlyLookStartedAt = deps.now()
+        let ring = frames
+        let check = check
+        let assess = deps.assess
+        earlyLook = Task {
+            var shots = ring.best(check.framesPerLook, within: check.lookbackSeconds)
+            if shots.isEmpty {
+                await ring.fillNow(upTo: check.framesPerLook)
+                shots = ring.best(check.framesPerLook, within: check.lookbackSeconds)
+            }
+            guard !shots.isEmpty else { throw SkillVisualAssessor.AssessorError.noUsableFrames }
+            return try await assess(check, shots)
+        }
+        PollyDebugLog.shared.log("skill: looking already, before she answered")
+
+        // If she never actually calls the tool, do not leave the screen looking
+        // like it is mid check forever.
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(20))
+            guard let self, self.earlyLook != nil else { return }
+            self.discardEarlyLook(reason: "nobody used it")
+        }
+    }
+
+    private func discardEarlyLook(reason: String) {
+        guard earlyLook != nil else { return }
+        earlyLook?.cancel()
+        earlyLook = nil
+        earlyLookStartedAt = nil
+        if case .analysing = stage { stage = .teaching }
+        PollyDebugLog.shared.log("skill: early look discarded (\(reason))")
+    }
+
+    /// Look, decide, record. The one path the tool and the retry both use.
     private func runHoldAndAssess(announce: Bool) async -> String {
         // Last chance to get the camera up before we photograph nothing.
         //
@@ -552,55 +608,54 @@ final class SkillCoachSession {
             await refreshSightIfNeeded()
         }
 
-        // Let her finish saying "hold that for me" first.
-        //
-        // The tool call and the sentence that introduces it are the same
-        // response, so without this the five seconds start while she is still
-        // talking and the cook is being counted down at before they have been
-        // told to hold anything.
-        if let webrtc = transport as? RealtimeWebRTCTransport {
-            await webrtc.waitUntilAssistantQuiet(timeoutSeconds: 6)
-        }
-
-        let started = deps.now()
-        stage = .holding(progress: 0)
-        // Holding still is not silence to be timed out. Keep the turn alive
-        // across the hold and the assessment so the answer does not arrive to a
-        // closed mic.
-        if isAwake { armDormancy(after: check.holdSeconds + PollyConfig.maxListeningSeconds) }
-
-        let capture = await SkillHoldCapture.run(
-            check: check,
-            visuals: visuals,
-            clock: deps.now
-        ) { [weak self] progress in
-            self?.stage = .holding(progress: progress)
-        }
-
+        let started = earlyLookStartedAt ?? deps.now()
         stage = .analysing
-        // Say something while looking.
-        //
-        // The frames are in and the assessor takes another three or four
-        // seconds, on top of five spent holding still. Silence there reads as
-        // nothing happening, which is exactly when a cook starts wondering
-        // whether it heard them. One short line, spoken while the real work
-        // runs, and the verdict waits for it to finish.
-        await speakWhileLooking()
+        // Do not let the mic close underneath a look that is still running.
+        if isAwake { armDormancy(after: PollyConfig.maxListeningSeconds) }
 
-        guard !capture.isEmpty else {
-            return handleUnusable(
-                reason: capture.rejection ?? .noFrames,
-                seconds: capture.duration,
-                startedAt: started)
-        }
+        // Say something while it runs. Usually this is the only thing the cook
+        // waits for, because the looking started when they asked.
+        await speakWhileLooking()
 
         let assessment: SkillVisualAssessment
         do {
-            assessment = try await deps.assess(check, capture.frames)
+            if let running = earlyLook {
+                // Already started when they asked. This is the ordinary path.
+                assessment = try await running.value
+                earlyLook = nil
+                earlyLookStartedAt = nil
+                PollyDebugLog.shared.log(
+                    "skill: used the early look (\(String(format: "%.1f", deps.now().timeIntervalSince(started)))s old)")
+            } else {
+                var shots = frames.best(check.framesPerLook, within: check.lookbackSeconds)
+                if shots.isEmpty {
+                    await frames.fillNow(upTo: check.framesPerLook)
+                    shots = frames.best(check.framesPerLook, within: check.lookbackSeconds)
+                }
+                guard !shots.isEmpty else {
+                    return handleUnusable(
+                        reason: .noFrames,
+                        seconds: deps.now().timeIntervalSince(started),
+                        startedAt: started)
+                }
+                assessment = try await deps.assess(check, shots)
+            }
+        } catch is CancellationError {
+            return handleUnusable(
+                reason: .noFrames, seconds: 0, startedAt: started)
+        } catch SkillVisualAssessor.AssessorError.noUsableFrames {
+            earlyLook = nil
+            return handleUnusable(
+                reason: .noFrames,
+                seconds: deps.now().timeIntervalSince(started),
+                startedAt: started)
         } catch {
+            earlyLook = nil
             PollyDebugLog.shared.log("skill: assessment FAILED — \(error.localizedDescription)")
             return handleUnusable(
-                reason: .noFrames, seconds: capture.duration, startedAt: started)
+                reason: .noFrames,
+                seconds: deps.now().timeIntervalSince(started),
+                startedAt: started)
         }
 
         let outcome = SkillCoachDecision.decide(assessment, check: check)
@@ -633,7 +688,7 @@ final class SkillCoachSession {
             mistakeKey: mistakeKey(of: outcome),
             equipment: assessment.equipment.reading,
             confidence: assessment.confidence,
-            seconds: capture.duration,
+            seconds: deps.now().timeIntervalSince(started),
             startedAt: started)
 
         return payload(for: outcome, assessment: assessment)

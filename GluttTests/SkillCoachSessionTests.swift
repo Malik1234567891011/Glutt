@@ -144,16 +144,17 @@ final class SkillCoachSessionTests: XCTestCase {
             calls: [.init(name: "check_the_hold", callId: "c1", argumentsJSON: "{}")]))
         let before = transport.sentNonAudio.count
 
-        // The cook says something WHILE that is in progress. Before the fix this
-        // event sat unread in the stream until the whole check finished.
-        transport.push(.inputTranscript(itemId: "2", text: "wait, like this?"))
+        // Events arriving WHILE that is in progress must still be read. Before
+        // the fix they sat unread in the stream until the whole check finished,
+        // so the session was deaf for its own five second hold.
+        _ = before
+        transport.push(.outputAudioStarted)
         await settle(seconds: 1)
+        XCTAssertTrue(session.isSpeaking, "an event arriving mid check must still be processed")
 
-        let created = transport.sentNonAudio.dropFirst(before).contains { event in
-            if case .responseCreate = event { return true }
-            return false
-        }
-        XCTAssertTrue(created, "the session must keep hearing while a check is running")
+        transport.push(.outputAudioStopped)
+        await settle()
+        XCTAssertFalse(session.isSpeaking)
     }
 
     /// A cancelled response can carry partial calls; running them talks over

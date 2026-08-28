@@ -22,19 +22,20 @@ struct SkillVisualCheck: Hashable, Sendable {
     /// wave a knife around.
     let framingInstruction: String
 
-    /// How long the cook holds still. Five seconds is not a technical
-    /// requirement, it is the ritual: it converts model latency from an
-    /// embarrassed spinner into the part of the interaction where an instructor
-    /// leans in and looks.
-    let holdSeconds: Double
-
-    /// Where inside the hold to grab frames, as fractions of `holdSeconds`.
+    /// How far back into the live stream a look may reach, in seconds.
     ///
-    /// Several rather than one, because a single frame decides the result on
-    /// whichever instant it happened to land on, and hands blur, blink out of
-    /// frame and get occluded by the knife itself. Spread across the hold so a
-    /// bad moment costs us one frame instead of the assessment.
-    let captureAt: [Double]
+    /// There is no hold. There was one, of five seconds, and it existed because
+    /// the design assumed a camera that has to be opened; the glasses stream
+    /// continuously from the moment the lesson starts, so the frames were never
+    /// what anyone was waiting for. This is now simply the window of recent
+    /// history a look is allowed to draw from, wide enough to cover the sentence
+    /// the cook was speaking while they asked.
+    let lookbackSeconds: Double
+
+    /// How many frames to send. Two rather than one so a single blurred or
+    /// occluded instant costs a frame instead of the answer, and two rather than
+    /// three because every extra image is latency the cook feels.
+    let framesPerLook: Int
 
     /// The minimum needed to say anything at all. Missing one of these produces
     /// "I cannot see" rather than a criticism.
@@ -72,8 +73,8 @@ struct SkillVisualCheck: Hashable, Sendable {
     init(
         id: String,
         framingInstruction: String,
-        holdSeconds: Double = 5,
-        captureAt: [Double] = [0.25, 0.55, 0.85],
+        lookbackSeconds: Double = 5,
+        framesPerLook: Int = 2,
         requiredVisibility: [SkillVisibilityRegion],
         helpfulVisibility: [SkillVisibilityRegion] = [],
         rubric: SkillVisualRubric,
@@ -82,8 +83,8 @@ struct SkillVisualCheck: Hashable, Sendable {
     ) {
         self.id = id
         self.framingInstruction = framingInstruction
-        self.holdSeconds = holdSeconds
-        self.captureAt = captureAt
+        self.lookbackSeconds = lookbackSeconds
+        self.framesPerLook = framesPerLook
         self.requiredVisibility = requiredVisibility
         self.helpfulVisibility = helpfulVisibility
         self.rubric = rubric
@@ -91,8 +92,6 @@ struct SkillVisualCheck: Hashable, Sendable {
         self.maxUnusableViews = maxUnusableViews
     }
 
-    /// Absolute seconds into the hold at which to grab each frame.
-    var captureOffsets: [TimeInterval] { captureAt.map { $0 * holdSeconds } }
 }
 
 /// A part of the scene the assessor reports on separately.

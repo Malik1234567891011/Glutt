@@ -17,8 +17,8 @@ extension SkillVisualCheck {
     static let chefKnifeGrip = SkillVisualCheck(
         id: "knife.grip.pinch",
         framingInstruction:
-            "Rest the blade flat on your board and look straight down at your knife hand. "
-            + "Hold it there for five seconds and I will take a look.",
+            "Rest the blade on your board and look down at your knife hand, and I will take "
+            + "a look.",
         // The knife, and where the hand sits on it. Enough to judge the thing that
         // matters most: whether they are steering the blade or the back of the
         // handle.

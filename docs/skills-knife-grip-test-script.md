@@ -5,7 +5,11 @@ file is for everything that needs a real hand, a real knife and the glasses,
 which is the half that decides whether the feature is any good.
 
 Run it wearing the glasses, in the kitchen, with the knives you actually own.
-Skills → Knife Skills → Hold a Chef's Knife → **Check my grip**.
+Skills → Knife Skills → Hold a Chef's Knife → **Learn it with Chef**.
+
+There is no button and no countdown. Say "Chef" to wake her, then just ask:
+"does this look right?", "like this?", "is that better?". She reads the last few
+seconds of the stream, so she is looking before she finishes answering you.
 
 The bar for every row: **a false correction is worse than a missed one.** If she
 tells you something is wrong that is not wrong, that is a failure even if the
@@ -49,7 +53,7 @@ this feels like a person.
 | Hold the knife but look away | "I cannot see" and a reframing ask, never a criticism |
 | Cover the thumb with the other hand | Names the thumb specifically |
 | Hold it in shadow / low light | Cannot see, not a fault |
-| Move the knife during the five seconds | Cannot see, or a safety stop if it is waved |
+| Move the knife around while asking | Cannot see, or a safety stop if it is waved |
 | Hold it below the frame | Cannot see |
 | Fail twice in a row | Stops asking, offers the way out. **Never a third identical request** |
 
@@ -110,11 +114,26 @@ After a pass:
   times you check afterwards
 - An attempt she could not see must **not** promote anything
 
+## Timing
+
+Question to verdict should be about six seconds, and most of that should be
+covered by her talking. The log lines that show it working:
+
+    skill: looking already, before she answered
+    skill: used the early look (5.5s old)
+
+If the first line is missing, the phrasing did not match and she waited for the
+tool call before starting, which costs three or four seconds. Worth reporting
+with what you said.
+
 ## Known limits, do not report as bugs
 
 - No glasses means no check. The lesson still teaches by voice and says plainly
   that it cannot look
 - Frame choice is by encoded size, which is a proxy for sharpness, not a
-  Laplacian. It only has to drop the worst of three near identical frames
+  Laplacian. It only has to drop the worse of two near identical frames
+- She looks at the last few seconds of the stream rather than taking a photo on
+  demand, so a grip you changed in the last second may not be the one she saw.
+  Ask again and she will read the newer frames
 - Grip pressure, comfort and knife sharpness are not assessable and are asked
   about instead

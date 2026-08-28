@@ -97,6 +97,13 @@ final class SkillCoachSession {
     /// combines several things to decide it and a second copy would drift. The
     /// screen showing "listening" while the server hears silence is the exact
     /// bug this avoids.
+    /// A look is in progress, so nothing else gets to close the mic.
+    private var isMidCheck: Bool {
+        if case .holding = stage { return true }
+        if case .analysing = stage { return true }
+        return false
+    }
+
     var isListening: Bool {
         guard phase == .live, isAwake, !isSpeaking, !isThinking else { return false }
         if case .holding = stage { return false }
@@ -113,6 +120,13 @@ final class SkillCoachSession {
 
     private let wakeWord: WakeWordListening
     private var dormancyTask: Task<Void, Never>?
+    /// Keeps trying to bring the glasses up for as long as the lesson lasts.
+    private var glassesTask: Task<Void, Never>?
+    /// The live session config, so the prompt can be re-sent when what she can
+    /// see changes.
+    private var liveConfig: RealtimeSessionConfig?
+    /// What the prompt currently claims about her eyesight.
+    private var promptAssumesSight = false
     private var transport: RealtimeTransporting?
     private var eventTask: Task<Void, Never>?
     private var holdTask: Task<Void, Never>?
@@ -178,10 +192,18 @@ final class SkillCoachSession {
             return
         }
 
-        // The glasses are the whole point here, so unlike a cook session this
-        // brings them up and says so if they are missing, rather than quietly
-        // carrying on without.
-        await visuals.startGlassesIfAvailable()
+        // Keep trying, in the background.
+        //
+        // `startGlassesIfAvailable` gives the toolkit four seconds to enumerate a
+        // device and then gives up for good. Sometimes that is plenty and the
+        // camera is streaming in under a second; sometimes the selector has not
+        // observed the glasses yet and it times out, and a device log has both
+        // happening on the same pair of glasses minutes apart. Awaiting one
+        // attempt at session start meant losing that coin flip disabled the
+        // entire feature for the whole lesson, on hardware that was sitting
+        // there connected: the audio route in the same log was already the
+        // glasses. So it retries, and the lesson does not wait for it.
+        startGlasses()
 
         let token: PollySessionToken
         do {
@@ -224,6 +246,8 @@ final class SkillCoachSession {
             return
         }
 
+        liveConfig = config
+        promptAssumesSight = visuals.activeKind == .metaGlasses
         phase = .live
         stage = .teaching
         consumeEvents(from: transport)
@@ -258,6 +282,49 @@ final class SkillCoachSession {
         try? await transport.send(.responseCreateSpeechOnly)
         PollyDebugLog.shared.log(
             "skill: live, dormant, wake word \(wakeWordAvailable ? "ready" : "UNAVAILABLE")")
+    }
+
+    /// Bring the glasses up, and keep trying.
+    ///
+    /// The gaps get longer rather than hammering: a cook who has not put them on
+    /// yet will put them on in the next minute, and a cook who has none is
+    /// costing us nothing but a few log lines.
+    private func startGlasses() {
+        glassesTask?.cancel()
+        glassesTask = Task { [weak self] in
+            let waits: [TimeInterval] = [0, 4, 8, 15, 25]
+            for (attempt, wait) in waits.enumerated() {
+                if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
+                guard let self, !Task.isCancelled, self.phase != .ended else { return }
+                if self.visuals.activeKind == .metaGlasses { return }
+                guard self.visuals.glassesPossible else { return }
+                PollyDebugLog.shared.log("skill: reaching for the glasses (try \(attempt + 1))")
+                await self.visuals.startGlassesIfAvailable()
+                if self.visuals.activeKind == .metaGlasses {
+                    PollyDebugLog.shared.log("skill: glasses up on try \(attempt + 1)")
+                    await self.refreshSightIfNeeded()
+                    return
+                }
+            }
+            PollyDebugLog.shared.log("skill: gave up on the glasses")
+        }
+    }
+
+    /// Re-send the prompt when what she can see stops matching what she was told.
+    ///
+    /// Glasses that arrive thirty seconds in are the normal case, not the edge
+    /// one, and without this she spends the rest of the lesson insisting she
+    /// cannot see through a camera that is streaming.
+    private func refreshSightIfNeeded() async {
+        let seesNow = visuals.activeKind == .metaGlasses
+        guard seesNow != promptAssumesSight, var config = liveConfig else { return }
+        config.instructions = SkillCoachPrompt.instructions(
+            skill: skill, check: check, seesContinuously: seesNow)
+        liveConfig = config
+        promptAssumesSight = seesNow
+        try? await transport?.send(.sessionUpdate(config))
+        PollyDebugLog.shared.log(
+            "skill: sight rules updated — \(seesNow ? "she can see now" : "no camera")")
     }
 
     /// Turn what the cook just said into a turn she answers.
@@ -306,6 +373,7 @@ final class SkillCoachSession {
     }
 
     func end() async {
+        glassesTask?.cancel()
         dormancyTask?.cancel()
         wakeWord.stop()
         holdTask?.cancel()
@@ -374,7 +442,16 @@ final class SkillCoachSession {
             wakeWord.setSuppressed(false)
             // She has answered, so the turn is over. Give them a window to come
             // straight back without saying the word again, then close.
-            if isAwake { armDormancy(after: PollyConfig.initialListenWindowSeconds) }
+            //
+            // Except mid check. Her "hold that for me" ends while the five
+            // seconds and the assessment are still running, and re-arming the
+            // short window there closed the mic underneath a cook who was doing
+            // exactly what they were told: the log has `dormant (nothing said)`
+            // landing in the middle of a look. The hold owns the clock until it
+            // is finished.
+            if isAwake, !isMidCheck {
+                armDormancy(after: PollyConfig.initialListenWindowSeconds)
+            }
             PollyDebugLog.shared.log(
                 "skill: she stopped (awake=\(isAwake) stage=\(stage))")
         case .outputTranscriptDelta(_, let delta):
@@ -464,6 +541,17 @@ final class SkillCoachSession {
 
     /// Hold, look, decide, record. The one path both the tool and the button use.
     private func runHoldAndAssess(announce: Bool) async -> String {
+        // Last chance to get the camera up before we photograph nothing.
+        //
+        // A cook who asks to be looked at has almost certainly just put the
+        // glasses on, which is exactly the moment the earlier attempts would
+        // have failed and this one will not.
+        if visuals.activeKind == nil, visuals.glassesPossible {
+            PollyDebugLog.shared.log("skill: no camera at check time, trying the glasses again")
+            await visuals.startGlassesIfAvailable()
+            await refreshSightIfNeeded()
+        }
+
         // Let her finish saying "hold that for me" first.
         //
         // The tool call and the sentence that introduces it are the same
@@ -607,6 +695,14 @@ final class SkillCoachSession {
         // "I cannot see your thumb" here would be inventing a reason.
         let reasonLine: String
         switch reason {
+        case _ where visuals.activeKind == nil:
+            // Not a bad angle and not a dark kitchen: there is no camera at all.
+            // Saying anything about their grip here would be pure invention.
+            reasonLine = visuals.glassesPossible
+                ? "I have not got a camera yet. Your glasses are connected for audio but the "
+                    + "camera has not come up, so give them a moment or take them off and put "
+                    + "them back on."
+                : "I cannot see anything at all, there are no glasses connected."
         case .warmingUp:
             reasonLine = "The camera on your glasses is still waking up, give it a second."
         case .tooDark:

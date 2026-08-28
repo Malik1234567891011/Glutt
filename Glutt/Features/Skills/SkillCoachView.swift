@@ -2,12 +2,17 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-/// The screen a cook looks at while Polly is teaching them to hold a knife.
+/// The screen a cook looks at while Chef is teaching them to hold a knife.
 ///
-/// Almost nothing on it, on purpose. Their eyes are supposed to be on their own
-/// hand, not on a phone, so this exists to answer two questions at a glance: is
-/// she listening, and how long do I have to keep holding this. Everything else
-/// is her voice.
+/// Built around one question: **what am I supposed to be doing right now.** A
+/// cook glancing down has a knife in one hand, glasses on their face and about a
+/// second of attention to spare, so the current instruction is the whole screen
+/// and everything else is a strip along the bottom.
+///
+/// It used to be the other way up. The middle was a large animation of her
+/// state, her words sat under it in a card, and the step she was actually
+/// teaching appeared nowhere at all: you could look at the phone and learn that
+/// something was listening, which is not what anybody looks down for.
 struct SkillCoachView: View {
     let skill: Skill
     let check: SkillVisualCheck
@@ -27,13 +32,16 @@ struct SkillCoachView: View {
     var body: some View {
         ZStack {
             Theme.Colors.background.ignoresSafeArea()
-            VStack(spacing: Theme.Spacing.lg) {
+            VStack(spacing: Theme.Spacing.md) {
                 header
+                // Centred rather than pinned to the top: a glance goes to the
+                // middle of the phone, and the instruction should be waiting
+                // there rather than above where the thumb is.
                 Spacer(minLength: 0)
-                centrepiece
+                stepCard
                 Spacer(minLength: 0)
-                transcript
-                listeningDock
+                saidLine
+                statusStrip
                 footer
             }
             .padding(Theme.Spacing.lg)
@@ -50,127 +58,181 @@ struct SkillCoachView: View {
         }
     }
 
-    // MARK: Pieces
+    // MARK: Where you are
 
     private var header: some View {
-        VStack(spacing: 4) {
+        HStack {
             Text(skill.title)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(Theme.Colors.heading)
-            Text(statusLine)
-                .font(.subheadline)
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.Colors.textSecondary)
-                .multilineTextAlignment(.center)
+            Spacer()
+            if let session, !session.steps.isEmpty, !isFinished {
+                Text("Step \(session.stepIndex + 1) of \(session.steps.count)")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.Colors.muted)
+                    .monospacedDigit()
+            }
         }
-        .frame(maxWidth: .infinity)
     }
 
-    /// The ring, or whatever has replaced it.
-    @ViewBuilder private var centrepiece: some View {
-        switch session?.stage ?? .teaching {
-        case .analysing:
-            LookingAnimation()
+    /// The instruction, at the size you can read at arm's length with your hands
+    /// full. Everything else on this screen exists to not compete with it.
+    @ViewBuilder private var stepCard: some View {
+        switch session?.stage {
         case .learned:
-            resultBadge(
+            outcomeCard(
                 glyph: "checkmark.seal.fill",
                 tint: Theme.Colors.accent,
-                title: "That is your chef's knife grip")
+                title: "That is your chef's knife grip",
+                body: skill.lesson?.whyItMatters ?? "")
         case .safetyStop(let reason):
-            resultBadge(glyph: "hand.raised.fill", tint: Theme.Colors.tomato, title: reason)
-        case .visionUnavailable:
-            resultBadge(
-                glyph: "eye.slash",
-                tint: Theme.Colors.amber,
-                title: "I cannot get a clear enough view")
-        case .teaching, .coaching:
-            listeningMark
+            outcomeCard(
+                glyph: "hand.raised.fill",
+                tint: Theme.Colors.tomato,
+                title: "Put the knife down",
+                body: reason)
+        default:
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                Text(session?.currentStep ?? skill.lesson?.steps.first ?? skill.shortDescription)
+                    .font(.system(size: 27, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.Colors.heading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let session, session.steps.count > 1 {
+                    stepDots(count: session.steps.count, current: session.stepIndex)
+                }
+            }
+            .padding(Theme.Spacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                Theme.Colors.card,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.cardLarge))
+            // The border is the only thing that moves while she looks, so the
+            // instruction stays readable through it.
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.cardLarge)
+                    .strokeBorder(
+                        isLooking ? Theme.Colors.accent : Theme.Colors.border,
+                        lineWidth: isLooking ? 2 : 1)
+                    .animation(.easeInOut(duration: 0.4), value: isLooking))
         }
     }
 
-    private var listeningMark: some View {
-        ZStack {
-            Circle()
-                .fill(Theme.Colors.greenTint)
-                .frame(width: 132, height: 132)
-            Image(systemName: (session?.isSpeaking ?? false) ? "waveform" : "ear")
-                .font(.system(size: 44, weight: .regular))
-                .foregroundStyle(Theme.Colors.accent)
-                .symbolEffect(.variableColor.iterative, isActive: session?.isSpeaking ?? false)
+    private func stepDots(count: Int, current: Int) -> some View {
+        HStack(spacing: 6) {
+            ForEach(0..<count, id: \.self) { index in
+                Capsule()
+                    .fill(index == current ? Theme.Colors.accent : Theme.Colors.dotInactive)
+                    .frame(width: index == current ? 22 : 7, height: 7)
+                    .animation(.snappy(duration: 0.25), value: current)
+            }
         }
     }
 
-    private func resultBadge(glyph: String, tint: Color, title: String) -> some View {
-        VStack(spacing: Theme.Spacing.md) {
+    private func outcomeCard(
+        glyph: String, tint: Color, title: String, body: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             Image(systemName: glyph)
-                .font(.system(size: 52))
+                .font(.system(size: 34))
                 .foregroundStyle(tint)
             Text(title)
-                .font(.headline)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(Theme.Colors.textPrimary)
+                .font(.system(size: 25, weight: .semibold, design: .rounded))
+                .foregroundStyle(Theme.Colors.heading)
+                .fixedSize(horizontal: false, vertical: true)
+            if !body.isEmpty {
+                Text(body)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+        .padding(Theme.Spacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            tint.opacity(0.10),
+            in: RoundedRectangle(cornerRadius: Theme.Radius.cardLarge))
     }
 
-    /// Her last line, for the cook who was looking at their hand and missed it.
-    @ViewBuilder private var transcript: some View {
-        if let caption = session?.caption, !caption.isEmpty {
+    // MARK: What she just said
+
+    /// Secondary on purpose. Useful when you missed a sentence, never the reason
+    /// to look down.
+    @ViewBuilder private var saidLine: some View {
+        if let caption = session?.caption, !caption.isEmpty, !isFinished {
             Text(caption)
-                .font(.body)
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(Theme.Spacing.md)
-                .background(Theme.Colors.card, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+                .font(.callout)
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    /// The same promise the cook screen makes: you can see when she is hearing
-    /// you. Without it a cook talks into a phone that gives no sign it is on,
-    /// which is the moment they go back to pressing buttons.
-    private var listeningDock: some View {
+    // MARK: What she is doing
+
+    /// One row, always in the same place, so its meaning is learned once.
+    private var statusStrip: some View {
         HStack(spacing: Theme.Spacing.sm) {
-            VoiceBars(state: barState)
-            Text(dockCopy)
+            if isLooking {
+                LookingMark()
+            } else {
+                VoiceBars(state: barState)
+            }
+            Text(statusCopy)
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(Theme.Colors.textPrimary)
+                .foregroundStyle(isLooking ? Theme.Colors.accent : Theme.Colors.textPrimary)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)
-        .background(Theme.Colors.card, in: Capsule())
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            isLooking ? Theme.Colors.greenTint : Theme.Colors.card,
+            in: Capsule())
+        .animation(.easeInOut(duration: 0.25), value: isLooking)
+    }
+
+    private var isLooking: Bool {
+        if case .analysing = session?.stage { return true }
+        return false
+    }
+
+    private var isFinished: Bool {
+        switch session?.stage {
+        case .learned, .safetyStop: true
+        default: false
+        }
     }
 
     private var barState: VoiceBars.State {
         guard let session else { return .idle }
         if session.isSpeaking { return .speaking }
-        if case .analysing = session.stage { return .thinking }
         if session.isThinking { return .thinking }
         return session.isListening ? .listening : .idle
     }
 
-    private var dockCopy: String {
-        guard let session, session.phase == .live else { return "Connecting" }
+    private var statusCopy: String {
+        guard let session, session.phase == .live else { return "Getting Chef ready" }
+        if isLooking { return "Looking at your grip" }
         if session.isSpeaking { return "Chef is talking" }
-        if case .analysing = session.stage { return "Looking at your hand" }
         if session.isThinking { return "Thinking" }
         if session.isListening { return "Listening" }
+        if case .visionUnavailable = session.stage { return "I cannot see well enough" }
         return session.wakeWordAvailable ? "Say “Chef” to talk" : "Not listening"
     }
 
-    /// No check button.
-    ///
-    /// There was one and it was the wrong shape: a cook with a knife in one hand
-    /// and glasses on their face should not be hunting for a control, and having
-    /// it there made asking out loud look optional. Say "Chef, does this look
-    /// right" and she looks.
+    // MARK: Out
+
     @ViewBuilder private var footer: some View {
         VStack(spacing: Theme.Spacing.sm) {
-            Text(promptLine)
-                .font(.footnote)
-                .foregroundStyle(Theme.Colors.muted)
-                .multilineTextAlignment(.center)
+            if let session, session.phase == .live, !session.isAwake, session.wakeWordAvailable {
+                Text("Try “Chef, does this look right?”")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.Colors.muted)
+            }
             HStack(spacing: Theme.Spacing.sm) {
-                Button("Done") { dismiss() }
+                Button(isFinished ? "Done" : "End lesson") { dismiss() }
                     .buttonStyle(SecondaryButtonStyle())
                 Button {
                     UIPasteboard.general.string = PollyDebugLog.shared.dump()
@@ -183,66 +245,6 @@ struct SkillCoachView: View {
                 .accessibilityLabel("Copy debug log")
             }
         }
-    }
-
-    /// What to say, spelled out, because a screen that only listens has to tell
-    /// you that it is listening AND what to say into it.
-    private var promptLine: String {
-        guard let session, session.phase == .live else { return "" }
-        if !session.wakeWordAvailable {
-            return "The wake word is not available on this device right now."
-        }
-        if session.isAwake { return "Go ahead, she is listening." }
-        return "Say “Chef” to talk. Try “Chef, does this look right?”"
-    }
-
-    private var statusLine: String {
-        switch session?.phase {
-        case .idle, .connecting, .none: "Getting Chef ready"
-        case .failed(let why): why
-        case .ended: "Lesson finished"
-        case .live:
-            switch session?.stage {
-            case .analysing: "Looking"
-            case .safetyStop: "Put the knife down"
-            default: (session?.isAwake ?? false)
-                ? "Go ahead"
-                : "Say “Chef” whenever you want her"
-            }
-        }
-    }
-}
-
-/// The five second ring.
-///
-/// Counts down rather than up, and is driven by the real capture rather than
-/// its own animation, so it can never finish while frames are still coming in.
-private struct HoldRing: View {
-    let progress: Double
-    let seconds: Double
-
-    private var remaining: Int { max(0, Int((seconds * (1 - progress)).rounded(.up))) }
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Theme.Colors.surface3, lineWidth: 12)
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(Theme.Colors.accent, style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .animation(.linear(duration: 0.3), value: progress)
-            VStack(spacing: 2) {
-                Text("\(remaining)")
-                    .font(.system(size: 46, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.Colors.heading)
-                Text("hold still")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-            }
-        }
-        .frame(width: 156, height: 156)
     }
 }
 
@@ -266,7 +268,7 @@ struct VoiceBars: View {
                         .frame(width: 3, height: height(index: i, t: t))
                 }
             }
-            .frame(width: 28, height: 24)
+            .frame(width: 28, height: 22)
         }
     }
 
@@ -281,57 +283,36 @@ struct VoiceBars: View {
     private func height(index: Int, t: Double) -> CGFloat {
         let base: CGFloat
         switch state {
-        case .listening: base = 8 + CGFloat((sin(t * 8 + Double(index)) + 1) * 7)
-        case .speaking: base = 6 + CGFloat((sin(t * 6 + Double(index)) + 1) * 6)
+        case .listening: base = 8 + CGFloat((sin(t * 8 + Double(index)) + 1) * 6)
+        case .speaking: base = 6 + CGFloat((sin(t * 6 + Double(index)) + 1) * 5)
         case .thinking: base = 5 + CGFloat((sin(t * 3 + Double(index)) + 1) * 3)
         case .idle: base = 4 + (index == 2 ? 3 : 0)
         }
-        return max(4, min(22, base))
+        return max(4, min(20, base))
     }
 }
 
-/// What "Polly is looking at your hand" looks like.
+/// A small sweep, for the seconds she is actually reading the frames.
 ///
-/// A spinner says the app is busy. This is meant to say something different and
-/// more specific: somebody is examining the thing you are holding. The ring
-/// sweeps like a pass over the hand rather than spinning like a wait, and the
-/// text names what is being looked at, because the five seconds of holding still
-/// have to feel like part of the lesson rather than the price of it.
-private struct LookingAnimation: View {
+/// Inline rather than the centrepiece it used to be. Looking is about four
+/// seconds now and mostly happens underneath her own voice, so it does not
+/// deserve to replace the instruction the cook is trying to follow.
+private struct LookingMark: View {
     @State private var sweep = false
-    @State private var pulse = false
 
     var body: some View {
-        VStack(spacing: Theme.Spacing.lg) {
-            ZStack {
-                Circle()
-                    .fill(Theme.Colors.greenTint)
-                    .frame(width: 156, height: 156)
-                    .scaleEffect(pulse ? 1.04 : 0.96)
-
-                Circle()
-                    .trim(from: 0, to: 0.22)
-                    .stroke(
-                        Theme.Colors.accent,
-                        style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                    .frame(width: 156, height: 156)
-                    .rotationEffect(.degrees(sweep ? 360 : 0))
-
-                Image(systemName: "hand.raised.fingers.spread")
-                    .font(.system(size: 46, weight: .light))
-                    .foregroundStyle(Theme.Colors.accent)
-                    .opacity(pulse ? 1 : 0.65)
-            }
-            Text("Looking at your grip")
-                .font(.headline)
-                .foregroundStyle(Theme.Colors.textPrimary)
+        ZStack {
+            Circle()
+                .stroke(Theme.Colors.accent.opacity(0.25), lineWidth: 2.5)
+            Circle()
+                .trim(from: 0, to: 0.28)
+                .stroke(Theme.Colors.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                .rotationEffect(.degrees(sweep ? 360 : 0))
         }
+        .frame(width: 20, height: 20)
         .onAppear {
-            withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) {
+            withAnimation(.linear(duration: 1.1).repeatForever(autoreverses: false)) {
                 sweep = true
-            }
-            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
-                pulse = true
             }
         }
     }

@@ -35,6 +35,12 @@ enum SkillCoachPrompt {
         next. A beginner given five things to do at once does none of them.
         The order for this skill is the steps listed above, in order.
 
+        Call `teaching_step` with the number every time you move to a new one,
+        BEFORE you say it. The cook's phone shows that step in large type, which
+        is what they glance at with their hands full, and a screen showing step
+        one while you talk about step three is worse than a blank screen. Call it
+        again if you go back to an earlier step to fix something.
+
         # Looking
         Looking is instant. The camera has been running since the lesson opened,
         so `check_the_hold` reads what they were doing a second ago rather than
@@ -168,6 +174,23 @@ enum SkillCoachPrompt {
                 "type": .string("object"),
                 "properties": .object([:]),
                 "required": .array([]),
+            ])
+        ),
+        RealtimeToolDefinition(
+            name: "teaching_step",
+            description:
+                "Tell the cook's screen which numbered step you are teaching right now, so it "
+                + "can show that instruction in large type. Call it before you say the step, "
+                + "and again whenever you move on or go back.",
+            parameters: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "number": .object([
+                        "type": .string("integer"),
+                        "description": .string("1 for the first step, counting up."),
+                    ]),
+                ]),
+                "required": .array([.string("number")]),
             ])
         ),
         RealtimeToolDefinition(

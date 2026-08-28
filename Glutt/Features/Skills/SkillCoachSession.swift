@@ -83,6 +83,20 @@ final class SkillCoachSession {
     private(set) var isSpeaking = false
     /// A turn is in flight: she is deciding, or a look is being assessed.
     private(set) var isThinking = false
+    /// Which written step she is teaching, zero based.
+    ///
+    /// Reported by her rather than inferred, because inferring it from what she
+    /// says is guesswork and a screen showing the wrong instruction to somebody
+    /// holding a knife is worse than a screen showing none.
+    private(set) var stepIndex = 0
+
+    /// The steps as written on the lesson screen, so both surfaces say the same
+    /// words.
+    var steps: [String] { skill.lesson?.steps ?? [] }
+    var currentStep: String? {
+        steps.indices.contains(stepIndex) ? steps[stepIndex] : steps.first
+    }
+
     /// The on-device recogniser is up and the wake word will actually work.
     private(set) var wakeWordAvailable = false
     /// The cook said "Chef" and the mic is open to the server.
@@ -518,12 +532,31 @@ final class SkillCoachSession {
         case "check_the_hold":
             let payload = await runHoldAndAssess(announce: false)
             await reply(to: call, with: payload)
+        case "teaching_step":
+            let asked = (Self.argument("number", from: call.argumentsJSON) ?? 1) - 1
+            stepIndex = min(max(asked, 0), max(steps.count - 1, 0))
+            PollyDebugLog.shared.log("skill: now teaching step \(stepIndex + 1) of \(steps.count)")
+            // No response.create: this is a screen update, not a turn. Asking her
+            // to speak again here would make her repeat the step she is already
+            // in the middle of saying.
+            try? await transport?.send(.createFunctionOutput(
+                callId: call.callId, output: #"{"showing":true}"#))
         case "finish_lesson":
             finishLesson()
             await reply(to: call, with: #"{"done":true}"#)
         default:
             await reply(to: call, with: #"{"error":"unknown tool"}"#)
         }
+    }
+
+    /// One integer out of a tool call, without decoding a whole struct for it.
+    private static func argument(_ key: String, from json: String) -> Int? {
+        guard let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+        if let number = object[key] as? NSNumber { return number.intValue }
+        if let text = object[key] as? String { return Int(text) }
+        return nil
     }
 
     private func reply(to call: RealtimeFunctionCall, with output: String) async {

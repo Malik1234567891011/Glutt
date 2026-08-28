@@ -36,10 +36,26 @@ struct SkillVisualCheck: Hashable, Sendable {
     /// bad moment costs us one frame instead of the assessment.
     let captureAt: [Double]
 
-    /// What has to be visible before any judgement is allowed. The assessor
-    /// reports each of these separately, and a missing one produces "I cannot
-    /// see" rather than a criticism.
+    /// The minimum needed to say anything at all. Missing one of these produces
+    /// "I cannot see" rather than a criticism.
+    ///
+    /// Deliberately small. It was originally every region the rubric mentions,
+    /// which turned out to be a demand the world cannot meet: in a pinch grip
+    /// the thumb and the index finger are on OPPOSITE faces of the blade, so
+    /// from the cook's own eyes one of them is behind the steel by definition.
+    /// Requiring both meant a correct grip, held perfectly still, in good light,
+    /// was reported as unseeable about half the time. A cook looking straight at
+    /// their hand being told "I cannot see your hand" is the single fastest way
+    /// to lose them.
     let requiredVisibility: [SkillVisibilityRegion]
+
+    /// Regions that sharpen the assessment when visible and block nothing when
+    /// they are not. Reported by the assessor, and used to decide what she is
+    /// allowed to comment on: a finger nobody saw cannot be corrected.
+    let helpfulVisibility: [SkillVisibilityRegion]
+
+    /// Everything the assessor is asked to report on.
+    var reportedVisibility: [SkillVisibilityRegion] { requiredVisibility + helpfulVisibility }
 
     /// Everything the vision model needs to know about the technique itself.
     let rubric: SkillVisualRubric
@@ -59,6 +75,7 @@ struct SkillVisualCheck: Hashable, Sendable {
         holdSeconds: Double = 5,
         captureAt: [Double] = [0.25, 0.55, 0.85],
         requiredVisibility: [SkillVisibilityRegion],
+        helpfulVisibility: [SkillVisibilityRegion] = [],
         rubric: SkillVisualRubric,
         retryFraming: String,
         maxUnusableViews: Int = 2
@@ -68,6 +85,7 @@ struct SkillVisualCheck: Hashable, Sendable {
         self.holdSeconds = holdSeconds
         self.captureAt = captureAt
         self.requiredVisibility = requiredVisibility
+        self.helpfulVisibility = helpfulVisibility
         self.rubric = rubric
         self.retryFraming = retryFraming
         self.maxUnusableViews = maxUnusableViews
@@ -100,6 +118,30 @@ enum SkillVisibilityRegion: String, Hashable, Sendable, CaseIterable {
         case .indexFinger: "your index finger"
         case .remainingFingers: "your other fingers"
         case .wrist: "your wrist"
+        }
+    }
+
+    /// What the cook can physically do to bring this into view.
+    ///
+    /// The reason this exists: "I cannot see" is a true sentence and a useless
+    /// one. A cook who is looking straight at their own hand has no idea what to
+    /// change, and being told the same thing twice reads as the app being
+    /// broken. Naming the thing that is missing AND the move that fixes it turns
+    /// a dead end into an instruction, which is what an instructor would say.
+    var howToBringIntoView: String {
+        switch self {
+        case .tool:
+            "hold the knife out over the board, in front of where you are looking"
+        case .controlPoint:
+            "tilt the blade towards me a little so I can see where your hand meets it"
+        case .thumb:
+            "turn your hand slightly towards me so your thumb comes into view"
+        case .indexFinger:
+            "roll the knife the other way a little so I can see the far side of the blade"
+        case .remainingFingers:
+            "lower your hand a bit so I can see your fingers on the handle"
+        case .wrist:
+            "pull your hand back slightly so I can see your wrist too"
         }
     }
 }
@@ -169,17 +211,27 @@ struct SkillCoachableMistake: Hashable, Sendable {
     /// Changes the language from "fix that" to "not for this one".
     let isContextual: Bool
 
+    /// What must have been visible for this to be sayable.
+    ///
+    /// "Your index finger is along the spine" is only a thing we get to say if
+    /// somebody saw the index finger. Without this the model can infer a finger
+    /// position from the shape of the hand and be confidently wrong about the
+    /// one thing the cook can check for themselves.
+    let requiresVisible: [SkillVisibilityRegion]
+
     init(
         key: String,
         observation: String,
         correction: String,
         rationale: String,
-        isContextual: Bool = false
+        isContextual: Bool = false,
+        requiresVisible: [SkillVisibilityRegion] = []
     ) {
         self.key = key
         self.observation = observation
         self.correction = correction
         self.rationale = rationale
         self.isContextual = isContextual
+        self.requiresVisible = requiresVisible
     }
 }

@@ -79,7 +79,22 @@ enum SkillCoachDecision {
         //    we only ever say sentences we wrote.
         if assessment.overall == .needsAdjustment,
            let key = assessment.primaryIssueKey,
-           check.rubric.rankedMistakes.contains(where: { $0.key == key }) {
+           let mistake = check.rubric.rankedMistakes.first(where: { $0.key == key }) {
+            // And only if somebody actually saw the part it is about.
+            //
+            // "Your index finger is along the spine" is a claim about a finger,
+            // and in a pinch grip that finger is often behind the blade. A model
+            // can infer its position from the shape of the hand and be
+            // confidently wrong about the one thing the cook can check for
+            // themselves in a second, which is the fastest way to lose them.
+            let sawWhatItIsAbout = mistake.requiresVisible.allSatisfy {
+                assessment.visibility[$0.rawValue]?.isUsable ?? false
+            }
+            guard sawWhatItIsAbout else {
+                return .cannotSee(regions: mistake.requiresVisible.filter {
+                    assessment.visibility[$0.rawValue]?.isUsable != true
+                })
+            }
             return .correct(
                 mistakeKey: key,
                 certainty: assessment.confidence >= confidentThreshold ? .confident : .tentative)

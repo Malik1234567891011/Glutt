@@ -102,6 +102,13 @@ enum SkillVisualAssessor {
         1. FIRST decide whether you can see enough. Report visibility per region
            honestly. A region hidden behind the blade, the handle or another finger
            is `insufficient`, not `partial`.
+           Hiding is NORMAL and is not a problem to report. These images are taken
+           from the cook's own eyes, and in a correct pinch grip the thumb and the
+           index finger are on opposite faces of the blade, so one of them is behind
+           the steel by definition. Mark the hidden one `insufficient` and carry on
+           assessing everything you CAN see. Only `tool` and `controlPoint`, which is
+           where the hand meets the blade, have to be visible for the assessment to
+           be worth anything.
         2. If the regions needed to judge the technique are not visible, set
            `overall` to `cannotAssess` and stop. Do not guess at a finger you cannot
            see, and do not soften a guess into a suggestion. Not seeing something is
@@ -124,7 +131,7 @@ enum SkillVisualAssessor {
     }
 
     static func userPrompt(check: SkillVisualCheck) -> String {
-        let regions = check.requiredVisibility.map(\.rawValue).joined(separator: ", ")
+        let regions = check.reportedVisibility.map(\.rawValue).joined(separator: ", ")
         return """
         Assess the hold shown in the images above. Report visibility for: \(regions).
         Answer with the JSON object only.
@@ -136,7 +143,7 @@ enum SkillVisualAssessor {
     }
 
     private static func schema(check: SkillVisualCheck) -> String {
-        let regions = check.requiredVisibility
+        let regions = check.reportedVisibility
             .map { "\"\($0.rawValue)\": \"sufficient | partial | insufficient\"" }
             .joined(separator: ",\n            ")
         let criteria = check.rubric.rankedMistakes
@@ -271,6 +278,6 @@ struct SkillVisualAssessment: Decodable, Sendable, Equatable {
     /// The regions we could not see, in the order the check lists them, so the
     /// cook is asked about the most important one first.
     func unseenRegions(for check: SkillVisualCheck) -> [SkillVisibilityRegion] {
-        check.requiredVisibility.filter { visibility[$0.rawValue]?.isUsable != true }
+        check.reportedVisibility.filter { visibility[$0.rawValue]?.isUsable != true }
     }
 }

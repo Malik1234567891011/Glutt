@@ -26,7 +26,7 @@ final class SkillVisualCoachingTests: XCTestCase {
         evidence: [String] = ["thumb on the blade face near the heel"]
     ) -> SkillVisualAssessment {
         var visibility: [String: SkillVisualAssessment.Visibility] = [:]
-        for region in check.requiredVisibility {
+        for region in check.reportedVisibility {
             visibility[region.rawValue] = visible ? .sufficient : .insufficient
         }
         return SkillVisualAssessment(
@@ -55,7 +55,10 @@ final class SkillVisualCoachingTests: XCTestCase {
         guard case .cannotSee(let regions) = outcome else {
             return XCTFail("expected cannotSee, got \(outcome)")
         }
-        XCTAssertEqual(Set(regions), Set(check.requiredVisibility),
+        // Every region she was asked about, not just the required two: naming
+        // the thumb is useful to a cook even though a hidden thumb alone would
+        // not have blocked the assessment.
+        XCTAssertEqual(Set(regions), Set(check.reportedVisibility),
                        "and it should name what it could not see")
     }
 
@@ -79,6 +82,87 @@ final class SkillVisualCoachingTests: XCTestCase {
         guard case .cannotSee = SkillCoachDecision.decide(shaky, check: check) else {
             return XCTFail("a low confidence reading must not become a correction")
         }
+    }
+
+    /// The complaint that came back from a real kitchen: "I am literally looking
+    /// right at it and it says it cannot see."
+    ///
+    /// In a correct pinch grip the thumb and the index finger are on opposite
+    /// faces of the blade, so from the cook's own eyes one of them is behind the
+    /// steel. Requiring both made a perfect grip unassessable about half the
+    /// time. Only the knife and the control point are required now.
+    func testAHiddenFingerDoesNotMakeAGoodGripUnassessable() {
+        var visibility: [String: SkillVisualAssessment.Visibility] = [
+            "tool": .sufficient,
+            "controlPoint": .sufficient,
+            "thumb": .sufficient,
+            "indexFinger": .insufficient,      // behind the blade, as it should be
+            "remainingFingers": .partial,
+            "wrist": .insufficient,
+        ]
+        let hidden = SkillVisualAssessment(
+            equipment: .init(reading: "chef's knife", supported: true, confidence: 0.9),
+            visibility: visibility,
+            overall: .ready,
+            confidence: 0.9)
+
+        XCTAssertTrue(hidden.sawEnough(for: check))
+        XCTAssertEqual(SkillCoachDecision.decide(hidden, check: check), .passed(isVariation: false))
+
+        // But losing the knife itself is still a real "I cannot see".
+        visibility["tool"] = .insufficient
+        let blind = SkillVisualAssessment(
+            equipment: .init(reading: "unknown", supported: true, confidence: 0.2),
+            visibility: visibility,
+            overall: .ready,
+            confidence: 0.9)
+        XCTAssertFalse(blind.sawEnough(for: check))
+    }
+
+    /// A correction is a claim about a specific finger, so it needs that finger
+    /// to have been seen. Inferring it from the shape of the hand and being
+    /// wrong is the one error the cook can check in a second.
+    func testAFingerNobodySawIsNotCorrected() {
+        let inferred = SkillVisualAssessment(
+            equipment: .init(reading: "chef's knife", supported: true, confidence: 0.9),
+            visibility: [
+                "tool": .sufficient,
+                "controlPoint": .sufficient,
+                "thumb": .sufficient,
+                "indexFinger": .insufficient,
+                "remainingFingers": .sufficient,
+                "wrist": .sufficient,
+            ],
+            overall: .needsAdjustment,
+            confidence: 0.9,
+            primaryIssueKey: "pointerGrip")   // a claim about the index finger
+
+        XCTAssertEqual(
+            SkillCoachDecision.decide(inferred, check: check),
+            .cannotSee(regions: [.indexFinger]))
+    }
+
+    /// The one correction that only needs the control point still works when
+    /// every finger is hidden, because "your whole hand is back on the handle"
+    /// does not depend on seeing a thumb.
+    func testTheGripLocationCorrectionSurvivesHiddenFingers() {
+        let handleGrip = SkillVisualAssessment(
+            equipment: .init(reading: "chef's knife", supported: true, confidence: 0.9),
+            visibility: [
+                "tool": .sufficient,
+                "controlPoint": .sufficient,
+                "thumb": .insufficient,
+                "indexFinger": .insufficient,
+                "remainingFingers": .insufficient,
+                "wrist": .insufficient,
+            ],
+            overall: .needsAdjustment,
+            confidence: 0.9,
+            primaryIssueKey: "handleGrip")
+
+        XCTAssertEqual(
+            SkillCoachDecision.decide(handleGrip, check: check),
+            .correct(mistakeKey: "handleGrip", certainty: .confident))
     }
 
     // MARK: - Safety
@@ -236,6 +320,16 @@ final class SkillVisualCoachingTests: XCTestCase {
             "grip pressure is the thing a photo cannot show and she must not claim")
         XCTAssertTrue(
             check.rubric.unsupportedEquipment.contains("Paring knife"))
+        // Required stays small on purpose. Adding a finger back here is how the
+        // "I cannot see" complaint returns.
+        XCTAssertEqual(check.requiredVisibility, [.tool, .controlPoint])
+        XCTAssertTrue(check.helpfulVisibility.contains(.indexFinger))
+        // And every correction names what it needs to have seen.
+        for mistake in check.rubric.rankedMistakes {
+            XCTAssertFalse(
+                mistake.requiresVisible.isEmpty,
+                "\(mistake.key) could be claimed about something nobody saw")
+        }
         // The two habits this lesson is most likely to meet, in priority order.
         XCTAssertEqual(keys.first, "handleGrip")
         XCTAssertTrue(keys.contains("pointerGrip"))

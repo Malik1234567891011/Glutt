@@ -128,6 +128,11 @@ final class SkillCoachSession {
     /// flight is rejected by the server and loses the turn.
     private var responseInFlight = false
 
+    /// The cook spoke while she was mid answer. Held rather than dropped: they
+    /// said a whole sentence and got silence for it, which is the behaviour this
+    /// whole lesson keeps being accused of.
+    private var deferredTurn = false
+
     /// What the last look concluded, in the words we want said.
     ///
     /// Kept because a bare `response.create` after a tool call she made mid
@@ -257,8 +262,10 @@ final class SkillCoachSession {
 
     /// Turn what the cook just said into a turn she answers.
     private func commitTurn() async {
-        guard phase == .live, !responseInFlight else {
-            PollyDebugLog.shared.log("skill: turn not committed (response already in flight)")
+        guard phase == .live else { return }
+        guard !responseInFlight else {
+            deferredTurn = true
+            PollyDebugLog.shared.log("skill: turn deferred (response in flight)")
             return
         }
         responseInFlight = true
@@ -395,6 +402,11 @@ final class SkillCoachSession {
         case .responseDone(let status, let calls, _):
             responseInFlight = false
             isThinking = !calls.isEmpty
+            // Answer whatever they said while she was talking.
+            if deferredTurn, calls.isEmpty {
+                deferredTurn = false
+                await commitTurn()
+            }
             // Only act on a completed response. A cancelled one can carry
             // partial calls, and running them talks over whoever interrupted.
             guard status == "completed", !calls.isEmpty else { return }
@@ -425,6 +437,7 @@ final class SkillCoachSession {
 
     private func reply(to call: RealtimeFunctionCall, with output: String) async {
         try? await transport?.send(.createFunctionOutput(callId: call.callId, output: output))
+        await waitForHerToFinish()
 
         // Steered rather than open ended. She called this tool in the same
         // breath as "hold it there for five seconds", so as far as the model is
@@ -477,6 +490,14 @@ final class SkillCoachSession {
         }
 
         stage = .analysing
+        // Say something while looking.
+        //
+        // The frames are in and the assessor takes another three or four
+        // seconds, on top of five spent holding still. Silence there reads as
+        // nothing happening, which is exactly when a cook starts wondering
+        // whether it heard them. One short line, spoken while the real work
+        // runs, and the verdict waits for it to finish.
+        await speakWhileLooking()
 
         guard !capture.isEmpty else {
             return handleUnusable(
@@ -496,8 +517,27 @@ final class SkillCoachSession {
 
         let outcome = SkillCoachDecision.decide(assessment, check: check)
         let note = SkillCoachDecision.note(for: outcome, assessment: assessment, check: check)
+
+        // The whole reading, not just the verdict.
+        //
+        // When she says she cannot see something, the only way to tell a genuine
+        // occlusion from a model being timid is to know what it reported for
+        // every region and what it claimed to have observed. Without this the
+        // log says "cannotAssess" and there is nothing to argue with.
+        let seen = check.reportedVisibility
+            .map { "\($0.rawValue)=\(assessment.visibility[$0.rawValue]?.rawValue ?? "-")" }
+            .joined(separator: " ")
         PollyDebugLog.shared.log(
-            "skill: assessed \(assessment.overall.rawValue) conf=\(String(format: "%.2f", assessment.confidence)) -> \(note)")
+            "skill: assessed \(assessment.overall.rawValue) "
+                + "conf=\(String(format: "%.2f", assessment.confidence)) -> \(note)")
+        PollyDebugLog.shared.log("skill: visibility \(seen)")
+        PollyDebugLog.shared.log(
+            "skill: knife \"\(assessment.equipment.reading)\" "
+                + "supported=\(assessment.equipment.supported) "
+                + "conf=\(String(format: "%.2f", assessment.equipment.confidence))")
+        for line in assessment.observedEvidence {
+            PollyDebugLog.shared.log("skill: saw \(line)")
+        }
 
         record(
             outcome: attemptOutcome(for: outcome),
@@ -509,6 +549,29 @@ final class SkillCoachSession {
             startedAt: started)
 
         return payload(for: outcome, assessment: assessment)
+    }
+
+    private func speakWhileLooking() async {
+        guard phase == .live, !responseInFlight else { return }
+        responseInFlight = true
+        try? await transport?.send(.responseCreateWithInstructions(
+            "You are looking at their hand right now. Say ONE short line, six words or fewer, "
+            + "that you are having a look. Something like \"right, let me have a look\" or "
+            + "\"okay, looking now\". Do not ask a question and do not say anything about what "
+            + "you can see yet, because you have not finished looking."))
+        PollyDebugLog.shared.log("skill: bridging line while looking")
+    }
+
+    /// Do not talk over the bridging line with the verdict.
+    private func waitForHerToFinish() async {
+        if let webrtc = transport as? RealtimeWebRTCTransport {
+            await webrtc.waitUntilAssistantQuiet(timeoutSeconds: 6)
+        }
+        var spins = 0
+        while responseInFlight, spins < 60 {
+            try? await Task.sleep(for: .milliseconds(100))
+            spins += 1
+        }
     }
 
     /// A view we could not use. Never recorded as the cook doing badly, and
@@ -540,12 +603,61 @@ final class SkillCoachSession {
         }
 
         stage = .coaching(outcome: .inconclusive)
+        // No frames at all is a different problem from a bad angle, and saying
+        // "I cannot see your thumb" here would be inventing a reason.
+        let reasonLine: String
+        switch reason {
+        case .warmingUp:
+            reasonLine = "The camera on your glasses is still waking up, give it a second."
+        case .tooDark:
+            reasonLine = "It is too dark for me to make anything out."
+        case .tooBright:
+            reasonLine = "It is washed out, there is too much light coming in."
+        case .blurred, .tooOld:
+            reasonLine = "That came through too blurred to read."
+        default:
+            reasonLine = "I am not getting a picture from your glasses at the moment."
+        }
         return json([
             "outcome": "cannot_see",
-            "say": check.retryFraming,
-            "then": "Ask them to hold it again, then call check_the_hold. Make it clear this is "
-                + "about the view and not about their grip.",
+            "say": "\(reasonLine) \(check.retryFraming)",
+            "then": "Say that, then call check_the_hold again. Be clear this is the camera and "
+                + "not their grip.",
         ])
+    }
+
+    /// "I can see X, but not Y. Do Z."
+    ///
+    /// Built rather than authored because it depends on what actually happened.
+    /// A cook standing there looking straight at their own hand and being told
+    /// only "I cannot see it" has nothing to act on and no reason to believe the
+    /// camera is working at all. Saying what came through first is also the
+    /// honest order: it is the evidence, and the missing part is the conclusion.
+    private func partialViewLine(
+        missing: [SkillVisibilityRegion],
+        assessment: SkillVisualAssessment
+    ) -> String {
+        let sawRegions = check.reportedVisibility.filter {
+            assessment.visibility[$0.rawValue]?.isUsable == true
+        }
+        let seenPhrase = sawRegions.isEmpty
+            ? "I have got a picture but I cannot make your hand out in it"
+            : "I can see \(list(sawRegions.map(\.spokenName)))"
+
+        guard let firstMissing = missing.first else {
+            return "\(seenPhrase). \(check.retryFraming)"
+        }
+        let missingPhrase = "not \(list(missing.map(\.spokenName)))"
+        return "\(seenPhrase), \(missingPhrase). "
+            + "\(firstMissing.howToBringIntoView.prefix(1).uppercased())"
+            + "\(firstMissing.howToBringIntoView.dropFirst())."
+    }
+
+    /// "a, b and c", so she does not read out a comma separated list.
+    private func list(_ items: [String]) -> String {
+        guard let last = items.last else { return "" }
+        guard items.count > 1 else { return last }
+        return items.dropLast().joined(separator: ", ") + " and " + last
     }
 
     /// Everything Polly needs to say the right thing, and nothing she could use
@@ -583,19 +695,20 @@ final class SkillCoachSession {
                 stage = .visionUnavailable
                 return json([
                     "outcome": "vision_unavailable",
-                    "say": "I still cannot see it well enough to be useful. Let me describe what "
-                        + "it should feel like instead.",
-                    "then": "Do not ask them to reposition again.",
+                    "say": "\(partialViewLine(missing: regions, assessment: assessment)) "
+                        + "I am not getting there though, so let me tell you what it should feel "
+                        + "like instead and you can check it yourself.",
+                    "then": "Describe what a correct grip feels like under the fingers. Do not "
+                        + "ask them to reposition again, they have tried twice.",
                 ], evidence: evidence)
             }
             stage = .coaching(outcome: .inconclusive)
-            let names = regions.map(\.spokenName).joined(separator: " or ")
             return json([
                 "outcome": "cannot_see",
-                "say": "I cannot quite see \(names.isEmpty ? "your hand" : names). "
-                    + check.retryFraming,
-                "then": "Ask them to hold again and call check_the_hold. Be clear this is the "
-                    + "view, not their grip.",
+                "say": partialViewLine(missing: regions, assessment: assessment),
+                "then": "Say that line, then call check_the_hold again once they have moved. "
+                    + "Lead with what you CAN see so they know you are looking and know what to "
+                    + "change. Never just say you cannot see and stop.",
             ], evidence: evidence)
 
         case .correct(let key, let certainty):

@@ -19,7 +19,14 @@ extension SkillVisualCheck {
         framingInstruction:
             "Rest the blade flat on your board and look straight down at your knife hand. "
             + "Hold it there for five seconds and I will take a look.",
-        requiredVisibility: [.tool, .controlPoint, .thumb, .indexFinger, .remainingFingers],
+        // The knife, and where the hand sits on it. Enough to judge the thing that
+        // matters most: whether they are steering the blade or the back of the
+        // handle.
+        requiredVisibility: [.tool, .controlPoint],
+        // Welcome, never required. One of the thumb and the index finger is
+        // behind the blade in any correct pinch grip, so demanding both is
+        // demanding a view that does not exist.
+        helpfulVisibility: [.thumb, .indexFinger, .remainingFingers, .wrist],
         rubric: SkillVisualRubric(
             subject: "a cook's grip on a chef's knife, seen from their own eyes",
 
@@ -64,7 +71,8 @@ extension SkillVisualCheck {
                         "Steering from the back of the handle means every small movement at your "
                         + "wrist becomes a big one at the tip. Pinching the blade puts your hand "
                         + "where the cutting happens, so the knife goes where you point it.",
-                    isContextual: true
+                    isContextual: true,
+                    requiresVisible: [.controlPoint]
                 ),
                 SkillCoachableMistake(
                     key: "pointerGrip",
@@ -79,7 +87,8 @@ extension SkillVisualCheck {
                         + "so your hand works harder and you lose the fine control that comes from "
                         + "gripping the blade between two fingers. It is a real grip for delicate "
                         + "slicing, it is just not the one that makes everyday chopping easier.",
-                    isContextual: true
+                    isContextual: true,
+                    requiresVisible: [.indexFinger]
                 ),
                 SkillCoachableMistake(
                     key: "thumbOnSpine",
@@ -92,7 +101,8 @@ extension SkillVisualCheck {
                     rationale:
                         "The pinch only works when the thumb and finger oppose each other across "
                         + "the blade. A thumb on the spine has nothing to press against.",
-                    isContextual: false
+                    isContextual: false,
+                    requiresVisible: [.thumb]
                 ),
                 SkillCoachableMistake(
                     key: "fingersOffHandle",
@@ -105,7 +115,8 @@ extension SkillVisualCheck {
                     rationale:
                         "The pinch controls the angle, but the knife needs somewhere to sit. "
                         + "Fingers off the handle means the weight is hanging from two fingers.",
-                    isContextual: false
+                    isContextual: false,
+                    requiresVisible: [.remainingFingers]
                 ),
                 SkillCoachableMistake(
                     key: "wristBent",
@@ -117,7 +128,8 @@ extension SkillVisualCheck {
                     rationale:
                         "A bent wrist tires fast and takes the power out of the cut, because the "
                         + "arm can no longer drive the knife in a straight line.",
-                    isContextual: false
+                    isContextual: false,
+                    requiresVisible: [.wrist]
                 ),
             ],
 

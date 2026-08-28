@@ -109,11 +109,18 @@ enum SkillVisualAssessor {
            assessing everything you CAN see. Only `tool` and `controlPoint`, which is
            where the hand meets the blade, have to be visible for the assessment to
            be worth anything.
-        2. If the regions needed to judge the technique are not visible, set
-           `overall` to `cannotAssess` and stop. Do not guess at a finger you cannot
-           see, and do not soften a guess into a suggestion. Not seeing something is
-           a different answer from it being wrong, and the app says different words
-           for each.
+        2. `cannotAssess` is ONLY for when \(requiredList(check)) is not visible.
+           Nothing else earns it. If those are visible, assess, and keep assessing
+           even when the thumb, the index finger, the other fingers and the wrist
+           are ALL hidden. A hidden finger is a normal first person view of a
+           correct grip, not a failed photograph, and answering `cannotAssess`
+           because of one tells a cook who is staring straight at their own hand
+           that you cannot see it.
+           What you must not do is guess. Do not report a habit about a region you
+           marked `insufficient`: if you cannot see the index finger, you cannot
+           know it is along the spine, so leave `primaryIssueKey` null and let the
+           visibility field say why. Not seeing something and it being wrong are
+           different answers and the app says different words for each.
         3. Separate what you SAW from what you CONCLUDE. `observedEvidence` is a
            short list of plain physical observations, each one something another
            person could verify from the same image. Your conclusions belong in the
@@ -136,6 +143,15 @@ enum SkillVisualAssessor {
         Assess the hold shown in the images above. Report visibility for: \(regions).
         Answer with the JSON object only.
         """
+    }
+
+    /// The regions that actually gate an assessment, named in the prompt so the
+    /// model is not left inferring which ones matter.
+    private static func requiredList(_ check: SkillVisualCheck) -> String {
+        let names = check.requiredVisibility.map { "`\($0.rawValue)`" }
+        guard let last = names.last else { return "nothing" }
+        guard names.count > 1 else { return last }
+        return names.dropLast().joined(separator: ", ") + " or " + last
     }
 
     private static func bullets(_ lines: [String]) -> String {

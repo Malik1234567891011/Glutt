@@ -349,6 +349,51 @@ final class SkillVisualCoachingTests: XCTestCase {
         XCTAssertEqual(skill.visualCheck?.id, "knife.grip.pinch")
     }
 
+    // MARK: - Which frames a look uses
+
+    /// The bug this exists to stop coming back.
+    ///
+    /// Frames used to be ranked by encoded size, on the theory that the biggest
+    /// file held the most detail. JPEG size tracks how BUSY a scene is, not how
+    /// sharp it is, so a hand and a knife on a board lost every time to a
+    /// cluttered counter, and the model was reliably shown the moment the cook
+    /// glanced away. `VisualFrameGate` already rejects blurred and dark frames
+    /// upstream, so recency is the only thing left worth choosing on.
+    @MainActor
+    func testALookUsesTheNewestFramesNotTheBiggest() {
+        let ring = SkillFrameRing(
+            visuals: PollyVisualSourceCoordinator(
+                phone: PhoneCameraVisualSource(camera: PollyCameraController())),
+            clock: { Date(timeIntervalSince1970: 100) })
+
+        // The big one is the cook glancing at their kitchen four seconds ago.
+        // The small ones are the hand they are actually holding up now.
+        ring.preload([
+            (Data(count: 90_000), Date(timeIntervalSince1970: 96)),
+            (Data(count: 12_000), Date(timeIntervalSince1970: 98)),
+            (Data(count: 11_000), Date(timeIntervalSince1970: 99)),
+        ])
+
+        let chosen = ring.mostRecent(2, within: 5)
+
+        XCTAssertEqual(chosen.map(\.count), [11_000, 12_000],
+                       "the busiest frame is not the one the cook meant")
+    }
+
+    @MainActor
+    func testALookWillNotReachBackPastTheWindow() {
+        let ring = SkillFrameRing(
+            visuals: PollyVisualSourceCoordinator(
+                phone: PhoneCameraVisualSource(camera: PollyCameraController())),
+            clock: { Date(timeIntervalSince1970: 100) })
+        ring.preload([
+            (Data(count: 10), Date(timeIntervalSince1970: 80)),   // ancient
+            (Data(count: 20), Date(timeIntervalSince1970: 99)),
+        ])
+
+        XCTAssertEqual(ring.mostRecent(2, within: 5).map(\.count), [20])
+    }
+
     // MARK: - Asking to be looked at
 
     /// Reading the request ourselves is what lets the looking start before she

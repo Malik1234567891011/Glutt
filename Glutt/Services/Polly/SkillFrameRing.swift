@@ -73,19 +73,37 @@ final class SkillFrameRing {
         if samples.count > Self.capacity { samples.removeFirst(samples.count - Self.capacity) }
     }
 
-    /// The best few frames from the recent past.
+    /// The most recent frames, newest first.
     ///
-    /// Ranked by encoded size, which is an honest proxy here: every frame comes
-    /// out of the same pipeline at the same quality and dimensions, so the one
-    /// that needed the most bytes has the most detail in it. Blur and motion
-    /// smear both compress smaller.
-    func best(_ count: Int, within seconds: TimeInterval) -> [Data] {
+    /// Recency, not "quality". These used to be ranked by encoded size on the
+    /// theory that the biggest file held the most detail, which is true of blur
+    /// and false of everything else: JPEG size tracks how BUSY a scene is, not
+    /// how sharp it is. A hand and a knife on a cutting board compresses small;
+    /// a kitchen counter compresses large. So the ranking reliably picked the
+    /// frames where the cook had glanced at the room instead of at their own
+    /// hand, and a device log has three assessments in one lesson coming back
+    /// `tool=insufficient, knife "unknown", confidence 0.00` while the cook was
+    /// staring straight down at a chef's knife.
+    ///
+    /// There is nothing to rank for anyway. `VisualFrameGate` already measures
+    /// real sharpness and brightness and refuses blurred, dark and washed out
+    /// frames before they ever reach this ring, so every sample here has passed
+    /// a proper check. What is left to choose on is which moment the cook meant,
+    /// and that is always the latest one.
+    func mostRecent(_ count: Int, within seconds: TimeInterval) -> [Data] {
         let cutoff = clock().addingTimeInterval(-seconds)
         return samples
             .filter { $0.at >= cutoff }
-            .sorted { $0.jpeg.count > $1.jpeg.count }
-            .prefix(count)
+            .suffix(count)
+            .reversed()
             .map(\.jpeg)
+    }
+
+    /// Test seam: seed the ring so which frames a look picks can be asserted
+    /// without a camera. That choice was wrong in shipped code and cost three
+    /// assessments in one lesson, so it is worth being able to pin.
+    func preload(_ entries: [(jpeg: Data, at: Date)]) {
+        samples = entries.map { Sample(jpeg: $0.jpeg, at: $0.at) }
     }
 
     /// Fill the ring right now, for the case where a look is asked for before

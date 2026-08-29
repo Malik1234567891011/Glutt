@@ -187,6 +187,99 @@ final class SkillCoachSessionTests: XCTestCase {
         var value: Int { lock.withLock { count } }
     }
 
+    // MARK: - Connecting
+
+    /// A transient POST failure used to end the lesson outright, and the screen
+    /// said "Getting Chef ready" about it forever.
+    func testAFailedConnectIsRetriedBeforeGivingUp() async throws {
+        let transport = FlakyTransport(failuresBeforeSuccess: 2)
+        let wake = SilentWakeWord()
+        let skill = SkillCatalog.skill("knife.grip")!
+        let session = SkillCoachSession(
+            skill: skill,
+            check: .chefKnifeGrip,
+            visuals: PollyVisualSourceCoordinator(
+                phone: PhoneCameraVisualSource(camera: PollyCameraController())),
+            wakeWord: wake,
+            deps: .init(
+                mintToken: { _, _ in
+                    PollySessionToken(
+                        value: "ek_test", expiresAt: 1_751_500_000,
+                        model: "gpt-realtime-2", voice: "marin")
+                },
+                makeTransport: { transport },
+                assess: { _, _ in
+                    .init(
+                        equipment: .init(reading: "chef's knife", supported: true, confidence: 0.9),
+                        overall: .ready, confidence: 0.9)
+                },
+                now: { Date(timeIntervalSince1970: 1_751_500_000) }))
+        started.append(session)
+
+        await session.start(context: container.mainContext)
+
+        guard session.phase != .failed("mic") else { throw XCTSkip("no microphone") }
+        XCTAssertEqual(transport.connectAttempts, 3, "two failures then a success")
+        XCTAssertEqual(session.phase, .live)
+    }
+
+    /// And when it truly cannot connect, the failure is on the session where the
+    /// screen can show it rather than swallowed.
+    func testGivingUpLeavesAVisibleFailure() async throws {
+        let transport = FlakyTransport(failuresBeforeSuccess: 99)
+        let skill = SkillCatalog.skill("knife.grip")!
+        let session = SkillCoachSession(
+            skill: skill,
+            check: .chefKnifeGrip,
+            visuals: PollyVisualSourceCoordinator(
+                phone: PhoneCameraVisualSource(camera: PollyCameraController())),
+            wakeWord: SilentWakeWord(),
+            deps: .init(
+                mintToken: { _, _ in
+                    PollySessionToken(
+                        value: "ek_test", expiresAt: 1_751_500_000,
+                        model: "gpt-realtime-2", voice: "marin")
+                },
+                makeTransport: { transport },
+                assess: { _, _ in throw CancellationError() },
+                now: { Date(timeIntervalSince1970: 1_751_500_000) }))
+        started.append(session)
+
+        await session.start(context: container.mainContext)
+
+        guard case .failed(let why) = session.phase else {
+            throw XCTSkip("no microphone in this test host")
+        }
+        XCTAssertFalse(why.isEmpty, "the cook has to be told what went wrong")
+        XCTAssertEqual(transport.connectAttempts, 3, "and it did not try forever")
+    }
+
+    /// Fails `connect` a set number of times, then behaves.
+    private final class FlakyTransport: RealtimeTransporting, @unchecked Sendable {
+        private let lock = NSLock()
+        private var attempts = 0
+        private let failures: Int
+        private let stream: AsyncStream<RealtimeServerEvent>
+
+        init(failuresBeforeSuccess: Int) {
+            failures = failuresBeforeSuccess
+            let (stream, continuation) = AsyncStream.makeStream(of: RealtimeServerEvent.self)
+            self.stream = stream
+            _ = continuation
+        }
+
+        var connectAttempts: Int { lock.withLock { attempts } }
+        var events: AsyncStream<RealtimeServerEvent> { stream }
+
+        func connect(token: String, model: String) async throws {
+            let n = lock.withLock { () -> Int in attempts += 1; return attempts }
+            if n <= failures { throw RealtimeTransportError.notConnected }
+        }
+
+        func send(_ event: RealtimeClientEvent) async throws {}
+        func close() async {}
+    }
+
     // MARK: - Wake word
 
     /// The mic is shut until she is spoken to, which is the whole reason a

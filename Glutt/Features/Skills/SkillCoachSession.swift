@@ -253,13 +253,31 @@ final class SkillCoachSession {
             audioPinnedAtMint: true
         )
 
-        do {
-            try await transport.connect(token: token.value, model: token.model)
-            (transport as? RealtimeWebRTCTransport)?.applyAudioLabAndReport()
-            try await transport.send(.sessionUpdate(config))
-        } catch {
-            phase = .failed(error.localizedDescription)
-            PollyDebugLog.shared.log("skill: connect FAILED — \(error.localizedDescription)")
+        // Connecting is a network call and network calls fail. A device log has
+        // this returning "Chef isn't connected yet" 1.8 seconds in, on the same
+        // path that had worked a dozen times, which is what a transient POST
+        // failure looks like. One attempt and a dead session is the wrong answer
+        // to that, and it is a particularly bad one here because the screen had
+        // nothing to say about it.
+        var connectError: Error?
+        for attempt in 1...3 {
+            do {
+                try await transport.connect(token: token.value, model: token.model)
+                (transport as? RealtimeWebRTCTransport)?.applyAudioLabAndReport()
+                try await transport.send(.sessionUpdate(config))
+                connectError = nil
+                break
+            } catch {
+                connectError = error
+                PollyDebugLog.shared.log(
+                    "skill: connect failed on try \(attempt) — \(error.localizedDescription)")
+                guard attempt < 3 else { break }
+                try? await Task.sleep(for: .seconds(Double(attempt)))
+            }
+        }
+        if let connectError {
+            phase = .failed(connectError.localizedDescription)
+            PollyDebugLog.shared.log("skill: gave up connecting")
             return
         }
 
@@ -388,6 +406,17 @@ final class SkillCoachSession {
             guard !Task.isCancelled else { return }
             self?.goDormant(reason: "nothing said")
         }
+    }
+
+    /// Start over after a failed connect, without leaving the lesson.
+    func retry(context: ModelContext) async {
+        guard case .failed = phase else { return }
+        await end()
+        phase = .idle
+        transport = nil
+        stage = .teaching
+        caption = ""
+        await start(context: context)
     }
 
     func end() async {

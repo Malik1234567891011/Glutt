@@ -78,6 +78,38 @@ struct SkillCoachView: View {
     /// The instruction, at the size you can read at arm's length with your hands
     /// full. Everything else on this screen exists to not compete with it.
     @ViewBuilder private var stepCard: some View {
+        if case .failed(let why) = session?.phase {
+            // Was invisible: a dead session sat behind "Getting Chef ready"
+            // forever, so the cook stood in their kitchen waiting for a lesson
+            // that had already given up.
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(Theme.Colors.amber)
+                Text("Chef could not connect")
+                    .font(.system(size: 25, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.Colors.heading)
+                Text(why)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Try again") {
+                    Task { await session?.retry(context: context) }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .padding(.top, Theme.Spacing.xs)
+            }
+            .padding(Theme.Spacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                Theme.Colors.amberChip,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.cardLarge))
+        } else {
+            liveStepCard
+        }
+    }
+
+    @ViewBuilder private var liveStepCard: some View {
         switch session?.stage {
         case .learned:
             outcomeCard(
@@ -213,7 +245,10 @@ struct SkillCoachView: View {
     }
 
     private var statusCopy: String {
-        guard let session, session.phase == .live else { return "Getting Chef ready" }
+        guard let session else { return "Getting Chef ready" }
+        if case .failed = session.phase { return "Not connected" }
+        if case .ended = session.phase { return "Lesson finished" }
+        guard session.phase == .live else { return "Getting Chef ready" }
         if isLooking { return "Looking at your grip" }
         if session.isSpeaking { return "Chef is talking" }
         if session.isThinking { return "Thinking" }

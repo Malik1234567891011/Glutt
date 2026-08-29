@@ -66,8 +66,9 @@ struct SkillCoachView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.Colors.textSecondary)
             Spacer()
-            if let session, !session.steps.isEmpty, !isFinished {
-                Text("Step \(session.stepIndex + 1) of \(session.steps.count)")
+            if let session, !session.parts.isEmpty, !isFinished {
+                let done = session.parts.filter { session.state(of: $0) == .good }.count
+                Text("\(done) of \(session.parts.count)")
                     .font(.subheadline)
                     .foregroundStyle(Theme.Colors.muted)
                     .monospacedDigit()
@@ -125,13 +126,11 @@ struct SkillCoachView: View {
                 body: reason)
         default:
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                Text(session?.currentStep ?? skill.lesson?.steps.first ?? skill.shortDescription)
-                    .font(.system(size: 27, weight: .semibold, design: .rounded))
+                Text("The pinch grip")
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundStyle(Theme.Colors.heading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let session, session.steps.count > 1 {
-                    stepDots(count: session.steps.count, current: session.stepIndex)
+                ForEach(session?.parts ?? []) { part in
+                    partRow(part)
                 }
             }
             .padding(Theme.Spacing.lg)
@@ -150,14 +149,47 @@ struct SkillCoachView: View {
         }
     }
 
-    private func stepDots(count: Int, current: Int) -> some View {
-        HStack(spacing: 6) {
-            ForEach(0..<count, id: \.self) { index in
-                Capsule()
-                    .fill(index == current ? Theme.Colors.accent : Theme.Colors.dotInactive)
-                    .frame(width: index == current ? 22 : 7, height: 7)
-                    .animation(.snappy(duration: 0.25), value: current)
-            }
+    /// One part of the grip, and how it is doing.
+    ///
+    /// Blank, green or amber. Never red: nothing here is a failure, it is a hand
+    /// that has not been looked at yet or one thing to move.
+    @ViewBuilder private func partRow(_ part: SkillCheckPart) -> some View {
+        let state = session?.state(of: part) ?? .unknown
+        let focused = session?.focusedPart == part.region
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
+            Image(systemName: mark(for: state))
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(tint(for: state))
+                .frame(width: 22)
+            Text(part.label)
+                .font(.system(
+                    size: 19,
+                    weight: focused || state == .needsFixing ? .semibold : .regular,
+                    design: .rounded))
+                .foregroundStyle(
+                    state == .unknown && !focused
+                        ? Theme.Colors.textSecondary
+                        : Theme.Colors.heading)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
+        .animation(.easeInOut(duration: 0.3), value: state)
+    }
+
+    private func mark(for state: SkillPartState) -> String {
+        switch state {
+        case .unknown: "circle"
+        case .good: "checkmark.circle.fill"
+        case .needsFixing: "arrow.turn.up.right"
+        }
+    }
+
+    private func tint(for state: SkillPartState) -> Color {
+        switch state {
+        case .unknown: Theme.Colors.dotInactive
+        case .good: Theme.Colors.accent
+        case .needsFixing: Theme.Colors.amber
         }
     }
 

@@ -27,6 +27,14 @@ extension SkillVisualCheck {
         // behind the blade in any correct pinch grip, so demanding both is
         // demanding a view that does not exist.
         helpfulVisibility: [.thumb, .indexFinger, .remainingFingers, .wrist],
+        // The whole grip, on one screen. Four parts of one shape rather than
+        // four steps of a sequence, because that is what a hand does.
+        parts: [
+            SkillCheckPart(region: .controlPoint, label: "Hand forward, pinching the blade"),
+            SkillCheckPart(region: .thumb, label: "Thumb on the flat, near the heel"),
+            SkillCheckPart(region: .indexFinger, label: "Index finger curled on the far side"),
+            SkillCheckPart(region: .remainingFingers, label: "Three fingers round the handle"),
+        ],
         rubric: SkillVisualRubric(
             subject: "a cook's grip on a chef's knife, seen from their own eyes",
 

@@ -83,18 +83,20 @@ final class SkillCoachSession {
     private(set) var isSpeaking = false
     /// A turn is in flight: she is deciding, or a look is being assessed.
     private(set) var isThinking = false
-    /// Which written step she is teaching, zero based.
+    /// How each part of the grip is doing, filled in as she looks.
     ///
-    /// Reported by her rather than inferred, because inferring it from what she
-    /// says is guesswork and a screen showing the wrong instruction to somebody
-    /// holding a knife is worse than a screen showing none.
-    private(set) var stepIndex = 0
+    /// Derived from the assessment rather than announced: a region she could see
+    /// on a look that found no fault with it is a part that is right. The model
+    /// is asked for nothing extra to make this work.
+    private(set) var partStates: [String: SkillPartState] = [:]
 
-    /// The steps as written on the lesson screen, so both surfaces say the same
-    /// words.
-    var steps: [String] { skill.lesson?.steps ?? [] }
-    var currentStep: String? {
-        steps.indices.contains(stepIndex) ? steps[stepIndex] : steps.first
+    /// The part she is talking about right now, if she has said.
+    private(set) var focusedPart: SkillVisibilityRegion?
+
+    var parts: [SkillCheckPart] { check.parts }
+
+    func state(of part: SkillCheckPart) -> SkillPartState {
+        partStates[part.region.rawValue] ?? .unknown
     }
 
     /// The on-device recogniser is up and the wake word will actually work.
@@ -561,13 +563,13 @@ final class SkillCoachSession {
         case "check_the_hold":
             let payload = await runHoldAndAssess(announce: false)
             await reply(to: call, with: payload)
-        case "teaching_step":
-            let asked = (Self.argument("number", from: call.argumentsJSON) ?? 1) - 1
-            stepIndex = min(max(asked, 0), max(steps.count - 1, 0))
-            PollyDebugLog.shared.log("skill: now teaching step \(stepIndex + 1) of \(steps.count)")
+        case "focus_on":
+            let raw = Self.stringArgument("part", from: call.argumentsJSON) ?? ""
+            focusedPart = check.parts.first { $0.region.rawValue == raw }?.region
+            PollyDebugLog.shared.log("skill: focused on \(focusedPart?.rawValue ?? "nothing (\(raw))")")
             // No response.create: this is a screen update, not a turn. Asking her
-            // to speak again here would make her repeat the step she is already
-            // in the middle of saying.
+            // to speak again here would make her repeat the sentence she is
+            // already in the middle of saying.
             try? await transport?.send(.createFunctionOutput(
                 callId: call.callId, output: #"{"showing":true}"#))
         case "finish_lesson":
@@ -578,14 +580,12 @@ final class SkillCoachSession {
         }
     }
 
-    /// One integer out of a tool call, without decoding a whole struct for it.
-    private static func argument(_ key: String, from json: String) -> Int? {
+    /// One string out of a tool call, without decoding a whole struct for it.
+    private static func stringArgument(_ key: String, from json: String) -> String? {
         guard let data = json.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else { return nil }
-        if let number = object[key] as? NSNumber { return number.intValue }
-        if let text = object[key] as? String { return Int(text) }
-        return nil
+        return object[key] as? String
     }
 
     private func reply(to call: RealtimeFunctionCall, with output: String) async {
@@ -743,6 +743,8 @@ final class SkillCoachSession {
         for line in assessment.observedEvidence {
             PollyDebugLog.shared.log("skill: saw \(line)")
         }
+
+        updateParts(from: assessment, outcome: outcome)
 
         record(
             outcome: attemptOutcome(for: outcome),
@@ -967,6 +969,39 @@ final class SkillCoachSession {
             }
             return json(body, evidence: evidence)
         }
+    }
+
+    /// Fill in the grip from what she just saw.
+    ///
+    /// A part goes green when she has seen it and had nothing to say about it,
+    /// and amber when it is the one thing being corrected. A part she could not
+    /// see stays blank rather than going green or red, because not seeing
+    /// something is not a verdict on it, and a screen that pretends otherwise is
+    /// the same lie the spoken side spent this whole build learning not to tell.
+    private func updateParts(
+        from assessment: SkillVisualAssessment,
+        outcome: SkillCoachDecision.Outcome
+    ) {
+        // Nothing was judged, so nothing changes.
+        switch outcome {
+        case .cannotSee, .unsupportedEquipment, .safetyStop: return
+        case .correct, .passed: break
+        }
+
+        let failing: SkillVisibilityRegion? = {
+            guard case .correct(let key, _) = outcome else { return nil }
+            return SkillCoachDecision.mistake(for: key, in: check)?.requiresVisible.first
+        }()
+
+        for part in check.parts {
+            if part.region == failing {
+                partStates[part.region.rawValue] = .needsFixing
+            } else if assessment.visibility[part.region.rawValue]?.isUsable == true {
+                partStates[part.region.rawValue] = .good
+            }
+        }
+        let done = check.parts.filter { partStates[$0.region.rawValue] == .good }.count
+        PollyDebugLog.shared.log("skill: grip \(done)/\(check.parts.count) parts confirmed")
     }
 
     // MARK: - Recording

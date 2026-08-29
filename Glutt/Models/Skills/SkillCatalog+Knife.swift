@@ -23,11 +23,20 @@ extension SkillCatalog {
                 estimatedMinutes: 2,
                 lesson: SkillLesson(
                     summary: "Almost everyone grips a knife too far back. Pinching the blade between thumb and forefinger gives you control over the tip, which is where the cutting actually happens.",
+                    // Three, and all three are the grip.
+                    //
+                    // There were four, and the last two were "keep your wrist
+                    // straight and let your elbow do the movement" and "the tip
+                    // stays near the board while the back of the blade rises and
+                    // falls". Neither is a way of holding a knife: they are the
+                    // rocking cut, which is its own skill further along the map.
+                    // Teaching them here made a four step wizard out of a shape
+                    // the hand makes in one go, and sent a beginner away thinking
+                    // about their elbow before they could hold the thing.
                     steps: [
                         "Pinch the flat of the blade just in front of the handle, thumb one side, curled forefinger the other.",
                         "Wrap the remaining three fingers around the handle.",
-                        "Keep your wrist straight and let your elbow do the movement.",
-                        "The tip stays near the board while the back of the blade rises and falls.",
+                        "Hold it firmly enough to control it and no harder than that.",
                     ],
                     watchFors: [
                         "A fist around the handle with the forefinger along the spine. It feels safer and gives you less control.",

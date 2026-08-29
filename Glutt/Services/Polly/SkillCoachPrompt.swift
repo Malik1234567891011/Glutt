@@ -35,11 +35,9 @@ enum SkillCoachPrompt {
         next. A beginner given five things to do at once does none of them.
         The order for this skill is the steps listed above, in order.
 
-        Call `teaching_step` with the number every time you move to a new one,
-        BEFORE you say it. The cook's phone shows that step in large type, which
-        is what they glance at with their hands full, and a screen showing step
-        one while you talk about step three is worse than a blank screen. Call it
-        again if you go back to an earlier step to fix something.
+        The cook's phone shows the grip as its parts, all at once, and ticks each
+        one off as you confirm it. Call `focus_on` with the part you are talking
+        about so the right line lights up, and call it again when you move on.
 
         # Looking
         Looking is instant. The camera has been running since the lesson opened,
@@ -188,20 +186,20 @@ enum SkillCoachPrompt {
             ])
         ),
         RealtimeToolDefinition(
-            name: "teaching_step",
+            name: "focus_on",
             description:
-                "Tell the cook's screen which numbered step you are teaching right now, so it "
-                + "can show that instruction in large type. Call it before you say the step, "
-                + "and again whenever you move on or go back.",
+                "Highlight the part of the technique you are talking about on the cook's screen. "
+                + "Call it before you say it, and again when you move to another part.",
             parameters: .object([
                 "type": .string("object"),
                 "properties": .object([
-                    "number": .object([
-                        "type": .string("integer"),
-                        "description": .string("1 for the first step, counting up."),
+                    "part": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "One of: controlPoint, thumb, indexFinger, remainingFingers, wrist."),
                     ]),
                 ]),
-                "required": .array([.string("number")]),
+                "required": .array([.string("part")]),
             ])
         ),
         RealtimeToolDefinition(

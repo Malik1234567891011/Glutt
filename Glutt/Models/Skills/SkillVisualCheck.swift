@@ -61,6 +61,15 @@ struct SkillVisualCheck: Hashable, Sendable {
     /// Everything the assessor is asked to report on.
     var reportedVisibility: [SkillVisibilityRegion] { requiredVisibility + helpfulVisibility }
 
+    /// The technique broken into the parts a cook can see on their own hand.
+    ///
+    /// Not steps. A grip is one gesture, not a sequence: nobody puts their thumb
+    /// on, pauses, and then adds a finger. Numbering it into a wizard makes four
+    /// screens out of one shape and asks somebody to hold a knife while
+    /// following a slideshow. These are the parts of that shape, all visible at
+    /// once, filling in as she confirms them.
+    let parts: [SkillCheckPart]
+
     /// Everything the vision model needs to know about the technique itself.
     let rubric: SkillVisualRubric
 
@@ -80,6 +89,7 @@ struct SkillVisualCheck: Hashable, Sendable {
         framesPerLook: Int = 3,
         requiredVisibility: [SkillVisibilityRegion],
         helpfulVisibility: [SkillVisibilityRegion] = [],
+        parts: [SkillCheckPart] = [],
         rubric: SkillVisualRubric,
         retryFraming: String,
         maxUnusableViews: Int = 2
@@ -90,11 +100,36 @@ struct SkillVisualCheck: Hashable, Sendable {
         self.framesPerLook = framesPerLook
         self.requiredVisibility = requiredVisibility
         self.helpfulVisibility = helpfulVisibility
+        self.parts = parts
         self.rubric = rubric
         self.retryFraming = retryFraming
         self.maxUnusableViews = maxUnusableViews
     }
 
+}
+
+/// One part of a technique, as a cook would check it on their own hand.
+///
+/// Keyed to a visibility region so its state comes out of the assessment for
+/// free: a region she could see, on a look that found no fault with it, is a
+/// part that is right. Nothing extra is asked of the model for this.
+struct SkillCheckPart: Hashable, Sendable, Identifiable {
+    let region: SkillVisibilityRegion
+    /// What it says on screen. Short enough to read at a glance with a knife in
+    /// your hand, specific enough to act on.
+    let label: String
+
+    var id: String { region.rawValue }
+}
+
+/// How far along one part is.
+enum SkillPartState: Sendable {
+    /// Not seen yet, or not judged yet.
+    case unknown
+    /// She has seen it and had nothing to say about it.
+    case good
+    /// This is the one thing she is correcting.
+    case needsFixing
 }
 
 /// A part of the scene the assessor reports on separately.

@@ -349,6 +349,36 @@ final class SkillVisualCoachingTests: XCTestCase {
         XCTAssertEqual(skill.visualCheck?.id, "knife.grip.pinch")
     }
 
+    // MARK: - The grip as parts
+
+    /// A grip is one shape, not a sequence, and the parts have to map onto what
+    /// the assessment already reports so nothing extra is asked of the model.
+    func testEveryPartIsSomethingTheAssessorReportsOn() {
+        XCTAssertFalse(check.parts.isEmpty)
+        for part in check.parts {
+            XCTAssertTrue(
+                check.reportedVisibility.contains(part.region),
+                "\(part.region.rawValue) is on screen but nobody looks for it")
+            XCTAssertFalse(part.label.isEmpty)
+        }
+        // Four parts of one hand, not a wizard.
+        XCTAssertLessThanOrEqual(check.parts.count, 5)
+    }
+
+    /// The grip lesson teaches the grip. It used to end with the rocking cut,
+    /// which is a different skill and made four steps out of one gesture.
+    func testTheGripLessonDoesNotTeachTheCut() throws {
+        let skill = try XCTUnwrap(SkillCatalog.skill("knife.grip"))
+        let steps = try XCTUnwrap(skill.lesson?.steps)
+
+        XCTAssertLessThanOrEqual(steps.count, 3)
+        for step in steps {
+            let text = step.lowercased()
+            XCTAssertFalse(text.contains("elbow"), "the cut is a later skill")
+            XCTAssertFalse(text.contains("rises and falls"), "so is the rock")
+        }
+    }
+
     // MARK: - Which frames a look uses
 
     /// Two things at once, and both have bitten.

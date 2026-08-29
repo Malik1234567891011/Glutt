@@ -273,13 +273,23 @@ final class SkillCoachSession {
                 connectError = error
                 PollyDebugLog.shared.log(
                     "skill: connect failed on try \(attempt) — \(error.localizedDescription)")
+                // Close before trying again, and before giving up.
+                //
+                // Each `connect` builds a peer connection and claims the audio
+                // session on the way to failing, and none of that unwinds by
+                // itself. Retrying without this leaks one per attempt and leaves
+                // the microphone held, so a single bad minute from the API takes
+                // the whole app down with it: the next cook cannot connect
+                // either, and force quitting is the only way back.
+                await transport.close()
                 guard attempt < 3 else { break }
                 try? await Task.sleep(for: .seconds(Double(attempt)))
             }
         }
         if let connectError {
+            self.transport = nil
             phase = .failed(connectError.localizedDescription)
-            PollyDebugLog.shared.log("skill: gave up connecting")
+            PollyDebugLog.shared.log("skill: gave up connecting, audio released")
             return
         }
 

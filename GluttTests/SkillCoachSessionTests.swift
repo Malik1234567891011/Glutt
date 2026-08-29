@@ -252,6 +252,10 @@ final class SkillCoachSessionTests: XCTestCase {
         }
         XCTAssertFalse(why.isEmpty, "the cook has to be told what went wrong")
         XCTAssertEqual(transport.connectAttempts, 3, "and it did not try forever")
+        // Every failed attempt claims a peer connection and the microphone on
+        // its way to failing. Leaking those is how one bad minute from the API
+        // stops the next cook connecting too.
+        XCTAssertEqual(transport.closeCount, 3, "each failed attempt must release the audio")
     }
 
     /// Fails `connect` a set number of times, then behaves.
@@ -277,7 +281,10 @@ final class SkillCoachSessionTests: XCTestCase {
         }
 
         func send(_ event: RealtimeClientEvent) async throws {}
-        func close() async {}
+
+        private(set) var closes = 0
+        func close() async { lock.withLock { closes += 1 } }
+        var closeCount: Int { lock.withLock { closes } }
     }
 
     // MARK: - Wake word

@@ -600,10 +600,10 @@ final class SkillCoachSession {
         let check = check
         let assess = deps.assess
         earlyLook = Task {
-            var shots = ring.mostRecent(check.framesPerLook, within: check.lookbackSeconds)
+            var shots = ring.spread(check.framesPerLook, within: check.lookbackSeconds)
             if shots.isEmpty {
                 await ring.fillNow(upTo: check.framesPerLook)
-                shots = ring.mostRecent(check.framesPerLook, within: check.lookbackSeconds)
+                shots = ring.spread(check.framesPerLook, within: check.lookbackSeconds)
             }
             guard !shots.isEmpty else { throw SkillVisualAssessor.AssessorError.noUsableFrames }
             return try await assess(check, shots)
@@ -660,10 +660,10 @@ final class SkillCoachSession {
                 PollyDebugLog.shared.log(
                     "skill: used the early look (\(String(format: "%.1f", deps.now().timeIntervalSince(started)))s old)")
             } else {
-                var shots = frames.mostRecent(check.framesPerLook, within: check.lookbackSeconds)
+                var shots = frames.spread(check.framesPerLook, within: check.lookbackSeconds)
                 if shots.isEmpty {
                     await frames.fillNow(upTo: check.framesPerLook)
-                    shots = frames.mostRecent(check.framesPerLook, within: check.lookbackSeconds)
+                    shots = frames.spread(check.framesPerLook, within: check.lookbackSeconds)
                 }
                 guard !shots.isEmpty else {
                     return handleUnusable(

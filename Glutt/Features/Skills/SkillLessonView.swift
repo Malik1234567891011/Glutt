@@ -131,8 +131,8 @@ struct SkillLessonView: View {
                 .foregroundStyle(isMastered ? Theme.Colors.accent : Theme.Colors.heading)
 
             Text("Put your glasses on and pick up your knife. She talks you through it, and "
-                 + "whenever you ask her to look she does, and tells you the one thing worth "
-                 + "changing.")
+                 + "when you ask her to look she reads your hand as you turn it, then tells you "
+                 + "the one thing worth changing.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.Colors.textSecondary)
 

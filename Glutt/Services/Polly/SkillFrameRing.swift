@@ -73,30 +73,32 @@ final class SkillFrameRing {
         if samples.count > Self.capacity { samples.removeFirst(samples.count - Self.capacity) }
     }
 
-    /// The most recent frames, newest first.
+    /// Frames spread across the window, newest first.
     ///
-    /// Recency, not "quality". These used to be ranked by encoded size on the
-    /// theory that the biggest file held the most detail, which is true of blur
-    /// and false of everything else: JPEG size tracks how BUSY a scene is, not
-    /// how sharp it is. A hand and a knife on a cutting board compresses small;
-    /// a kitchen counter compresses large. So the ranking reliably picked the
-    /// frames where the cook had glanced at the room instead of at their own
-    /// hand, and a device log has three assessments in one lesson coming back
-    /// `tool=insufficient, knife "unknown", confidence 0.00` while the cook was
-    /// staring straight down at a chef's knife.
+    /// Not the newest N, and this is the whole reason the ring exists rather
+    /// than a single grab. **You cannot see both faces of a chef's knife at
+    /// once.** The thumb is on one side of the blade and the curled index finger
+    /// is on the other, so from the cook's own eyes one of them is behind the
+    /// steel in any given instant. Two frames a fifth of a second apart are the
+    /// same photograph twice and can never show a whole grip.
     ///
-    /// There is nothing to rank for anyway. `VisualFrameGate` already measures
-    /// real sharpness and brightness and refuses blurred, dark and washed out
-    /// frames before they ever reach this ring, so every sample here has passed
-    /// a proper check. What is left to choose on is which moment the cook meant,
-    /// and that is always the latest one.
-    func mostRecent(_ count: Int, within seconds: TimeInterval) -> [Data] {
+    /// Spread in time is spread in angle, because a hand is never perfectly
+    /// still and a hand that has been asked to turn is deliberately not. So the
+    /// views handed to the assessor are seconds apart, and between them they see
+    /// round the blade in a way no single picture can. That is also the honest
+    /// answer to "why not just photograph it": a photograph cannot do this.
+    func spread(_ count: Int, within seconds: TimeInterval) -> [Data] {
         let cutoff = clock().addingTimeInterval(-seconds)
-        return samples
-            .filter { $0.at >= cutoff }
-            .suffix(count)
-            .reversed()
-            .map(\.jpeg)
+        let recent = samples.filter { $0.at >= cutoff }
+        guard recent.count > count else { return recent.reversed().map(\.jpeg) }
+
+        // Newest always included: it is the moment they meant. The rest are
+        // evenly spaced back through the window.
+        let step = Double(recent.count - 1) / Double(count - 1)
+        let picked = (0..<count).map { i -> Sample in
+            recent[recent.count - 1 - Int((Double(i) * step).rounded())]
+        }
+        return picked.map(\.jpeg)
     }
 
     /// Test seam: seed the ring so which frames a look picks can be asserted

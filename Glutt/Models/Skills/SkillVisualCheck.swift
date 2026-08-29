@@ -32,9 +32,12 @@ struct SkillVisualCheck: Hashable, Sendable {
     /// the cook was speaking while they asked.
     let lookbackSeconds: Double
 
-    /// How many frames to send. Two rather than one so a single blurred or
-    /// occluded instant costs a frame instead of the answer, and two rather than
-    /// three because every extra image is latency the cook feels.
+    /// How many views to send.
+    ///
+    /// Three, because they are angles rather than retries. A grip has two faces
+    /// and one instant only ever shows one of them, so the extra images are what
+    /// makes a whole assessment possible rather than insurance against a blurred
+    /// one. Above three the latency is felt and the angles stop being distinct.
     let framesPerLook: Int
 
     /// The minimum needed to say anything at all. Missing one of these produces
@@ -74,7 +77,7 @@ struct SkillVisualCheck: Hashable, Sendable {
         id: String,
         framingInstruction: String,
         lookbackSeconds: Double = 5,
-        framesPerLook: Int = 2,
+        framesPerLook: Int = 3,
         requiredVisibility: [SkillVisibilityRegion],
         helpfulVisibility: [SkillVisibilityRegion] = [],
         rubric: SkillVisualRubric,
@@ -122,25 +125,30 @@ enum SkillVisibilityRegion: String, Hashable, Sendable, CaseIterable {
 
     /// What the cook can physically do to bring this into view.
     ///
-    /// The reason this exists: "I cannot see" is a true sentence and a useless
-    /// one. A cook who is looking straight at their own hand has no idea what to
-    /// change, and being told the same thing twice reads as the app being
-    /// broken. Naming the thing that is missing AND the move that fixes it turns
-    /// a dead end into an instruction, which is what an instructor would say.
+    /// Always a slow movement rather than a new pose to hold, because holding is
+    /// what cannot work here: the thumb and the index finger are on opposite
+    /// faces of the blade, so no single position shows both and asking somebody
+    /// to freeze in the right one is asking for something that does not exist.
+    /// Turning the hand is the only thing that puts every side in front of the
+    /// camera, and the frames are read across the movement.
+    ///
+    /// The other reason this exists: "I cannot see" is a true sentence and a
+    /// useless one. Naming what is missing AND the move that fixes it turns a
+    /// dead end into an instruction, which is what an instructor would say.
     var howToBringIntoView: String {
         switch self {
         case .tool:
-            "hold the knife out over the board, in front of where you are looking"
+            "bring the knife up in front of you and turn it slowly so I can see it"
         case .controlPoint:
-            "tilt the blade towards me a little so I can see where your hand meets it"
+            "roll your hand slowly towards me so I can see where it meets the blade"
         case .thumb:
-            "turn your hand slightly towards me so your thumb comes into view"
+            "turn your hand slowly towards me and your thumb will come round"
         case .indexFinger:
-            "roll the knife the other way a little so I can see the far side of the blade"
+            "roll your hand slowly the other way so the far side of the blade comes round"
         case .remainingFingers:
-            "lower your hand a bit so I can see your fingers on the handle"
+            "lower your hand and turn it a little so I can see your fingers on the handle"
         case .wrist:
-            "pull your hand back slightly so I can see your wrist too"
+            "pull back a touch and turn slowly so I get your wrist as well"
         }
     }
 }

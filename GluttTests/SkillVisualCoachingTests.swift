@@ -351,47 +351,63 @@ final class SkillVisualCoachingTests: XCTestCase {
 
     // MARK: - Which frames a look uses
 
-    /// The bug this exists to stop coming back.
+    /// Two things at once, and both have bitten.
     ///
     /// Frames used to be ranked by encoded size, on the theory that the biggest
-    /// file held the most detail. JPEG size tracks how BUSY a scene is, not how
-    /// sharp it is, so a hand and a knife on a board lost every time to a
-    /// cluttered counter, and the model was reliably shown the moment the cook
-    /// glanced away. `VisualFrameGate` already rejects blurred and dark frames
-    /// upstream, so recency is the only thing left worth choosing on.
+    /// file held the most detail. JPEG size tracks how BUSY a scene is, so a
+    /// hand and a knife on a board lost every time to a cluttered counter and
+    /// the model was shown the moment the cook glanced away.
+    ///
+    /// And taking the newest two is barely better, because two frames a fifth of
+    /// a second apart are the same photograph twice. You cannot see both faces
+    /// of a knife at once, so views have to be spread in TIME, which is the only
+    /// way to be spread in angle.
     @MainActor
-    func testALookUsesTheNewestFramesNotTheBiggest() {
-        let ring = SkillFrameRing(
-            visuals: PollyVisualSourceCoordinator(
-                phone: PhoneCameraVisualSource(camera: PollyCameraController())),
-            clock: { Date(timeIntervalSince1970: 100) })
-
-        // The big one is the cook glancing at their kitchen four seconds ago.
-        // The small ones are the hand they are actually holding up now.
+    func testALookSpreadsAcrossTheWindowRatherThanPickingFavourites() {
+        let ring = makeRing(now: 100)
+        // Ten frames over five seconds. The big one is a glance at the kitchen.
         ring.preload([
-            (Data(count: 90_000), Date(timeIntervalSince1970: 96)),
-            (Data(count: 12_000), Date(timeIntervalSince1970: 98)),
-            (Data(count: 11_000), Date(timeIntervalSince1970: 99)),
+            (Data(count: 90_000), Date(timeIntervalSince1970: 95.5)),
+            (Data(count: 11_000), Date(timeIntervalSince1970: 96.0)),
+            (Data(count: 11_100), Date(timeIntervalSince1970: 96.5)),
+            (Data(count: 11_200), Date(timeIntervalSince1970: 97.0)),
+            (Data(count: 11_300), Date(timeIntervalSince1970: 97.5)),
+            (Data(count: 11_400), Date(timeIntervalSince1970: 98.0)),
+            (Data(count: 11_500), Date(timeIntervalSince1970: 98.5)),
+            (Data(count: 11_600), Date(timeIntervalSince1970: 99.0)),
+            (Data(count: 11_700), Date(timeIntervalSince1970: 99.5)),
+            (Data(count: 11_800), Date(timeIntervalSince1970: 100.0)),
         ])
 
-        let chosen = ring.mostRecent(2, within: 5)
+        let chosen = ring.spread(3, within: 5)
 
-        XCTAssertEqual(chosen.map(\.count), [11_000, 12_000],
-                       "the busiest frame is not the one the cook meant")
+        XCTAssertEqual(chosen.count, 3)
+        XCTAssertEqual(chosen.first?.count, 11_800, "the newest is the moment they meant")
+        // Spread, not clustered: the three must not all come from the last second.
+        XCTAssertEqual(Set(chosen.map(\.count)).count, 3, "three distinct moments")
+        let oldest = chosen.map(\.count).min() ?? 0
+        XCTAssertLessThan(
+            oldest, 11_400,
+            "the views have to reach back through the window, or they are one angle three times")
     }
 
     @MainActor
     func testALookWillNotReachBackPastTheWindow() {
-        let ring = SkillFrameRing(
-            visuals: PollyVisualSourceCoordinator(
-                phone: PhoneCameraVisualSource(camera: PollyCameraController())),
-            clock: { Date(timeIntervalSince1970: 100) })
+        let ring = makeRing(now: 100)
         ring.preload([
             (Data(count: 10), Date(timeIntervalSince1970: 80)),   // ancient
             (Data(count: 20), Date(timeIntervalSince1970: 99)),
         ])
 
-        XCTAssertEqual(ring.mostRecent(2, within: 5).map(\.count), [20])
+        XCTAssertEqual(ring.spread(3, within: 5).map(\.count), [20])
+    }
+
+    @MainActor
+    private func makeRing(now: TimeInterval) -> SkillFrameRing {
+        SkillFrameRing(
+            visuals: PollyVisualSourceCoordinator(
+                phone: PhoneCameraVisualSource(camera: PollyCameraController())),
+            clock: { Date(timeIntervalSince1970: now) })
     }
 
     // MARK: - Asking to be looked at

@@ -43,7 +43,8 @@ enum SkillVisualAssessor {
         var messages: [LLMClient.Message] = [.system(systemPrompt(check: check))]
         for (index, jpeg) in usable.enumerated() {
             messages.append(.user(
-                "View \(index + 1) of \(usable.count), taken during the same hold.",
+                "View \(index + 1) of \(usable.count) of the same grip, "
+                    + (index == 0 ? "most recent." : "a moment earlier."),
                 imageData: jpeg))
         }
         messages.append(.user(userPrompt(check: check)))
@@ -65,8 +66,24 @@ enum SkillVisualAssessor {
         let r = check.rubric
         return """
         You are helping a cooking instructor evaluate \(r.subject). The images are
-        first person, taken from the cook's own point of view during a single five
-        second hold, so they are several views of one mostly static pose.
+        first person, taken from the cook's own point of view a second or two
+        apart, while their hand was moving or turning.
+
+        # They are angles, not attempts
+        This is the most important thing about them. Nobody can see both faces of
+        a knife at once: the thumb rests on one side of the blade and the curled
+        index finger on the other, so any single instant hides one of them behind
+        the steel. That is why you are given several.
+
+        COMBINE them into one assessment of one grip. If a finger is clearly
+        visible in ANY view, you have seen that finger, and its visibility is
+        whatever the BEST view showed, not the worst. Judge the grip on
+        everything the views show between them. Do not assess each image
+        separately and do not report a region as hidden because it was hidden in
+        the most recent one.
+
+        The hand may be at a different angle in each view. That is the point, not
+        an inconsistency to flag.
 
         # The technique being taught
         \(bullets(r.targetTechnique))
@@ -140,7 +157,8 @@ enum SkillVisualAssessor {
     static func userPrompt(check: SkillVisualCheck) -> String {
         let regions = check.reportedVisibility.map(\.rawValue).joined(separator: ", ")
         return """
-        Assess the hold shown in the images above. Report visibility for: \(regions).
+        Assess the single grip shown across the images above, using all of them
+        together. Report visibility for: \(regions), taking the best view of each.
         Answer with the JSON object only.
         """
     }

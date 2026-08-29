@@ -11,6 +11,11 @@ There is no button and no countdown. Say "Chef" to wake her, then just ask:
 "does this look right?", "like this?", "is that better?". She reads the last few
 seconds of the stream, so she is looking before she finishes answering you.
 
+**Turn your hand while you ask.** Nobody can see both faces of a knife at once,
+so she reads several views taken a second or two apart and combines them. A
+grip held perfectly still is half a grip, and she should be asking you to turn
+rather than to freeze. If she ever says "hold still", that is a bug.
+
 The bar for every row: **a false correction is worse than a missed one.** If she
 tells you something is wrong that is not wrong, that is a failure even if the
 rest of the lesson was perfect.
@@ -53,7 +58,8 @@ this feels like a person.
 | Hold the knife but look away | "I cannot see" and a reframing ask, never a criticism |
 | Cover the thumb with the other hand | Names the thumb specifically |
 | Hold it in shadow / low light | Cannot see, not a fault |
-| Move the knife around while asking | Cannot see, or a safety stop if it is waved |
+| Hold dead still through the whole thing | She should still manage it, but expect more "turn your hand" than usual |
+| Wave the knife around fast | Cannot see, or a safety stop |
 | Hold it below the frame | Cannot see |
 | Fail twice in a row | Stops asking, offers the way out. **Never a third identical request** |
 
@@ -135,5 +141,7 @@ with what you said.
 - She looks at the last few seconds of the stream rather than taking a photo on
   demand, so a grip you changed in the last second may not be the one she saw.
   Ask again and she will read the newer frames
+- Views are spread across the window on purpose, so one of the three may be from
+  three seconds ago. That is what lets her see round the blade
 - Grip pressure, comfort and knife sharpness are not assessable and are asked
   about instead

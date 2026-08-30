@@ -960,6 +960,9 @@ final class PollySessionController {
                 Task { @MainActor in self?.handleAudioInterruption(interrupted) }
             }
         }
+        PollyDebugLog.shared.log(
+            "session: token ok, model=\(token.model) voice=\(token.voice)"
+                + " expires=\(token.expiresAt.map(String.init) ?? "?")")
         do {
             try await transport.connect(token: token.value, model: token.model)
             // Echo cancellation, applied and then verified, in the path a real

@@ -73,10 +73,18 @@ struct PollyTokenService {
         let (data, response) = try await transport(request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            // Same reasoning as `postOffer`: the body says why, and throwing it
+            // away turns every mint failure into an identical dead end.
+            let body = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .prefix(200) ?? ""
+            PollyDebugLog.shared.log(
+                "token: mint REFUSED — HTTP \(code)" + (body.isEmpty ? "" : " — \(body)"))
             if code == 429 {
                 throw PollyTokenError.badResponse("This device hit its monthly Chef limit.")
             }
-            throw PollyTokenError.badResponse("HTTP \(code)")
+            throw PollyTokenError.badResponse(
+                body.isEmpty ? "HTTP \(code)" : "HTTP \(code) — \(body)")
         }
         do {
             return try JSONDecoder().decode(PollySessionToken.self, from: data)

@@ -676,9 +676,26 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
         request.httpBody = Data(sdp.utf8)
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...201).contains(http.statusCode),
+        let http = response as? HTTPURLResponse
+        let status = http?.statusCode ?? -1
+        guard (200...201).contains(status),
               let answer = String(data: data, encoding: .utf8), !answer.isEmpty else {
-            throw RealtimeTransportError.notConnected
+            // Say what actually came back.
+            //
+            // Every failure here used to collapse into "Chef isn't connected
+            // yet", which is the same sentence for an expired token, an account
+            // with no credit, a rate limit and a bad gateway. During a real
+            // outage that left nothing to go on: the app said it could not
+            // connect, the proxy was minting fine, and there was no way to tell
+            // whether OpenAI had said 401, 402 or 429. The body is short and it
+            // names the reason.
+            let body = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .prefix(300) ?? ""
+            PollyDebugLog.shared.log(
+                "transport: realtime call REFUSED — HTTP \(status)"
+                    + (body.isEmpty ? "" : " — \(body)"))
+            throw RealtimeTransportError.callRefused(status: status, detail: String(body))
         }
         return answer
     }

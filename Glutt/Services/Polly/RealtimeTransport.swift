@@ -4,12 +4,30 @@ enum RealtimeTransportError: LocalizedError, Equatable {
     case notConnected
     case badURL
     case nonTextFrame
+    /// The realtime endpoint refused the call, with what it said about it.
+    ///
+    /// Its own case because the status is the whole diagnosis and it used to be
+    /// discarded: 401 is a bad token, 402 or 429 is the account, 5xx is theirs
+    /// and worth retrying. All three read as "Chef isn't connected yet" before,
+    /// which sent a real outage to the wrong place for an afternoon.
+    case callRefused(status: Int, detail: String)
 
     var errorDescription: String? {
         switch self {
         case .notConnected: "Chef isn't connected yet."
         case .badURL: "Couldn't build the realtime session URL."
         case .nonTextFrame: "Received an unreadable frame from the realtime session."
+        case .callRefused(let status, let detail):
+            switch status {
+            case 401, 403: "Chef's session key was refused (\(status)). The key may have expired."
+            case 402: "The Chef account is out of credit."
+            case 429: "Chef is rate limited right now (429). Give it a minute."
+            case 500...599: "Chef's provider is having trouble (\(status)). Worth trying again."
+            default:
+                detail.isEmpty
+                    ? "Chef's session was refused (\(status))."
+                    : "Chef's session was refused (\(status)): \(detail)"
+            }
         }
     }
 }

@@ -43,7 +43,10 @@ enum SkillVisualAssessor {
         // This is here rather than in the frame ring because it is about what
         // the model needs, not about what the camera produced, and because a
         // frame kept for the archive should be the one that was actually sent.
-        let focused = frames.map(SkillFrameFocus.focusOnHand)
+        // One crop per hand, newest frame first, capped at the frame budget.
+        // Two hands in the newest frame beats one hand in each of three, because
+        // the question is which hand rather than which moment.
+        let focused = Array(frames.flatMap(SkillFrameFocus.focusOnHands).prefix(check.framesPerLook))
         let usable = focused.compactMap { ImagePrep.prepareForVision($0.jpeg) }
         guard !usable.isEmpty else { throw AssessorError.noUsableFrames }
 
@@ -147,6 +150,25 @@ enum SkillVisualAssessor {
         # Things you cannot determine from an image
         Never claim any of these. If asked to judge one, say you cannot see it.
         \(bullets(r.notVisuallyAssessable))
+
+        # You may be shown a hand that has nothing to do with this
+        The pictures are cropped to each hand found in the shot, one hand per
+        picture, and a cook often has two: one holding the thing you are here to
+        judge and one holding their phone, a cloth, or nothing at all. So expect
+        pictures that are not relevant, and judge the hand that is holding the
+        tool.
+
+        If NONE of the pictures contains the tool, say so. Set `tool` visibility
+        to `insufficient`, set `overall` to `cannotAssess`, and put what you
+        actually saw in `observedEvidence`, for example "a hand holding a phone".
+        Do not describe a grip on a tool that is not in the picture.
+        Never say the equipment is supported when you cannot see the equipment.
+
+        That has happened. Three pictures of a hand holding a phone came back as
+        "a chef's knife" with "the whole hand is behind the blade on the
+        handle", which is an invented observation of an object that was not
+        there, and it is worse than any wrong correction because nothing
+        downstream can catch it.
 
         # How to answer
         1. FIRST decide whether you can see enough. Report visibility per region

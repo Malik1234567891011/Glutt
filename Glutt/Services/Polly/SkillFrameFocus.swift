@@ -68,41 +68,56 @@ enum SkillFrameFocus {
         let coverage: Double?
     }
 
-    /// Crop to the hand, or hand back exactly what arrived.
-    static func focusOnHand(in jpeg: Data) -> Focused {
+    /// Crop to each hand found, or hand back exactly what arrived.
+    ///
+    /// One image per hand rather than one image of everything, because which
+    /// hand matters and nothing here can tell which is which. A cook reading
+    /// the lesson off their phone has a phone hand and a knife hand, and the
+    /// phone hand is bigger, more central and better lit. Picking the largest
+    /// would pick the wrong one every time.
+    ///
+    /// So both go, cropped and separated, and the model is told it may be shown
+    /// a hand that is holding nothing relevant. That is a question it can
+    /// actually answer from a clear picture, and could not from a wide shot of
+    /// a kitchen with two hands in opposite corners.
+    static func focusOnHands(in jpeg: Data) -> [Focused] {
         guard let image = UIImage(data: jpeg), let cgImage = image.cgImage else {
-            return Focused(jpeg: jpeg, coverage: nil)
+            return [Focused(jpeg: jpeg, coverage: nil)]
         }
-        guard let box = handBox(in: cgImage) else {
-            return Focused(jpeg: jpeg, coverage: nil)
-        }
+        let boxes = handBoxes(in: cgImage)
+        guard !boxes.isEmpty else { return [Focused(jpeg: jpeg, coverage: nil)] }
 
-        // Vision works in a normalised, bottom-left origin space. Core Graphics
-        // images are top-left. Getting this backwards crops the ceiling.
         let width = CGFloat(cgImage.width)
         let height = CGFloat(cgImage.height)
+
+        // Biggest first: when the budget forces a choice, a hand that fills more
+        // of the picture is the one worth spending an image on.
+        let cropped = boxes.compactMap { box -> Focused? in
+            crop(cgImage, to: box, width: width, height: height, orientation: image.imageOrientation)
+        }.sorted { ($0.coverage ?? 0) > ($1.coverage ?? 0) }
+
+        return cropped.isEmpty ? [Focused(jpeg: jpeg, coverage: nil)] : cropped
+    }
+
+    private static func crop(
+        _ cgImage: CGImage,
+        to box: CGRect,
+        width: CGFloat,
+        height: CGFloat,
+        orientation: UIImage.Orientation
+    ) -> Focused? {
+        // Vision works in a normalised, bottom-left origin space. Core Graphics
+        // images are top-left. Getting this backwards crops the ceiling.
         let inPixels = CGRect(
             x: box.minX * width,
             y: (1 - box.maxY) * height,
             width: box.width * width,
             height: box.height * height)
-
-        guard inPixels.width > 0, inPixels.height > 0 else {
-            return Focused(jpeg: jpeg, coverage: nil)
-        }
+        guard inPixels.width > 0, inPixels.height > 0 else { return nil }
 
         let coverage = Double((inPixels.width * inPixels.height) / (width * height))
-
-        // Already dominant: leave it alone rather than zooming into a hand that
-        // was framed perfectly well.
-        guard coverage < Double(alreadyCloseEnough) else {
-            return Focused(jpeg: jpeg, coverage: coverage)
-        }
-
         let padded = pad(inPixels, within: CGSize(width: width, height: height))
-        guard let cropped = cgImage.cropping(to: padded) else {
-            return Focused(jpeg: jpeg, coverage: coverage)
-        }
+        guard let piece = cgImage.cropping(to: padded) else { return nil }
 
         // Back up to roughly the size the frame arrived at, so the model gets
         // the resolution it is used to rather than a small sharp square. The
@@ -112,41 +127,48 @@ enum SkillFrameFocus {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         let enlarged = UIGraphicsImageRenderer(size: target, format: format).image { _ in
-            UIImage(cgImage: cropped, scale: 1, orientation: image.imageOrientation)
+            UIImage(cgImage: piece, scale: 1, orientation: orientation)
                 .draw(in: CGRect(origin: .zero, size: target))
         }
-        return Focused(jpeg: enlarged.jpegData(compressionQuality: 0.8) ?? jpeg,
-                       coverage: coverage)
+        guard let jpeg = enlarged.jpegData(compressionQuality: 0.8) else { return nil }
+        return Focused(jpeg: jpeg, coverage: coverage)
     }
 
-    /// The bounding box of every hand landmark Vision is willing to name.
+    /// One box per hand, and emphatically NOT one box around all of them.
+    ///
+    /// The first version unioned every landmark from every hand, which is a
+    /// bug with a very convincing disguise: with a phone in one hand and a
+    /// knife in the other it reported a confident 27% "hand" that was actually
+    /// the gap between them, padded out to the whole kitchen. The crop did
+    /// nothing and the number in the log said it had worked.
     ///
     /// Pose rather than plain object detection because a hand holding a knife is
     /// a hand at an unusual angle, half occluded by its own fingers and by the
     /// blade, and the pose model handles that far better than a rectangle
     /// detector. It also degrades usefully: four confident landmarks still give
     /// a box worth cropping to.
-    private static func handBox(in image: CGImage) -> CGRect? {
+    private static func handBoxes(in image: CGImage) -> [CGRect] {
         let request = VNDetectHumanHandPoseRequest()
         request.maximumHandCount = 2
 
         let handler = VNImageRequestHandler(cgImage: image, options: [:])
         try? handler.perform([request])
 
-        guard let observations = request.results, !observations.isEmpty else { return nil }
+        guard let observations = request.results, !observations.isEmpty else { return [] }
 
-        var box: CGRect?
+        var boxes: [CGRect] = []
         for observation in observations where observation.confidence >= minimumConfidence {
             guard let points = try? observation.recognizedPoints(.all) else { continue }
+            var box: CGRect?
             for (_, point) in points where point.confidence >= minimumConfidence {
                 let dot = CGRect(x: point.location.x, y: point.location.y, width: 0, height: 0)
                 box = box.map { $0.union(dot) } ?? dot
             }
+            // A box with no area is one landmark, which says where a fingertip
+            // is and nothing about where to crop.
+            if let box, box.width > 0.01, box.height > 0.01 { boxes.append(box) }
         }
-        // A box with no area is one landmark, which says where a fingertip is
-        // and nothing about where to crop.
-        guard let box, box.width > 0.01, box.height > 0.01 else { return nil }
-        return box
+        return boxes
     }
 
     /// Grow the box around its own centre and keep it inside the frame.

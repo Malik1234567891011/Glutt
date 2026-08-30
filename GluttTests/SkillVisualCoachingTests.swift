@@ -832,15 +832,17 @@ final class SkillFrameFocusTests: XCTestCase {
         }
         let jpeg = plain.jpegData(compressionQuality: 0.8)!
 
-        let focused = SkillFrameFocus.focusOnHand(in: jpeg)
-        XCTAssertEqual(focused.jpeg, jpeg, "no hand found means no crop")
-        XCTAssertNil(focused.coverage)
+        let focused = SkillFrameFocus.focusOnHands(in: jpeg)
+        XCTAssertEqual(focused.count, 1)
+        XCTAssertEqual(focused[0].jpeg, jpeg, "no hand found means no crop")
+        XCTAssertNil(focused[0].coverage)
     }
 
     func testRubbishInputIsSurvived() {
-        let focused = SkillFrameFocus.focusOnHand(in: Data([0x00, 0x01, 0x02]))
-        XCTAssertEqual(focused.jpeg, Data([0x00, 0x01, 0x02]))
-        XCTAssertNil(focused.coverage)
+        let focused = SkillFrameFocus.focusOnHands(in: Data([0x00, 0x01, 0x02]))
+        XCTAssertEqual(focused.count, 1)
+        XCTAssertEqual(focused[0].jpeg, Data([0x00, 0x01, 0x02]))
+        XCTAssertNil(focused[0].coverage)
     }
 
     /// The measured number that set the threshold. A hand at 3.8% of the frame
@@ -864,5 +866,45 @@ final class SkillFrameFocusTests: XCTestCase {
             suggestion.localizedCaseInsensitiveContains("do not comment on their grip"),
             "a guess at this range is exactly the false correction to avoid")
         XCTAssertFalse(suggestion.contains("—"), "spoken copy takes no dashes")
+    }
+}
+
+// MARK: - Two hands, one of them holding a phone
+
+/// What the second round of archived looks proved, after the first round's fix
+/// was itself wrong.
+final class SkillTwoHandTests: XCTestCase {
+
+    /// The bug that hid behind a plausible number.
+    ///
+    /// Unioning the landmarks of every hand reported a confident 27% "hand"
+    /// that was the GAP between a phone hand on the left and a knife hand on
+    /// the right edge, padded out to the whole kitchen. The crop did nothing
+    /// and the log said it had worked.
+    func testTheCropNeverSpansTwoHands() {
+        // A synthetic pair of hands is not something Vision will find, so this
+        // pins the contract instead: one Focused per hand, never one merged.
+        let blank = UIGraphicsImageRenderer(size: CGSize(width: 504, height: 896)).image { ctx in
+            UIColor.darkGray.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 504, height: 896))
+        }
+        let results = SkillFrameFocus.focusOnHands(in: blank.jpegData(compressionQuality: 0.8)!)
+        XCTAssertEqual(results.count, 1, "no hands means the original, once")
+        XCTAssertNil(results[0].coverage)
+    }
+
+    /// The worst thing in the whole feature, and the one nothing downstream can
+    /// catch: three pictures of a hand holding a phone came back as a chef's
+    /// knife with the hand on the handle. The visibility gate cannot help,
+    /// because she claimed to see the tool.
+    func testSheIsToldNeverToInventTheTool() {
+        let prompt = SkillVisualAssessor.systemPrompt(check: .chefKnifeGrip)
+        XCTAssertTrue(prompt.contains("If NONE of the pictures contains the tool, say so"))
+        XCTAssertTrue(
+            prompt.contains("Never say the equipment is supported when you cannot see"),
+            "claiming the tool is present is what made the invention invisible")
+        XCTAssertTrue(
+            prompt.localizedCaseInsensitiveContains("holding their phone"),
+            "she has to expect the irrelevant hand, or she will judge it")
     }
 }

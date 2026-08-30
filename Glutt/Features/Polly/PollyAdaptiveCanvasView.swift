@@ -28,41 +28,27 @@ struct PollyAdaptiveCanvasView: View {
     /// Native MP4 or YouTube window — either counts as "this step has a clip".
     private var hasClip: Bool { nativeClip != nil || youtubeClip != nil }
     /// Chef has a picture from somewhere. Drives the control, not the canvas.
-    /// `canSee`, not `isStreaming`. With the glasses the camera is off between
+    /// `canSee`, not `isStreaming`. With a wearable camera the camera is off between
     /// looks, but the cook should still be told Chef can see: to them those are
     /// the same thing, and flickering the pill on every look would be a lie
     /// about a distinction they do not have.
     private var chefCanSee: Bool { controller.visualSource.canSee }
-    /// The picture is coming from the cook's glasses.
-    private var usingGlasses: Bool {
-        chefCanSee && controller.visuals.activeKind == .metaGlasses
-    }
-    /// The glasses are coming up but cannot see yet. A couple of seconds over
-    /// the Bluetooth transport.
-    private var isConnectingGlasses: Bool {
-        controller.visuals.glassesPossible && controller.visuals.glasses.state == .starting
-    }
 
     /// Whether the canvas gives the whole screen over to the camera.
     ///
-    /// Only the phone earns that. A cook wearing glasses is already looking at
+    /// Only the phone earns that. A cook wearing wearable camera is already looking at
     /// the pan with their own eyes, so mirroring it back would spend the entire
     /// screen on the one thing they can see, and bury the step and the technique
-    /// clip, which are the things they cannot. When the glasses are the source
+    /// clip, which are the things they cannot. When a wearable camera are the source
     /// the canvas behaves as though no camera were on.
-    private var showsCameraFeed: Bool { chefCanSee && !usingGlasses }
+    private var showsCameraFeed: Bool { chefCanSee }
 
-    /// The camera control has to say which eye is open. A cook who thinks Chef
-    /// is watching through their glasses when she is actually watching a phone
-    /// on the counter will keep asking about a pan she cannot see.
     private var cameraButtonSymbol: String {
-        if usingGlasses { return "eyeglasses" }
-        return showsCameraFeed ? "video.fill" : "camera.fill"
+        showsCameraFeed ? "video.fill" : "camera.fill"
     }
 
     private var cameraButtonLabel: String {
-        if usingGlasses { return "Stop Chef seeing through your glasses" }
-        return showsCameraFeed ? "Back to step video" : "Show Chef your pan"
+        showsCameraFeed ? "Back to step video" : "Show Chef your pan"
     }
     /// Shrink the step card only while a native clip is playing — never on Tools/Prep.
     /// The step card shrinks to a strip so the video is actually watchable.
@@ -103,7 +89,6 @@ struct PollyAdaptiveCanvasView: View {
 
                 VStack(spacing: 0) {
                     topNav
-                    glassesIndicator
                     progressLine
                     Spacer(minLength: 8)
 
@@ -175,16 +160,6 @@ struct PollyAdaptiveCanvasView: View {
                    : "Mic while she talks: closed (tap to open)") {
                 PollyAudioLab.fullDuplex.toggle()
                 controller.refreshAudioLab()
-                Haptics.impact(.light)
-            }
-            // Takes effect on the next cook, not this one: the audio session is
-            // configured once at connect and the Realtime transport is already
-            // holding the route. Worth flipping between two cooks of the same
-            // dish, which is how the camera-versus-voice question gets settled.
-            Button(PollyAudioLab.micOnGlasses
-                   ? "Audio: glasses (tap for phone, next cook)"
-                   : "Audio: phone (tap for glasses, next cook)") {
-                PollyAudioLab.micOnGlasses.toggle()
                 Haptics.impact(.light)
             }
             #endif
@@ -463,45 +438,6 @@ struct PollyAdaptiveCanvasView: View {
         .padding(.horizontal, CookCanvasTheme.margin)
     }
 
-    /// The whole of the glasses UI, by design. With no preview on screen, this
-    /// is the only thing telling the cook whether Chef still has eyes, so it has
-    /// to be honest about the glasses going away as well as arriving.
-    @ViewBuilder
-    private var glassesIndicator: some View {
-        if usingGlasses {
-            glassesPill(symbol: "eyeglasses", text: "Chef can see", tint: CookCanvasTheme.green)
-        } else if isConnectingGlasses {
-            // Both halves of this used to be about Wi-Fi and are now wrong.
-            // Over Bluetooth there is no network to join, no prompt to explain,
-            // and no mobile data being spent — and the wait is a couple of
-            // seconds rather than twenty. What is left is a brief honest
-            // "not yet", which is still worth saying so the eye icon going
-            // green is not the first the cook hears of it.
-            glassesPill(
-                symbol: "eyeglasses",
-                text: "Connecting your glasses",
-                tint: CookCanvasTheme.primaryText.opacity(0.7)
-            )
-        } else if let dropped = controller.visuals.lastGlassesDropReason {
-            glassesPill(symbol: "eyeglasses.slash", text: dropped, tint: .orange)
-        }
-    }
-
-    private func glassesPill(symbol: String, text: String, tint: Color) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
-            Text(text)
-                .font(.system(size: 13, weight: .medium))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Capsule().fill(Color.black.opacity(0.45)))
-        .padding(.horizontal, CookCanvasTheme.margin)
-    }
 
     private func circleButton(system: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {

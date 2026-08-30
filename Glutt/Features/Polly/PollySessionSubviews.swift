@@ -39,7 +39,7 @@ struct CameraPreviewView: UIViewRepresentable {
 }
 
 /// Draws whichever visual source is live. The phone camera hands over a capture
-/// layer; the glasses only ever have decoded frames, so they get an `Image` that
+/// layer; a wearable camera only ever have decoded frames, so they get an `Image` that
 /// replaces itself as frames land. `.resizeAspectFill` on one and `.fill` on the
 /// other keeps both full-bleed, so switching source does not resize the canvas.
 struct PollyVisualPreviewView: View {

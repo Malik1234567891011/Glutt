@@ -3,7 +3,7 @@ import os
 
 /// How much memory this process is using, and how much it has left.
 ///
-/// Exists because the glasses stream kept ending the app with no crash report
+/// Exists because a wearable camera stream kept ending the app with no crash report
 /// and no jetsam event, on a device that had stopped writing either. Guessing at
 /// the cause from the outside burned an afternoon. This makes the app say so
 /// itself: if `available` walks down to nothing before it dies, it is a memory

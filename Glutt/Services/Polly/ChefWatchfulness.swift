@@ -2,7 +2,7 @@ import Foundation
 
 /// How much Chef interferes when she can see what the cook is doing.
 ///
-/// Only meaningful with the glasses. The phone camera is off by default and
+/// Only meaningful with a wearable camera. The phone camera is off by default and
 /// lives on the counter pointing at the ceiling, so a promise to watch
 /// continuously is one it cannot keep; the picker is hidden without them.
 ///

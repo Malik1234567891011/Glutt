@@ -4,7 +4,7 @@ import UIKit
 /// The one place a frame becomes something Polly can be shown.
 ///
 /// Both visual sources have to produce byte-identical output here: the phone
-/// camera hands over a rendered `UIImage` from a pixel buffer, the glasses hand
+/// camera hands over a rendered `UIImage` from a pixel buffer, a wearable camera hand
 /// over one decoded from an H.265 stream, and Polly must not be able to tell
 /// which is which. Lifted out of `PollyCameraController.captureFrame()` when the
 /// second source arrived.
@@ -37,7 +37,7 @@ enum VisualFramePipeline {
         return resized.jpegData(compressionQuality: quality)
     }
 
-    /// One context for every frame the glasses ever send.
+    /// One context for every frame a wearable camera ever send.
     ///
     /// A `CIContext` owns Metal/GPU caches and is expensive to build. Creating
     /// one per frame is the classic way to make a video pipeline grow without
@@ -58,7 +58,7 @@ enum VisualFramePipeline {
         .priorityRequestLow: true,
     ])
 
-    /// Decode a glasses frame ourselves rather than calling
+    /// Decode a wearable camera frame ourselves rather than calling
     /// `VideoFrame.makeUIImage()`.
     ///
     /// Measured on device, `makeUIImage()` cost about **5.8 MB per frame that

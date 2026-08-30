@@ -44,7 +44,7 @@ final class PollyToolRegistry {
     /// Controller hook: play / pause / mute / unmute the current step clip.
     var onControlStepVideo: ((String) -> [String: Any])?
 
-    /// The cook is wearing streaming glasses, so a look costs nothing and there
+    /// The cook is wearing streaming wearable camera, so a look costs nothing and there
     /// is no excuse for advancing a judgement step unseen.
     var seesContinuously: Bool = false
 
@@ -221,7 +221,7 @@ final class PollyToolRegistry {
         ),
         RealtimeToolDefinition(
             name: "request_camera_frame",
-            description: "Look at what the cook is doing, through their glasses if they are wearing them, otherwise their phone. Call this when you need to see the food before answering, or to judge whether a step is actually done. The result tells you whether you got a usable picture, so check it before describing anything.",
+            description: "Look at what the cook is doing through their phone camera. Call this when you need to see the food before answering, or to judge whether a step is actually done. The result tells you whether you got a usable picture, so check it before describing anything.",
             parameters: schema(
                 properties: [
                     "reason": .object([
@@ -421,11 +421,11 @@ final class PollyToolRegistry {
     /// "the water is at a rolling boil" came back as `mark_step_done` with no
     /// frame requested and nothing said about what she saw. To the cook that is
     /// indistinguishable from an assistant that is not watching at all, which is
-    /// the entire proposition of wearing the glasses.
+    /// the entire proposition of wearing a wearable camera.
     ///
     /// So the rule moves out of the prompt and into the tool. Only judgement
     /// steps are covered — a step with a `visualCheck` is one where something can
-    /// go wrong on camera — and only while the glasses are actually streaming.
+    /// go wrong on camera — and only while a wearable camera are actually streaming.
     /// It refuses at most ONCE per step: the cook who says "it is fine, move on"
     /// still gets to move on, they just get one honest look first.
     private func refusalToAdvanceUnseen() -> String? {
@@ -440,7 +440,7 @@ final class PollyToolRegistry {
         return Self.json([
             "done": false,
             "error": "look_first",
-            "reason": "You have not looked at this step and the glasses are streaming.",
+            "reason": "You have not looked at this step and the camera is streaming.",
             "required": "Call request_camera_frame now. Then tell the cook what you actually saw, "
                 + "judged against visual_check, before calling mark_step_done again.",
             "visual_check": check,

@@ -19,10 +19,10 @@ enum PollyPromptBuilder {
         ownedTools: [KitchenTool],
         heardBriefing: Bool = false,
         awaitVerbalGo: Bool = false,
-        /// True when the cook is wearing camera glasses that are already
+        /// True when the cook is wearing camera wearable camera that are already
         /// streaming, which changes what Chef is capable of rather than merely
         /// where the picture comes from. With a phone she is blind until asked;
-        /// with glasses she can see whatever the cook is looking at, for free,
+        /// with wearable camera she can see whatever the cook is looking at, for free,
         /// for the whole session, and the interesting behaviour is checking
         /// what they tell her against what is actually on the board.
         seesContinuously: Bool = false,
@@ -300,12 +300,12 @@ enum PollyPromptBuilder {
     /// Two genuinely different jobs, not one job with a different lens on the
     /// front. Through a phone propped on the counter she is blind until someone
     /// asks, so the useful behaviour is inviting a look when one would help.
-    /// Through glasses she can see whatever the cook is looking at, all session,
+    /// Through wearable camera she can see whatever the cook is looking at, all session,
     /// for free — and the valuable thing becomes checking what they *tell* her
     /// against what is actually on the board.
     ///
-    /// The glasses version exists because the phone wording was still in place
-    /// during the first real glasses cook, and it does not merely underuse the
+    /// A wearable camera version exists because the phone wording was still in place
+    /// during the first real wearable camera cook, and it does not merely underuse the
     /// camera, it contradicts it: Chef said "I can't see the counter unless you
     /// turn the camera on" to a cook who was streaming to her at the time.
     private static func seeingRules(seesContinuously: Bool, watchfulness: ChefWatchfulness) -> String {
@@ -321,7 +321,7 @@ enum PollyPromptBuilder {
             """
         }
         return """
-        - YOU CAN SEE. The cook is wearing camera glasses pointed wherever they are looking, and
+        - YOU CAN SEE. The cook's camera is pointed at what they are doing, and
           they are streaming for the whole session. A look costs them nothing and needs no
           permission, so never ask them to turn a camera on and never say you cannot see.
         - LOOK BEFORE YOU AGREE. When they tell you something about the physical world — "I've
@@ -340,7 +340,7 @@ enum PollyPromptBuilder {
           in a few words: "yeah that is a proper rolling boil, in they go", "that is nutty and
           hazelnut, off the heat now". You have the step's visualCheck to judge against, so use
           the words in it. Advancing the step with no word about what you saw is the same to them
-          as never having looked, and it is the moment the glasses stop feeling like anything.
+          as never having looked, and it is the moment the camera stops feeling like anything.
         - NOT SEEING IT IS NOT THE SAME AS IT NOT BEING THERE, and once a look has come back
           without it you must never hold the cook there over the difference. A frame that misses
           the thing usually means it is out of shot, behind them, or in a drawer they just shut.
@@ -363,7 +363,7 @@ enum PollyPromptBuilder {
     /// How readily she interrupts, which the cook chose before the cook started.
     ///
     /// This is the one setting that changes what it feels like to wear the
-    /// glasses, so it gets its own block rather than a clause. The wrong bar in
+    /// wearable camera, so it gets its own block rather than a clause. The wrong bar in
     /// either direction ruins it: too high and she never catches anything, which
     /// is a camera that does nothing; too low and she is a voice in your ear
     /// correcting your knife grip, which people turn off once and never turn

@@ -41,42 +41,16 @@ enum PollyAudioLab {
         set { UserDefaults.standard.set(newValue, forKey: Keys.fullDuplex) }
     }
 
-    /// Use the glasses for Chef's voice, or leave the audio on the phone.
-    ///
-    /// This is here because the glasses can apparently do voice or video over
-    /// Bluetooth, but not obviously both. Measured across two real cooks: the
-    /// camera streams cleanly, the HFP voice link comes up, and a few seconds
-    /// later frame delivery stops dead for a minute or more while the stream
-    /// still reports itself as `.streaming`. Standing the same camera up with no
-    /// Polly session at all delivered 409 frames over a minute without a single
-    /// drop. HFP is a reserved-slot synchronous link and the camera is fighting
-    /// it for the same radio, which is the whole reason Meta moved video to
-    /// Wi-Fi in the first place.
-    ///
-    /// Off means no Bluetooth audio whatsoever: built-in mic, built-in speaker,
-    /// and the category loses the Bluetooth options entirely. Deliberately the
-    /// blunt version rather than A2DP-out, because the point is to answer
-    /// "does Bluetooth audio cost us the camera" without leaving a second
-    /// Bluetooth profile in the picture to argue about. If it does, A2DP-out
-    /// with the phone's mic is the obvious next rung.
-    ///
-    /// Defaults ON: her voice in your ears while your hands are covered in flour
-    /// is most of the point of wearing the things.
-    static var micOnGlasses: Bool {
-        get { UserDefaults.standard.object(forKey: Keys.micOnGlasses) as? Bool ?? true }
-        set { UserDefaults.standard.set(newValue, forKey: Keys.micOnGlasses) }
-    }
 
     /// One line for the debug dump, so a pasted log says which experiment
     /// produced it. A log without this is unattributable.
     static var summary: String {
         "audioLab: stackedAEC=\(stackedAEC ? 1 : 0) fullDuplex=\(fullDuplex ? 1 : 0) "
-            + "micOnGlasses=\(micOnGlasses ? 1 : 0)"
+
     }
 
     private enum Keys {
         static let stackedAEC = "glutt.polly.audioLab.stackedAEC"
         static let fullDuplex = "glutt.polly.audioLab.fullDuplex"
-        static let micOnGlasses = "glutt.polly.audioLab.micOnGlasses"
     }
 }

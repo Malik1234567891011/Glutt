@@ -204,7 +204,7 @@ final class PollyAudioEngine {
             // AirPods in/out mid-cook: drop/restore speaker override, then
             // re-arm the engine if iOS stopped it on the graph change.
             Task { @MainActor [weak self] in
-                // Glasses that connect or drop mid-cook have to be picked
+                // Wearable camera that connect or drop mid-cook have to be picked
                 // up here, not only at session start.
                 PollyAudioSession.applyPreferredInput()
                 PollyAudioSession.applyPreferredOutputPort()

@@ -10,29 +10,16 @@
 	<array>
 		<string>Default</string>
 	</array>
-	<!-- LOCAL DEVELOPMENT BUILD: the glasses are on Bluetooth Classic.
+	<!-- Nothing about networking or accessories belongs here.
 
-	     HotspotConfiguration is deliberately ABSENT. It is what lets the toolkit
-	     stand up the glasses' softAP, and the softAP is what we are trying not
-	     to use: the ExternalAccessory keys in Info.plist select Bluetooth, and
-	     removing this entitlement is the belt to that pair of braces. Leave both
-	     in place and the toolkit takes the phone off its own Wi-Fi.
+	     `com.apple.developer.networking.wifi-info` used to sit in this file. It
+	     existed only so a probe could report which network the phone was on
+	     while a pair of Ray-Ban Meta glasses was streaming, and it went out with
+	     the rest of that work on this branch. It has no other caller.
 
-	     Measured on real glasses (2026-08-09, aeadecb): first frame in 1.8s on
-	     Bluetooth against fifteen to twenty on the softAP, and the phone keeps
-	     its own network instead of dropping to cellular for the whole look.
-
-	     `wifi-info` is deliberately KEPT. It is read-only, cannot cause a join,
-	     and is the only way NetworkProbe can report which network the phone is
-	     actually on, which is the one thing about this feature nobody can see
-	     from the outside.
-
-	     BEFORE ANYTHING SHIPS, read docs/glasses-bluetooth.md. Bluetooth needs
-	     Meta to authorise `com.meta.ar.wearable` for this bundle id and they
-	     declined on issue #266, so a submission has to go back to Wi-Fi:
-	     restore HotspotConfiguration here, and the local-network and Bonjour
-	     keys in project.yml, and drop the MFi protocol string. -->
-	<key>com.apple.developer.networking.wifi-info</key>
-	<true/>
+	     Adding an entitlement Glutt does not exercise is how 1.2.2 (16) was
+	     rejected under guideline 2.5.4: the review found a Bluetooth background
+	     mode with no Bluetooth functionality behind it. Anything added here
+	     needs a feature a reviewer can actually reach. -->
 </dict>
 </plist>

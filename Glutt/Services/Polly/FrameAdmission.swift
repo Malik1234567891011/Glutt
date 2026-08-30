@@ -2,7 +2,7 @@ import Foundation
 
 /// Lets one frame through at a time, and drops the rest on the floor.
 ///
-/// The toolkit delivers frames on its own thread as fast as the glasses send
+/// The toolkit delivers frames on its own thread as fast as a wearable camera send
 /// them. Handing every one of them to the main actor means a `Task` per frame,
 /// each retaining a decoded `UIImage`: at 24 fps and 504x896 that is roughly
 /// 43 MB per second of images queued behind whatever the main actor is already

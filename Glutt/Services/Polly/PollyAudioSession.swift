@@ -15,32 +15,10 @@ enum PollyAudioSession {
     /// (ignored once a BT headset is the active route).
     static var categoryOptions: AVAudioSession.CategoryOptions {
         // `.allowBluetoothHFP` is the current spelling of `.allowBluetooth`.
-        // Same option, same raw value, renamed in the SDK.
-        //
-        // Dropped entirely when the cook has taken Chef's audio off the glasses,
-        // because leaving it in lets iOS route to HFP anyway and the whole point
-        // of that switch is a radio with no voice traffic on it. See
-        // `PollyAudioLab.micOnGlasses`.
-        guard PollyAudioLab.micOnGlasses else { return [.defaultToSpeaker] }
+        // Same option, same raw value, renamed in the SDK. HFP is the only
+        // Bluetooth profile that carries a microphone, so it is what AirPods
+        // need to own both ends of the call.
         return [.allowBluetoothHFP, .defaultToSpeaker]
-    }
-
-    /// Port names Meta's glasses present themselves under. Matched loosely and
-    /// deliberately: Meta ships several frames under different brands, and the
-    /// name a given pair reports is not contractual. This only ever decides
-    /// which Bluetooth device we prefer, so a miss costs us the preference, not
-    /// the audio.
-    private static let glassesNameFragments = ["ray-ban", "rayban", "meta", "oakley"]
-
-    /// True when this port looks like Meta glasses on Bluetooth hands-free.
-    ///
-    /// HFP specifically, because that is the only Bluetooth profile that carries
-    /// a microphone. A2DP would give us Polly's voice in the cook's ears and no
-    /// way to hear them answer.
-    static func isMetaGlassesPort(_ port: AVAudioSessionPortDescription) -> Bool {
-        guard port.portType == .bluetoothHFP else { return false }
-        let name = port.portName.lowercased()
-        return glassesNameFragments.contains { name.contains($0) }
     }
 
     /// True when a Bluetooth headset/headphones port is on the current route
@@ -72,46 +50,18 @@ enum PollyAudioSession {
         applyPreferredOutputPort(on: session)
     }
 
-    /// Choose the input rather than accepting whatever iOS picked.
+    /// Log what iOS is offering, and otherwise leave the input alone.
     ///
-    /// Until the glasses existed there was only ever one plausible Bluetooth
-    /// device on a cook's head, so never calling `setPreferredInput` was fine.
-    /// With AirPods in a pocket and glasses on a face, both paired, the system
-    /// default is a coin toss, and losing it means Polly listens through the
-    /// wrong microphone for the whole session.
-    ///
-    /// Glasses win when present. Anything else is left alone: overriding the
-    /// user's own choice of headset would be worse than the coin toss.
-    /// Selecting an HFP input also routes output to the matching HFP output, so
-    /// this settles both ends at once.
+    /// This used to pick a preferred input by matching port names, so that one
+    /// particular headset won over whatever else was paired. Nothing does that
+    /// now: overriding somebody's own choice of headset is worse than accepting
+    /// the system default, and the device it was written for is not part of
+    /// this build.
     static func applyPreferredInput(on session: AVAudioSession = .sharedInstance()) {
         let inputs = session.availableInputs ?? []
-        // Route names vary by firmware and pairing. Log the lot: when a pair of
-        // glasses is not picked up, this is the only thing that says why.
-        if !inputs.isEmpty {
-            let described = inputs.map { "\($0.portType.rawValue):\($0.portName)" }.joined(separator: ",")
-            PollyDebugLog.shared.log("audio: available inputs [\(described)]")
-        }
-
-        guard PollyAudioLab.micOnGlasses else {
-            // Pin the phone's own microphone rather than merely declining to
-            // prefer the glasses: with a paired headset on the route, "no
-            // preference" still lands on the headset often enough to ruin the
-            // experiment.
-            if let builtIn = inputs.first(where: { $0.portType == .builtInMic }) {
-                try? session.setPreferredInput(builtIn)
-            }
-            PollyDebugLog.shared.log("audio: input preference — phone mic (glasses audio off)")
-            return
-        }
-
-        guard let glasses = inputs.first(where: isMetaGlassesPort) else { return }
-        do {
-            try session.setPreferredInput(glasses)
-            PollyDebugLog.shared.log("audio: input preference — glasses (\(glasses.portName))")
-        } catch {
-            PollyDebugLog.shared.log("audio: could not prefer glasses input — \(error.localizedDescription)")
-        }
+        guard !inputs.isEmpty else { return }
+        let described = inputs.map { "\($0.portType.rawValue):\($0.portName)" }.joined(separator: ",")
+        PollyDebugLog.shared.log("audio: available inputs [\(described)]")
     }
 
     /// Prefer AirPods when present; otherwise force the built-in speaker
@@ -119,11 +69,6 @@ enum PollyAudioSession {
     static func applyPreferredOutputPort(
         on session: AVAudioSession = .sharedInstance()
     ) {
-        guard PollyAudioLab.micOnGlasses else {
-            try? session.overrideOutputAudioPort(.speaker)
-            PollyDebugLog.shared.log("audio: output preference — built-in speaker (glasses audio off)")
-            return
-        }
         if isBluetoothHeadsetConnected(route: session.currentRoute) {
             try? session.overrideOutputAudioPort(.none)
             PollyDebugLog.shared.log("audio: output preference — Bluetooth headset (no speaker override)")

@@ -9,57 +9,10 @@ import XCTest
 /// while holding the phone they would need to do it.
 final class SkillLearningModeTests: XCTestCase {
 
-    private var defaults: UserDefaults!
-    private var store: SkillLearningModeStore!
-
-    override func setUp() {
-        super.setUp()
-        defaults = UserDefaults(suiteName: "glutt.tests.\(UUID().uuidString)")
-        store = SkillLearningModeStore(defaults: defaults)
-    }
-
-    /// Photos, not glasses. The mode that works for everybody is the one to
-    /// fall back to, and a cook with no glasses should never open the tab and
-    /// find it set to hardware they do not own.
-    func testDefaultsToPhotosBeforeAnythingIsKnown() {
-        XCTAssertEqual(store.mode, .showing)
-        XCTAssertFalse(store.hasChosen)
-    }
-
-    func testDetectionPicksTheOpeningGuess() {
-        store.suggest(glassesAvailable: true)
-        XCTAssertEqual(store.mode, .watching)
-        XCTAssertFalse(store.hasChosen, "a guess is not a choice")
-
-        let other = SkillLearningModeStore(defaults: defaults)
-        other.suggest(glassesAvailable: false)
-        XCTAssertEqual(other.mode, .showing, "a later guess may still move it")
-    }
-
-    /// The failure this exists to prevent: somebody deliberately picks photos,
-    /// then walks past their glasses, and the app silently switches them back.
-    func testDetectionNeverOverridesAChoice() {
-        store.choose(.showing)
-        XCTAssertTrue(store.hasChosen, "picking the mode you are already in still counts")
-
-        store.suggest(glassesAvailable: true)
-        XCTAssertEqual(store.mode, .showing)
-    }
-
-    func testChoiceSurvivesANewStoreOverTheSameDefaults() {
-        store.choose(.watching)
-        let reloaded = SkillLearningModeStore(defaults: defaults)
-        XCTAssertEqual(reloaded.mode, .watching)
-        XCTAssertTrue(reloaded.hasChosen)
-    }
-
-    func testForgettingHandsTheDecisionBack() {
-        store.choose(.watching)
-        store.forget()
-        XCTAssertFalse(store.hasChosen)
-        store.suggest(glassesAvailable: false)
-        XCTAssertEqual(store.mode, .showing)
-    }
+    // The mode store was tested here. It chose between watching through
+    // glasses and sending photos, and with the glasses gone there is nothing
+    // left to choose. What follows is the photo path itself, which is the only
+    // path on this branch and is unchanged.
 
     // MARK: - The lesson really does differ
 
@@ -226,45 +179,4 @@ final class SkillLearningModeTests: XCTestCase {
         XCTAssertEqual(watched.source, .watching, "the default matches every row written so far")
     }
 
-    // MARK: - Seeing it again without leaving
-
-    /// The tool only exists for skills that actually have a clip. A tool she is
-    /// given is a tool she will eventually call, and calling this one on a skill
-    /// with no video would have her promise something that does not exist.
-    func testSheIsOnlyOfferedTheVideoToolWhenThereIsAVideo() {
-        let withVideo = SkillCatalog.skill("knife.grip")!
-        XCTAssertNotNil(withVideo.animationAsset)
-        XCTAssertTrue(
-            SkillCoachPrompt.tools(for: withVideo).contains { $0.name == "show_the_video" })
-
-        let without = SkillCatalog.skill("knife.claw")!
-        XCTAssertNil(without.animationAsset)
-        XCTAssertFalse(
-            SkillCoachPrompt.tools(for: without).contains { $0.name == "show_the_video" })
-    }
-
-    /// Same rule for the words: no clip, no mention of one.
-    func testThePromptOnlyTalksAboutTheVideoWhenThereIsOne() {
-        let withVideo = SkillCoachPrompt.instructions(
-            skill: SkillCatalog.skill("knife.grip")!,
-            check: .chefKnifeGrip,
-            seesContinuously: true)
-        XCTAssertTrue(withVideo.contains("show_the_video"))
-        XCTAssertTrue(
-            withVideo.contains("OFFER it once"),
-            "she may offer it after a correction, and only once")
-
-        let without = SkillCoachPrompt.instructions(
-            skill: SkillCatalog.skill("knife.claw")!,
-            check: .knifeClawGrip,
-            seesContinuously: true)
-        XCTAssertFalse(without.contains("show_the_video"))
-        XCTAssertFalse(without.contains("ten second clip"))
-    }
-
-    /// The three tools that were always there are still there.
-    func testTheOriginalToolsSurviveTheSkillDependentList() {
-        let names = Set(SkillCoachPrompt.tools(for: SkillCatalog.skill("knife.claw")!).map(\.name))
-        XCTAssertEqual(names, ["check_the_hold", "focus_on", "finish_lesson"])
-    }
 }

@@ -17,9 +17,7 @@ struct SkillLessonView: View {
 
     @State private var justLearned = false
     @State private var awarded = 0
-    @State private var isCoaching = false
     @State private var isPhotographing = false
-    @State private var modes = SkillLearningModeStore()
 
     private var reader: SkillsProgressReader { SkillsProgressReader(progress: progressRows) }
     private var attempts: [SkillAttempt] { allAttempts.filter { $0.skillID == skill.id } }
@@ -137,7 +135,7 @@ struct SkillLessonView: View {
     /// looping underneath a live session that has the camera and microphone
     /// open.
     @ViewBuilder private func demonstration(_ asset: String) -> some View {
-        LoopingVideoView(resource: asset, fills: false, isPlaying: !isCoaching)
+        LoopingVideoView(resource: asset, fills: false)
             .aspectRatio(16 / 9, contentMode: .fit)
             .frame(maxWidth: .infinity)
             .background(Theme.Colors.surface2)
@@ -172,70 +170,43 @@ struct SkillLessonView: View {
                 .font(.subheadline)
                 .foregroundStyle(Theme.Colors.textSecondary)
 
-            Button(primaryActionTitle) {
-                mode == .watching ? (isCoaching = true) : (isPhotographing = true)
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .padding(.top, Theme.Spacing.xs)
-
-            Button {
-                modes.choose(mode.other)
-            } label: {
-                Text(switchModeTitle)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.Colors.accent)
-            }
-            .buttonStyle(.plain)
+            Button(primaryActionTitle) { isPhotographing = true }
+                .buttonStyle(PrimaryButtonStyle())
+                .padding(.top, Theme.Spacing.xs)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Theme.Spacing.md)
         .background(
             Theme.Colors.greenTint,
             in: RoundedRectangle(cornerRadius: Theme.Radius.card))
-        .fullScreenCover(isPresented: $isCoaching) {
-            SkillCoachView(skill: skill, check: check)
-        }
         .sheet(isPresented: $isPhotographing) {
             SkillPhotoCheckView(skill: skill, check: check)
         }
     }
 
-    private var mode: SkillLearningMode { modes.mode }
+    /// One mode on this branch. Live coaching was the other, and it existed to
+    /// watch through a pair of Meta glasses, so it went out with them. Photos
+    /// are not the consolation prize: for the knife grip they are better,
+    /// because nobody can see both faces of a blade from their own eyes and a
+    /// phone takes one picture of each side.
+    private let mode: SkillLearningMode = .showing
 
     private var primaryActionTitle: String {
-        if isMastered { return mode == .watching ? "Practise it again" : "Show her again" }
-        return mode == .watching ? "Learn it with Chef" : "Try it and show her"
-    }
-
-    private var switchModeTitle: String {
-        switch mode {
-        case .watching: "No glasses today? Send photos instead"
-        case .showing: "Wearing your glasses? Let her watch instead"
-        }
+        isMastered ? "Show her again" : "Try it and show her"
     }
 
     private func calloutTitle(_ check: SkillVisualCheck) -> String {
-        switch mode {
-        case .watching: check.assessmentMode.calloutTitle
-        case .showing: "Show Chef when you have it"
-        }
+        "Show Chef when you have it"
     }
 
     /// Both halves come from the check. This block used to name a knife and a
     /// grip in hardcoded copy, which was true of the one skill that existed
     /// when it was written and wrong for the seventy that followed it.
     private func calloutBody(_ check: SkillVisualCheck) -> String {
-        switch mode {
-        case .watching:
-            check.setupLine(for: mode)
-                + " She talks you through it, and when you ask her to look she reads what she "
-                + "can see, then tells you the one thing worth changing."
-        case .showing:
-            check.setupLine(for: mode)
-                + " She talks you through it, then you send her "
-                + SkillCount.photos(check.photosNeeded)
-                + " and she tells you the one thing worth changing."
-        }
+        check.setupLine(for: mode)
+            + " Try it, then send her "
+            + SkillCount.photos(check.photosNeeded)
+            + " and she tells you the one thing worth changing."
     }
 
     /// What happened the last few times, in the cook's own history.

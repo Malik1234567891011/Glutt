@@ -3,7 +3,7 @@ import UIKit
 
 /// Whatever Polly is currently looking through.
 ///
-/// Before the glasses there was one answer, the phone's back camera, and
+/// Before a wearable camera there was one answer, the phone's back camera, and
 /// `PollySessionController` talked to `PollyCameraController` directly in three
 /// places. Two sources means neither the controller nor the canvas may know
 /// which one is live: they ask for a frame, or for something to render, and get
@@ -18,7 +18,7 @@ protocol PollyVisualSource: AnyObject {
     /// What the canvas should draw. Sources differ here in a way that cannot be
     /// papered over: one owns a capture layer, the other only ever has frames.
     var preview: PollyVisualPreview { get }
-    /// False for the glasses, which have exactly one camera pointed one way.
+    /// False for a wearable camera, which have exactly one camera pointed one way.
     var canFlip: Bool { get }
 
     func start() async
@@ -32,7 +32,7 @@ protocol PollyVisualSource: AnyObject {
 
     /// A deliberately better still, when Polly needs to read a thermometer or
     /// judge fine texture rather than answer "does this look about right". On
-    /// the phone this is the same frame; the glasses have a real photo path.
+    /// the phone this is the same frame; a wearable camera have a real photo path.
     func captureHighDetailFrame() async -> Data?
 }
 
@@ -46,52 +46,18 @@ extension PollyVisualSource {
     var canSee: Bool { state == .ready || state == .streaming }
 }
 
-/// One look through the glasses, plus what it cost.
-///
-/// The timings are not diagnostics for their own sake: whether a look feels like
-/// a glance or a hang is the single number that decides if on-demand vision is a
-/// viable design, and it has never been measured warm.
-struct GlassesLook: Sendable {
-    var jpeg: Data?
-    var frameID: String?
-    var framesSeen: Int = 0
-    /// Camera requested to first frame arriving.
-    var startLatency: TimeInterval = 0
-    var totalDuration: TimeInterval = 0
-    /// Process footprint growth across the whole look, in MB.
-    var memoryDeltaMB: Double = 0
-    var rejection: VisualFrameRejection?
 
-    /// Where inside the look the memory actually went.
-    ///
-    /// A single number for the whole look cannot tell the difference between two
-    /// very different worlds, and they imply opposite designs. If the cost sits
-    /// in `linkMB` — everything up to the first frame, which is the Wi-Fi
-    /// association the toolkit performs to reach the camera — then opening the
-    /// camera is what is expensive and the cheapest design is to open it once
-    /// and leave it open. If the cost sits in `framesMB`, streaming is expensive
-    /// and short looks are right.
-    ///
-    /// The mock, which has no radio, streams thousands of frames for a few MB.
-    /// Real glasses spent 569 MB on eight. That points hard at the link, and
-    /// these two fields are how we stop pointing and know.
-    var linkMB: Double = 0
-    var framesMB: Double = 0
-
-    var succeeded: Bool { jpeg != nil }
-}
-
+/// One case on this branch. The enum survives the removal of the second because
+/// the capture vocabulary is built around naming which source produced a frame,
+/// and collapsing it would touch every rejection path to save one line.
 enum PollyVisualSourceKind: String, Sendable {
     case phoneCamera
-    case metaGlasses
 
-    /// What Polly is told the picture came from. She uses this to give the right
-    /// instruction when a frame is unusable: a cook wearing glasses is told to
-    /// hold still, a cook with a propped-up phone is told to move it.
+    /// What Polly is told the picture came from, so she can give the right
+    /// instruction when a frame is unusable.
     var toolName: String {
         switch self {
         case .phoneCamera: return "phone_camera"
-        case .metaGlasses: return "meta_glasses"
         }
     }
 }
@@ -156,7 +122,7 @@ struct PollyFrameOutcome: Sendable {
 
 /// Sources render themselves differently and there is no honest way to unify
 /// them. `AVCaptureVideoPreviewLayer` is a live hardware layer the phone camera
-/// owns; the glasses only ever hand over decoded frames.
+/// owns; a wearable camera only ever hand over decoded frames.
 enum PollyVisualPreview {
     case none
     case captureLayer(AVCaptureVideoPreviewLayer)

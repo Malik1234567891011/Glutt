@@ -11,7 +11,7 @@ enum VisualFrameRejection: String, Sendable, Error {
     case blurred = "frame_blurred"
     case tooDark = "frame_too_dark"
     case tooBright = "frame_too_bright"
-    /// The glasses camera is on its way up and has not delivered a frame yet.
+    /// A wearable camera camera is on its way up and has not delivered a frame yet.
     ///
     /// Its own case because it is the one failure that fixes itself. A cook who
     /// asks "does this look right" before the first frame arrives used to hear
@@ -47,7 +47,7 @@ enum VisualFrameRejection: String, Sendable, Error {
         case .tooBright:
             return "The picture is blown out. Ask the cook to angle away from the light."
         case .feedStopped:
-            return "The picture has stopped arriving from the glasses. This is not something "
+            return "The picture has stopped arriving from the camera. This is not something "
                 + "the cook can fix by moving or holding still, so do not ask them to. Say you "
                 + "have lost the view, keep going on what they tell you, and mention it may "
                 + "come back on its own."
@@ -75,7 +75,7 @@ struct VisualFrameQuality: Sendable, Equatable {
 
 /// Decides which of the recent frames, if any, is worth sending.
 ///
-/// At 24 frames a second almost everything the glasses produce is worthless to
+/// At 24 frames a second almost everything a wearable camera produce is worthless to
 /// send: duplicates of the last one, smears from a head turn, a counter nobody
 /// is working at. This is what keeps us from paying to show a model seven
 /// blurry pictures of the same pan every second.

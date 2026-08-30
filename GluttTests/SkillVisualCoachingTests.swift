@@ -379,112 +379,11 @@ final class SkillVisualCoachingTests: XCTestCase {
         }
     }
 
-    // MARK: - Which frames a look uses
-
-    /// Two things at once, and both have bitten.
-    ///
-    /// Frames used to be ranked by encoded size, on the theory that the biggest
-    /// file held the most detail. JPEG size tracks how BUSY a scene is, so a
-    /// hand and a knife on a board lost every time to a cluttered counter and
-    /// the model was shown the moment the cook glanced away.
-    ///
-    /// And taking the newest two is barely better, because two frames a fifth of
-    /// a second apart are the same photograph twice. You cannot see both faces
-    /// of a knife at once, so views have to be spread in TIME, which is the only
-    /// way to be spread in angle.
-    @MainActor
-    func testALookSpreadsAcrossTheWindowRatherThanPickingFavourites() {
-        let ring = makeRing(now: 100)
-        // Ten frames over five seconds. The big one is a glance at the kitchen.
-        ring.preload([
-            (Data(count: 90_000), Date(timeIntervalSince1970: 95.5)),
-            (Data(count: 11_000), Date(timeIntervalSince1970: 96.0)),
-            (Data(count: 11_100), Date(timeIntervalSince1970: 96.5)),
-            (Data(count: 11_200), Date(timeIntervalSince1970: 97.0)),
-            (Data(count: 11_300), Date(timeIntervalSince1970: 97.5)),
-            (Data(count: 11_400), Date(timeIntervalSince1970: 98.0)),
-            (Data(count: 11_500), Date(timeIntervalSince1970: 98.5)),
-            (Data(count: 11_600), Date(timeIntervalSince1970: 99.0)),
-            (Data(count: 11_700), Date(timeIntervalSince1970: 99.5)),
-            (Data(count: 11_800), Date(timeIntervalSince1970: 100.0)),
-        ])
-
-        let chosen = ring.spread(3, within: 5)
-
-        XCTAssertEqual(chosen.count, 3)
-        XCTAssertEqual(chosen.first?.count, 11_800, "the newest is the moment they meant")
-        // Spread, not clustered: the three must not all come from the last second.
-        XCTAssertEqual(Set(chosen.map(\.count)).count, 3, "three distinct moments")
-        let oldest = chosen.map(\.count).min() ?? 0
-        XCTAssertLessThan(
-            oldest, 11_400,
-            "the views have to reach back through the window, or they are one angle three times")
-    }
-
-    @MainActor
-    func testALookWillNotReachBackPastTheWindow() {
-        let ring = makeRing(now: 100)
-        ring.preload([
-            (Data(count: 10), Date(timeIntervalSince1970: 80)),   // ancient
-            (Data(count: 20), Date(timeIntervalSince1970: 99)),
-        ])
-
-        XCTAssertEqual(ring.spread(3, within: 5).map(\.count), [20])
-    }
-
-    @MainActor
-    private func makeRing(now: TimeInterval) -> SkillFrameRing {
-        SkillFrameRing(
-            visuals: PollyVisualSourceCoordinator(
-                phone: PhoneCameraVisualSource(camera: PollyCameraController())),
-            clock: { Date(timeIntervalSince1970: now) })
-    }
-
-    // MARK: - Asking to be looked at
-
-    /// Reading the request ourselves is what lets the looking start before she
-    /// has answered, which is most of the seventeen seconds that used to sit
-    /// between the question and the verdict.
-    func testWhatCountsAsAskingToBeSeen() {
-        for asked in [
-            "does this look right?",
-            "Chef, how does this look",
-            "like this?",
-            "is that better",
-            "can you check my grip",
-            "have a look at this",
-            "I fixed it, how about now",
-            "watch me do it",
-            "am I holding it right",
-            "tell me how it looks",
-        ] {
-            XCTAssertTrue(
-                SkillLookRequest.isAskingToBeSeen(asked), "should have started looking: \(asked)")
-        }
-
-        for notAsked in [
-            "this feels really awkward",
-            "my hand hurts a bit",
-            "why am I touching the blade",
-            "okay",
-            "I usually just hold the handle because that is how my dad did it and he cooked "
-                + "every night for about twenty years",
-        ] {
-            XCTAssertFalse(
-                SkillLookRequest.isAskingToBeSeen(notAsked),
-                "should not have burned a look on: \(notAsked)")
-        }
-    }
-
-    /// A long sentence that names looking is still a request; a long sentence
-    /// that merely mentions "this" is a story.
-    func testLengthOnlyMattersWithoutALookVerb() {
-        XCTAssertTrue(SkillLookRequest.isAskingToBeSeen(
-            "can you look at my hand and tell me whether the thumb is anywhere near right"))
-        XCTAssertFalse(SkillLookRequest.isAskingToBeSeen(
-            "is this the kind of thing my grandmother would have done when she was teaching "
-                + "me to cook on a Sunday"))
-    }
+    // The frame ring and the look-request parser were tested here. Both
+    // belonged to the live coaching session, which watched through a pair of
+    // Meta glasses and is removed on this branch. Everything below still
+    // applies: the photo path runs the same assessor and the same decision
+    // layer, so the rubric is held to exactly the same rules.
 
     // MARK: - Prompt
 
@@ -506,37 +405,6 @@ final class SkillVisualCoachingTests: XCTestCase {
         XCTAssertTrue(prompt.localizedCaseInsensitiveContains("false correction is worse"))
     }
 
-    func testTheCoachPromptIsAboutDeliveryRatherThanJudgement() throws {
-        let skill = try XCTUnwrap(SkillCatalog.skill("knife.grip"))
-        let prompt = SkillCoachPrompt.instructions(
-            skill: skill, check: check, seesContinuously: true)
-
-        XCTAssertTrue(prompt.contains("check_the_hold"))
-        XCTAssertTrue(prompt.contains("finish_lesson"))
-        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("never give two corrections"))
-        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("never say a technique is"),
-                      "she must not certify safety from a photograph")
-        // The lesson's own steps, so she teaches what the screen says.
-        for step in skill.lesson?.steps ?? [] {
-            XCTAssertTrue(prompt.contains(step), "the written lesson must reach her")
-        }
-        // And none of the internal keys, which are not words anybody says.
-        for mistake in check.rubric.rankedMistakes {
-            XCTAssertFalse(prompt.contains(mistake.key),
-                           "\(mistake.key) is an assessor key, not something to say out loud")
-        }
-    }
-
-    /// Without glasses she is told plainly that she cannot look, because the
-    /// alternative is an instructor who pretends to have watched.
-    func testWithoutGlassesShePromisesNothing() throws {
-        let skill = try XCTUnwrap(SkillCatalog.skill("knife.grip"))
-        let prompt = SkillCoachPrompt.instructions(
-            skill: skill, check: check, seesContinuously: false)
-
-        XCTAssertTrue(prompt.contains("You cannot see them"))
-        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("do not pretend"))
-    }
 }
 
 /// Progress, which is the part a cook keeps.

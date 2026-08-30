@@ -2065,6 +2065,9 @@ final class PollySessionController {
             pollyCaption = pendingAssistantLine
 
         case .responseDone(let status, let calls, let usage):
+            // Beside the picture that prompted it. A frame on its own cannot
+            // say whether she noticed the pot was not in shot.
+            GlassesRunLog.shared.saveAnswer(pendingAssistantLine)
             // The server reports exactly what it billed for this response.
             // Accumulating it is what makes Polly's cost measured, not guessed.
             if let usage { sessionUsage += usage }

@@ -80,6 +80,41 @@ final class GlassesRunLog: @unchecked Sendable {
             .prefix(50)
         let name = String(format: "%03d-t%04ds-%@.jpg", savedFrames, elapsed, String(slug))
         try? jpeg.write(to: directory.appendingPathComponent(name))
+
+        // Remembered so what she says next can be written beside it.
+        pendingLook = (folder: directory, imageName: name, reason: reason)
+    }
+
+    /// The look that has been sent and not yet answered.
+    private var pendingLook: (folder: URL, imageName: String, reason: String)?
+
+    /// What she actually said about the last picture she was sent.
+    ///
+    /// The half that was missing, and the half that makes the archive worth
+    /// keeping. A folder of frames tells you what the camera saw. It cannot
+    /// tell you whether she noticed that the pot she was asked about was not
+    /// in the picture, which is the only question worth asking about most of
+    /// these, and three frames pulled off a real cook show exactly that: a
+    /// laptop playing football under "confirm the pot is at a rolling boil".
+    ///
+    /// Whether she answered anyway is unknowable from the image alone.
+    func saveAnswer(_ spoken: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let look = pendingLook else { return }
+        pendingLook = nil
+
+        let text = """
+        she was asked to: \(look.reason)
+
+        what she said about it:
+        \(spoken.isEmpty ? "(nothing, no spoken answer followed this look)" : spoken)
+
+        open \(look.imageName) and ask the only question that matters here:
+        is the thing she was asked about actually in that picture?
+        """
+        let name = (look.imageName as NSString).deletingPathExtension + ".txt"
+        try? Data(text.utf8).write(to: look.folder.appendingPathComponent(name))
     }
 
     /// Everything on disk, including runs that ended in a kill.

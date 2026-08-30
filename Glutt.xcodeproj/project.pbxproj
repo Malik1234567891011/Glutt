@@ -150,10 +150,12 @@
 		47CA4B0E6B9F7F7BD4ABE64C /* UnitConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E76DBE2577BBC32D76A29AB /* UnitConverter.swift */; };
 		4814E8173C4A8A9A262E2758 /* ImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC01B13A70FB5DB5FC8569B7 /* ImportSheet.swift */; };
 		48672C214D36836ED9916CA2 /* Buttons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 420CD47E5C2004D61B7D0B32 /* Buttons.swift */; };
+		487A019F66F370BD9C9BE029 /* SkillRubricIntegrityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46410BD353327898E5DAF532 /* SkillRubricIntegrityTests.swift */; };
 		48945C7DF08949240CC63A03 /* stepClipsRefine.json in Resources */ = {isa = PBXBuildFile; fileRef = 1CADA173C10D09180C74BD52 /* stepClipsRefine.json */; };
 		496B45BC07B3D929584A833D /* CookRecapBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFA5CE3D78B241983305606C /* CookRecapBuilder.swift */; };
 		49C190F8824D0A73728E04FF /* VisualFramePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7453B55900C6573E8046F4 /* VisualFramePipeline.swift */; };
 		4AE39AFD4624E614CF4518BA /* Polly.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA085E71905734A9011A2E33 /* Polly.swift */; };
+		4B18C15B591BF9B109935781 /* GnocchiClipMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1370B83AE7FD7ABDEB47687 /* GnocchiClipMappingTests.swift */; };
 		4B642F3ABF9E931C1F8D5604 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CF0F20EF027AE118381BF8D /* RootView.swift */; };
 		4BC65A92EE8C96F31225796D /* SkillChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAD6234EDD320EA7FB138843 /* SkillChatService.swift */; };
 		4EF0411FB979079A053463BA /* MWDATCamera in Frameworks */ = {isa = PBXBuildFile; productRef = 4327F6B4CA3C35C6318DAD18 /* MWDATCamera */; };
@@ -182,6 +184,7 @@
 		5D8679AA456EAD7B6590B239 /* PollyToolRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27E1FC5F02528DF1B978776 /* PollyToolRegistryTests.swift */; };
 		5EB1F08012A657B4416FFE6B /* ConversationalGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686B936DCDB29F97AD25509A /* ConversationalGate.swift */; };
 		5EB80A0613D1F492F62C686F /* PlatesSeedDeck.json in Resources */ = {isa = PBXBuildFile; fileRef = 42276F384744F17772916181 /* PlatesSeedDeck.json */; };
+		5FDA9BA05587BCD9A2B4DBC4 /* SkillVisualCheck+KnifeClaw.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D739BCDDBA463DA6C930185 /* SkillVisualCheck+KnifeClaw.swift */; };
 		60EBA477E4FEF380DED51AA4 /* NativeClipService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59AF18366B2E6BA8D74C44A /* NativeClipService.swift */; };
 		615AD56320ECA88141DA56F2 /* RealtimeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B43E6B8457F5ABE9B016C3F5 /* RealtimeTransport.swift */; };
 		622AE48D9C10C09E3E26DACC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4BDDF12AA6FF33207013C566 /* PrivacyInfo.xcprivacy */; };
@@ -232,6 +235,7 @@
 		7D5E6A9D5F9995C745DA6200 /* DietGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFA8BFABD66AB08664C7673 /* DietGuardTests.swift */; };
 		7D6EC4A5329A5B9EA8CE3B40 /* NotificationsSoftAskScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CA0DAABC1B96E4A7ECD6ADD /* NotificationsSoftAskScreen.swift */; };
 		7D9A365DE85044094FF1064C /* PlatesSeedDeck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B316F8DA65A1DD6ACA687D0 /* PlatesSeedDeck.swift */; };
+		7DD189360F9E4EF6056FBEB4 /* SkillVisualCheck+HeatCook.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA3A695F581E7464E80C52A5 /* SkillVisualCheck+HeatCook.swift */; };
 		7E93143DB94253E595A94363 /* SkillVisualCheck+KnifeGrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD109DAA1428BC6ED3DC4601 /* SkillVisualCheck+KnifeGrip.swift */; };
 		7E9FD85B48DCCEED1A392FAB /* AppleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8794BB18435540A0BF64D9A7 /* AppleSignIn.swift */; };
 		7FC94C288BF5A7A9B42017F0 /* MediaClipConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBC3176D4A1CE5508656606F /* MediaClipConfig.swift */; };
@@ -363,6 +367,7 @@
 		C64E3585D3BC76C8FFB8D65F /* SkillLookRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00749073816CF351FF8CAD30 /* SkillLookRequest.swift */; };
 		C659E6B4C19D18CD0FCCC6BD /* RecipeBodyParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB34A264ED161A6DB27801A2 /* RecipeBodyParser.swift */; };
 		C6D504A3B9714073A502451A /* LLMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D79524BA975910B84DB07A03 /* LLMClient.swift */; };
+		C7327F9BD84823922CD0DE5A /* SkillVisualCheck+KnifeCuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E145915B506FDF4FCC9310 /* SkillVisualCheck+KnifeCuts.swift */; };
 		C73CEBD239B974D03530F7FF /* Buttons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 420CD47E5C2004D61B7D0B32 /* Buttons.swift */; };
 		C76F782772F4AD393E27F44D /* RecipeChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20D02094ABCC954B3DB2D926 /* RecipeChatService.swift */; };
 		C84A8A4D99D1A4ECFAA434B9 /* SpokenTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06B65AB82EE6F186D44D2FC /* SpokenTextTests.swift */; };
@@ -454,6 +459,7 @@
 		F439618BC6DBF43006734F54 /* PollyDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0268F027D0F03E7A16372293 /* PollyDebugLog.swift */; };
 		F48EEA8C4B150C6C5279702C /* DiscoverCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 341AE603888CC7022D42E417 /* DiscoverCardView.swift */; };
 		F4AE9A7FAC0923B4C003E79E /* DiscoverVideoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06DC77B86C51C5605387CE5C /* DiscoverVideoTests.swift */; };
+		F4C88CE33CC20B60DE831571 /* SkillVisualCheck+HeatPan.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFBB202562A0691BCA1FA43F /* SkillVisualCheck+HeatPan.swift */; };
 		F561168C107BA356E48395D8 /* OFL-BricolageGrotesque.txt in Resources */ = {isa = PBXBuildFile; fileRef = EB24F00BC9661311C005BE78 /* OFL-BricolageGrotesque.txt */; };
 		F696DF16DF824D079BC2761F /* SkillCoachSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EB6A0EC4737DB431C27FD25 /* SkillCoachSessionTests.swift */; };
 		F6D00E9CFFD30A9AC017C74E /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61F5AFC37B586B18C2468CF /* Typography.swift */; };
@@ -552,6 +558,7 @@
 		1C84A5C89122F3BC5D0FA764 /* WeekPlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekPlanView.swift; sourceTree = "<group>"; };
 		1CADA173C10D09180C74BD52 /* stepClipsRefine.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = stepClipsRefine.json; sourceTree = "<group>"; };
 		1CFA8BFABD66AB08664C7673 /* DietGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DietGuardTests.swift; sourceTree = "<group>"; };
+		1D739BCDDBA463DA6C930185 /* SkillVisualCheck+KnifeClaw.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SkillVisualCheck+KnifeClaw.swift"; sourceTree = "<group>"; };
 		1D867C28F6B90193BB07D0F3 /* IngredientCanonicalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientCanonicalizer.swift; sourceTree = "<group>"; };
 		1DD1434AE00BB088C7F840DE /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
 		1E76DBE2577BBC32D76A29AB /* UnitConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitConverter.swift; sourceTree = "<group>"; };
@@ -617,6 +624,7 @@
 		4365A28A0C4D406680BB297B /* OnboardingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingState.swift; sourceTree = "<group>"; };
 		4496C14D0D76BAF416BA56F6 /* PlatesDeckFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesDeckFilter.swift; sourceTree = "<group>"; };
 		45320BAE787463C2D042171F /* PollyPromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyPromptBuilder.swift; sourceTree = "<group>"; };
+		46410BD353327898E5DAF532 /* SkillRubricIntegrityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillRubricIntegrityTests.swift; sourceTree = "<group>"; };
 		470C616526BE6802C03AAA32 /* DictationTranscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationTranscript.swift; sourceTree = "<group>"; };
 		476DE0FF02A984E39531A7EF /* GroceryListBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroceryListBuilder.swift; sourceTree = "<group>"; };
 		47B64FEFEA1ACC5744B4C2EE /* AIFeaturesScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIFeaturesScreen.swift; sourceTree = "<group>"; };
@@ -779,6 +787,7 @@
 		9DDECE4B39D1229473B5DFA9 /* PlatesLauncherCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesLauncherCard.swift; sourceTree = "<group>"; };
 		9E3A210F8AF35E346B89F89E /* NativeClipModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeClipModels.swift; sourceTree = "<group>"; };
 		A089AC499F01B0721C92E44C /* RecipeHTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeHTMLParser.swift; sourceTree = "<group>"; };
+		A1370B83AE7FD7ABDEB47687 /* GnocchiClipMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GnocchiClipMappingTests.swift; sourceTree = "<group>"; };
 		A2333EA3B0F39F9356AC2C07 /* SubscriptionGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionGate.swift; sourceTree = "<group>"; };
 		A34662C1AB1C5078CE9DA61C /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
 		A45301997FCD1BF1A6D7095C /* PollySessionControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollySessionControllerTests.swift; sourceTree = "<group>"; };
@@ -823,6 +832,7 @@
 		B818CF52EDB53A89E054A608 /* GoalsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalsScreen.swift; sourceTree = "<group>"; };
 		B9109962E0D1CF2EB414F344 /* StepClipPlayerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepClipPlayerSheet.swift; sourceTree = "<group>"; };
 		B94ABCDAED53B1B546E05EF4 /* PollyMemoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyMemoryStore.swift; sourceTree = "<group>"; };
+		BA3A695F581E7464E80C52A5 /* SkillVisualCheck+HeatCook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SkillVisualCheck+HeatCook.swift"; sourceTree = "<group>"; };
 		BA7DAEAB84F72EE8D2ACB3F9 /* RestaurantContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestaurantContentTests.swift; sourceTree = "<group>"; };
 		BBC3176D4A1CE5508656606F /* MediaClipConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaClipConfig.swift; sourceTree = "<group>"; };
 		BC964F22F5D3BA6FB34297B0 /* RecipeOptimizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeOptimizer.swift; sourceTree = "<group>"; };
@@ -853,6 +863,7 @@
 		CECD522366AA0151F1ADC8AA /* GlassesSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesSupport.swift; sourceTree = "<group>"; };
 		CF503C4990E82F538352B38C /* MetaGlassesVisualSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetaGlassesVisualSource.swift; sourceTree = "<group>"; };
 		CFA5CE3D78B241983305606C /* CookRecapBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookRecapBuilder.swift; sourceTree = "<group>"; };
+		D1E145915B506FDF4FCC9310 /* SkillVisualCheck+KnifeCuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SkillVisualCheck+KnifeCuts.swift"; sourceTree = "<group>"; };
 		D20092EDE21C063A448A962B /* CookBriefing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookBriefing.swift; sourceTree = "<group>"; };
 		D220BF4C17B5D8BDF6AF5766 /* PollyVoiceEventTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyVoiceEventTests.swift; sourceTree = "<group>"; };
 		D23C66664D3534808D99EA91 /* CookPlanCompilerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookPlanCompilerTests.swift; sourceTree = "<group>"; };
@@ -876,6 +887,7 @@
 		DDA609EF5F72CEDE2E9F697F /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		DE33E6863168E00B4A6635B9 /* HeadlineWordStyleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlineWordStyleTests.swift; sourceTree = "<group>"; };
 		DF45851BDA0416F4DC59FD88 /* ImportInboxDrainerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportInboxDrainerTests.swift; sourceTree = "<group>"; };
+		DFBB202562A0691BCA1FA43F /* SkillVisualCheck+HeatPan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SkillVisualCheck+HeatPan.swift"; sourceTree = "<group>"; };
 		E02A8FCA6BD6D9D0D2D91177 /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
 		E0928ADDCDC60C9C38655861 /* RealtimeEventCodecTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeEventCodecTests.swift; sourceTree = "<group>"; };
 		E16B9E3FC176CCD52B8C1E82 /* RouterImportNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterImportNavigationTests.swift; sourceTree = "<group>"; };
@@ -1074,6 +1086,7 @@
 				06DC77B86C51C5605387CE5C /* DiscoverVideoTests.swift */,
 				528768F4E45A7F8D5E44D4CB /* FakeLLMTransport.swift */,
 				9849E4D814CBE9FB1D1E619C /* GluttTests.swift */,
+				A1370B83AE7FD7ABDEB47687 /* GnocchiClipMappingTests.swift */,
 				80C3AEE0E6ADBABD974F73A2 /* GnocchiDemoPlanTests.swift */,
 				DE33E6863168E00B4A6635B9 /* HeadlineWordStyleTests.swift */,
 				653F9DE97C55056813E76980 /* HowToGeneratorTests.swift */,
@@ -1128,6 +1141,7 @@
 				1EB6A0EC4737DB431C27FD25 /* SkillCoachSessionTests.swift */,
 				EB11FDEDB692D95C9167FA09 /* SkillProgressionTests.swift */,
 				0F14C872DCE7B1E8454FDCB7 /* SkillRecommendationMovesTests.swift */,
+				46410BD353327898E5DAF532 /* SkillRubricIntegrityTests.swift */,
 				3D2314484C4071D546F79506 /* SkillVisualCoachingTests.swift */,
 				91568D9FE637F7812BD88B51 /* SpeechTranscriptionClientTests.swift */,
 				C06B65AB82EE6F186D44D2FC /* SpokenTextTests.swift */,
@@ -1630,6 +1644,10 @@
 				254B5A3FC9E54A7C4D02A8E3 /* SkillProgression.swift */,
 				02A165E814B0595AF526ECEA /* SkillStreak.swift */,
 				75A1CCA4A6E93D5D5F0F9327 /* SkillVisualCheck.swift */,
+				BA3A695F581E7464E80C52A5 /* SkillVisualCheck+HeatCook.swift */,
+				DFBB202562A0691BCA1FA43F /* SkillVisualCheck+HeatPan.swift */,
+				1D739BCDDBA463DA6C930185 /* SkillVisualCheck+KnifeClaw.swift */,
+				D1E145915B506FDF4FCC9310 /* SkillVisualCheck+KnifeCuts.swift */,
 				DD109DAA1428BC6ED3DC4601 /* SkillVisualCheck+KnifeGrip.swift */,
 			);
 			path = Skills;
@@ -1936,6 +1954,7 @@
 				8304A73B5853D24942C795BD /* GlassesDAMConfigTests.swift in Sources */,
 				3C026D0D2F10BF06EF165E50 /* GlassesMemoryMatrixTests.swift in Sources */,
 				40C39A65B30A85E2207F4D44 /* GluttTests.swift in Sources */,
+				4B18C15B591BF9B109935781 /* GnocchiClipMappingTests.swift in Sources */,
 				E77B66798AA8D0DCA48177B9 /* GnocchiDemoPlanTests.swift in Sources */,
 				7C43FD8C656E237B92067C9F /* HeadlineWordStyleTests.swift in Sources */,
 				9588B6D113428F6FCF016C92 /* HowToGeneratorTests.swift in Sources */,
@@ -1990,6 +2009,7 @@
 				F696DF16DF824D079BC2761F /* SkillCoachSessionTests.swift in Sources */,
 				6AF3C1FA72E62AAEACAB7141 /* SkillProgressionTests.swift in Sources */,
 				1469C2BA2F6DB8CF69C2C2AD /* SkillRecommendationMovesTests.swift in Sources */,
+				487A019F66F370BD9C9BE029 /* SkillRubricIntegrityTests.swift in Sources */,
 				4006A21570B039DC6572A0F8 /* SkillVisualCoachingTests.swift in Sources */,
 				EDE53C61A5EC7A9BD3EA9FC8 /* SpeechTranscriptionClientTests.swift in Sources */,
 				C84A8A4D99D1A4ECFAA434B9 /* SpokenTextTests.swift in Sources */,
@@ -2264,6 +2284,10 @@
 				915F03B4A66B272F053C3628 /* SkillProgression.swift in Sources */,
 				EBC7278F44203D42E77D4748 /* SkillStreak.swift in Sources */,
 				8824FB5352B363178D6BB965 /* SkillVisualAssessor.swift in Sources */,
+				7DD189360F9E4EF6056FBEB4 /* SkillVisualCheck+HeatCook.swift in Sources */,
+				F4C88CE33CC20B60DE831571 /* SkillVisualCheck+HeatPan.swift in Sources */,
+				5FDA9BA05587BCD9A2B4DBC4 /* SkillVisualCheck+KnifeClaw.swift in Sources */,
+				C7327F9BD84823922CD0DE5A /* SkillVisualCheck+KnifeCuts.swift in Sources */,
 				7E93143DB94253E595A94363 /* SkillVisualCheck+KnifeGrip.swift in Sources */,
 				3716BBF049DBD2051B7CBC63 /* SkillVisualCheck.swift in Sources */,
 				F07F601C244010551CA1D1D7 /* SkillsProgressReader.swift in Sources */,

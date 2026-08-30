@@ -625,3 +625,189 @@ final class SkillAttemptProgressTests: XCTestCase {
         XCTAssertFalse(attempt(.wrongEquipment).reflectsOnCook)
     }
 }
+
+// MARK: - The rubric model, once it stopped being knife shaped
+
+/// The catalog is going from one watchable skill to sixty-odd, across pans,
+/// eggs and sauces. These pin the parts of the model that exist only because a
+/// professional instructor told us the knife-shaped version was wrong.
+final class SkillRubricModelTests: XCTestCase {
+
+    private func mistake(
+        _ key: String,
+        severity: SkillMistakeSeverity,
+        floor: Double? = nil
+    ) -> SkillCoachableMistake {
+        SkillCoachableMistake(
+            key: key,
+            observation: "observation for \(key)",
+            correction: "correction for \(key)",
+            rationale: "rationale for \(key)",
+            severity: severity,
+            confidenceFloor: floor
+        )
+    }
+
+    private func check(
+        mistakes: [SkillCoachableMistake],
+        mode: SkillAssessmentMode = .process,
+        intent: SkillIntentBranch? = nil,
+        tolerance: [String] = [],
+        floor: Double = 0.55
+    ) -> SkillVisualCheck {
+        SkillVisualCheck(
+            id: "test.check",
+            assessmentMode: mode,
+            framingInstruction: "look at it",
+            requiredVisibility: [.tool],
+            rubric: SkillVisualRubric(
+                subject: "a test",
+                targetTechnique: ["do the thing"],
+                acceptableVariations: ["any way you like"],
+                rankedMistakes: mistakes,
+                confidenceFloor: floor,
+                intentBranch: intent,
+                outcomeTolerance: tolerance
+            ),
+            retryFraming: "try again"
+        )
+    }
+
+    private func assessment(
+        confidence: Double,
+        issue: String?,
+        regions: [SkillVisibilityRegion] = [.tool]
+    ) -> SkillVisualAssessment {
+        var visibility: [String: SkillVisualAssessment.Visibility] = [:]
+        for region in regions { visibility[region.rawValue] = .sufficient }
+        return SkillVisualAssessment(
+            equipment: .init(reading: "a test", supported: true, confidence: 0.95),
+            visibility: visibility,
+            safety: .init(immediateConcern: false, description: nil, confidence: 0.1),
+            overall: issue == nil ? .ready : .needsAdjustment,
+            confidence: confidence,
+            primaryIssueKey: issue,
+            observedEvidence: ["saw a thing"]
+        )
+    }
+
+    /// The reason severity exists at all. Author order is a hint, not the law:
+    /// a cosmetic note written at the top of a rubric must never outrank a
+    /// finger heading for the blade further down it.
+    func testSafetyOutranksTheOrderTheRubricWasWrittenIn() {
+        let c = check(mistakes: [
+            mistake("cosmetic", severity: .cosmetic),
+            mistake("efficiency", severity: .efficiency),
+            mistake("danger", severity: .safety),
+            mistake("ruins", severity: .irreversible),
+        ])
+        XCTAssertEqual(
+            c.rubric.coachingOrder.map(\.key),
+            ["danger", "ruins", "efficiency", "cosmetic"])
+    }
+
+    /// Equal severity keeps the instructor's ranking, which is the whole reason
+    /// the deliverable numbers its mistakes.
+    func testEqualSeverityFallsBackToAuthorOrder() {
+        let c = check(mistakes: [
+            mistake("first", severity: .outcomeCost),
+            mistake("second", severity: .outcomeCost),
+            mistake("third", severity: .outcomeCost),
+        ])
+        XCTAssertEqual(c.rubric.coachingOrder.map(\.key), ["first", "second", "third"])
+    }
+
+    /// A safety correction is worth saying on thinner evidence than a cosmetic
+    /// one. Being wrong about a fingertip costs a moment; being silent about it
+    /// costs a finger.
+    func testASafetyMistakeCanBeRaisedOnEvidenceTooThinForACosmeticOne() {
+        let c = check(mistakes: [
+            mistake("danger", severity: .safety, floor: 0.4),
+            mistake("fussy", severity: .cosmetic, floor: 0.9),
+        ], floor: 0.55)
+
+        // Below the rubric floor, nothing is said at all.
+        if case .cannotSee = SkillCoachDecision.decide(
+            assessment(confidence: 0.3, issue: "danger"), check: c) {} else {
+            XCTFail("below the rubric floor should never produce a correction")
+        }
+
+        // Above the rubric floor but below the cosmetic mistake's own floor.
+        if case .cannotSee = SkillCoachDecision.decide(
+            assessment(confidence: 0.6, issue: "fussy"), check: c) {} else {
+            XCTFail("a fussy correction on thin evidence should be withheld")
+        }
+
+        // Same confidence, safety mistake: said, because it set a lower bar.
+        guard case .correct(let key, _) = SkillCoachDecision.decide(
+            assessment(confidence: 0.6, issue: "danger"), check: c) else {
+            return XCTFail("a safety correction should survive its own lower floor")
+        }
+        XCTAssertEqual(key, "danger")
+    }
+
+    /// Outcome skills are looked at completely differently from process ones,
+    /// and the prompt has to say so. Telling a model judging a board of diced
+    /// onion that "nobody can see both faces of a knife at once" is noise.
+    func testOutcomeSkillsAreNotToldAboutKnifeGeometry() {
+        let outcome = SkillVisualAssessor.systemPrompt(check: check(mistakes: [], mode: .outcome))
+        XCTAssertTrue(outcome.contains("finished result"))
+        XCTAssertFalse(outcome.contains("both faces"))
+
+        let process = SkillVisualAssessor.systemPrompt(check: check(mistakes: [], mode: .process))
+        XCTAssertTrue(process.contains("angles, not attempts"))
+    }
+
+    /// A skill may author its own note when the generic one is not enough. The
+    /// knife grip is the case that produced this: its geometry paragraph used to
+    /// be applied to every skill in the app.
+    func testASkillCanOverrideTheViewingGuidance() {
+        let prompt = SkillVisualAssessor.systemPrompt(check: .chefKnifeGrip)
+        XCTAssertTrue(prompt.contains("both faces"))
+    }
+
+    /// The most repeated instruction in the whole deliverable: ask which version
+    /// they meant before deciding they got it wrong.
+    func testAnIntentBranchReachesThePromptWithItsDefault() {
+        let branch = SkillIntentBranch(
+            question: "soft and creamy, or firm and fluffy?",
+            options: [
+                SkillIntentOption(
+                    key: "soft",
+                    spokenLabel: "soft, creamy, French",
+                    judgeAgainst: "small curds, no browning at all"),
+                SkillIntentOption(
+                    key: "fluffy",
+                    spokenLabel: "fluffy, American",
+                    judgeAgainst: "large curds, light colour is fine"),
+            ],
+            defaultKey: "soft")
+        let prompt = SkillVisualAssessor.systemPrompt(
+            check: check(mistakes: [], intent: branch))
+
+        XCTAssertTrue(prompt.contains("soft and creamy, or firm and fluffy?"))
+        XCTAssertTrue(prompt.contains("large curds"))
+        XCTAssertTrue(prompt.contains("Never mark one branch wrong for not being another"))
+    }
+
+    /// Home tolerances, not culinary school ones. The deliverable is emphatic
+    /// that holding a home cook to a 3mm julienne is how an instructor loses
+    /// somebody who was doing fine.
+    func testHomeTolerancesAreStatedAsTheStandard() {
+        let prompt = SkillVisualAssessor.systemPrompt(check: check(
+            mistakes: [],
+            mode: .outcome,
+            tolerance: ["most sticks around 2 to 4mm and similar enough to cook together"]))
+        XCTAssertTrue(prompt.contains("2 to 4mm"))
+        XCTAssertTrue(prompt.contains("looser than a"))
+    }
+
+    /// Nothing in a rubric may be omitted just because it is empty: a check with
+    /// no intent branch and no tolerances must still build a clean prompt.
+    func testAnUnadornedRubricStillBuildsAPrompt() {
+        let prompt = SkillVisualAssessor.systemPrompt(check: check(mistakes: []))
+        XCTAssertFalse(prompt.contains("more than one correct version"))
+        XCTAssertFalse(prompt.contains("How close is close enough"))
+        XCTAssertTrue(prompt.contains("The technique being taught"))
+    }
+}

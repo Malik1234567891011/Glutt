@@ -79,7 +79,15 @@ enum SkillCoachDecision {
         //    we only ever say sentences we wrote.
         if assessment.overall == .needsAdjustment,
            let key = assessment.primaryIssueKey,
-           let mistake = check.rubric.rankedMistakes.first(where: { $0.key == key }) {
+           let mistake = check.rubric.coachingOrder.first(where: { $0.key == key }) {
+            // Some corrections are worth saying on thinner evidence than
+            // others. A fingertip in the blade path and a slightly bent wrist
+            // are not the same bet: being wrong about the first costs a moment
+            // of embarrassment, being silent about it costs a finger. Where a
+            // mistake sets its own floor, it wins over the rubric's.
+            if let floor = mistake.confidenceFloor, assessment.confidence < floor {
+                return .cannotSee(regions: assessment.unseenRegions(for: check))
+            }
             // And only if somebody actually saw the part it is about.
             //
             // "Your index finger is along the spine" is a claim about a finger,
@@ -112,7 +120,7 @@ enum SkillCoachDecision {
         for key: String,
         in check: SkillVisualCheck
     ) -> SkillCoachableMistake? {
-        check.rubric.rankedMistakes.first { $0.key == key }
+        check.rubric.coachingOrder.first { $0.key == key }
     }
 
     /// A one line record of the attempt, for the cook's own history.
@@ -129,7 +137,7 @@ enum SkillCoachDecision {
         case .safetyStop(let reason):
             return "Stopped for safety: \(reason)"
         case .unsupportedEquipment(let reading):
-            return "Not a chef's knife. Looked like \(reading)."
+            return "Wrong tool for this one. Looked like \(reading)."
         case .cannotSee(let regions):
             let names = regions.map(\.spokenName).joined(separator: ", ")
             return regions.isEmpty
@@ -143,10 +151,33 @@ enum SkillCoachDecision {
         case .passed(let isVariation):
             let evidence = assessment.observedEvidence.first
             let opener = isVariation
-                ? "Own variation on the pinch grip, and in control of the knife."
-                : "Clean pinch grip."
+                ? check.rubric.variationSummary
+                : check.rubric.passSummary
             guard let evidence, !evidence.isEmpty else { return opener }
             return "\(opener) \(evidence)"
         }
+    }
+}
+
+// MARK: - What an outcome means to the record
+
+/// Shared by the live path and the photo path, which is the whole reason it
+/// lives here rather than privately inside the session that happened to need it
+/// first. Two copies of this mapping would drift, and the direction they would
+/// drift in is one path quietly recording a pass the other would not.
+extension SkillCoachDecision.Outcome {
+    var attemptOutcome: SkillAttemptOutcome {
+        switch self {
+        case .safetyStop: .stoppedForSafety
+        case .unsupportedEquipment: .wrongEquipment
+        case .cannotSee: .inconclusive
+        case .correct: .corrected
+        case .passed: .passed
+        }
+    }
+
+    var mistakeKey: String? {
+        if case .correct(let key, _) = self { return key }
+        return nil
     }
 }

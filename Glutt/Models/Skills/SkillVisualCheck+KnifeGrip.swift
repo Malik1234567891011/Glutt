@@ -16,9 +16,31 @@ extension SkillVisualCheck {
 
     static let chefKnifeGrip = SkillVisualCheck(
         id: "knife.grip.pinch",
+        assessmentMode: .process,
         framingInstruction:
             "Rest the blade on your board, look down at your hand, and turn it slowly, like you "
             + "are showing me both sides of the knife. I will read it as you go.",
+        viewingNote: """
+        # They are angles, not attempts
+        This is the most important thing about them. Nobody can see both faces of
+        a knife at once: the thumb rests on one side of the blade and the curled
+        index finger on the other, so any single instant hides one of them behind
+        the steel. That is why you are given several.
+
+        COMBINE them into one assessment of one grip. If a finger is clearly
+        visible in ANY view, you have seen that finger, and its visibility is
+        whatever the BEST view showed, not the worst. Judge the grip on
+        everything the views show between them. Do not assess each image
+        separately and do not report a region as hidden because it was hidden in
+        the most recent one.
+
+        The hand may be at a different angle in each view. That is the point, not
+        an inconsistency to flag.
+
+        A hidden finger here is a normal first person view of a CORRECT grip, not
+        a failed photograph. Only the knife and where the hand meets it have to
+        be visible for the assessment to be worth anything.
+        """,
         // The knife, and where the hand sits on it. Enough to judge the thing that
         // matters most: whether they are steering the blade or the back of the
         // handle.
@@ -80,6 +102,7 @@ extension SkillVisualCheck {
                         + "wrist becomes a big one at the tip. Pinching the blade puts your hand "
                         + "where the cutting happens, so the knife goes where you point it.",
                     isContextual: true,
+                    severity: .outcomeCost,
                     requiresVisible: [.controlPoint]
                 ),
                 SkillCoachableMistake(
@@ -96,6 +119,7 @@ extension SkillVisualCheck {
                         + "gripping the blade between two fingers. It is a real grip for delicate "
                         + "slicing, it is just not the one that makes everyday chopping easier.",
                     isContextual: true,
+                    severity: .outcomeCost,
                     requiresVisible: [.indexFinger]
                 ),
                 SkillCoachableMistake(
@@ -110,6 +134,7 @@ extension SkillVisualCheck {
                         "The pinch only works when the thumb and finger oppose each other across "
                         + "the blade. A thumb on the spine has nothing to press against.",
                     isContextual: false,
+                    severity: .outcomeCost,
                     requiresVisible: [.thumb]
                 ),
                 SkillCoachableMistake(
@@ -124,6 +149,7 @@ extension SkillVisualCheck {
                         "The pinch controls the angle, but the knife needs somewhere to sit. "
                         + "Fingers off the handle means the weight is hanging from two fingers.",
                     isContextual: false,
+                    severity: .efficiency,
                     requiresVisible: [.remainingFingers]
                 ),
                 SkillCoachableMistake(
@@ -137,6 +163,7 @@ extension SkillVisualCheck {
                         "A bent wrist tires fast and takes the power out of the cut, because the "
                         + "arm can no longer drive the knife in a straight line.",
                     isContextual: false,
+                    severity: .efficiency,
                     requiresVisible: [.wrist]
                 ),
             ],
@@ -173,7 +200,9 @@ extension SkillVisualCheck {
                     + "another finger.",
             ],
 
-            confidenceFloor: 0.55
+            confidenceFloor: 0.55,
+            passSummary: "Clean pinch grip.",
+            variationSummary: "Own variation on the pinch grip, and in control of the knife."
         ),
         retryFraming:
             "Keep hold of it and turn your hand slowly, and I will pick it up as it comes round.",

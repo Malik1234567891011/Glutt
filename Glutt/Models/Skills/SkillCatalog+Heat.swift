@@ -61,6 +61,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Browning needs the surface hot enough to drive water off instantly. A cool pan lets the water sit, and food in its own water steams."
                 ),
+                visualCheck: .heatPreheat,
                 column: .left
             ),
             Skill(
@@ -86,6 +87,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Every searing and sautéing instruction assumes a properly hot pan. Being able to see it is what makes the rest repeatable."
                 ),
+                visualCheck: .heatPanReady,
                 column: .right
             ),
             Skill(
@@ -112,6 +114,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Oil carries heat into the food's surface far better than air does, which is why a lightly oiled pan browns evenly and a dry one browns in patches."
                 ),
+                visualCheck: .heatOil,
                 column: .left
             ),
             Skill(
@@ -139,6 +142,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "This is the single most common reason home cooking looks grey instead of golden, and it costs nothing to fix."
                 ),
+                visualCheck: .heatCrowding,
                 column: .center
             ),
             Skill(
@@ -165,6 +169,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Sauté is the default move for vegetables and small pieces of meat, and the technique behind a large share of weeknight dinners."
                 ),
+                visualCheck: .heatSaute,
                 column: .right
             ),
             Skill(
@@ -192,6 +197,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "The brown crust is where most of the flavour of roasted and pan cooked food lives, and it also leaves the fond that a pan sauce is built from."
                 ),
+                visualCheck: .heatSear,
                 column: .left
             ),
             Skill(
@@ -219,6 +225,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Butter added at the right moment makes food taste finished. Added at the wrong one it makes the whole pan bitter."
                 ),
+                visualCheck: .heatButter,
                 column: .right
             ),
             Skill(
@@ -246,6 +253,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "It turns the mess in the pan into the best part of the dish, and it is the first half of every pan sauce ever made."
                 ),
+                visualCheck: .heatDeglaze,
                 column: .center
             ),
             Skill(
@@ -273,6 +281,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Reduction is how thin liquid becomes sauce without adding anything, and why restaurant sauces taste deeper than a splash of stock."
                 ),
+                visualCheck: .heatReduce,
                 column: .left
             ),
             Skill(
@@ -308,6 +317,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "This is the moment most people realise cooking is a chain of causes rather than a list of steps. The crust makes the fond, the fond makes the sauce."
                 ),
+                visualCheck: .heatPanSauce,
                 isChallenge: true,
                 column: .center
             ),

@@ -67,26 +67,12 @@ enum SkillVisualAssessor {
         return """
         You are helping a cooking instructor evaluate \(r.subject). The images are
         first person, taken from the cook's own point of view a second or two
-        apart, while their hand was moving or turning.
+        apart.
 
-        # They are angles, not attempts
-        This is the most important thing about them. Nobody can see both faces of
-        a knife at once: the thumb rests on one side of the blade and the curled
-        index finger on the other, so any single instant hides one of them behind
-        the steel. That is why you are given several.
-
-        COMBINE them into one assessment of one grip. If a finger is clearly
-        visible in ANY view, you have seen that finger, and its visibility is
-        whatever the BEST view showed, not the worst. Judge the grip on
-        everything the views show between them. Do not assess each image
-        separately and do not report a region as hidden because it was hidden in
-        the most recent one.
-
-        The hand may be at a different angle in each view. That is the point, not
-        an inconsistency to flag.
+        \(viewingGuidance(check))
 
         # The technique being taught
-        \(bullets(r.targetTechnique))
+        \(bullets(r.targetTechnique))\(intentSection(r))\(toleranceSection(r))\(audioSection(r))
 
         # Differences that are NOT mistakes
         Do not report these as problems. A cook whose hand differs from the reference
@@ -95,9 +81,11 @@ enum SkillVisualAssessor {
 
         # Habits worth naming, if you can actually see them
         Report at most ONE of these, as `primaryIssueKey`, using the key exactly as
-        written. Choose the one that costs the cook the most control. If none apply,
-        return null.
-        \(r.rankedMistakes.map { "- `\($0.key)`: \($0.observation)" }.joined(separator: "\n"))
+        written. They are listed **most costly first**: anything unsafe, then
+        anything that will ruin the food in the next few seconds, then whatever
+        most affects the result. When several are true, name the one highest in
+        this list, not the one easiest to see. If none apply, return null.
+        \(r.coachingOrder.map { "- `\($0.key)`: \($0.observation)" }.joined(separator: "\n"))
 
         # Stop the lesson for these
         \(bullets(r.safetySignals))
@@ -117,27 +105,23 @@ enum SkillVisualAssessor {
 
         # How to answer
         1. FIRST decide whether you can see enough. Report visibility per region
-           honestly. A region hidden behind the blade, the handle or another finger
-           is `insufficient`, not `partial`.
-           Hiding is NORMAL and is not a problem to report. These images are taken
-           from the cook's own eyes, and in a correct pinch grip the thumb and the
-           index finger are on opposite faces of the blade, so one of them is behind
-           the steel by definition. Mark the hidden one `insufficient` and carry on
-           assessing everything you CAN see. Only `tool` and `controlPoint`, which is
-           where the hand meets the blade, have to be visible for the assessment to
-           be worth anything.
+           honestly. A region hidden behind something, or out of frame, is
+           `insufficient`, not `partial`.
+           Some hiding is NORMAL and is not a problem to report. These images come
+           from the cook's own eyes while they work, so parts of the scene pass
+           behind hands, tools and pans constantly. Mark what you cannot see
+           `insufficient` and carry on assessing everything you CAN see.
         2. `cannotAssess` is ONLY for when \(requiredList(check)) is not visible.
            Nothing else earns it. If those are visible, assess, and keep assessing
-           even when the thumb, the index finger, the other fingers and the wrist
-           are ALL hidden. A hidden finger is a normal first person view of a
-           correct grip, not a failed photograph, and answering `cannotAssess`
-           because of one tells a cook who is staring straight at their own hand
-           that you cannot see it.
+           even when every other region is hidden. Answering `cannotAssess` because
+           one optional region is obscured tells a cook who is looking straight at
+           their own work that you cannot see it, which is the fastest way to lose
+           them.
            What you must not do is guess. Do not report a habit about a region you
-           marked `insufficient`: if you cannot see the index finger, you cannot
-           know it is along the spine, so leave `primaryIssueKey` null and let the
-           visibility field say why. Not seeing something and it being wrong are
-           different answers and the app says different words for each.
+           marked `insufficient`: if you cannot see it, you cannot know what it is
+           doing, so leave `primaryIssueKey` null and let the visibility field say
+           why. Not seeing something and it being wrong are different answers and
+           the app says different words for each.
         3. Separate what you SAW from what you CONCLUDE. `observedEvidence` is a
            short list of plain physical observations, each one something another
            person could verify from the same image. Your conclusions belong in the
@@ -156,10 +140,86 @@ enum SkillVisualAssessor {
 
     static func userPrompt(check: SkillVisualCheck) -> String {
         let regions = check.reportedVisibility.map(\.rawValue).joined(separator: ", ")
+        let subject = switch check.assessmentMode {
+        case .outcome: "the finished result shown"
+        default: "the single attempt shown"
+        }
         return """
-        Assess the single grip shown across the images above, using all of them
-        together. Report visibility for: \(regions), taking the best view of each.
+        Assess \(subject) across the images above, using all of them together.
+        Report visibility for: \(regions), taking the best view of each.
         Answer with the JSON object only.
+        """
+    }
+
+    /// How to read this particular set of images, which depends entirely on
+    /// whether they are angles on one moving thing or looks at a finished one.
+    private static func viewingGuidance(_ check: SkillVisualCheck) -> String {
+        if let note = check.viewingNote { return note }
+        switch check.assessmentMode {
+        case .outcome:
+            return """
+            # Views of a finished result
+            These show something the cook has already produced, spread out to be
+            looked at. Judge it as a whole: the spread of sizes across the batch,
+            not the single best or single worst piece. A few outliers in an
+            otherwise even batch are normal food, not a failure.
+            """
+        case .process, .processThenOutcome, .dialogue:
+            return """
+            # They are angles, not attempts
+            The images are moments from one continuous attempt, taken while the
+            cook's hands were moving. COMBINE them into a single assessment. If
+            something is clearly visible in ANY view, you have seen it, and its
+            visibility is whatever the BEST view showed, not the worst. Do not
+            assess each image separately, and do not report a region as hidden
+            because it happened to be hidden in the most recent one.
+
+            Things will be at different angles in each view. That is the point,
+            not an inconsistency to flag.
+            """
+        }
+    }
+
+    /// The fork the cook has already resolved out loud, so the model judges the
+    /// style they are actually cooking rather than the one the book prefers.
+    private static func intentSection(_ r: SkillVisualRubric) -> String {
+        guard let branch = r.intentBranch else { return "" }
+        let options = branch.options
+            .map { "- `\($0.key)` (\($0.spokenLabel)): \($0.judgeAgainst)" }
+            .joined(separator: "\n")
+        return """
+
+
+        # This technique has more than one correct version
+        The cook has been asked: "\(branch.question)". Judge against the branch
+        they chose, and against `\(branch.defaultKey)` if they did not choose.
+        Never mark one branch wrong for not being another.
+        \(options)
+        """
+    }
+
+    private static func toleranceSection(_ r: SkillVisualRubric) -> String {
+        guard !r.outcomeTolerance.isEmpty else { return "" }
+        return """
+
+
+        # How close is close enough
+        These are the tolerances a home cook is held to, which are looser than a
+        professional exercise on purpose. Judge against these, not against a
+        culinary school standard.
+        \(bullets(r.outcomeTolerance))
+        """
+    }
+
+    private static func audioSection(_ r: SkillVisualRubric) -> String {
+        guard !r.audioSignals.isEmpty else { return "" }
+        return """
+
+
+        # Sound, if it is mentioned to you
+        You are given images, not audio. These are listed only so you know what
+        the cook may describe. Never infer them from a picture.
+        \(bullets(r.audioSignals))
         """
     }
 
@@ -180,7 +240,7 @@ enum SkillVisualAssessor {
         let regions = check.reportedVisibility
             .map { "\"\($0.rawValue)\": \"sufficient | partial | insufficient\"" }
             .joined(separator: ",\n            ")
-        let criteria = check.rubric.rankedMistakes
+        let criteria = check.rubric.coachingOrder
             .map { "\"\($0.key)\"" }
             .joined(separator: " | ")
         return """
@@ -199,7 +259,7 @@ enum SkillVisualAssessor {
             "description": "null, or what you can see that is dangerous",
             "confidence": 0.0
           },
-          "techniqueFamily": "classicPinch | pinchVariation | bolsterGrip | handleGrip | pointerGrip | unknown",
+          "techniqueFamily": "a short plain label for the style you saw, or unknown",
           "overall": "ready | acceptableVariation | needsAdjustment | cannotAssess | unsupportedEquipment",
           "confidence": 0.0,
           "primaryIssueKey": "null, or one of: \(criteria)",

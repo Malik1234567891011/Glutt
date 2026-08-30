@@ -72,6 +72,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Your knuckles become both the guard and the guide, so the knife physically cannot reach your fingertips and every slice comes out the same width."
                 ),
+                visualCheck: .knifeClawGrip,
                 column: .left
             ),
             Skill(
@@ -98,6 +99,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Crushed cells leak. A clean slice keeps the food's texture and stops your board turning into a puddle."
                 ),
+                visualCheck: .knifeSlice,
                 column: .right
             ),
             Skill(
@@ -122,6 +124,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Knowing when precision does not matter is as useful as being able to be precise. Stock does not care what your carrot looked like."
                 ),
+                visualCheck: .knifeRoughChop,
                 column: .left
             ),
             Skill(
@@ -149,6 +152,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Even cubes cook at the same rate. Uneven ones give you a pan where some pieces are raw and others have gone to mush."
                 ),
+                visualCheck: .knifeDice,
                 column: .center
             ),
             Skill(
@@ -176,6 +180,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Minced aromatics melt into a dish instead of showing up as chunks. It is the difference between tasting garlic and biting garlic."
                 ),
+                visualCheck: .knifeMince,
                 column: .right
             ),
             Skill(
@@ -202,6 +207,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Thin shapes cook almost instantly, which is what makes a stir fry work at all."
                 ),
+                visualCheck: .knifeJulienne,
                 column: .left
             ),
             Skill(
@@ -230,6 +236,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Even onion is the base of a huge number of dishes, and uneven onion means some pieces burn while others stay raw and sharp."
                 ),
+                visualCheck: .knifeDiceOnion,
                 column: .center
             ),
             Skill(
@@ -256,6 +263,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "How finely you cut garlic changes how strong it tastes. Fine mince goes sharp and everywhere; sliced is mellow and sweet."
                 ),
+                visualCheck: .knifeMinceGarlic,
                 column: .right
             ),
             Skill(
@@ -282,6 +290,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Herb flavour is in oils that escape the moment the leaf is crushed. Fewer, cleaner cuts keep them on the plate rather than the board."
                 ),
+                visualCheck: .knifeChopHerbs,
                 column: .left
             ),
             Skill(
@@ -309,6 +318,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "The same steak, cooked identically, is tender or chewy depending only on this. It is the highest reward per second of any knife habit."
                 ),
+                visualCheck: .knifeAgainstGrain,
                 column: .right
             ),
             Skill(
@@ -341,6 +351,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "If you can dice a mirepoix evenly and calmly, you can prep almost any recipe's base, and you will feel the difference in every braise you make afterwards."
                 ),
+                visualCheck: .knifeMirepoix,
                 isChallenge: true,
                 column: .center
             ),

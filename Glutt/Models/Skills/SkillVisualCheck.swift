@@ -15,6 +15,9 @@ struct SkillVisualCheck: Hashable, Sendable {
     /// Stable id, used on the attempt rows so history survives re-authoring.
     let id: String
 
+    /// What Chef should be pointing the camera at for this one.
+    let assessmentMode: SkillAssessmentMode
+
     /// What Polly says to set the shot up, immediately before the hold starts.
     ///
     /// Written to be spoken, not read. It has one job the rest of the lesson
@@ -77,6 +80,76 @@ struct SkillVisualCheck: Hashable, Sendable {
     /// the cook did nothing wrong, the camera did.
     let retryFraming: String
 
+    /// How to photograph it, for a cook with no glasses on.
+    ///
+    /// A separate sentence from `framingInstruction` rather than a reworded one,
+    /// because the two situations have nothing in common. Wearing glasses your
+    /// hands are free and the camera is your face, so the instruction is about
+    /// moving your hand. Holding a phone you have one hand left and the camera
+    /// goes where you point it, so the instruction is about where to stand and
+    /// what to point at. Trying to serve both from one string produced sentences
+    /// that were wrong in both.
+    ///
+    /// Nil falls back to the live framing, which is fine for the skills where
+    /// the two really do coincide, like looking down at a board.
+    let photoFraming: String?
+
+    /// How many photos to ask for.
+    ///
+    /// Fewer than `framesPerLook`. Three live frames are three angles snatched
+    /// out of a movement that was happening anyway, and cost the cook nothing.
+    /// Three photographs are three deliberate acts with a knife in one hand, so
+    /// two well chosen ones are worth more than three grudging ones.
+    let photosNeeded: Int
+
+    /// The sentence for a cook holding a phone rather than wearing glasses.
+    func framing(for mode: SkillLearningMode) -> String {
+        switch mode {
+        case .watching: framingInstruction
+        case .showing: photoFraming ?? framingInstruction
+        }
+    }
+
+    /// The tail of the sentence naming what to have to hand before starting,
+    /// beginning with its own separator: ", with a pot of liquid on the heat."
+    ///
+    /// Stored as a tail rather than a whole sentence because the opener depends
+    /// on the mode and the tail never does. A cook wearing glasses is told to
+    /// put them on; a cook without is told to keep their phone to hand; both
+    /// need the same pot of liquid. Writing 55 whole sentences twice to vary
+    /// four words would be a lot of copy to keep in step.
+    ///
+    /// Written for the eye rather than the ear, unlike everything else here.
+    let setupNeeds: String
+
+    /// The whole sentence, for the mode this lesson is running in.
+    func setupLine(for mode: SkillLearningMode) -> String {
+        let opener = switch mode {
+        case .watching: "Put your glasses on"
+        case .showing: "Have your phone to hand"
+        }
+        return opener + setupNeeds
+    }
+
+    /// What the model needs to understand about seeing *this* thing, when the
+    /// generic advice for the mode is not enough.
+    ///
+    /// The knife grip needs a paragraph nothing else needs: the thumb and the
+    /// curled index finger are on opposite faces of the blade, so any single
+    /// frame hides one of them and a model told to be thorough will report a
+    /// correct grip as unassessable. That paragraph used to live in the prompt
+    /// builder, where it was applied to every skill including the ones judged
+    /// by looking down at a chopping board. It belongs to the skill.
+    let viewingNote: String?
+
+    /// What Polly says to get the *finished thing* into view, for the skills
+    /// judged on what they produced rather than how they were done.
+    ///
+    /// Nil for pure-process skills. "Spread one handful into a single layer and
+    /// look straight down" is a completely different request from "turn your
+    /// hand slowly", and a skill assessed both ways needs both sentences.
+    let outcomeFraming: String?
+
     /// After this many unusable views, stop asking and offer the way out.
     /// Two, because a third identical request is where a cook concludes the
     /// feature is broken and stops trusting the rest of it.
@@ -84,7 +157,13 @@ struct SkillVisualCheck: Hashable, Sendable {
 
     init(
         id: String,
+        assessmentMode: SkillAssessmentMode = .process,
         framingInstruction: String,
+        photoFraming: String? = nil,
+        photosNeeded: Int = 2,
+        setupNeeds: String = " and get set up.",
+        viewingNote: String? = nil,
+        outcomeFraming: String? = nil,
         lookbackSeconds: Double = 5,
         framesPerLook: Int = 3,
         requiredVisibility: [SkillVisibilityRegion],
@@ -95,7 +174,13 @@ struct SkillVisualCheck: Hashable, Sendable {
         maxUnusableViews: Int = 2
     ) {
         self.id = id
+        self.assessmentMode = assessmentMode
         self.framingInstruction = framingInstruction
+        self.photoFraming = photoFraming
+        self.photosNeeded = photosNeeded
+        self.setupNeeds = setupNeeds
+        self.viewingNote = viewingNote
+        self.outcomeFraming = outcomeFraming
         self.lookbackSeconds = lookbackSeconds
         self.framesPerLook = framesPerLook
         self.requiredVisibility = requiredVisibility
@@ -114,12 +199,26 @@ struct SkillVisualCheck: Hashable, Sendable {
 /// free: a region she could see, on a look that found no fault with it, is a
 /// part that is right. Nothing extra is asked of the model for this.
 struct SkillCheckPart: Hashable, Sendable, Identifiable {
+    /// The region this part's state is read from.
+    ///
+    /// Several parts may share one. That is the normal case for a skill judged
+    /// on what it produced: "pieces are a similar size" and "faces are square"
+    /// are two things a cook checks separately and both are read off the same
+    /// look at the same board.
     let region: SkillVisibilityRegion
+
     /// What it says on screen. Short enough to read at a glance with a knife in
     /// your hand, specific enough to act on.
     let label: String
 
-    var id: String { region.rawValue }
+    /// Distinct per part, because the region no longer is.
+    let id: String
+
+    init(region: SkillVisibilityRegion, label: String, id: String? = nil) {
+        self.region = region
+        self.label = label
+        self.id = id ?? region.rawValue
+    }
 }
 
 /// How far along one part is.
@@ -138,12 +237,37 @@ enum SkillPartState: Sendable {
 /// thumb but not your index finger" is a genuinely useful thing to say and a
 /// single boolean cannot say it.
 enum SkillVisibilityRegion: String, Hashable, Sendable, CaseIterable {
+    // The tool and the hand on it. Written first for the knife grip, and still
+    // the right vocabulary for anything held: a whisk, a spoon, a probe.
     case tool
     case controlPoint
     case thumb
     case indexFinger
     case remainingFingers
     case wrist
+
+    /// The hand that is NOT holding the tool. The whole subject of the claw
+    /// grip, and the thing every knife safety signal is actually about.
+    case guidingHand
+
+    // What is being worked on, and where.
+    case ingredient
+    case workSurface
+    /// The finished thing, spread out to be looked at. This is the region for
+    /// every outcome assessment: a board of dice, a line of julienne, a
+    /// spoonful of mince. The instructor deliverable puts most knife cuts here
+    /// rather than on the motion, because nobody can read a dice at 7fps but a
+    /// board of finished cubes is trivially readable.
+    case result
+
+    // The pan and what is in it.
+    case cookingSurface
+    case fat
+    case liquid
+    /// The burner, dial or flame. Reported so Chef can say she cannot see it,
+    /// never so she can grade it: the deliverable is emphatic that a dial
+    /// number is not heat knowledge.
+    case heatSource
 
     /// How Polly refers to it out loud. Kept here rather than in the coach so
     /// the words match what the assessor was asked about.
@@ -155,6 +279,14 @@ enum SkillVisibilityRegion: String, Hashable, Sendable, CaseIterable {
         case .indexFinger: "your index finger"
         case .remainingFingers: "your other fingers"
         case .wrist: "your wrist"
+        case .guidingHand: "your other hand"
+        case .ingredient: "what you are cutting"
+        case .workSurface: "your board"
+        case .result: "what you have cut so far"
+        case .cookingSurface: "the pan"
+        case .fat: "the oil in the pan"
+        case .liquid: "what is in the pan"
+        case .heatSource: "your burner"
         }
     }
 
@@ -184,8 +316,111 @@ enum SkillVisibilityRegion: String, Hashable, Sendable, CaseIterable {
             "lower your hand and turn it a little so I can see your fingers on the handle"
         case .wrist:
             "pull back a touch and turn slowly so I get your wrist as well"
+        case .guidingHand:
+            "look down at the hand holding the food, so I can see your fingertips"
+        case .ingredient:
+            "look down at what you are cutting"
+        case .workSurface:
+            "pull your head back a little so I get the whole board"
+        case .result:
+            "spread it out into one layer and look straight down at it"
+        case .cookingSurface:
+            "look down into the pan"
+        case .fat:
+            "tilt the pan gently so the oil pools where I can see it"
+        case .liquid:
+            "look straight down into the pan so I can see the surface"
+        case .heatSource:
+            "glance down at the burner"
         }
     }
+}
+
+/// What Chef should be looking at for a given skill.
+///
+/// The instructor deliverable is blunt about this and it changed the shape of
+/// the type: for most knife cuts the **outcome** is far more readable than the
+/// motion. Nobody can judge a dice at seven frames a second, but a board of
+/// finished cubes shows size spread and squareness at a glance. Authoring this
+/// per skill is what stops us pointing the camera at the wrong thing and then
+/// blaming the camera.
+enum SkillAssessmentMode: String, Hashable, Sendable {
+    /// Watch it being done. Grips, claw, thermometer placement, basting.
+    case process
+    /// Look at what it produced. Dice, julienne, mince, chopped herbs.
+    case outcome
+    /// Both matter and both are asked for, process first.
+    case processThenOutcome
+    /// Chef coaches and observes, but never certifies from sight.
+    ///
+    /// Roughly a fifth of the catalog lands here and the deliverable is
+    /// emphatic that it should: "balance a sauce", "understand acid", "fix
+    /// bland food" are real skills that a camera cannot grade. Forcing them
+    /// into a visual rubric produces a pose classifier with a confident
+    /// opinion about flavour, which is worse than admitting the limit.
+    case dialogue
+
+    /// How the lesson screen offers it. "Check your grip" is wrong on a board
+    /// of diced onion and "look at what you made" is wrong on a knife hold.
+    var calloutTitle: String {
+        switch self {
+        case .process: "Let Chef watch you do it"
+        case .outcome: "Let Chef look at what you made"
+        case .processThenOutcome: "Let Chef watch, then check your work"
+        case .dialogue: "Talk it through with Chef"
+        }
+    }
+}
+
+/// How much a mistake costs, which is what decides who gets corrected first.
+///
+/// Replaces relying on array order alone. Order still breaks ties, but a
+/// cosmetic flaw authored above a safety issue can no longer outrank it, and
+/// the ladder here is the one an instructor actually uses.
+enum SkillMistakeSeverity: Int, Hashable, Sendable, Comparable {
+    /// Cosmetic. Say it only when nothing else is wrong.
+    case cosmetic = 0
+    /// Works, but is harder than it needs to be.
+    case efficiency = 1
+    /// Will measurably hurt the finished dish.
+    case outcomeCost = 2
+    /// Will ruin it within seconds if nothing changes. Burning, splitting,
+    /// scorching: the cases where explaining before acting is the wrong order.
+    case irreversible = 3
+    /// Somebody could get hurt. Outranks everything, including the
+    /// one-correction rule.
+    case safety = 4
+
+    static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
+}
+
+/// A legitimate fork in the technique that Chef must resolve before judging.
+///
+/// The single most repeated instruction in the deliverable: *ask the intended
+/// style before correcting a legitimate branch.* A French omelette and an
+/// American one are both correct and have opposite rubrics, so browning is
+/// either a fault or the point depending on an answer only the cook has. Same
+/// for soft versus firm scrambled eggs, crisp versus tender fried eggs, and
+/// the two schools of dicing an onion.
+///
+/// Without this the app picks a school and tells everybody else they are wrong,
+/// which is exactly the pedantry the whole rubric system exists to avoid.
+struct SkillIntentBranch: Hashable, Sendable {
+    /// What Chef asks, out loud, before she looks.
+    let question: String
+    /// The branches, keyed so a rubric line can name one.
+    let options: [SkillIntentOption]
+    /// Used when the cook does not answer or says they do not mind. Never
+    /// silently "the classical one": it is whichever is kindest to judge.
+    let defaultKey: String
+}
+
+struct SkillIntentOption: Hashable, Sendable {
+    let key: String
+    /// How the cook might say it, for matching what they actually said.
+    let spokenLabel: String
+    /// What changes about the assessment when this branch is chosen.
+    let judgeAgainst: String
 }
 
 /// The curriculum, translated into terms a vision model can be held to.
@@ -231,6 +466,83 @@ struct SkillVisualRubric: Hashable, Sendable {
     /// Below this, Polly does not critique. She says she cannot see well enough,
     /// which is a different sentence and a much better one.
     let confidenceFloor: Double
+
+    /// The fork to resolve out loud before judging anything, when there is one.
+    let intentBranch: SkillIntentBranch?
+
+    /// What good and bad look like in the finished thing, in the tolerances a
+    /// home cook should actually be held to.
+    ///
+    /// Separate from `targetTechnique` because they are different standards and
+    /// conflating them is the documented failure mode: professional julienne is
+    /// 3mm square, a home cook needs sticks that cook at the same rate, and
+    /// holding the second person to the first number is how an instructor loses
+    /// somebody who was doing fine.
+    let outcomeTolerance: [String]
+
+    /// How the attempt reads back in the cook's own history when it passed.
+    ///
+    /// Authored per skill because the history screen is read weeks later by the
+    /// person who did it. "Clean pinch grip" beats "passed", and neither can be
+    /// written generically once the catalog covers pans and sauces as well as
+    /// knives.
+    let passSummary: String
+
+    /// The same, for a pass on a cook's own legitimate variation.
+    let variationSummary: String
+
+    /// Sounds that support a reading. **Never sufficient on their own.**
+    ///
+    /// The deliverable is careful here and the caution is kept: hood fans,
+    /// music, pan material, microphone gain and distance all move the signal,
+    /// so audio raises or lowers confidence in something already seen, or
+    /// prompts a question. It never fails a cook by itself, and there is no
+    /// path in the decision layer by which it can.
+    let audioSignals: [String]
+
+    init(
+        subject: String,
+        targetTechnique: [String],
+        acceptableVariations: [String],
+        rankedMistakes: [SkillCoachableMistake],
+        safetySignals: [String] = [],
+        supportedEquipment: [String] = [],
+        unsupportedEquipment: [String] = [],
+        notVisuallyAssessable: [String] = [],
+        confidenceFloor: Double = 0.55,
+        passSummary: String = "Done well.",
+        variationSummary: String = "Their own way of doing it, and in control of it.",
+        intentBranch: SkillIntentBranch? = nil,
+        outcomeTolerance: [String] = [],
+        audioSignals: [String] = []
+    ) {
+        self.subject = subject
+        self.targetTechnique = targetTechnique
+        self.acceptableVariations = acceptableVariations
+        self.rankedMistakes = rankedMistakes
+        self.safetySignals = safetySignals
+        self.supportedEquipment = supportedEquipment
+        self.unsupportedEquipment = unsupportedEquipment
+        self.notVisuallyAssessable = notVisuallyAssessable
+        self.confidenceFloor = confidenceFloor
+        self.passSummary = passSummary
+        self.variationSummary = variationSummary
+        self.intentBranch = intentBranch
+        self.outcomeTolerance = outcomeTolerance
+        self.audioSignals = audioSignals
+    }
+
+    /// Mistakes in the order they should be raised: severity first, then the
+    /// author's ranking. Nothing reads `rankedMistakes` directly for coaching.
+    var coachingOrder: [SkillCoachableMistake] {
+        rankedMistakes.enumerated()
+            .sorted { a, b in
+                a.element.severity == b.element.severity
+                    ? a.offset < b.offset
+                    : a.element.severity > b.element.severity
+            }
+            .map(\.element)
+    }
 }
 
 /// One habit worth correcting, with the words to correct it in.
@@ -253,6 +565,19 @@ struct SkillCoachableMistake: Hashable, Sendable {
     /// Changes the language from "fix that" to "not for this one".
     let isContextual: Bool
 
+    /// How much this one costs, which decides whether it jumps the queue.
+    let severity: SkillMistakeSeverity
+
+    /// The confidence needed to say this specific thing, when it differs from
+    /// the rubric's floor.
+    ///
+    /// The deliverable rejects one global threshold, and it is right to. A
+    /// fingertip in the blade path is worth mentioning on thinner evidence than
+    /// a slightly bent wrist, because being wrong costs a moment of
+    /// embarrassment in one direction and a cut finger in the other. Nil means
+    /// use the rubric's floor.
+    let confidenceFloor: Double?
+
     /// What must have been visible for this to be sayable.
     ///
     /// "Your index finger is along the spine" is only a thing we get to say if
@@ -267,6 +592,8 @@ struct SkillCoachableMistake: Hashable, Sendable {
         correction: String,
         rationale: String,
         isContextual: Bool = false,
+        severity: SkillMistakeSeverity = .outcomeCost,
+        confidenceFloor: Double? = nil,
         requiresVisible: [SkillVisibilityRegion] = []
     ) {
         self.key = key
@@ -274,6 +601,8 @@ struct SkillCoachableMistake: Hashable, Sendable {
         self.correction = correction
         self.rationale = rationale
         self.isContextual = isContextual
+        self.severity = severity
+        self.confidenceFloor = confidenceFloor
         self.requiresVisible = requiresVisible
     }
 }

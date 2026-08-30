@@ -210,7 +210,6 @@ extension SkillCatalog {
                         + "worth ignoring. What is really happening is temperature and pressure "
                         + "evening out."
                 ),
-                visualCheck: .meatRest,
                 column: .right
             ),
             Skill(

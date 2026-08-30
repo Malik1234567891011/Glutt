@@ -62,7 +62,6 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Once the pan is hot, cooking moves faster than chopping does. Prep first and you are never choosing between stirring and slicing."
                 ),
-                visualCheck: .basicsMiseEnPlace,
                 column: .left
             ),
             Skill(
@@ -114,7 +113,6 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Recipes are written for someone else's ingredients. Your onion, your salt and your pan are not theirs, so the recipe is a starting point and your tongue is the instrument."
                 ),
-                visualCheck: .basicsTasteAsYouGo,
                 column: .center
             ),
             Skill(

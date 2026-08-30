@@ -46,6 +46,8 @@ struct SkillLessonView: View {
                         // it after "why this matters" turns it into a footnote.
                         if let check = skill.visualCheck {
                             checkCallout(check)
+                        } else {
+                            readingCallout
                         }
                         attemptHistory
                         watchFors(lesson.watchFors)
@@ -145,6 +147,42 @@ struct SkillLessonView: View {
                     .strokeBorder(Theme.Colors.textPrimary.opacity(0.06), lineWidth: 1)
             )
             .accessibilityLabel("Demonstration of \(skill.title), playing on a loop")
+    }
+
+    // MARK: Nothing to show her
+
+    /// What sits where the "show me" invitation goes, on the skills there is
+    /// nothing to show.
+    ///
+    /// About a third of the map is like this and the honest thing is to say so.
+    /// Tasting as you go is the clearest case: you could photograph somebody
+    /// holding a spoon and it would prove nothing, because the skill is tasting
+    /// BEFORE you reach for the salt, and the palate itself is invisible by
+    /// definition. Resting meat is time. Preheating a pan is a temperature. A
+    /// rubric over any of those would be Chef inventing an opinion and
+    /// presenting it as an observation.
+    ///
+    /// Saying nothing here would be worse than saying this, because a cook who
+    /// has done three lessons with a "try it and show her" button would read
+    /// its absence as something missing rather than as a decision.
+    private var readingCallout: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Label("This one is just to know", systemImage: "book.closed.fill")
+                .font(.headline)
+                .foregroundStyle(Theme.Colors.heading)
+
+            Text("There is nothing to show Chef here. A photo of it would not tell her "
+                 + "anything she could act on, so read it, use it next time you cook, and ask "
+                 + "her anything below that did not land.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.md)
+        .background(
+            Theme.Colors.surface2,
+            in: RoundedRectangle(cornerRadius: Theme.Radius.card))
     }
 
     // MARK: The check

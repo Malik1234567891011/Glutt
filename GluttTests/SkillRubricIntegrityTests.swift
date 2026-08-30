@@ -21,7 +21,56 @@ final class SkillRubricIntegrityTests: XCTestCase {
     }
 
     func testTheCatalogActuallyHasWatchableSkills() {
-        XCTAssertGreaterThanOrEqual(checks.count, 22, "knife and heat should both be watchable")
+        XCTAssertGreaterThanOrEqual(checks.count, 45, "most of the physical skills are watchable")
+    }
+
+    /// The skills that were deliberately given no rubric, and why.
+    ///
+    /// A guard against the obvious future mistake: somebody sees a gap in the
+    /// map, writes a rubric to fill it, and Chef starts grading a photograph of
+    /// a spoon. Every id here failed the same test, which is whether a picture
+    /// of it would tell you anything you could act on.
+    func testTheUnwatchableSkillsStayUnwatchable() {
+        let deliberate = [
+            // The palate is invisible by definition, and the skill is tasting
+            // BEFORE you reach for the salt, which is a sequence rather than a
+            // sight.
+            "basics.taste-as-you-go",
+            // A tidy counter photographs well and proves nothing about whether
+            // the next twenty minutes will go smoothly.
+            "basics.mise-en-place",
+            // Temperature. There is no picture of 180C.
+            "heat.preheat",
+            // The cue is a sizzle. We do not listen yet, and the rubric itself
+            // said not to trust shimmer.
+            "heat.pan-ready",
+            // The technique is two thumbs opening a shell, done one-handed in
+            // half a second. What is left to photograph is a bowl.
+            "eggs.crack",
+            // Resting is time passing. A photo of meat sitting still is a photo
+            // of meat.
+            "meat.rest",
+        ]
+        for id in deliberate {
+            guard let skill = SkillCatalog.skill(id) else {
+                return XCTFail("\(id) is not in the catalog any more")
+            }
+            XCTAssertNil(
+                skill.visualCheck,
+                "\(id) was given a rubric. A photograph of it cannot judge it, so this is "
+                + "Chef inventing an opinion. See readingCallout in SkillLessonView.")
+            XCTAssertNotNil(skill.lesson, "\(id) still has to teach something")
+        }
+    }
+
+    /// Roughly a third of the map is reading rather than doing, and that is the
+    /// design rather than a gap. If this ever reaches zero somebody has started
+    /// writing rubrics for things that cannot be seen.
+    func testAGoodShareOfTheMapIsReadingOnly() {
+        let readingOnly = SkillCatalog.allSkills.filter { $0.lesson != nil && $0.visualCheck == nil }
+        XCTAssertGreaterThanOrEqual(
+            readingOnly.count, 20,
+            "the unwatchable skills are a deliberate population, not leftovers")
     }
 
     /// Ids end up on persisted attempt rows, so a duplicate silently merges two

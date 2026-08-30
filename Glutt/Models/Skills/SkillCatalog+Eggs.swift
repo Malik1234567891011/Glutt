@@ -52,7 +52,6 @@ extension SkillCatalog {
                         + "of a bowl pushes shards inward, which is where the little white bits "
                         + "in your scrambled eggs come from."
                 ),
-                visualCheck: .eggsCrack,
                 column: .center
             ),
             Skill(

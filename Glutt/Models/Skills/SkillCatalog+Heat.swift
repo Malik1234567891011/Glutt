@@ -61,7 +61,6 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Browning needs the surface hot enough to drive water off instantly. A cool pan lets the water sit, and food in its own water steams."
                 ),
-                visualCheck: .heatPreheat,
                 column: .left
             ),
             Skill(
@@ -87,7 +86,6 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Every searing and sautéing instruction assumes a properly hot pan. Being able to see it is what makes the rest repeatable."
                 ),
-                visualCheck: .heatPanReady,
                 column: .right
             ),
             Skill(

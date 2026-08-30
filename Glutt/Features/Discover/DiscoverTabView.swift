@@ -2,19 +2,28 @@ import SwiftData
 import SwiftUI
 
 /// The Discover tab, "recipe cards" design (`Glutt Screens.dc.html`): a warm cream
-/// header ("Picked for you" / Discover + a streak chip) over the tactile photo-recipe
-/// swipe **Deck** (Plates). A compact toggle flips to **Videos** — a feed of recipe
-/// clips — kept off the mock's primary surface but one tap away. The deck stays
-/// mounted when you visit Videos so you keep your place.
+/// header ("Picked for you" / Discover + a streak chip) over a feed of recipe
+/// **Videos**. A compact toggle flips to **Images**, the tactile photo-recipe
+/// swipe deck (Plates), one tap away.
+///
+/// Videos lead. The deck was the primary surface first and the two swapped
+/// round, so the toggle label is always the place you are NOT: it reads
+/// "Images" while you are on videos and "Videos" once you have crossed over.
+///
+/// The deck stays mounted underneath either way, at zero opacity, so a swipe
+/// you were halfway through is still there when you come back to it.
 struct DiscoverTabView: View {
     enum Mode: String, CaseIterable, Identifiable {
-        case deck = "Deck"
+        case images = "Images"
         case videos = "Videos"
         var id: String { rawValue }
+
+        /// The one you are not on, which is what the toggle offers.
+        var other: Mode { self == .images ? .videos : .images }
     }
 
     @Query(sort: \Recipe.createdAt, order: .reverse) private var recipes: [Recipe]
-    @State private var mode: Mode = .deck
+    @State private var mode: Mode = .videos
     @State private var videosModel = DiscoverFeedViewModel()
     @State private var videoQuery = ""
     @FocusState private var videoSearchFocused: Bool
@@ -34,8 +43,8 @@ struct DiscoverTabView: View {
             header
             ZStack {
                 PlatesTabView(hidesTitle: true)
-                    .opacity(mode == .deck ? 1 : 0)
-                    .allowsHitTesting(mode == .deck)
+                    .opacity(mode == .images ? 1 : 0)
+                    .allowsHitTesting(mode == .images)
                 if mode == .videos { videosSurface }
             }
         }
@@ -58,9 +67,9 @@ struct DiscoverTabView: View {
             HStack(spacing: 8) {
                 Button {
                     Haptics.selection()
-                    mode = mode == .deck ? .videos : .deck
+                    mode = mode.other
                 } label: {
-                    Text(mode == .deck ? "Videos" : "Deck")
+                    Text(mode.other.rawValue)
                         .font(BrandFont.nunito(12, 800))
                         .foregroundStyle(Theme.Colors.accent)
                         .padding(.horizontal, 13).padding(.vertical, 8)

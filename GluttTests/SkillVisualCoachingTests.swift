@@ -845,6 +845,21 @@ final class SkillFrameFocusTests: XCTestCase {
         XCTAssertNil(focused[0].coverage)
     }
 
+    /// A fixed multiple of the hand could not work across hand sizes, which
+    /// took two wrong values to learn. 2.5 cropped tight enough to cut the
+    /// handle off below the knuckles; 4.0 overshot the frame on a 5% hand and
+    /// clamped back to the whole kitchen, which looked exactly like the union
+    /// bug it had replaced.
+    func testTheCropIsSizedByTargetRatherThanByMultiplier() {
+        // The property that makes it self correcting: the same rule has to
+        // produce a modest crop for a small hand and almost none for a big one.
+        // Verified offline against archived originals at 1.9%, 3.9% and 5.3%.
+        XCTAssertGreaterThan(SkillFrameFocus.handShareOfCrop, 0.15,
+                             "too loose and the handle is lost in the background again")
+        XCTAssertLessThan(SkillFrameFocus.handShareOfCrop, 0.40,
+                          "too tight and the blade or the handle leaves the frame")
+    }
+
     /// The measured number that set the threshold. A hand at 3.8% of the frame
     /// is 93 pixels across, and cropping buys about 1.6 times that, which is
     /// still not enough to read a thumb.

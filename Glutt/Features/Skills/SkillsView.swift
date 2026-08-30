@@ -10,6 +10,7 @@ struct SkillsView: View {
     @Environment(\.modelContext) private var context
     @Environment(Router.self) private var router
     @Query private var progressRows: [SkillProgress]
+    @State private var modes = SkillLearningModeStore()
 
     private var reader: SkillsProgressReader { SkillsProgressReader(progress: progressRows) }
 
@@ -52,9 +53,46 @@ struct SkillsView: View {
                 if reader.streak > 0 { streakChip }
             }
             progressLine
+            modePicker
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
+        // Photos until a pair of glasses has actually connected on this phone,
+        // then watching. The obvious signal, `GlassesSupport.isAvailable`, is
+        // the wrong one: it means the toolkit configured, which is true for
+        // everybody, and it put the whole world into a mode that needs hardware
+        // they do not own. Either way this only ever sets the opening guess and
+        // never overrides a cook who has picked for themselves.
+        .onAppear {
+            modes.suggest(glassesAvailable: SkillLearningModeStore.glassesHaveConnected)
+        }
+    }
+
+    /// How lessons in this tab are going to be checked.
+    ///
+    /// At the top of the tab rather than buried in settings, because it changes
+    /// what every lesson below it actually is: with glasses Chef watches your
+    /// hands while you work, without them she teaches and you send her photos.
+    /// Somebody who cannot tell which one they are about to get will be
+    /// surprised by whichever one they were not expecting.
+    private var modePicker: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Picker("How Chef checks you", selection: Binding(
+                get: { modes.mode },
+                set: { modes.choose($0) }
+            )) {
+                ForEach(SkillLearningMode.allCases) { mode in
+                    Label(mode.label, systemImage: mode.glyph).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Text(modes.mode.explanation)
+                .font(BrandFont.nunito(12.5, 600))
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 2)
     }
 
     private var streakChip: some View {

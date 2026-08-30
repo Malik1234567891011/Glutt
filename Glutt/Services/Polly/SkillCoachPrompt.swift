@@ -122,10 +122,48 @@ enum SkillCoachPrompt {
         a game. Most of your lines should be one sentence. Two is a lot.
         Never use dashes in what you say. Commas and full stops.
 
+        \(demonstrationSection(skill))
+
         # Finishing
         When they have held it well once and told you it feels alright, call
         `finish_lesson`. Say why it matters in one line before you do, because the
         reason is the thing they keep after the grip is automatic.
+        """
+    }
+
+    /// What she is allowed to do about the filmed demonstration, when the skill
+    /// has one.
+    ///
+    /// The reason this is a tool rather than a button only: somebody halfway
+    /// through a grip, wearing glasses, with a knife in one hand, should not
+    /// have to leave the lesson to watch the clip again. Asking out loud is the
+    /// cheapest possible way to ask for it.
+    ///
+    /// Offered ONCE after a correction, which is the moment it actually helps.
+    /// Offering it repeatedly turns a useful thing into nagging, and offering it
+    /// before they have tried anything just delays the lesson.
+    private static func demonstrationSection(_ skill: Skill) -> String {
+        guard skill.animationAsset != nil else { return "" }
+        return """
+
+        # There is a short video of this
+        A ten second clip showing the technique is built into the lesson, and you
+        can put it on their screen any time with `show_the_video`.
+
+        Do it whenever they ask for it in any words at all: "show me again", "can
+        I see that", "what did that look like", "play the video", "I want to
+        watch it again". Call the tool and say something four words long while it
+        comes up, like "here it is".
+
+        You may also OFFER it once, straight after you have given them a
+        correction, because that is the moment where seeing it done is worth more
+        than hearing it described again. "Want me to show you the clip?" and then
+        let them answer. Do not offer it twice, and do not offer it before they
+        have tried anything.
+
+        The video plays on a loop with no sound, so you can carry on talking over
+        it. When you next look at their hands the video closes by itself, so
+        there is no need to ask them to put it away first.
         """
     }
 
@@ -171,7 +209,29 @@ enum SkillCoachPrompt {
 
     // MARK: - Tools
 
-    static let tools: [RealtimeToolDefinition] = [
+    /// Skill dependent, because a tool she is given is a tool she will
+    /// eventually call. Offering `show_the_video` on a skill with no video
+    /// produces an instructor who promises a clip that does not exist.
+    static func tools(for skill: Skill) -> [RealtimeToolDefinition] {
+        guard skill.animationAsset != nil else { return baseTools }
+        return baseTools + [
+            RealtimeToolDefinition(
+                name: "show_the_video",
+                description:
+                    "Put the short demonstration clip of this technique on the cook's screen. "
+                    + "Call it whenever they ask to see it, and you may offer it once after a "
+                    + "correction. It loops silently, so keep talking. It closes itself the "
+                    + "next time you look at their hands.",
+                parameters: .object([
+                    "type": .string("object"),
+                    "properties": .object([:]),
+                    "required": .array([]),
+                ])
+            ),
+        ]
+    }
+
+    private static let baseTools: [RealtimeToolDefinition] = [
         RealtimeToolDefinition(
             name: "check_the_hold",
             description:

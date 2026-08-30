@@ -142,11 +142,16 @@ final class MetaGlassesVisualSource: PollyVisualSource {
             // reason this is here rather than in `captureLook`.
             do {
                 try await attachCamera(to: session)
+                // Remembered so Skills can open in watching mode next time.
+                // This is the only place in the app that knows for certain the
+                // cook owns a pair, and it only knows it once it has worked.
+                SkillLearningModeStore.glassesHaveConnected = true
                 PollyDebugLog.shared.log("glasses: watching")
             } catch {
                 // The connection is worth keeping even with no picture: the cook
                 // is told, and a retry does not have to re-establish the session.
                 state = .ready
+                SkillLearningModeStore.glassesHaveConnected = true
                 PollyDebugLog.shared.log("glasses: connected, but the camera did not start")
             }
         } catch {

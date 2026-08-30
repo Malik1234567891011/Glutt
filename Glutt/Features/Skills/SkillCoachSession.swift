@@ -93,6 +93,13 @@ final class SkillCoachSession {
     /// The part she is talking about right now, if she has said.
     private(set) var focusedPart: SkillVisibilityRegion?
 
+    /// Whether the demonstration clip is up on the cook's screen.
+    ///
+    /// Driven by her, through `show_the_video`, and by a button for the times
+    /// she mishears. Lives on the session rather than in the view because she is
+    /// the one who usually opens it and the view has no idea she was asked.
+    private(set) var showingDemonstration = false
+
     var parts: [SkillCheckPart] { check.parts }
 
     func state(of part: SkillCheckPart) -> SkillPartState {
@@ -248,7 +255,7 @@ final class SkillCoachSession {
                 skill: skill,
                 check: check,
                 seesContinuously: visuals.activeKind == .metaGlasses),
-            tools: SkillCoachPrompt.tools,
+            tools: SkillCoachPrompt.tools(for: skill),
             voice: token.voice,
             model: token.model,
             transcribeInput: true,
@@ -582,12 +589,31 @@ final class SkillCoachSession {
             // already in the middle of saying.
             try? await transport?.send(.createFunctionOutput(
                 callId: call.callId, output: #"{"showing":true}"#))
+        case "show_the_video":
+            showDemonstration()
+            // No response.create, same as `focus_on`. This is a screen change
+            // while she is mid sentence saying "here it is", and asking her to
+            // speak again would make her say it twice.
+            try? await transport?.send(.createFunctionOutput(
+                callId: call.callId, output: #"{"showing":true}"#))
         case "finish_lesson":
             finishLesson()
             await reply(to: call, with: #"{"done":true}"#)
         default:
             await reply(to: call, with: #"{"error":"unknown tool"}"#)
         }
+    }
+
+    func showDemonstration() {
+        guard skill.animationAsset != nil, !showingDemonstration else { return }
+        showingDemonstration = true
+        PollyDebugLog.shared.log("skill: showing the demonstration")
+    }
+
+    func hideDemonstration() {
+        guard showingDemonstration else { return }
+        showingDemonstration = false
+        PollyDebugLog.shared.log("skill: demonstration closed")
     }
 
     /// One string out of a tool call, without decoding a whole struct for it.
@@ -669,6 +695,12 @@ final class SkillCoachSession {
 
     /// Look, decide, record. The one path the tool and the retry both use.
     private func runHoldAndAssess(announce: Bool) async -> String {
+        // Looking at their hands and showing them a video are mutually
+        // exclusive: a cook watching the clip is holding their phone up, so the
+        // frames would be of a screen. Closing it here rather than asking them
+        // to means she never has to say "put that away first".
+        hideDemonstration()
+
         // Last chance to get the camera up before we photograph nothing.
         //
         // A cook who asks to be looked at has almost certainly just put the
@@ -757,9 +789,9 @@ final class SkillCoachSession {
         updateParts(from: assessment, outcome: outcome)
 
         record(
-            outcome: attemptOutcome(for: outcome),
+            outcome: outcome.attemptOutcome,
             note: note,
-            mistakeKey: mistakeKey(of: outcome),
+            mistakeKey: outcome.mistakeKey,
             equipment: assessment.equipment.reading,
             confidence: assessment.confidence,
             seconds: deps.now().timeIntervalSince(started),
@@ -1049,21 +1081,6 @@ final class SkillCoachSession {
         guard let context else { return }
         SkillProgressStore.markLearned(skill, in: context)
         stage = .learned
-    }
-
-    private func attemptOutcome(for outcome: SkillCoachDecision.Outcome) -> SkillAttemptOutcome {
-        switch outcome {
-        case .safetyStop: .stoppedForSafety
-        case .unsupportedEquipment: .wrongEquipment
-        case .cannotSee: .inconclusive
-        case .correct: .corrected
-        case .passed: .passed
-        }
-    }
-
-    private func mistakeKey(of outcome: SkillCoachDecision.Outcome) -> String? {
-        if case .correct(let key, _) = outcome { return key }
-        return nil
     }
 
     private func json(_ body: [String: String], evidence: [String] = []) -> String {

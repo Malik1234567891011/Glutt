@@ -45,6 +45,10 @@ struct SkillCoachView: View {
                 footer
             }
             .padding(Theme.Spacing.lg)
+
+            if session?.showingDemonstration == true, let asset = skill.animationAsset {
+                demonstration(asset)
+            }
         }
         .task {
             guard session == nil else { return }
@@ -289,6 +293,37 @@ struct SkillCoachView: View {
         return session.wakeWordAvailable ? "Say “Chef” to talk" : "Not listening"
     }
 
+    // MARK: The demonstration
+
+    /// The clip, over the lesson, without leaving it.
+    ///
+    /// She usually opens this herself through `show_the_video` when somebody
+    /// asks to see it again, which is the point: a cook wearing glasses with a
+    /// knife in one hand should not have to back out of a lesson and find the
+    /// video. The button exists for the times she mishears.
+    ///
+    /// Dimmed rather than opaque so the parts list stays faintly visible behind
+    /// it, and the clip is not the lesson, it is a reference inside it.
+    @ViewBuilder private func demonstration(_ asset: String) -> some View {
+        ZStack {
+            Color.black.opacity(0.55)
+                .ignoresSafeArea()
+                .onTapGesture { session?.hideDemonstration() }
+
+            VStack(spacing: Theme.Spacing.md) {
+                LoopingVideoView(resource: asset, fills: false)
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                Button("Close") { session?.hideDemonstration() }
+                    .buttonStyle(SecondaryButtonStyle())
+            }
+            .padding(Theme.Spacing.lg)
+        }
+        .transition(.opacity)
+        .accessibilityAddTraits(.isModal)
+    }
+
     // MARK: Out
 
     @ViewBuilder private var footer: some View {
@@ -301,6 +336,16 @@ struct SkillCoachView: View {
             HStack(spacing: Theme.Spacing.sm) {
                 Button(isFinished ? "Done" : "End lesson") { dismiss() }
                     .buttonStyle(SecondaryButtonStyle())
+                if skill.animationAsset != nil, !isFinished {
+                    Button {
+                        session?.showDemonstration()
+                    } label: {
+                        Image(systemName: "play.rectangle.fill")
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .accessibilityLabel("Show the demonstration video")
+                }
                 Button {
                     UIPasteboard.general.string = PollyDebugLog.shared.dump()
                     copiedLog = true

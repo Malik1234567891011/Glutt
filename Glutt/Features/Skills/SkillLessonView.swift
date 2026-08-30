@@ -18,6 +18,8 @@ struct SkillLessonView: View {
     @State private var justLearned = false
     @State private var awarded = 0
     @State private var isCoaching = false
+    @State private var isPhotographing = false
+    @State private var modes = SkillLearningModeStore()
 
     private var reader: SkillsProgressReader { SkillsProgressReader(progress: progressRows) }
     private var attempts: [SkillAttempt] { allAttempts.filter { $0.skillID == skill.id } }
@@ -36,9 +38,7 @@ struct SkillLessonView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     heading
                     if let lesson = skill.lesson {
-                        // Reserved for the animated demonstration. Intentionally
-                        // nothing today: `skill.animationAsset` is always nil,
-                        // and the slot exists so adding one is content work.
+                        if let asset = skill.animationAsset { demonstration(asset) }
                         if !unmet.isEmpty { recommendedFirst }
                         section("What you're learning", body: lesson.summary)
                         steps(lesson.steps)
@@ -115,30 +115,77 @@ struct SkillLessonView: View {
             .background(Capsule().fill(background))
     }
 
+    // MARK: The demonstration
+
+    /// The clip that shows the thing being done, in the slot that was left for
+    /// it when this screen was first built.
+    ///
+    /// Three decisions worth keeping:
+    ///
+    /// **It fits rather than fills.** The knife grip clip has its step numbers
+    /// in the top corners and its labels along the bottom, so cropping to a
+    /// tidy rectangle would remove the words. Letterboxing on a phone-width
+    /// card costs a little height and keeps the lesson.
+    ///
+    /// **It loops, muted, with no controls.** A grip is something you glance
+    /// back at repeatedly while your own hands are busy, so a replay button is
+    /// a button you cannot press with a knife in your hand. The asset has no
+    /// audio track at all, which also means it can never talk over Chef.
+    ///
+    /// **It stops while she is coaching.** `fullScreenCover` leaves this view
+    /// in the window, so without the explicit pause a demonstration would keep
+    /// looping underneath a live session that has the camera and microphone
+    /// open.
+    @ViewBuilder private func demonstration(_ asset: String) -> some View {
+        LoopingVideoView(resource: asset, fills: false, isPlaying: !isCoaching)
+            .aspectRatio(16 / 9, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .background(Theme.Colors.surface2)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(Theme.Colors.textPrimary.opacity(0.06), lineWidth: 1)
+            )
+            .accessibilityLabel("Demonstration of \(skill.title), playing on a loop")
+    }
+
     // MARK: The check
 
     /// The thing that makes this a lesson rather than an article.
     ///
-    /// Deliberately loud, and deliberately honest about what it needs: a cook
-    /// without glasses should not tap this and discover halfway through that it
-    /// was never going to work.
+    /// Deliberately loud, and deliberately honest about what it needs. It reads
+    /// as a different invitation in each mode because it IS a different lesson:
+    /// with glasses on Chef watches your hands while you work, and without them
+    /// she teaches, you check yourself, and you send her a couple of photos.
+    ///
+    /// The way to the other mode sits underneath rather than in a settings
+    /// screen, because the moment somebody wants it is this one.
     @ViewBuilder private func checkCallout(_ check: SkillVisualCheck) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             Label(
-                isMastered ? "Chef has seen you do this" : "Let Chef check your grip",
-                systemImage: isMastered ? "checkmark.seal.fill" : "eye")
+                isMastered ? "Chef has seen you do this" : calloutTitle(check),
+                systemImage: isMastered ? "checkmark.seal.fill" : mode.glyph)
                 .font(.headline)
                 .foregroundStyle(isMastered ? Theme.Colors.accent : Theme.Colors.heading)
 
-            Text("Put your glasses on and pick up your knife. She talks you through it, and "
-                 + "when you ask her to look she reads your hand as you turn it, then tells you "
-                 + "the one thing worth changing.")
+            Text(calloutBody(check))
                 .font(.subheadline)
                 .foregroundStyle(Theme.Colors.textSecondary)
 
-            Button(isMastered ? "Practise it again" : "Learn it with Chef") { isCoaching = true }
-                .buttonStyle(PrimaryButtonStyle())
-                .padding(.top, Theme.Spacing.xs)
+            Button(primaryActionTitle) {
+                mode == .watching ? (isCoaching = true) : (isPhotographing = true)
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .padding(.top, Theme.Spacing.xs)
+
+            Button {
+                modes.choose(mode.other)
+            } label: {
+                Text(switchModeTitle)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.Colors.accent)
+            }
+            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Theme.Spacing.md)
@@ -147,6 +194,47 @@ struct SkillLessonView: View {
             in: RoundedRectangle(cornerRadius: Theme.Radius.card))
         .fullScreenCover(isPresented: $isCoaching) {
             SkillCoachView(skill: skill, check: check)
+        }
+        .sheet(isPresented: $isPhotographing) {
+            SkillPhotoCheckView(skill: skill, check: check)
+        }
+    }
+
+    private var mode: SkillLearningMode { modes.mode }
+
+    private var primaryActionTitle: String {
+        if isMastered { return mode == .watching ? "Practise it again" : "Show her again" }
+        return mode == .watching ? "Learn it with Chef" : "Try it and show her"
+    }
+
+    private var switchModeTitle: String {
+        switch mode {
+        case .watching: "No glasses today? Send photos instead"
+        case .showing: "Wearing your glasses? Let her watch instead"
+        }
+    }
+
+    private func calloutTitle(_ check: SkillVisualCheck) -> String {
+        switch mode {
+        case .watching: check.assessmentMode.calloutTitle
+        case .showing: "Show Chef when you have it"
+        }
+    }
+
+    /// Both halves come from the check. This block used to name a knife and a
+    /// grip in hardcoded copy, which was true of the one skill that existed
+    /// when it was written and wrong for the seventy that followed it.
+    private func calloutBody(_ check: SkillVisualCheck) -> String {
+        switch mode {
+        case .watching:
+            check.setupLine(for: mode)
+                + " She talks you through it, and when you ask her to look she reads what she "
+                + "can see, then tells you the one thing worth changing."
+        case .showing:
+            check.setupLine(for: mode)
+                + " She talks you through it, then you send her "
+                + SkillCount.photos(check.photosNeeded)
+                + " and she tells you the one thing worth changing."
         }
     }
 

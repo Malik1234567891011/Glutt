@@ -53,6 +53,7 @@ enum SkillLookArchive {
         check: SkillVisualCheck,
         assessment: SkillVisualAssessment?,
         error: String? = nil,
+        handCoverage: Double? = nil,
         at date: Date = .now
     ) {
         guard let root else { return }
@@ -69,7 +70,8 @@ enum SkillLookArchive {
             }
 
             let summary = report(
-                frames: frames, check: check, assessment: assessment, error: error)
+                frames: frames, check: check, assessment: assessment,
+                error: error, handCoverage: handCoverage)
             try Data(summary.utf8).write(
                 to: folder.appendingPathComponent("verdict.txt"))
 
@@ -89,7 +91,8 @@ enum SkillLookArchive {
         frames: [Data],
         check: SkillVisualCheck,
         assessment: SkillVisualAssessment?,
-        error: String?
+        error: String?,
+        handCoverage: Double?
     ) -> String {
         var out = ["\(check.id)", ""]
 
@@ -98,6 +101,14 @@ enum SkillLookArchive {
             let size = UIImage(data: jpeg).map { "\(Int($0.size.width))x\(Int($0.size.height))" }
                 ?? "undecodable"
             out.append("  view \(index + 1): \(size), \(jpeg.count / 1024)KB")
+        }
+        if let handCoverage {
+            out.append(String(format: "hand found, %.1f%% of the frame", handCoverage * 100))
+            out.append(handCoverage < SkillFrameFocus.tooFarToJudge
+                ? "  TOO FAR to judge. Cropping cannot recover this."
+                : "  cropped to the hand before sending")
+        } else {
+            out.append("no hand detected, whole frame sent")
         }
         out.append("")
 

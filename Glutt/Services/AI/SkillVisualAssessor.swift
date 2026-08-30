@@ -37,8 +37,30 @@ enum SkillVisualAssessor {
         frames: [Data],
         client: LLMClient = .live
     ) async throws -> SkillVisualAssessment {
-        let usable = frames.compactMap { ImagePrep.prepareForVision($0) }
+        // Crop to the hand FIRST, then downscale. The other order throws away
+        // the pixels that decide the verdict and then enlarges what is left.
+        //
+        // This is here rather than in the frame ring because it is about what
+        // the model needs, not about what the camera produced, and because a
+        // frame kept for the archive should be the one that was actually sent.
+        let focused = frames.map(SkillFrameFocus.focusOnHand)
+        let usable = focused.compactMap { ImagePrep.prepareForVision($0.jpeg) }
         guard !usable.isEmpty else { throw AssessorError.noUsableFrames }
+
+        // Refuse rather than answer badly.
+        //
+        // When a hand was found in every frame and was tiny in all of them, the
+        // model will still return a verdict, and it will be a guess. On the run
+        // that produced this check it guessed `handleGrip` on a grip whose thumb
+        // was on the blade. Asking them to bring their hand up is both more
+        // honest and more useful than a confident wrong correction.
+        let seen = focused.compactMap(\.coverage)
+        if !seen.isEmpty, seen.allSatisfy({ $0 < SkillFrameFocus.tooFarToJudge }) {
+            let best = seen.max() ?? 0
+            PollyDebugLog.shared.log(
+                "skill: hand is only \(String(format: "%.1f", best * 100))% of the frame, too far to judge")
+            throw VisualFrameRejection.subjectTooFar
+        }
 
         var messages: [LLMClient.Message] = [.system(systemPrompt(check: check))]
         for (index, jpeg) in usable.enumerated() {
@@ -64,7 +86,8 @@ enum SkillVisualAssessor {
             // images.
 #if DEBUG
             SkillLookArchive.save(
-                frames: usable, check: check, assessment: answer)
+                frames: usable, check: check, assessment: answer,
+                handCoverage: focused.compactMap(\.coverage).max())
 #endif
             return answer
         } catch {
@@ -73,7 +96,8 @@ enum SkillVisualAssessor {
             // she can see turn out to be about a request that never landed.
             SkillLookArchive.save(
                 frames: usable, check: check, assessment: nil,
-                error: String(describing: error))
+                error: String(describing: error),
+                handCoverage: focused.compactMap(\.coverage).max())
 #endif
             throw error
         }

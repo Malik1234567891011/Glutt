@@ -747,6 +747,15 @@ final class SkillCoachSession {
         } catch is CancellationError {
             return handleUnusable(
                 reason: .noFrames, seconds: 0, startedAt: started)
+        } catch VisualFrameRejection.subjectTooFar {
+            // Its own answer, not a generic failure. "I could not see" is wrong
+            // here: she CAN see them, they are just across the room from the
+            // camera, and the fix is one specific thing they can do.
+            earlyLook = nil
+            return handleUnusable(
+                reason: .subjectTooFar,
+                seconds: deps.now().timeIntervalSince(started),
+                startedAt: started)
         } catch SkillVisualAssessor.AssessorError.noUsableFrames {
             earlyLook = nil
             return handleUnusable(

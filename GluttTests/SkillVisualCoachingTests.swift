@@ -811,3 +811,58 @@ final class SkillRubricModelTests: XCTestCase {
         XCTAssertTrue(prompt.contains("The technique being taught"))
     }
 }
+
+// MARK: - Framing, which turned out to be the actual problem
+
+/// What the first archived looks proved.
+///
+/// The complaint was that Chef could not see a thumb while claiming to see the
+/// fingers wrapped round the handle, which sounds impossible and is not: she
+/// was being handed a wide shot of a kitchen with the hand at 3.8% of it in one
+/// corner. The thumb inside that is about fifteen pixels. She answered anyway
+/// and returned `handleGrip` on a grip whose thumb was on the blade.
+final class SkillFrameFocusTests: XCTestCase {
+
+    /// A frame with no hand in it must come back untouched. Anything else means
+    /// a bad crop replaces a merely wide picture, which is worse.
+    func testAFrameWithNoHandIsHandedBackUnchanged() {
+        let plain = UIGraphicsImageRenderer(size: CGSize(width: 504, height: 896)).image { ctx in
+            UIColor.systemGray.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 504, height: 896))
+        }
+        let jpeg = plain.jpegData(compressionQuality: 0.8)!
+
+        let focused = SkillFrameFocus.focusOnHand(in: jpeg)
+        XCTAssertEqual(focused.jpeg, jpeg, "no hand found means no crop")
+        XCTAssertNil(focused.coverage)
+    }
+
+    func testRubbishInputIsSurvived() {
+        let focused = SkillFrameFocus.focusOnHand(in: Data([0x00, 0x01, 0x02]))
+        XCTAssertEqual(focused.jpeg, Data([0x00, 0x01, 0x02]))
+        XCTAssertNil(focused.coverage)
+    }
+
+    /// The measured number that set the threshold. A hand at 3.8% of the frame
+    /// is 93 pixels across, and cropping buys about 1.6 times that, which is
+    /// still not enough to read a thumb.
+    func testTheTooFarThresholdSitsBelowWhatWasMeasured() {
+        XCTAssertLessThan(
+            SkillFrameFocus.tooFarToJudge, 0.038,
+            "the real failing frame was 3.8% and must still be attempted after cropping")
+        XCTAssertGreaterThan(
+            SkillFrameFocus.tooFarToJudge, 0.005,
+            "refusing everything would be as useless as answering everything")
+    }
+
+    /// The refusal has to read as an instruction, not as a shrug. "I cannot see"
+    /// is wrong here: she can see them, they are just too far from the camera.
+    func testTheTooFarSuggestionTellsThemWhatToDo() {
+        let suggestion = VisualFrameRejection.subjectTooFar.suggestion
+        XCTAssertTrue(suggestion.localizedCaseInsensitiveContains("bring their hand up"))
+        XCTAssertTrue(
+            suggestion.localizedCaseInsensitiveContains("do not comment on their grip"),
+            "a guess at this range is exactly the false correction to avoid")
+        XCTAssertFalse(suggestion.contains("—"), "spoken copy takes no dashes")
+    }
+}

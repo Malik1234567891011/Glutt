@@ -31,11 +31,30 @@ enum VisualFrameRejection: String, Sendable, Error {
     /// said "point it at the cutting board and hold still" three times at a cook
     /// who was already pointing at the cutting board and holding still.
     case feedStopped = "camera_feed_stopped"
+    /// The hand is in shot and far too small to judge.
+    ///
+    /// The case that came out of actually looking at what the assessor was
+    /// being sent. A cook standing at a counter is looking AT the counter, and
+    /// a camera on their face frames the whole kitchen: fridge, sink, washing
+    /// up. Their hand lands in a bottom corner at between one and four per cent
+    /// of the picture, which puts the thumb at roughly fifteen pixels.
+    ///
+    /// The model does not refuse that. It answers, and it gets it wrong: on a
+    /// measured example it reported `handleGrip` on a grip whose thumb was
+    /// plainly on the blade once the corner was cropped out. That is a false
+    /// correction, and the honest response is not a better prompt, it is asking
+    /// them to bring their hand up.
+    case subjectTooFar = "subject_too_far"
 
     /// What Polly should ask the cook to do about it. Kept here so the wording
     /// lives next to the condition that produced it.
     var suggestion: String {
         switch self {
+        case .subjectTooFar:
+            return "Their hand is in shot but far too small to read, because the camera is "
+                + "framing the whole room. Ask them to bring their hand up in front of them, "
+                + "closer to their face, and to look straight at it. Do not comment on their "
+                + "grip until they have."
         case .noFrames:
             return "No picture is coming through. Ask the cook to check the camera."
         case .tooOld:

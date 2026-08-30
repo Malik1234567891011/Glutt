@@ -62,6 +62,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Once the pan is hot, cooking moves faster than chopping does. Prep first and you are never choosing between stirring and slicing."
                 ),
+                visualCheck: .basicsMiseEnPlace,
                 column: .left
             ),
             Skill(
@@ -113,6 +114,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Recipes are written for someone else's ingredients. Your onion, your salt and your pan are not theirs, so the recipe is a starting point and your tongue is the instrument."
                 ),
+                visualCheck: .basicsTasteAsYouGo,
                 column: .center
             ),
             Skill(
@@ -139,6 +141,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Boiling agitates and toughens. Simmering coaxes. The difference between a silky braise and a stringy one is often nothing more than this."
                 ),
+                visualCheck: .basicsSimmerVsBoil,
                 column: .left
             ),
             Skill(
@@ -194,6 +197,7 @@ extension SkillCatalog {
                     ],
                     whyItMatters: "Colour lies, especially with poultry and thick cuts. Temperature does not, and it is the only way to cook a steak the same way twice."
                 ),
+                visualCheck: .basicsThermometer,
                 column: .center
             ),
             Skill(

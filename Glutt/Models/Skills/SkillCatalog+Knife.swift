@@ -46,6 +46,11 @@ extension SkillCatalog {
                     whyItMatters: "Control comes from the front of the blade. Holding further back means steering the knife from the wrong end and pressing harder to make up for it."
                 ),
                 visualCheck: .chefKnifeGrip,
+                // The one skill with a filmed demonstration so far. Its clip
+                // shows the thumb side and the curled index finger SIDE BY
+                // SIDE, which is the one thing a first person camera can never
+                // show a cook about their own hand.
+                animationAsset: "knife-grip-pinch",
                 column: .center
             ),
             Skill(

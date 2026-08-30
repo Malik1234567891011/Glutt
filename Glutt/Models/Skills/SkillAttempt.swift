@@ -50,6 +50,15 @@ final class SkillAttempt {
     /// being bad at this.
     var confidence: Double
 
+    /// How Chef saw it: `SkillLearningMode.rawValue`.
+    ///
+    /// Optional with a default so it is a lightweight migration for anybody who
+    /// already has attempts. Worth storing because the two are not the same
+    /// evidence: a pass from two deliberate photographs and a pass from frames
+    /// snatched out of a moving first person view are different claims, and a
+    /// history that flattened them would be quietly overstating one of them.
+    var sourceRaw: String?
+
     init(
         skillID: String,
         checkID: String,
@@ -59,7 +68,8 @@ final class SkillAttempt {
         note: String,
         mistakeKey: String? = nil,
         equipmentReading: String? = nil,
-        confidence: Double = 0
+        confidence: Double = 0,
+        source: SkillLearningMode = .watching
     ) {
         self.skillID = skillID
         self.checkID = checkID
@@ -70,10 +80,16 @@ final class SkillAttempt {
         self.mistakeKey = mistakeKey
         self.equipmentReading = equipmentReading
         self.confidence = confidence
+        self.sourceRaw = source.rawValue
     }
 
     var outcome: SkillAttemptOutcome {
         SkillAttemptOutcome(rawValue: outcomeRaw) ?? .inconclusive
+    }
+
+    /// Older rows predate this and were all glasses, which is what they say.
+    var source: SkillLearningMode {
+        sourceRaw.flatMap(SkillLearningMode.init(rawValue:)) ?? .watching
     }
 
     /// Whether this attempt is the one that proves the cook can do it.

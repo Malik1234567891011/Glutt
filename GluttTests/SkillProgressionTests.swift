@@ -137,8 +137,18 @@ final class SkillProgressionTests: XCTestCase {
 
     // MARK: - State
 
+    /// Built rather than looked up, because every skill in the catalog is now
+    /// written and there is nothing left to point at. The rule still matters:
+    /// an unwritten skill must read as coming soon even when it is the one
+    /// being recommended, or a cook taps the highlighted node and finds nothing.
     func testAnUnwrittenSkillReadsAsComingSoonEvenIfRecommended() {
-        guard let unwritten = SkillCatalog.skill("eggs.poached") else { return XCTFail("missing skill") }
+        let unwritten = Skill(
+            id: "test.unwritten",
+            categoryID: "basics",
+            title: "Something Not Written Yet",
+            shortDescription: "Coming soon.",
+            lesson: nil
+        )
         let state = SkillProgression.state(
             for: unwritten,
             learnedIDs: [],

@@ -20,6 +20,16 @@ extension SkillVisualCheck {
         framingInstruction:
             "Rest the blade on your board, look down at your hand, and turn it slowly, like you "
             + "are showing me both sides of the knife. I will read it as you go.",
+        // The clearest case in the catalog for why photo mode is a different
+        // lesson rather than a worse camera. Wearing glasses, a cook can never
+        // see both faces of their own blade, so the live instruction is a plea
+        // to keep turning and hope. Holding a phone they simply take one
+        // picture of each side, which is the whole problem solved.
+        photoFraming:
+            "Hold the grip, and take one photo of the thumb side of the blade. Then, without "
+            + "changing your hand at all, take one of the other side.",
+        setupNeeds:
+            " and pick up your knife.",
         viewingNote: """
         # They are angles, not attempts
         This is the most important thing about them. Nobody can see both faces of

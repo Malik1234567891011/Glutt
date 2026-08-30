@@ -46,14 +46,28 @@ final class SkillCatalogTests: XCTestCase {
         }
     }
 
-    /// Every region needs a way in, or a cook who has learned nothing sees a
-    /// wall of prerequisites.
-    func testEveryCategoryHasAnEntryPoint() {
+    /// Every region needs a way in, or a cook working through the map hits a
+    /// wall of prerequisites and the region is unreachable.
+    ///
+    /// The rule used to be that each category contained a skill with NO
+    /// prerequisites at all, which was right while the categories stood alone.
+    /// It stopped being right once the later ones started building deliberately
+    /// on the earlier ones: hollandaise should require an emulsion lesson, and
+    /// Mother Sauces having no free-standing entry point is the curriculum
+    /// working rather than a gap. What actually matters is that somebody who has
+    /// worked through everything before a category can begin it, so that is what
+    /// this checks now.
+    func testEveryCategoryCanBeEnteredFromWhatCameBefore() {
+        var seen: Set<String> = []
         for category in SkillCatalog.categories {
+            let openable = category.skills.contains { skill in
+                skill.prerequisiteIDs.allSatisfy(seen.contains)
+            }
             XCTAssertTrue(
-                category.skills.contains { $0.prerequisiteIDs.isEmpty },
-                "\(category.id) has no skill that can be started first"
+                openable,
+                "\(category.id) cannot be started by a cook who has done everything before it"
             )
+            for skill in category.skills { seen.insert(skill.id) }
         }
     }
 
@@ -85,8 +99,8 @@ final class SkillCatalogTests: XCTestCase {
 
     // MARK: - Authored content
 
-    func testTheThreeWrittenCategoriesAreFullyAuthored() {
-        for id in ["basics", "knife", "heat"] {
+    func testEveryCategoryIsFullyAuthored() {
+        for id in SkillCatalog.categories.map(\.id) {
             let category = SkillCatalog.category(id)
             XCTAssertNotNil(category, "missing category \(id)")
             for skill in category?.skills ?? [] {
@@ -95,17 +109,17 @@ final class SkillCatalogTests: XCTestCase {
         }
     }
 
-    /// The upcoming regions are deliberately unwritten. This asserts the
-    /// intent, so nobody "fixes" the nil by deleting the regions.
-    func testUpcomingCategoriesAreMappedButNotWritten() {
-        for id in ["eggs", "meat", "sauces", "flavor", "intuition"] {
-            let category = SkillCatalog.category(id)
-            XCTAssertNotNil(category, "missing category \(id)")
-            XCTAssertFalse(category?.skills.isEmpty ?? true, "\(id) should still appear on the map")
-            for skill in category?.skills ?? [] {
-                XCTAssertNil(skill.lesson, "\(skill.id) has a lesson but sits in an upcoming region")
-            }
-        }
+    /// There are no unwritten regions left. Every skill on the map has a
+    /// lesson, which was the whole point of the exercise, and this replaces the
+    /// test that used to assert the opposite.
+    ///
+    /// A skill added later with no lesson is fine and the map handles it. This
+    /// just stops one being added by accident and never noticed.
+    func testEverySkillOnTheMapHasBeenWritten() {
+        let unwritten = SkillCatalog.allSkills.filter { $0.lesson == nil }.map(\.id)
+        XCTAssertTrue(
+            unwritten.isEmpty,
+            "these skills are on the map with no lesson: \(unwritten)")
     }
 
     func testAuthoredLessonsAreComplete() {

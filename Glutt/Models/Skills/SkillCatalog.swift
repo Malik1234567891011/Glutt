@@ -18,6 +18,7 @@ enum SkillCatalog {
         eggs,
         meat,
         sauces,
+        motherSauces,
         flavor,
         intuition,
     ]

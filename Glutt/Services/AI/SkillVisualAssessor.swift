@@ -90,7 +90,8 @@ enum SkillVisualAssessor {
 #if DEBUG
             SkillLookArchive.save(
                 frames: usable, check: check, assessment: answer,
-                handCoverage: focused.compactMap(\.coverage).max())
+                handCoverage: focused.compactMap(\.coverage).max(),
+                originals: frames)
 #endif
             return answer
         } catch {
@@ -100,7 +101,8 @@ enum SkillVisualAssessor {
             SkillLookArchive.save(
                 frames: usable, check: check, assessment: nil,
                 error: String(describing: error),
-                handCoverage: focused.compactMap(\.coverage).max())
+                handCoverage: focused.compactMap(\.coverage).max(),
+                originals: frames)
 #endif
             throw error
         }

@@ -54,6 +54,7 @@ enum SkillLookArchive {
         assessment: SkillVisualAssessment?,
         error: String? = nil,
         handCoverage: Double? = nil,
+        originals: [Data] = [],
         at date: Date = .now
     ) {
         guard let root else { return }
@@ -67,6 +68,14 @@ enum SkillLookArchive {
                 let label = index == 0 ? "most-recent" : "earlier-\(index)"
                 try jpeg.write(to: folder.appendingPathComponent(
                     "view-\(index + 1)-\(label).jpg"))
+            }
+
+            // The uncropped frames too. Saving only what was sent meant the
+            // crop could not be retuned without asking for another test round,
+            // and the crop turned out to be the thing that needed retuning.
+            for (index, jpeg) in originals.enumerated() {
+                try jpeg.write(to: folder.appendingPathComponent(
+                    "original-\(index + 1).jpg"))
             }
 
             let summary = report(

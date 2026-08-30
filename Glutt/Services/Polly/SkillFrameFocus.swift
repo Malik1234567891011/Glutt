@@ -35,12 +35,21 @@ enum SkillFrameFocus {
     /// landmarks for the hand only, and a chef's knife extends a long way
     /// past it.
     ///
-    /// Tuned against real captured frames rather than guessed. At 1.6 the crop
-    /// cut the blade off, which turns a resolution problem into a visibility
-    /// one. At 3.5 it clamped back to nearly the whole frame and we were
-    /// looking at the fridge again. 2.5 puts the knife and the hand in the
-    /// picture and very little else.
-    private static let padding: CGFloat = 2.5
+    /// Tuned against real captured frames, twice, and the second time was the
+    /// one that mattered.
+    ///
+    /// The first pass settled on 2.5 while the box was still the union of every
+    /// hand, so it was padding something the size of a kitchen and 2.5 looked
+    /// reasonable. With per-hand boxes the same number crops tight to the
+    /// knuckles and cuts the handle off below them, which quietly destroys the
+    /// judgement: the whole question is whether the hand is FORWARD on the
+    /// blade or BACK on the handle, and you cannot answer that without both
+    /// ends of the knife in shot. A measured crop showed blade and hand and no
+    /// handle at all, and came back `handleGrip` on a textbook pinch.
+    ///
+    /// So: generous. A hand is a small object attached to a long one, and the
+    /// long one is what the hand is being judged against.
+    private static let padding: CGFloat = 4.0
 
     /// Below this the detection is not worth acting on. A wrong crop is much
     /// worse than no crop: it would confidently send a picture of a countertop.

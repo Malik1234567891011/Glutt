@@ -50,6 +50,12 @@ extension SkillVisualCheck {
         A hidden finger here is a normal first person view of a CORRECT grip, not
         a failed photograph. Only the knife and where the hand meets it have to
         be visible for the assessment to be worth anything.
+
+        One more thing about what these two grips look like. A correct pinch and
+        a handle grip differ ONLY at the thumb and index finger: the other three
+        fingers wrap the handle in both. So "the hand is at the bottom of the
+        knife with fingers round the handle" describes both of them equally and
+        is not evidence of anything. Find the thumb before you decide.
         """,
         // The knife, and where the hand sits on it. Enough to judge the thing that
         // matters most: whether they are steering the blade or the back of the
@@ -102,7 +108,15 @@ extension SkillVisualCheck {
                     key: "handleGrip",
                     observation:
                         "The whole hand is behind the blade on the handle, with nothing pinching "
-                        + "the blade itself. Often called a handle grip or hammer grip.",
+                        + "the blade itself. Often called a handle grip or hammer grip.\n"
+                        + "BE CAREFUL WITH THIS ONE. A correct pinch grip and a handle grip look "
+                        + "almost identical, because in BOTH of them the middle, ring and little "
+                        + "fingers are wrapped round the handle. The only difference is the thumb "
+                        + "and the index finger, which in a pinch grip are up on the flat of the "
+                        + "blade. So a hand low on the knife with fingers round the handle is NOT "
+                        + "evidence of this mistake on its own. Report it only when you can "
+                        + "positively see that the thumb is NOT on the blade. If the thumb is "
+                        + "hidden, or you cannot tell where it is, this is not the answer.",
                     correction:
                         "You are holding it by the handle. Slide your hand forward until your "
                         + "thumb and index finger are pinching the flat of the blade, right where "

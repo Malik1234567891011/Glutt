@@ -908,3 +908,40 @@ final class SkillTwoHandTests: XCTestCase {
             "she has to expect the irrelevant hand, or she will judge it")
     }
 }
+
+/// The confusion that produced three wrong verdicts in a row on a legible
+/// picture, after the framing and the cropping were both fixed.
+///
+/// A correct pinch grip and a handle grip differ only at the thumb and index
+/// finger. The other three fingers wrap the handle in both. Every wrong
+/// `handleGrip` so far described the three wrapped fingers, which is true of
+/// the grip it was accusing and true of the correct one too.
+final class SkillGripConfusionTests: XCTestCase {
+
+    func testTheRubricSaysTheTwoGripsLookAlike() {
+        let handle = SkillVisualCheck.chefKnifeGrip.rubric
+            .coachingOrder.first { $0.key == "handleGrip" }!
+
+        XCTAssertTrue(
+            handle.observation.contains("almost identical"),
+            "the model has to be told these two look the same below the thumb")
+        XCTAssertTrue(
+            handle.observation.contains("positively see that the thumb is NOT on the blade"),
+            "wrapped fingers are true of both grips and prove nothing")
+    }
+
+    /// It reaches the model, not just the source.
+    func testTheWarningIsInThePromptTheModelReceives() {
+        let prompt = SkillVisualAssessor.systemPrompt(check: .chefKnifeGrip)
+        XCTAssertTrue(prompt.contains("Find the thumb before you decide"))
+        XCTAssertTrue(prompt.contains("almost identical"))
+    }
+
+    /// The gate that should have caught it. Naming a thumb you did not see is
+    /// the same class of error as naming a knife you did not see.
+    func testHandleGripStillRequiresSeeingWhereTheHandIs() {
+        let handle = SkillVisualCheck.chefKnifeGrip.rubric
+            .coachingOrder.first { $0.key == "handleGrip" }!
+        XCTAssertTrue(handle.requiresVisible.contains(.controlPoint))
+    }
+}

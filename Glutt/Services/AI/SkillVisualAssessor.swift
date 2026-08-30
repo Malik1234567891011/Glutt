@@ -49,13 +49,34 @@ enum SkillVisualAssessor {
         }
         messages.append(.user(userPrompt(check: check)))
 
-        return try await client.chatJSON(
-            SkillVisualAssessment.self,
-            messages: messages,
-            temperature: 0.1,
-            feature: usageFeature,
-            timeout: 45
-        )
+        do {
+            let answer = try await client.chatJSON(
+                SkillVisualAssessment.self,
+                messages: messages,
+                temperature: 0.1,
+                feature: usageFeature,
+                timeout: 45
+            )
+            // Archived AFTER the answer so the pictures and the verdict land in
+            // one folder. `usable` rather than `frames`: these are the bytes the
+            // model actually received, downscaled and recompressed, and judging
+            // its eyesight against the originals would be judging the wrong
+            // images.
+#if DEBUG
+            SkillLookArchive.save(
+                frames: usable, check: check, assessment: answer)
+#endif
+            return answer
+        } catch {
+#if DEBUG
+            // A failed look is worth keeping too. Half the arguments about what
+            // she can see turn out to be about a request that never landed.
+            SkillLookArchive.save(
+                frames: usable, check: check, assessment: nil,
+                error: String(describing: error))
+#endif
+            throw error
+        }
     }
 
     // MARK: - Prompt

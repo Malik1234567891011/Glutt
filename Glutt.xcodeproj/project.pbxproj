@@ -455,6 +455,7 @@
 		ECB18D021E3221FD2A41C775 /* SkillCatalog+Intuition.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2E21B42D4D6BB0171D374CA /* SkillCatalog+Intuition.swift */; };
 		ED26B8105E0501647811E5D6 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 15A3A64B79D2D9D2BD9102B7 /* README.md */; };
 		EDE53C61A5EC7A9BD3EA9FC8 /* SpeechTranscriptionClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91568D9FE637F7812BD88B51 /* SpeechTranscriptionClientTests.swift */; };
+		EE12E8E9E508827F8306A544 /* SkillLookArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686CDF91B76528A7ECCEF24F /* SkillLookArchive.swift */; };
 		EE35A3BC833C08752DC06DF5 /* DictationTranscriptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C32945617BC7E2DADE1FC6E /* DictationTranscriptTests.swift */; };
 		EF4BCE72D6A0DB7A1FE0EEF2 /* CookRecapBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52969CBCE393533D0AC1BE94 /* CookRecapBuilderTests.swift */; };
 		EFB3B5FBA427E9CBFBC3EBDD /* PollyMemoryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8FBB7D507E046F69DAA1BC0 /* PollyMemoryStoreTests.swift */; };
@@ -702,6 +703,7 @@
 		6815E861AC272B08314E8EE3 /* PlatesServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesServiceTests.swift; sourceTree = "<group>"; };
 		681E8F39983440A8907907AB /* SubstituteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubstituteSheet.swift; sourceTree = "<group>"; };
 		686B936DCDB29F97AD25509A /* ConversationalGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationalGate.swift; sourceTree = "<group>"; };
+		686CDF91B76528A7ECCEF24F /* SkillLookArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillLookArchive.swift; sourceTree = "<group>"; };
 		687CBF3B8552E392ECD5AF97 /* MediaSourceID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaSourceID.swift; sourceTree = "<group>"; };
 		68B876D5875177B0F6240326 /* CuratedContentAssetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuratedContentAssetTests.swift; sourceTree = "<group>"; };
 		691ACC4E55E03E5C16536F71 /* maangchiGalbiJjim.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = maangchiGalbiJjim.html; sourceTree = "<group>"; };
@@ -1263,6 +1265,7 @@
 				99291B69C61A234384ADCB11 /* SkillCoachDecision.swift */,
 				AEA2F6B0C12474EFD5B541CE /* SkillCoachPrompt.swift */,
 				AF9E53787F5124C5F63F533F /* SkillFrameRing.swift */,
+				686CDF91B76528A7ECCEF24F /* SkillLookArchive.swift */,
 				00749073816CF351FF8CAD30 /* SkillLookRequest.swift */,
 				0229D8E0822A641F432338C9 /* SpokenText.swift */,
 				76BF16002B6B6BBD5CA06064 /* StepActionChecklist.swift */,
@@ -2333,6 +2336,7 @@
 				E558C3E75C11D8B8942A82FC /* SkillFrameRing.swift in Sources */,
 				C73D5BD3283DE011F89BFA8C /* SkillLearningMode.swift in Sources */,
 				B2E2AA83068F0008B341AE0E /* SkillLessonView.swift in Sources */,
+				EE12E8E9E508827F8306A544 /* SkillLookArchive.swift in Sources */,
 				C64E3585D3BC76C8FFB8D65F /* SkillLookRequest.swift in Sources */,
 				F1326E472C885AC9F3EBE594 /* SkillMapView.swift in Sources */,
 				84CA7C7029803D0469F66F44 /* SkillNodeView.swift in Sources */,

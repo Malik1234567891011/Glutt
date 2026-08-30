@@ -44,13 +44,16 @@ enum SkillFrameFocus {
     /// looked exactly like the union bug it replaced. Both were tuned on one
     /// example and broke on the next.
     ///
-    /// Sizing the crop so the hand ends up at a quarter of it is self
+    /// Sizing the crop so the hand ends up at a fixed share of it is self
     /// correcting: a small hand gets a modest crop, a large one gets almost
-    /// none. Verified offline against the archived originals at 1.9%, 3.9%,
-    /// 4.6% and 5.3%, all of which land with the blade above the hand and the
-    /// handle below it, which is the only framing that can answer the question
-    /// this rubric asks.
-    static let handShareOfCrop: Double = 0.25
+    /// none.
+    ///
+    /// A quarter was still too tight. It framed the hand and lost the knife,
+    /// and a hand with no visible tool is indistinguishable from a hand holding
+    /// nothing. At 0.15 the archived originals all land with the blade above
+    /// the hand and the handle below it, which is the only framing that can
+    /// answer the question this rubric asks.
+    static let handShareOfCrop: Double = 0.15
 
     /// Below this the detection is not worth acting on. A wrong crop is much
     /// worse than no crop: it would confidently send a picture of a countertop.
@@ -100,13 +103,36 @@ enum SkillFrameFocus {
         let width = CGFloat(cgImage.width)
         let height = CGFloat(cgImage.height)
 
-        // Biggest first: when the budget forces a choice, a hand that fills more
-        // of the picture is the one worth spending an image on.
         let cropped = boxes.compactMap { box -> Focused? in
             crop(cgImage, to: box, width: width, height: height, orientation: image.imageOrientation)
-        }.sorted { ($0.coverage ?? 0) > ($1.coverage ?? 0) }
+        }
 
-        return cropped.isEmpty ? [Focused(jpeg: jpeg, coverage: nil)] : cropped
+        // Drop the hands that are too far away to be worth looking at.
+        //
+        // This is the one that decided every wrong verdict. A cook holding the
+        // knife out to one side and their free hand nearer the camera produces
+        // a 4% empty hand and a 0.9% knife hand, and sending both meant the
+        // clearest picture in the set was of a hand holding nothing. She judged
+        // that one, found no thumb on any blade, and said so.
+        //
+        // Sorting by size does not fix it, it causes it: the nearer hand wins,
+        // and which hand is nearer is a coin toss. Measured across the archive,
+        // the knife hand was the larger one in every look that passed and the
+        // smaller one in the look that failed.
+        //
+        // So an unjudgeable hand is not sent at all. If that leaves nothing,
+        // the assessor refuses and asks them to bring their hand up, which is
+        // both true and the only thing that would have helped.
+        let worthLooking = cropped
+            .filter { ($0.coverage ?? 0) >= tooFarToJudge }
+            .sorted { ($0.coverage ?? 0) > ($1.coverage ?? 0) }
+
+        if worthLooking.isEmpty {
+            // Hands were found and none is big enough. Report the best coverage
+            // so the refusal can say how far off they were.
+            return cropped.isEmpty ? [Focused(jpeg: jpeg, coverage: nil)] : cropped
+        }
+        return worthLooking
     }
 
     private static func crop(

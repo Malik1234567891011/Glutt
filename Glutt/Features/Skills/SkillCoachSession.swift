@@ -765,8 +765,13 @@ final class SkillCoachSession {
         } catch {
             earlyLook = nil
             PollyDebugLog.shared.log("skill: assessment FAILED — \(error.localizedDescription)")
+            // A dropped request is not a camera fault, and telling a cook their
+            // glasses failed when the network did sends them to fix hardware
+            // that is working.
+            let isTransport = error is URLError
+                || (error as NSError).domain == NSURLErrorDomain
             return handleUnusable(
-                reason: .noFrames,
+                reason: isTransport ? .lookRequestFailed : .noFrames,
                 seconds: deps.now().timeIntervalSince(started),
                 startedAt: started)
         }

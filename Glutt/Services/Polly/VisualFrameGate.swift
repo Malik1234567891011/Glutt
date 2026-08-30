@@ -45,11 +45,23 @@ enum VisualFrameRejection: String, Sendable, Error {
     /// correction, and the honest response is not a better prompt, it is asking
     /// them to bring their hand up.
     case subjectTooFar = "subject_too_far"
+    /// The request to look never completed. Nothing to do with the camera.
+    ///
+    /// Every assessment failure used to be reported as `noFrames`, which Chef
+    /// renders as a camera problem, so a dropped network request came out as
+    /// "I cannot get a picture from your glasses". The cook then goes and
+    /// fiddles with hardware that is working perfectly. Measured: an
+    /// NSURLErrorDomain failure archived under exactly that wording.
+    case lookRequestFailed = "look_request_failed"
 
     /// What Polly should ask the cook to do about it. Kept here so the wording
     /// lives next to the condition that produced it.
     var suggestion: String {
         switch self {
+        case .lookRequestFailed:
+            return "Nothing reached you, and it is not their camera or their hands. Say you did "
+                + "not get a look that time and offer to try again in a moment. Do not ask them "
+                + "to move, hold still, or check anything."
         case .subjectTooFar:
             return "Their hand is in shot but far too small to read, because the camera is "
                 + "framing the whole room. Ask them to bring their hand up in front of them, "

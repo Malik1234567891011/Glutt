@@ -854,10 +854,13 @@ final class SkillFrameFocusTests: XCTestCase {
         // The property that makes it self correcting: the same rule has to
         // produce a modest crop for a small hand and almost none for a big one.
         // Verified offline against archived originals at 1.9%, 3.9% and 5.3%.
-        XCTAssertGreaterThan(SkillFrameFocus.handShareOfCrop, 0.15,
-                             "too loose and the handle is lost in the background again")
-        XCTAssertLessThan(SkillFrameFocus.handShareOfCrop, 0.40,
-                          "too tight and the blade or the handle leaves the frame")
+        // The bound moved once the crops were compared side by side: 0.25 was
+        // still tight enough to lose the knife, so the upper limit came down
+        // rather than the value going up.
+        XCTAssertGreaterThan(SkillFrameFocus.handShareOfCrop, 0.05,
+                             "too loose and the hand is a speck in a kitchen again")
+        XCTAssertLessThanOrEqual(SkillFrameFocus.handShareOfCrop, 0.15,
+                                 "tighter than this and the blade or the handle leaves the frame")
     }
 
     /// The measured number that set the threshold. A hand at 3.8% of the frame
@@ -958,5 +961,45 @@ final class SkillGripConfusionTests: XCTestCase {
         let handle = SkillVisualCheck.chefKnifeGrip.rubric
             .coachingOrder.first { $0.key == "handleGrip" }!
         XCTAssertTrue(handle.requiresVisible.contains(.controlPoint))
+    }
+}
+
+/// What comparing thirteen archived looks side by side actually showed.
+///
+/// Hand size did not separate passes from failures: 2.5% passed and 2.6%
+/// failed. Confidence separated them perfectly, but that is an output. The
+/// thing that decided every single one was WHICH HAND ended up in the first
+/// picture. Knife hand first, pass. Empty hand first, `handleGrip`.
+final class SkillWhichHandTests: XCTestCase {
+
+    /// Measured on the two looks 48 seconds apart in one session: the empty
+    /// hand was 4.0% of the frame and the knife hand 0.9%, so ordering by size
+    /// put a hand holding nothing in front of her.
+    func testAHandTooFarToJudgeIsNotSentAtAll() {
+        XCTAssertGreaterThan(
+            SkillFrameFocus.tooFarToJudge, 0.005,
+            "the 0.9% knife hand has to be filtered, not cropped and sent blurry")
+        XCTAssertLessThan(
+            SkillFrameFocus.tooFarToJudge, 0.023,
+            "2.3% and 2.5% hands were both judged correctly and must still go")
+    }
+
+    /// A quarter framed the hand and lost the knife, and a hand with no visible
+    /// tool cannot be told from a hand holding nothing.
+    func testTheCropLeavesRoomForTheTool() {
+        XCTAssertLessThanOrEqual(
+            SkillFrameFocus.handShareOfCrop, 0.15,
+            "tighter than this and the blade or the handle leaves the picture")
+    }
+
+    /// A dropped request used to be reported as a camera fault, which sends a
+    /// cook to fiddle with hardware that is working.
+    func testADroppedRequestIsNotBlamedOnTheCamera() {
+        let suggestion = VisualFrameRejection.lookRequestFailed.suggestion
+        XCTAssertTrue(suggestion.localizedCaseInsensitiveContains("not their camera"))
+        XCTAssertTrue(suggestion.localizedCaseInsensitiveContains("do not ask them to move"))
+        XCTAssertNotEqual(
+            VisualFrameRejection.lookRequestFailed.suggestion,
+            VisualFrameRejection.noFrames.suggestion)
     }
 }

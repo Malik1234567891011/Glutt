@@ -441,6 +441,38 @@ final class AuthoredCriteriaTests: XCTestCase {
         }
     }
 
+    /// A check is never told about markers its pictures do not carry.
+    ///
+    /// Both of these sections used to go out on every look. Nothing in the
+    /// catalog sets `landmark`, so all 49 checks carried a heading, a blank
+    /// line where the question should have been, and an instruction to answer
+    /// it into a field the schema does not contain. And nothing draws
+    /// fingertip rings on a pan of roux, so a sauce check was told to use
+    /// numbered anchors that were not in its pictures, which is a good way to
+    /// have one hallucinated.
+    func testAPromptOnlyDescribesMarkersThatAreThere() {
+        var withRings = 0
+        for (skill, check) in checks {
+            let prompt = SkillVisualAssessor.systemPrompt(check: check, pictures: 3)
+
+            if check.landmark == nil {
+                XCTAssertFalse(
+                    prompt.contains("`landmark` field"),
+                    "\(skill.id) is asked for a landmark it does not have")
+            }
+
+            if check.usesFingertipRings {
+                withRings += 1
+                XCTAssertTrue(prompt.contains("magenta rings"), "\(skill.id) lost its rings")
+            } else {
+                XCTAssertFalse(
+                    prompt.contains("magenta rings"),
+                    "\(skill.id) photographs no hands but is told about fingertip rings")
+            }
+        }
+        XCTAssertGreaterThan(withRings, 5, "the hand checks still need the rings section")
+    }
+
     /// The decisive region must ask exactly one question.
     ///
     /// The standalone gate resolves it by region, so a second question in the

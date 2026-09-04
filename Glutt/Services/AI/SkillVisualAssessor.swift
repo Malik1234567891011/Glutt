@@ -462,29 +462,7 @@ enum SkillVisualAssessor {
         Everything after this point is about the picture you just named. Ignore
         the others except as context.
 
-        # The one question that decides this lesson
-        \(check.landmark?.question ?? "")
-        Answer it in the `landmark` field. Answer it from what you can find in
-        the picture, not from what a hand holding a knife usually looks like.
-        Hands are usually on handles, and that expectation has been measured
-        overriding the pixels on this exact question, so treat a familiar-looking
-        answer as a warning rather than a confirmation.
-
-        # The magenta rings are there to help you, use them
-        The close up pictures have small magenta rings drawn on the cook's
-        fingertips, numbered 1 to 5: 1 thumb, 2 index, 3 middle, 4 ring,
-        5 little. We put them there, they are not in the kitchen, and they are
-        placed by a hand tracker rather than by you.
-        Use them as anchors. When a question asks about a finger, find its ring
-        and answer for what is directly under and just inside that ring, rather
-        than judging the pose as a whole. A grip that "looks like" a familiar one
-        is exactly how a hand closed around a blade gets read as a correct pinch,
-        because both of them put the thumb and index finger on the steel. The
-        rings on fingers 3, 4 and 5 are what separate the two, and they are worth
-        more than any impression of the shape.
-        If a ring is missing, that finger was not located. Say cannotTell rather
-        than guessing where it went.
-
+        \(landmarkSection(check))\(ringsSection(check))
         # The questions
         \(questionList(check))
 
@@ -648,6 +626,52 @@ enum SkillVisualAssessor {
     /// model is not left inferring which ones matter.
     /// The closed answer sets, spelled out so the model has no room to invent
     /// a fourth answer.
+    /// The deciding question, when there is one.
+    ///
+    /// This was unconditional, and no check in the catalog sets `landmark`.
+    /// Every request therefore carried a heading, a blank line where the
+    /// question should have been, and an instruction to answer it in a
+    /// `landmark` field that the schema does not contain. Asking a reader to
+    /// answer nothing, into nowhere, on every single look.
+    private static func landmarkSection(_ check: SkillVisualCheck) -> String {
+        guard let landmark = check.landmark else { return "" }
+        return """
+        # The one question that decides this lesson
+        \(landmark.question)
+        Answer it in the `landmark` field. Answer it from what you can find in
+        the picture, not from what a hand holding a knife usually looks like.
+        Hands are usually on handles, and that expectation has been measured
+        overriding the pixels on this exact question, so treat a familiar-looking
+        answer as a warning rather than a confirmation.
+
+        """
+    }
+
+    /// The fingertip rings, for the checks that actually have them.
+    ///
+    /// Nothing draws rings on a pan of roux, so sending this to a sauce check
+    /// described markers that were not in its pictures.
+    private static func ringsSection(_ check: SkillVisualCheck) -> String {
+        guard check.usesFingertipRings else { return "" }
+        return """
+        # The magenta rings are there to help you, use them
+        The close up pictures have small magenta rings drawn on the cook's
+        fingertips, numbered 1 to 5: 1 thumb, 2 index, 3 middle, 4 ring,
+        5 little. We put them there, they are not in the kitchen, and they are
+        placed by a hand tracker rather than by you.
+        Use them as anchors. When a question asks about a finger, find its ring
+        and answer for what is directly under and just inside that ring, rather
+        than judging the pose as a whole. A grip that "looks like" a familiar one
+        is exactly how a hand closed around a blade gets read as a correct pinch,
+        because both of them put the thumb and index finger on the steel. The
+        rings on fingers 3, 4 and 5 are what separate the two, and they are worth
+        more than any impression of the shape.
+        If a ring is missing, that finger was not located. Say cannotTell rather
+        than guessing where it went.
+
+        """
+    }
+
     /// The authored questions, written out with the id each answer goes under.
     ///
     /// These used to never reach the model at all. `observationFields` put the

@@ -82,6 +82,22 @@ struct SkillVisualCheck: Hashable, Sendable {
     /// anything about grip, and the meaning is worked out here.
     let landmark: SkillLandmarkQuestion?
 
+    /// Whether this check is about hands, and therefore whether the fingertip
+    /// rings the pipeline draws mean anything to it.
+    ///
+    /// The prompt described the numbered magenta rings on every check,
+    /// including the ones that photograph a pan. Nothing draws rings on a
+    /// roux, so those checks were being told to use anchors that were not in
+    /// their pictures. Telling a reader that a marker is present when it is
+    /// not is a good way to have one hallucinated.
+    var usesFingertipRings: Bool {
+        let hands: Set<SkillVisibilityRegion> = [
+            .thumb, .indexFinger, .remainingFingers, .wrist, .guidingHand, .controlPoint,
+        ]
+        return reportedVisibility.contains { hands.contains($0) }
+            || observations.contains { hands.contains($0.region) }
+    }
+
     /// Things worth knowing, said while a look is running.
     ///
     /// A look is not instant. A device log timed one at forty six seconds

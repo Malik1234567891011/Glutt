@@ -1576,32 +1576,25 @@ final class PollySessionController {
     /// Re-send the system prompt when what Chef can see stops matching what she
     /// was told she can see.
     ///
-    /// The prompt is built immediately after the token mint, and a wearable camera
-    /// finish connecting about six tenths of a second later. That race was
-    /// assumed to be won and is in fact lost every time, so a cook wearing
-    /// wearable camera got the phone-camera instructions and Chef told them "I can't
-    /// see you unless you turn the camera on" while their stream was live.
+    /// Nothing to correct in this build, and it is kept as a deliberate no-op
+    /// rather than deleted.
     ///
-    /// Correcting after the fact rather than waiting for a wearable camera before
-    /// connecting, because the wait would be dead air on every single cook to
-    /// fix a prompt that costs nothing to replace. It also covers the case a
-    /// pre-connect check never could: wearable camera that drop or arrive mid-cook.
-    private func refreshSeeingRulesIfNeeded() async {
-        guard let transport, let rebuild = rebuildInstructions, var config = liveConfig else { return }
-        let seesNow = false
-        guard seesNow != promptAssumesContinuousSight else { return }
-
-        config.instructions = rebuild(seesNow)
-        liveConfig = config
-        promptAssumesContinuousSight = seesNow
-        do {
-            try await transport.send(.sessionUpdate(config))
-            PollyDebugLog.shared.log(
-                "session: seeing rules updated — \(seesNow ? "sees continuously" : "phone camera, off until asked")")
-        } catch {
-            PollyDebugLog.shared.log("session: could not update seeing rules — \(error.localizedDescription)")
-        }
-    }
+    /// On the full version this repaired a race: the prompt is built right
+    /// after the token mint and a wearable camera finished connecting about
+    /// six tenths of a second later, so a cook wearing one was told "I can't
+    /// see you unless you turn the camera on" while their stream was live. It
+    /// also covered glasses dropping or arriving mid-cook.
+    ///
+    /// Here there is only the phone camera, which is off until it is asked for
+    /// and closed after, so the answer never changes during a session and there
+    /// is nothing to re-send. The merge that brought this across left the old
+    /// body behind a guard that could never pass, which the compiler correctly
+    /// called unreachable.
+    ///
+    /// Kept because the call sites are shared with the full version and a
+    /// method that does nothing is clearer at a merge than a call that has to
+    /// be deleted and remembered.
+    private func refreshSeeingRulesIfNeeded() async {}
 
     private func startFollowUpWatcher() {
         cancelDormancyTimer()

@@ -413,6 +413,34 @@ final class AuthoredCriteriaTests: XCTestCase {
             "only \(authored.count) of \(checks.count) checks can be scored")
     }
 
+    /// The authored questions have to actually reach the model.
+    ///
+    /// They did not. The request carried the schema keys and the allowed
+    /// answers but never the question, so the model was shown
+    /// `"tipDepth": "thickest | shallow | cannotTell"` and left to infer what
+    /// was being asked from the key. That survived while every key was a body
+    /// part and every answer was `onBlade | onHandle`, which reads as a
+    /// question by itself. It does not survive 127 criteria whose definitions
+    /// live in the wording.
+    ///
+    /// This is the failure mode that costs the most to find by hand: nothing
+    /// crashes, nothing fails to compile, and the check keeps returning
+    /// confident answers to a question nobody asked.
+    func testEveryAuthoredQuestionReachesThePrompt() {
+        for (skill, check) in checks where !check.observations.isEmpty {
+            let prompt = SkillVisualAssessor.systemPrompt(check: check, pictures: 3)
+            for observation in check.observations {
+                XCTAssertTrue(
+                    prompt.contains(observation.question),
+                    "\(skill.id)/\(observation.id) is asked in the schema but its question "
+                    + "never reaches the model")
+                XCTAssertTrue(
+                    prompt.contains("`\(observation.id)`"),
+                    "\(skill.id)/\(observation.id) has no key named in the prompt")
+            }
+        }
+    }
+
     /// The decisive region must ask exactly one question.
     ///
     /// The standalone gate resolves it by region, so a second question in the

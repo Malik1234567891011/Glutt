@@ -485,6 +485,9 @@ enum SkillVisualAssessor {
         If a ring is missing, that finger was not located. Say cannotTell rather
         than guessing where it went.
 
+        # The questions
+        \(questionList(check))
+
         # Answer the picture questions first, and answer them per picture
         `observations` comes first in the JSON for a reason: it is what you can
         SEE, and it has to be settled before you decide what it MEANS.
@@ -645,6 +648,25 @@ enum SkillVisualAssessor {
     /// model is not left inferring which ones matter.
     /// The closed answer sets, spelled out so the model has no room to invent
     /// a fourth answer.
+    /// The authored questions, written out with the id each answer goes under.
+    ///
+    /// These used to never reach the model at all. `observationFields` put the
+    /// keys and the allowed answers into the JSON schema, so the request asked
+    /// for `"tipDepth": "thickest | shallow | cannotTell"` and left the model
+    /// to work out from the key alone what was being asked. It held up while
+    /// every key was a body part and every answer was `onBlade | onHandle`,
+    /// which reads as a question on its own. It does not hold up for 127
+    /// criteria across the catalog, and the authored wording is where the
+    /// definitions live: what `travelling` means as opposed to `pressing`,
+    /// which hand `guidingHand` refers to, that a ribbon is thick enough to sit
+    /// on the surface. Sending the answers without the question was asking the
+    /// model to guess the question.
+    private static func questionList(_ check: SkillVisualCheck) -> String {
+        check.observations
+            .map { "- `\($0.id)` — \($0.question)" }
+            .joined(separator: "\n")
+    }
+
     private static func observationFields(_ check: SkillVisualCheck) -> String {
         check.observations
             .map { "\"\($0.id)\": \"\($0.answers.joined(separator: " | "))\"" }

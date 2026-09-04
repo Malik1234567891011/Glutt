@@ -14,9 +14,9 @@ struct SkillNodeView: View {
     let skill: Skill
     let state: SkillState
     let tint: Color
-    /// The cook's best score at this trial, for mastery nodes they have
-    /// attempted. Nil everywhere else.
-    var personalBest: Int? = nil
+    /// How many times this skill has been verified. Zero on anything never
+    /// shown to her.
+    var verifiedCount: Int = 0
     let onTap: () -> Void
 
     /// Shared with the map, which has to know where a node ends so the trail
@@ -119,16 +119,24 @@ struct SkillNodeView: View {
                     .font(BrandFont.nunito(9.5, 800)).tracking(1.1)
                     .foregroundStyle(tint)
             }
-            // A trial the cook has already beaten wears its best score.
+            // A node that has actually been shown to her wears a small mark,
+            // and only mastery trials carry a count.
             //
-            // No personal-best module and no trophy card: the map itself is
-            // the cabinet. Scrolling past a diamond marked 94 is the record,
-            // in the place where it was set.
-            if let personalBest {
-                Text("\(personalBest)")
-                    .font(BrandFont.nunito(13, 800))
-                    .foregroundStyle(tint)
-                    .monospacedDigit()
+            // No score, because evidence is not a score. No personal-best
+            // module and no trophy card either: the map itself is the cabinet,
+            // and a seal on a diamond you passed is the record, in the place
+            // where you set it.
+            if verifiedCount > 0 {
+                HStack(spacing: 3) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                    if skill.isChallenge, verifiedCount > 1 {
+                        Text("\(verifiedCount)")
+                            .font(BrandFont.nunito(11, 800))
+                            .monospacedDigit()
+                    }
+                }
+                .foregroundStyle(tint)
             }
         }
         .frame(width: 112)

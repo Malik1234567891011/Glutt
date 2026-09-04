@@ -86,7 +86,7 @@ struct GluttApp: App {
             RecipeChatMessage.self,
             SkillProgress.self,
             SkillAttempt.self,
-            TrialResult.self,
+            RatingEvidence.self,
             SyncTombstone.self,
         ])
         do {

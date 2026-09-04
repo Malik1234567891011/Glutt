@@ -159,20 +159,28 @@ final class SkillPhotoCheckModel {
             source: .showing)
         _ = SkillProgressStore.recordAttempt(attempt, skill: skill, in: context)
 
-        // A mastery trial is also a scored result, and it is the only thing
-        // that moves a cook's rating. Ordinary lessons record an attempt and
-        // stop there, which is the whole distinction: reading is not doing.
-        guard skill.isChallenge, let categoryID = SkillCatalog.category(of: skill)?.id else { return }
-        let score = TrialScore.score(outcomes: [outcome.attemptOutcome])
-        // Zero means nothing was seen, which is a statement about the pictures
-        // rather than about the cooking. Recording it as a score would be a
-        // claim we cannot support.
-        guard score > 0 else { return }
-        context.insert(TrialResult(
+        // Every verified check is evidence, not only the mastery trials.
+        //
+        // This used to write a row for challenges alone, which made the rating
+        // unreachable: five of the seven trials in the catalog can be scored,
+        // and each sits behind three to five prerequisite lessons. An ordinary
+        // watchable node is thinner evidence than a trial, not no evidence, and
+        // the difference belongs in the weight rather than in a gate.
+        //
+        // Nothing is written when the checker could not see. An inconclusive
+        // read or the wrong knife is a fact about the photograph, and it must
+        // leave the rating exactly where it was.
+        guard let categoryID = SkillCatalog.category(of: skill)?.id,
+              let credit = EvidenceWeight.credit(for: outcome.attemptOutcome)
+        else { return }
+        context.insert(RatingEvidence(
             skillID: skill.id,
             categoryID: categoryID,
-            score: score,
-            coachCalls: 0,
+            kind: skill.isChallenge ? .masteryTrial : .skillCheck,
+            credit: credit,
+            // Captured at write time from the skill's difficulty, so retuning
+            // the table later cannot silently rewrite a cook's history.
+            weight: EvidenceWeight.weight(for: skill),
             unscored: assessment.unseenRegions(for: check).map(\.spokenName)))
     }
 
@@ -183,13 +191,6 @@ final class SkillPhotoCheckModel {
         return assessment.unseenRegions(for: check).map(\.spokenName)
     }
 
-    /// What the cook just scored, for the result screen. Nil when the attempt
-    /// was not a scored trial or nothing could be judged.
-    var trialScore: Int? {
-        guard skill.isChallenge, case .answered(let outcome) = phase else { return nil }
-        let score = TrialScore.score(outcomes: [outcome.attemptOutcome])
-        return score > 0 ? score : nil
-    }
 }
 
 private extension String {

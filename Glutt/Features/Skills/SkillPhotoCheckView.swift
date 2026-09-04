@@ -21,14 +21,13 @@ struct SkillPhotoCheckView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
-    /// Every scored trial, so a new score can say whether it beat the old one.
-    /// Read before the new result is written, which is what makes the
-    /// comparison honest.
-    @Query private var trials: [TrialResult]
+    /// Everything Glutt has watched this cook do, read before today's result
+    /// is written so "first time" is honest.
+    @Query private var evidence: [RatingEvidence]
 
-    /// The best this cook had at this trial BEFORE today's attempt.
-    private var personalBest: Int? {
-        trials.filter { $0.skillID == skill.id }.map(\.score).max()
+    /// Whether this skill has ever been verified before now.
+    private var verifiedBefore: Bool {
+        evidence.contains { $0.skillID == skill.id && $0.credit == .clean }
     }
 
     @State private var model: SkillPhotoCheckModel
@@ -224,32 +223,28 @@ struct SkillPhotoCheckView: View {
 
     @ViewBuilder private var verdict: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // A trial gets its number, big, before anything else.
+            // Verified, said plainly, with no number attached.
             //
-            // The one place in the whole feature that is allowed to celebrate.
-            // Nothing during the attempt shows a live score, because a HUD
-            // ticking over while somebody is trying to cook reads as a
-            // gamification demo rather than as cooking. Afterwards is
-            // different: they earned it and it should feel like it.
-            //
-            // Still cream, still the display face, still the region's colour.
-            // Turning black and neon because "game" would throw away the
-            // visual language the rest of the map is built from.
-            if let score = model.trialScore {
+            // The earlier version printed a big 0-100 here. That number came
+            // from an authored rubric rather than from asking a model, which
+            // was the right instinct, but it still presented a narrow binary
+            // observation as a measured performance. A check that establishes
+            // "the pinch grip is correct" is one piece of positive evidence,
+            // and dressing it as 88/100 claims precision nobody measured.
+            if model.didPass {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(score)")
-                        .font(BrandFont.bricolage(64, 700))
-                        .foregroundStyle(Theme.Colors.heading)
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                    if let best = personalBest, score > best {
-                        Text("Personal best")
-                            .font(BrandFont.nunito(13, 800))
-                            .tracking(0.8)
-                            .foregroundStyle(Theme.Colors.accent)
+                    HStack(spacing: 7) {
+                        Image(systemName: skill.isChallenge
+                              ? "diamond.fill" : "checkmark.seal.fill")
+                            .font(.system(size: 19, weight: .semibold))
+                        Text(verifiedBefore ? "Verified again" : "Verified")
+                            .font(BrandFont.bricolage(30, 700))
                     }
-                    Text(skill.title)
-                        .font(BrandFont.nunito(13.5, 700))
+                    .foregroundStyle(Theme.Colors.accent)
+                    Text(skill.isChallenge
+                         ? "Mastery trial · counts strongly toward your Cook Rating"
+                         : "Counts toward your Cook Rating")
+                        .font(BrandFont.nunito(13, 700))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
                 .padding(.bottom, 4)

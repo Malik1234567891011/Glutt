@@ -55,8 +55,7 @@ private struct SkillRegionView: View {
                 category: category,
                 learned: learned,
                 total: category.learnableCount,
-                rating: reader.rating(for: category),
-                isRateable: RegionRating.isRateable(category))
+                rating: reader.rating(for: category))
                 .padding(.horizontal, 24)
 
             GeometryReader { proxy in
@@ -73,7 +72,7 @@ private struct SkillRegionView: View {
                             skill: skill,
                             state: reader.state(for: skill),
                             tint: category.theme.tint,
-                            personalBest: reader.personalBest(for: skill.id)
+                            verifiedCount: reader.verifiedCount(for: skill.id)
                         ) { onOpen(skill) }
                         .position(center(of: index, skill: skill, width: proxy.size.width))
                     }
@@ -248,10 +247,6 @@ private struct SkillRegionHeader: View {
     /// show. Nil covers two different situations and both are correct: not
     /// enough judged trials yet, and regions that cannot be judged at all.
     let rating: Int?
-    /// True where a rating is possible in principle, so "Unranked" can be shown
-    /// as a thing to earn rather than left blank forever on a region that will
-    /// never have one.
-    let isRateable: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -284,32 +279,24 @@ private struct SkillRegionHeader: View {
                 .foregroundStyle(Theme.Colors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // The region's standard, under its own blurb rather than in a
-            // strip of scores across the top of the tab. Scrolling the world
-            // shows them one at a time, which is a dashboard nobody had to
-            // build.
+            // A region says nothing until it has been earned.
             //
-            // Nothing at all on Flavour & Seasoning or Cooking Intuition. They
-            // have no visual checks because you cannot photograph tasting as
-            // you go, and giving them a number for the sake of symmetry would
-            // be inventing a measurement. The asymmetry is the honest part.
-            if isRateable {
-                HStack(spacing: 6) {
-                    if let rating {
-                        Text("\(rating)")
-                            .font(BrandFont.nunito(15, 800))
-                            .foregroundStyle(category.theme.tint)
-                            .monospacedDigit()
-                        Text("skill rating")
-                            .font(BrandFont.nunito(11.5, 700))
-                            .foregroundStyle(Theme.Colors.muted)
-                    } else {
-                        Text("Unranked")
-                            .font(BrandFont.nunito(12, 700))
-                            .foregroundStyle(Theme.Colors.muted)
-                    }
-                }
-                .padding(.top, 2)
+            // This used to print "Unranked" under every region, which meant
+            // nine repetitions of the same dead word down a scrolling map. It
+            // read as emptiness rather than as something to earn, and it said
+            // nothing a cook could act on. A region with no evidence now looks
+            // exactly as it did before this feature existed.
+            //
+            // Nothing here for Flavour & Seasoning or Cooking Intuition ever:
+            // they have no visual checks because you cannot photograph tasting
+            // as you go, and a number for the sake of symmetry would be an
+            // invented measurement.
+            if let rating {
+                Text("Skill rating \(rating)")
+                    .font(BrandFont.nunito(12.5, 700))
+                    .foregroundStyle(category.theme.tint)
+                    .monospacedDigit()
+                    .padding(.top, 2)
             }
         }
         .padding(.top, 26)

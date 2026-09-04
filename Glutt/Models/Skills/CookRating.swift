@@ -1,94 +1,121 @@
 import Foundation
 
-/// What a cook has actually demonstrated, as opposed to how much they have read.
+/// What a cook has been seen to do, as opposed to what they have read.
 ///
-/// Deliberately separate from XP and levels, and the separation is the whole
-/// point. XP measures how far you have travelled: open a lesson, read it, press
-/// "I've got it", collect the XP. Cook Rating measures what you have shown,
-/// and it only moves when a practical trial is judged.
+/// The product rule this exists to express: **lessons tell us what the user has
+/// learned, verified cooking tells us what the user can do.** Cook Rating is
+/// the second one. Finishing a lesson moves XP and level and never touches
+/// this; being watched moves this and never touches XP.
 ///
-/// Somebody should not become a highly rated cook by reading every lesson.
-/// That distinction is what makes the number worth anything.
+/// # Not another XP bar
+///
+/// XP counts events. This weighs them. A beginner check that establishes one
+/// narrow thing is worth a fraction of a mastery trial, the same check passed
+/// for the fifth time is worth almost nothing, and anything the checker could
+/// not see is worth exactly nothing rather than a penalty.
 ///
 /// # Unranked is a real state
 ///
-/// A rating invented from two attempts is worse than no rating, so there is no
-/// starting number. A cook is `unranked` until they have completed enough
-/// trials across enough different regions, and then it is revealed once.
+/// No invented starting number. A cook is unranked until there is enough
+/// verified evidence to say anything, and the first stretch after that is
+/// marked provisional, because three narrow checks is not a full picture of
+/// somebody's cooking and it would be dishonest to present it as one.
 enum CookRating {
 
-    /// Trials needed before a cook is placed, and how many regions they must
-    /// span.
+    /// Verified events before a rating is shown at all.
     ///
-    /// Both, not either. Five trials in one region says you are good at that
-    /// region; it says nothing about cooking. Spanning regions is what makes
-    /// the first number defensible.
-    ///
-    /// Three rather than four, and the reason is a count nobody had done: of
-    /// the seven mastery trials in the catalog only FIVE carry a visual check,
-    /// so only five can be scored at all. Asking for four meant asking a cook
-    /// to complete eighty per cent of every scoreable trial in the app before
-    /// the rating would say anything, which is why a cook with fourteen skills
-    /// learned still saw nothing. Three across two regions is still real work
-    /// and still cannot be reached from one region alone.
-    static let trialsToPlace = 3
-    static let regionsToPlace = 2
+    /// Three, and any mix of ordinary checks and trials counts. It used to be
+    /// three *trials*, which was unreachable: only five mastery trials in the
+    /// catalog carry a visual check, so a cook had to complete most of the
+    /// hardest content in the app before the rating would say a word.
+    static let evidenceToPlace = 3
 
-    /// Where a placed cook starts, before their results move them.
+    /// Below this the rating is shown but marked provisional, because it rests
+    /// on a handful of narrow observations.
+    static let evidenceToSettle = 8
+
+    /// Where a placed cook starts, before their evidence moves them.
     static let placementBase = 1_000
 
-    /// What a cook is worth right now, or nil while they are unranked.
-    static func rating(from results: [TrialResult]) -> Int? {
-        guard isPlaced(results) else { return nil }
-        return placementBase + results.reduce(0) { $0 + $1.ratingDelta }
-    }
-
-    static func isPlaced(_ results: [TrialResult]) -> Bool {
-        guard results.count >= trialsToPlace else { return false }
-        return Set(results.map(\.categoryID)).count >= regionsToPlace
-    }
-
-    /// How close an unplaced cook is to being placed, for the reveal.
-    static func placementProgress(_ results: [TrialResult]) -> (done: Int, needed: Int) {
-        (min(results.count, trialsToPlace), trialsToPlace)
-    }
-
-    /// One line telling an unplaced cook what the rating is and how to get one.
+    /// The credit an average competent attempt is worth. Evidence above this
+    /// raises a rating, below it lowers one.
     ///
-    /// "Unranked" on its own is a dead end. It names a state without naming the
-    /// way out of it, so a cook reads it once, learns nothing, and never looks
-    /// again. This is the only thing on the screen that explains the whole
-    /// mechanic, so it has to earn its line.
-    static func placementLine(_ results: [TrialResult]) -> String {
-        guard !results.isEmpty else {
-            return "Unranked · pass a trial to start"
+    /// 0.6 sits between a clean pass and a correction, deliberately nearer the
+    /// correction: a cook who needs a fix on most things is not standing still,
+    /// they are below where they will be.
+    static let neutralCredit = 0.6
+
+    /// How many rating points one unit of weighted evidence is worth.
+    static let pointsPerWeight = 12.0
+
+    /// Evidence that actually counts, with repeats damped.
+    ///
+    /// Oldest first per skill, so the FIRST time somebody demonstrates a
+    /// technique carries full weight and later repeats decay. Doing it once
+    /// well is the evidence; doing it nine more times is practice.
+    static func effective(_ evidence: [RatingEvidence]) -> [(RatingEvidence, weight: Double)] {
+        var seen: [String: Int] = [:]
+        return evidence
+            .sorted { $0.occurredAt < $1.occurredAt }
+            .map { item in
+                let prior = seen[item.skillID, default: 0]
+                seen[item.skillID] = prior + 1
+                return (item, item.weight * EvidenceWeight.repeatFactor(priorCount: prior))
+            }
+    }
+
+    static func isPlaced(_ evidence: [RatingEvidence]) -> Bool {
+        evidence.count >= evidenceToPlace
+    }
+
+    /// True while the rating rests on too little to be presented as settled.
+    static func isProvisional(_ evidence: [RatingEvidence]) -> Bool {
+        isPlaced(evidence) && evidence.count < evidenceToSettle
+    }
+
+    /// What a cook is worth right now, or nil while unranked.
+    static func rating(from evidence: [RatingEvidence]) -> Int? {
+        guard isPlaced(evidence) else { return nil }
+        let movement = effective(evidence).reduce(0.0) { total, item in
+            total + (item.0.credit.rawValue - neutralCredit) * item.weight * pointsPerWeight
         }
-        let regions = Set(results.map(\.categoryID)).count
-        if results.count >= trialsToPlace, regions < regionsToPlace {
-            // The commoner near miss, and the one worth naming precisely: they
-            // have done the work, just all in one place.
-            return "Unranked · try a trial in another region"
-        }
-        let remaining = max(0, trialsToPlace - results.count)
-        return "Unranked · \(remaining) more \(remaining == 1 ? "trial" : "trials")"
+        return placementBase + Int(movement.rounded())
+    }
+
+    /// How much more is needed before a rating appears.
+    static func placementRemaining(_ evidence: [RatingEvidence]) -> Int {
+        max(0, evidenceToPlace - evidence.count)
+    }
+
+    /// The line under the Cook Rating row while unranked.
+    ///
+    /// Says what earns a rating, because "Unranked" on its own names a state
+    /// without naming the way out of it.
+    static func placementLine(_ evidence: [RatingEvidence]) -> String {
+        let remaining = placementRemaining(evidence)
+        guard remaining > 0 else { return "" }
+        return "\(remaining) verified \(remaining == 1 ? "check" : "checks") to place"
+    }
+
+    /// Progress toward placement, for the sheet.
+    static func placementProgress(_ evidence: [RatingEvidence]) -> (done: Int, needed: Int) {
+        (min(evidence.count, evidenceToPlace), evidenceToPlace)
     }
 }
 
 /// The title that comes with a rating.
 ///
-/// Kitchen brigade names rather than invented tiers, because they are real
-/// words with real meaning and they carry the sense of a trade rather than a
-/// video game ladder. Numbered downward within a rank the way the kitchen does
-/// it: Line Cook III is junior to Line Cook I.
+/// Kitchen brigade names rather than invented tiers: real words for a real
+/// trade, and they carry a sense of progression that "Tier 4" does not.
+/// Numbered downward within a rank the way a kitchen does it, so Line Cook III
+/// is junior to Line Cook I.
 struct CookRank: Equatable, Sendable {
     let title: String
-    /// The floor of this rank, so progress toward the next one can be shown.
     let floor: Int
     let ceiling: Int?
 
     var spoken: String { title }
 
-    /// Every rank, lowest first.
     static let ladder: [CookRank] = [
         CookRank(title: "Prep Cook III", floor: 0, ceiling: 900),
         CookRank(title: "Prep Cook II", floor: 900, ceiling: 1_000),
@@ -105,7 +132,6 @@ struct CookRank: Equatable, Sendable {
         ladder.last { rating >= $0.floor } ?? ladder[0]
     }
 
-    /// How much more is needed for the next title, or nil at the top.
     static func toNext(from rating: Int) -> (rank: CookRank, points: Int)? {
         guard let next = ladder.first(where: { $0.floor > rating }) else { return nil }
         return (next, next.floor - rating)
@@ -114,47 +140,41 @@ struct CookRank: Equatable, Sendable {
 
 /// A region's demonstrated standard, 0 to 100.
 ///
-/// Only ever computed where there is something real to compute it from. Two of
-/// the nine regions, Flavour & Seasoning and Cooking Intuition, have no visual
-/// checks at all because you cannot photograph tasting as you go, and they must
-/// never be given a number. Inventing symmetry there would be the exact kind of
-/// unconsidered system that makes software feel generated: real systems have
-/// exceptions because reality has them.
+/// Only ever computed where there is something real to compute it from. Flavour
+/// & Seasoning and Cooking Intuition have no visual checks, because you cannot
+/// photograph tasting as you go, and they must never be given a number.
+/// Inventing symmetry there would be exactly the kind of unconsidered system
+/// that makes software feel generated: real systems have exceptions because
+/// reality has them.
 enum RegionRating {
 
-    /// Trials in a region before its rating is worth showing.
-    static let trialsToRate = 2
+    /// Verified events in a region before its standard is worth showing.
+    ///
+    /// Two, and either kind counts. One observation is an anecdote.
+    static let evidenceToRate = 2
 
-    /// Whether this region is the sort of thing that can be scored at all.
     static func isRateable(_ category: SkillCategory) -> Bool {
         category.skills.contains { $0.visualCheck != nil }
     }
 
     /// The region's standard, or nil when it cannot or should not be shown.
-    ///
-    /// Weighted toward recent work, because a cook who was poor at pans in
-    /// January and good in March is good at pans.
-    static func rating(for category: SkillCategory, results: [TrialResult]) -> Int? {
+    static func rating(for category: SkillCategory, evidence: [RatingEvidence]) -> Int? {
         guard isRateable(category) else { return nil }
-        let mine = results
-            .filter { $0.categoryID == category.id }
-            .sorted { $0.finishedAt > $1.finishedAt }
-        guard mine.count >= trialsToRate else { return nil }
+        let mine = evidence.filter { $0.categoryID == category.id }
+        guard mine.count >= evidenceToRate else { return nil }
 
-        // Most recent counts most, halving back through the history.
+        // Weighted by what each piece is worth AND by how recent it is, so a
+        // cook who was poor in January and good in March reads as good.
+        let weighted = Array(CookRating.effective(mine).reversed())
         var total = 0.0
         var weightSum = 0.0
-        for (index, result) in mine.enumerated() {
-            let weight = pow(0.5, Double(index))
-            total += Double(result.score) * weight
+        for (index, item) in weighted.enumerated() {
+            let recency = pow(0.7, Double(index))
+            let weight = item.weight * recency
+            total += item.0.credit.rawValue * weight
             weightSum += weight
         }
-        return Int((total / weightSum).rounded())
-    }
-
-    /// What to show when there is no number: the reason, not a zero.
-    static func placeholder(for category: SkillCategory, results: [TrialResult]) -> String {
-        guard isRateable(category) else { return "" }
-        return "Unranked"
+        guard weightSum > 0 else { return nil }
+        return Int((total / weightSum * 100).rounded())
     }
 }

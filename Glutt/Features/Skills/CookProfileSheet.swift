@@ -26,7 +26,7 @@ struct CookProfileSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .background(Theme.Colors.background)
-            .navigationTitle("Your cooking")
+            .navigationTitle("Cook Rating")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -53,22 +53,34 @@ struct CookProfileSheet: View {
                         .font(BrandFont.nunito(13, 700))
                         .foregroundStyle(Theme.Colors.muted)
                 }
+                // Said plainly while the rating rests on a handful of narrow
+                // observations. Three checks is not a picture of somebody's
+                // cooking, and presenting it as settled would be a claim the
+                // evidence does not support.
+                if reader.isRatingProvisional {
+                    Text("Provisional · still learning what you can do")
+                        .font(BrandFont.nunito(12.5, 600))
+                        .foregroundStyle(Theme.Colors.muted)
+                }
             } else {
                 Text("Unranked")
                     .font(BrandFont.bricolage(30, 700))
                     .foregroundStyle(Theme.Colors.heading)
-                // Says what the rating is FOR, which nothing else on the screen
-                // does. A cook who does not know reading will not earn it has
-                // no reason to attempt a trial.
-                Text("A rating comes from mastery trials, the diamonds on the "
-                     + "map. Lessons build your level; trials show what you can "
-                     + "actually do.")
+                // Names both halves. A cook who thinks reading earns this has
+                // no reason to be watched, and a cook who thinks only trials
+                // count has no reason to touch an ordinary node.
+                Text("Your Cook Rating is based on cooking Glutt can actually "
+                     + "verify. Lessons build your Level; skill checks and "
+                     + "mastery trials show what you can do.")
                     .font(BrandFont.nunito(14, 600))
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(CookRating.placementLine(reader.trials))
+                // Typographic, not a progress card. The count is the whole
+                // message and a bar around it would add nothing but furniture.
+                Text("\(progress.done) / \(progress.needed) verified checks")
                     .font(BrandFont.nunito(13, 800))
                     .foregroundStyle(Theme.Colors.accent)
+                    .monospacedDigit()
                     .padding(.top, 2)
             }
 
@@ -77,7 +89,7 @@ struct CookProfileSheet: View {
             HStack(spacing: 18) {
                 stat("Level", "\(reader.levelProgress.level)")
                 stat("Skills", "\(reader.learnedCount)")
-                stat("Trials", "\(reader.trials.count)")
+                stat("Verified", "\(reader.evidence.count)")
             }
             .padding(.top, 4)
         }
@@ -141,45 +153,61 @@ struct CookProfileSheet: View {
 
     // MARK: Recent
 
-    private var recent: [TrialResult] {
-        Array(reader.trials.sorted { $0.finishedAt > $1.finishedAt }.prefix(6))
+    /// Split out because the type checker gave up on it inline.
+    private func subtitle(for evidence: RatingEvidence) -> String {
+        let kind = evidence.kind == .masteryTrial ? "Mastery trial" : "Skill check"
+        return "\(kind) · \(evidence.spokenCredit)"
+    }
+
+    private var progress: (done: Int, needed: Int) {
+        CookRating.placementProgress(reader.evidence)
+    }
+
+    private var recent: [RatingEvidence] {
+        Array(reader.evidence.sorted { $0.occurredAt > $1.occurredAt }.prefix(6))
     }
 
     @ViewBuilder private var recentResults: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Recent trials")
+            Text("Recently verified")
                 .font(BrandFont.nunito(12, 800)).tracking(1.2).textCase(.uppercase)
                 .foregroundStyle(Theme.Colors.muted)
 
             ForEach(recent) { result in
-                HStack(spacing: 10) {
-                    Text("\(result.score)")
-                        .font(BrandFont.nunito(16, 800))
-                        .foregroundStyle(Theme.Colors.heading)
-                        .monospacedDigit()
-                        .frame(width: 34, alignment: .leading)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(SkillCatalog.skill(result.skillID)?.title ?? result.skillID)
-                            .font(BrandFont.nunito(14.5, 700))
-                            .foregroundStyle(Theme.Colors.heading)
-                        // Stated rather than deducted. A result that says
-                        // "independent" only means something because the
-                        // alternative is written down instead of silently
-                        // costing points.
-                        Text(result.wasIndependent
-                             ? "Independent"
-                             : "^[\(result.coachCalls) coach call](inflect: true)")
-                            .font(BrandFont.nunito(11.5, 600))
-                            .foregroundStyle(Theme.Colors.muted)
-                    }
-                    Spacer(minLength: 8)
-                    Text(result.ratingDelta >= 0 ? "+\(result.ratingDelta)" : "\(result.ratingDelta)")
-                        .font(BrandFont.nunito(13, 800))
-                        .foregroundStyle(result.ratingDelta >= 0
-                                         ? Theme.Colors.accent : Theme.Colors.muted)
-                        .monospacedDigit()
-                }
+                evidenceRow(result)
             }
+        }
+    }
+
+    /// One line of history. Its own function because the type checker gave up
+    /// on it inline.
+    private func evidenceRow(_ result: RatingEvidence) -> some View {
+        // What kind of evidence, not a number. There is no score to print: the
+        // pipeline answers narrow authored questions and the app decides what
+        // they mean, so a mark out of a hundred here would invent precision
+        // nobody measured.
+        let isTrial = result.kind == .masteryTrial
+        let symbol = isTrial ? "diamond.fill" : "checkmark.circle.fill"
+        let tint: Color = result.credit == .clean ? Theme.Colors.accent : Theme.Colors.muted
+        let title = SkillCatalog.skill(result.skillID)?.title ?? result.skillID
+
+        return HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 20, alignment: .leading)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(BrandFont.nunito(14.5, 700))
+                    .foregroundStyle(Theme.Colors.heading)
+                Text(subtitle(for: result))
+                    .font(BrandFont.nunito(11.5, 600))
+                    .foregroundStyle(Theme.Colors.muted)
+            }
+            Spacer(minLength: 8)
+            Text(result.occurredAt.formatted(.relative(presentation: .numeric)))
+                .font(BrandFont.nunito(11.5, 600))
+                .foregroundStyle(Theme.Colors.muted)
         }
     }
 }

@@ -127,7 +127,7 @@ enum SkillProgressStore {
         do {
             try context.delete(model: SkillProgress.self)
             try context.delete(model: SkillAttempt.self)
-            try context.delete(model: TrialResult.self)
+            try context.delete(model: RatingEvidence.self)
             try context.save()
             SkillStreak.reset()
             PollyDebugLog.shared.log("skills: reset to a fresh install")

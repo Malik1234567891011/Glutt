@@ -248,7 +248,6 @@
 		7E93143DB94253E595A94363 /* SkillVisualCheck+KnifeGrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD109DAA1428BC6ED3DC4601 /* SkillVisualCheck+KnifeGrip.swift */; };
 		7E9FD85B48DCCEED1A392FAB /* AppleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8794BB18435540A0BF64D9A7 /* AppleSignIn.swift */; };
 		7FC94C288BF5A7A9B42017F0 /* MediaClipConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBC3176D4A1CE5508656606F /* MediaClipConfig.swift */; };
-		80C1E3316AD4400791D2924D /* TrialResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97E87488C6845AD9CEFD83C0 /* TrialResult.swift */; };
 		80D926D7FF4CDBA7FA90655E /* DevBuild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA6EE952D10846E2940A5B4 /* DevBuild.swift */; };
 		8119CE17BB8C7A31895954A3 /* RouterImportNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16B9E3FC176CCD52B8C1E82 /* RouterImportNavigationTests.swift */; };
 		812D77EB9384E9BB9C3FBD71 /* GluttApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F79B61859BDDE45588788FE2 /* GluttApp.swift */; };
@@ -301,6 +300,7 @@
 		998FAAD7A57B7E080DDDAD29 /* WakeWordListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C1D54FA61060F4C2E87CFD9 /* WakeWordListener.swift */; };
 		99F17D1D8A2420DFC0241D76 /* RecipeImageSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = E90EEBE18AA27989254875A2 /* RecipeImageSync.swift */; };
 		9AE084C305FEEFCD57DA1AF4 /* PollyToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE6FB8332EA24BD4AC03D0C /* PollyToolRegistry.swift */; };
+		9AFA7F4B4C79A3967742ED7C /* RatingEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = E991A3F5A427772E2E88E292 /* RatingEvidence.swift */; };
 		9B458EBCF55B3520D3BF5A5E /* IconChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF7716B63BB5B638327D805 /* IconChip.swift */; };
 		9B88E72DC57826B03D461538 /* BricolageGrotesque-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 16B94CE9A7F44EE36417EE70 /* BricolageGrotesque-Variable.ttf */; };
 		9C8F6F2877A48BAE873DB500 /* SyncBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3416FE0CFEE8A93A4E60C928 /* SyncBackend.swift */; };
@@ -797,7 +797,6 @@
 		95DB40143B3A9571F06C3F4F /* RecipeChatStaging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeChatStaging.swift; sourceTree = "<group>"; };
 		967C2DD3625358CD8C791179 /* PinterestImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinterestImportTests.swift; sourceTree = "<group>"; };
 		972437EDDFCAF92BC3F03CA5 /* CookSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookSession.swift; sourceTree = "<group>"; };
-		97E87488C6845AD9CEFD83C0 /* TrialResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialResult.swift; sourceTree = "<group>"; };
 		98053B3FFC4BD7D0C20C75CB /* TimerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerManager.swift; sourceTree = "<group>"; };
 		9849E4D814CBE9FB1D1E619C /* GluttTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GluttTests.swift; sourceTree = "<group>"; };
 		98B24B648D7D946D8F253FC7 /* ImportInboxDrainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportInboxDrainer.swift; sourceTree = "<group>"; };
@@ -931,6 +930,7 @@
 		E8608EAECE0CF4A45B2C0B7F /* SubstitutionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubstitutionService.swift; sourceTree = "<group>"; };
 		E90EEBE18AA27989254875A2 /* RecipeImageSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeImageSync.swift; sourceTree = "<group>"; };
 		E935FD442B09E554268417A8 /* CollectionsListSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionsListSheet.swift; sourceTree = "<group>"; };
+		E991A3F5A427772E2E88E292 /* RatingEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingEvidence.swift; sourceTree = "<group>"; };
 		EB11FDEDB692D95C9167FA09 /* SkillProgressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillProgressionTests.swift; sourceTree = "<group>"; };
 		EB24F00BC9661311C005BE78 /* OFL-BricolageGrotesque.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-BricolageGrotesque.txt"; sourceTree = "<group>"; };
 		ECDBF6B434AAC4E4144F2CF7 /* PollyVoicePlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyVoicePlayer.swift; sourceTree = "<group>"; };
@@ -1630,6 +1630,7 @@
 			isa = PBXGroup;
 			children = (
 				CDEA4E19E5314527B0DCB7A4 /* CookRating.swift */,
+				E991A3F5A427772E2E88E292 /* RatingEvidence.swift */,
 				62E3C672849F66764FE8E954 /* Skill.swift */,
 				6D5309E5D67C8CADD57F6598 /* SkillAttempt.swift */,
 				299C79D5AA27E5C011F65ACA /* SkillCatalog.swift */,
@@ -1658,7 +1659,6 @@
 				4C690AFC9B904FAD08FC6A41 /* SkillVisualCheck+Meat.swift */,
 				FB249E6DB91666F12B3E7BF7 /* SkillVisualCheck+MotherSauces.swift */,
 				DBF5FB7CB19FA23EB1819B4C /* SkillVisualCheck+Sauces.swift */,
-				97E87488C6845AD9CEFD83C0 /* TrialResult.swift */,
 			);
 			path = Skills;
 			sourceTree = "<group>";
@@ -2223,6 +2223,7 @@
 				379A94F1E3A0CDCDF0B7867F /* PreCookBriefingView.swift in Sources */,
 				B3C119F6B06D8A6ADF2A2350 /* PreCookChecklistView.swift in Sources */,
 				CD0FE2C17D4E3E2F01510615 /* QuestionsIntroScreen.swift in Sources */,
+				9AFA7F4B4C79A3967742ED7C /* RatingEvidence.swift in Sources */,
 				41F57819321FB979C342F6DF /* RealtimeEvent.swift in Sources */,
 				615AD56320ECA88141DA56F2 /* RealtimeTransport.swift in Sources */,
 				A093A0C9C4F78AE2F41B4DE5 /* RealtimeWebRTCTransport.swift in Sources */,
@@ -2342,7 +2343,6 @@
 				3913B7130EDC0551C2390651 /* TimerManager.swift in Sources */,
 				1C9B79FFE1C78122BF14B197 /* ToolsView.swift in Sources */,
 				35B960F476F3AD109374DD04 /* TrackingPermission.swift in Sources */,
-				80C1E3316AD4400791D2924D /* TrialResult.swift in Sources */,
 				92BA95B82102753E53525278 /* TutorialFrames.swift in Sources */,
 				658FF063B7D0C83A48CE0A3B /* Typography.swift in Sources */,
 				47CA4B0E6B9F7F7BD4ABE64C /* UnitConverter.swift in Sources */,

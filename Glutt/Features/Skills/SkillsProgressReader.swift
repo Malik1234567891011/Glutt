@@ -32,11 +32,11 @@ struct SkillsProgressReader {
     let totalXP: Int
     let streak: Int
 
-    /// `trials` defaults to empty so every existing caller and test keeps
-    /// working: a cook with no judged trials is simply unranked, which is the
+    /// `evidence` defaults to empty so every existing caller and test keeps
+    /// working: a cook nobody has watched yet is simply unranked, which is the
     /// correct answer rather than a special case.
-    init(progress: [SkillProgress], trials: [TrialResult] = [], today: Date = .now) {
-        self.trials = trials
+    init(progress: [SkillProgress], evidence: [RatingEvidence] = [], today: Date = .now) {
+        self.evidence = evidence
         var learned: Set<String> = []
         var started: Set<String> = []
         var mostRecent: (id: String, at: Date)?
@@ -74,8 +74,9 @@ struct SkillsProgressReader {
         SkillProgression.levelProgress(forXP: totalXP)
     }
 
-    /// Judged trials, newest first. Empty until a cook has done one.
-    let trials: [TrialResult]
+    /// Everything Glutt has actually watched this cook do: verified skill
+    /// checks and mastery trials alike. Empty until they have been seen once.
+    let evidence: [RatingEvidence]
 
     /// What they have demonstrated, or nil while unranked.
     ///
@@ -83,21 +84,31 @@ struct SkillsProgressReader {
     /// point: a level says how much of the world you have walked, a rating says
     /// what you have shown. Reading every lesson and pressing "I've got it"
     /// moves one and not the other.
-    var cookRating: Int? { CookRating.rating(from: trials) }
+    var cookRating: Int? { CookRating.rating(from: evidence) }
 
     var cookRank: CookRank? { cookRating.map(CookRank.rank(for:)) }
 
     /// A region's demonstrated standard, nil where there is nothing to measure
     /// or not enough of it yet.
     func rating(for category: SkillCategory) -> Int? {
-        RegionRating.rating(for: category, results: trials)
+        RegionRating.rating(for: category, evidence: evidence)
     }
 
     /// The best a cook has ever scored on one trial, for the mark under its
     /// node on the map.
-    func personalBest(for skillID: String) -> Int? {
-        trials.filter { $0.skillID == skillID }.map(\.score).max()
+    /// How many times this skill has been verified, for the mark under a
+    /// mastery node on the map.
+    ///
+    /// A count rather than a best score, because evidence is no longer a score:
+    /// the checking pipeline answers narrow authored questions and the app
+    /// decides what they mean, so "verified three times" is a claim we can
+    /// stand behind where "best 91" was not.
+    func verifiedCount(for skillID: String) -> Int {
+        evidence.filter { $0.skillID == skillID && $0.credit == .clean }.count
     }
+
+    /// True while the rating rests on too little to present as settled.
+    var isRatingProvisional: Bool { CookRating.isProvisional(evidence) }
     var hasStarted: Bool { !learnedIDs.isEmpty || !inProgressIDs.isEmpty }
 
     /// The skill the map points at, preferring to finish the region the cook

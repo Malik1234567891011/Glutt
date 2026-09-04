@@ -10,11 +10,11 @@ struct SkillsView: View {
     @Environment(\.modelContext) private var context
     @Environment(Router.self) private var router
     @Query private var progressRows: [SkillProgress]
-    @Query private var trialRows: [TrialResult]
+    @Query private var evidenceRows: [RatingEvidence]
     @State private var isShowingProfile = false
 
     private var reader: SkillsProgressReader {
-        SkillsProgressReader(progress: progressRows, trials: trialRows)
+        SkillsProgressReader(progress: progressRows, evidence: evidenceRows)
     }
 
     var body: some View {
@@ -86,48 +86,19 @@ struct SkillsView: View {
     /// is the product, so they get one line and the bear went to the path.
     private var progressLine: some View {
         let bar = reader.levelProgress
-        // Tappable, because this line is the only handle the deeper view needs.
-        // The alternative was a button or a chevron somewhere, which is another
-        // object on a screen whose whole argument is that the map is the
-        // feature.
-        return Button {
-            Haptics.selection()
-            isShowingProfile = true
-        } label: {
-            progressBody(bar)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func progressBody(_ bar: (level: Int, into: Int, needed: Int)) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            // Rank and rating lead once a cook has earned them, and the level
-            // moves underneath. Deliberately still ONE line rather than the
-            // card this used to be: the map is the feature, and a rating
-            // typeset at 52pt would push it below the fold again and turn the
-            // screen back into a profile. It matters because it is persistent
-            // and hard to get, not because it is large.
+        return VStack(alignment: .leading, spacing: 10) {
+            // Level and XP stay exactly as they were. This line is what a cook
+            // has walked through; the row below is what they have been seen to
+            // do, and keeping them visually separate is the whole point.
             HStack(spacing: 6) {
-                if let rank = reader.cookRank, let rating = reader.cookRating {
-                    Text(rank.title)
-                        .font(BrandFont.nunito(14.5, 800))
-                        .foregroundStyle(Theme.Colors.heading)
-                    Text("·")
-                        .foregroundStyle(Theme.Colors.muted)
-                    Text(rating.formatted())
-                        .font(BrandFont.nunito(14.5, 800))
-                        .foregroundStyle(Theme.Colors.heading)
-                        .monospacedDigit()
-                } else {
-                    Text("Level \(bar.level)")
-                        .font(BrandFont.nunito(14.5, 800))
-                        .foregroundStyle(Theme.Colors.heading)
-                    Text("·")
-                        .foregroundStyle(Theme.Colors.muted)
-                    Text(reader.learnedCount == 1 ? "1 skill" : "\(reader.learnedCount) skills")
-                        .font(BrandFont.nunito(14, 700))
-                        .foregroundStyle(Theme.Colors.textSecondary)
-                }
+                Text("Level \(bar.level)")
+                    .font(BrandFont.nunito(14.5, 800))
+                    .foregroundStyle(Theme.Colors.heading)
+                Text("·")
+                    .foregroundStyle(Theme.Colors.muted)
+                Text(reader.learnedCount == 1 ? "1 skill" : "\(reader.learnedCount) skills")
+                    .font(BrandFont.nunito(14, 700))
+                    .foregroundStyle(Theme.Colors.textSecondary)
                 Spacer(minLength: 0)
                 Text("\(bar.needed - bar.into) XP to \(bar.level + 1)")
                     .font(BrandFont.nunito(11.5, 700))
@@ -136,26 +107,6 @@ struct SkillsView: View {
                     .fixedSize()
             }
 
-            // While unplaced, one line explaining the whole mechanic.
-            //
-            // Without this the feature is invisible: a cook opens Skills, sees
-            // the same header they saw yesterday, and nothing anywhere says a
-            // rating exists or how it is earned. Silence is not restraint when
-            // the thing being withheld is the point.
-            if reader.cookRank == nil, !SkillCatalog.masteryTrials.isEmpty {
-                Text(CookRating.placementLine(reader.trials))
-                    .font(BrandFont.nunito(12, 700))
-                    .foregroundStyle(Theme.Colors.muted)
-            }
-
-            // The count only appears once the rank has taken its place above.
-            if reader.cookRank != nil {
-                Text("Level \(bar.level) · "
-                     + (reader.learnedCount == 1 ? "1 skill learned"
-                        : "\(reader.learnedCount) skills learned"))
-                    .font(BrandFont.nunito(12, 700))
-                    .foregroundStyle(Theme.Colors.textSecondary)
-            }
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Theme.Colors.surface2)
@@ -165,7 +116,65 @@ struct SkillsView: View {
                 }
             }
             .frame(height: 7)
+
+            cookRatingRow
         }
+    }
+
+    /// The way in to the rating, as an actual row rather than status text.
+    ///
+    /// This used to be the words "Unranked · pass a trial to start", which read
+    /// as passive status and gave nobody a reason to touch it. A labelled row
+    /// with a value and a chevron is the iOS grammar for "this opens
+    /// something", and it is the difference between a feature being present and
+    /// being findable.
+    ///
+    /// Deliberately no card, no background and no container: the map is the
+    /// feature and this must not push it down the screen. It is one row of
+    /// type, a divider above, and a 44pt tap target.
+    @ViewBuilder private var cookRatingRow: some View {
+        Divider().padding(.top, 2)
+
+        Button {
+            Haptics.selection()
+            isShowingProfile = true
+        } label: {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Cook Rating")
+                        .font(BrandFont.nunito(14, 700))
+                        .foregroundStyle(Theme.Colors.heading)
+                    // Only while unranked, and it says what earns one rather
+                    // than merely naming the state.
+                    if reader.cookRank == nil {
+                        Text(CookRating.placementLine(reader.evidence))
+                            .font(BrandFont.nunito(11.5, 600))
+                            .foregroundStyle(Theme.Colors.muted)
+                    }
+                }
+                Spacer(minLength: 8)
+                Text(ratingValue)
+                    .font(BrandFont.nunito(14, 800))
+                    .foregroundStyle(reader.cookRank == nil
+                                     ? Theme.Colors.muted : Theme.Colors.heading)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.Colors.muted)
+            }
+            // Comfortably past Apple's 44pt minimum, without a background that
+            // would turn this into a card.
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var ratingValue: String {
+        guard let rating = reader.cookRating, let rank = reader.cookRank else { return "Unranked" }
+        return "\(rating.formatted()) · \(rank.title)"
     }
 
     private func fraction(_ bar: (level: Int, into: Int, needed: Int)) -> CGFloat {

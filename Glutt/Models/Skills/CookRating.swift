@@ -23,7 +23,15 @@ enum CookRating {
     /// Both, not either. Five trials in one region says you are good at that
     /// region; it says nothing about cooking. Spanning regions is what makes
     /// the first number defensible.
-    static let trialsToPlace = 4
+    ///
+    /// Three rather than four, and the reason is a count nobody had done: of
+    /// the seven mastery trials in the catalog only FIVE carry a visual check,
+    /// so only five can be scored at all. Asking for four meant asking a cook
+    /// to complete eighty per cent of every scoreable trial in the app before
+    /// the rating would say anything, which is why a cook with fourteen skills
+    /// learned still saw nothing. Three across two regions is still real work
+    /// and still cannot be reached from one region alone.
+    static let trialsToPlace = 3
     static let regionsToPlace = 2
 
     /// Where a placed cook starts, before their results move them.
@@ -43,6 +51,26 @@ enum CookRating {
     /// How close an unplaced cook is to being placed, for the reveal.
     static func placementProgress(_ results: [TrialResult]) -> (done: Int, needed: Int) {
         (min(results.count, trialsToPlace), trialsToPlace)
+    }
+
+    /// One line telling an unplaced cook what the rating is and how to get one.
+    ///
+    /// "Unranked" on its own is a dead end. It names a state without naming the
+    /// way out of it, so a cook reads it once, learns nothing, and never looks
+    /// again. This is the only thing on the screen that explains the whole
+    /// mechanic, so it has to earn its line.
+    static func placementLine(_ results: [TrialResult]) -> String {
+        guard !results.isEmpty else {
+            return "Unranked · pass a trial to start"
+        }
+        let regions = Set(results.map(\.categoryID)).count
+        if results.count >= trialsToPlace, regions < regionsToPlace {
+            // The commoner near miss, and the one worth naming precisely: they
+            // have done the work, just all in one place.
+            return "Unranked · try a trial in another region"
+        }
+        let remaining = max(0, trialsToPlace - results.count)
+        return "Unranked · \(remaining) more \(remaining == 1 ? "trial" : "trials")"
     }
 }
 

@@ -16,6 +16,7 @@ struct SkillLessonView: View {
     @Query(sort: \SkillAttempt.startedAt, order: .reverse) private var allAttempts: [SkillAttempt]
 
     @State private var justLearned = false
+    @State private var isConfirmingUnchecked = false
     @State private var awarded = 0
     @State private var isPhotographing = false
 
@@ -419,12 +420,18 @@ struct SkillLessonView: View {
                         .foregroundStyle(Theme.Colors.accent)
                 } else {
                     Button {
-                        Haptics.notify(.success)
-                        awarded = skill.xp
-                        if SkillProgressStore.markLearned(skill, in: context) {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                justLearned = true
-                            }
+                        // A skill she can actually check should be checked.
+                        //
+                        // The button stays, because a cook who genuinely knows
+                        // this and cannot photograph it right now should not be
+                        // stuck. But marking a checkable skill learned without
+                        // ever showing it is the one thing that would make the
+                        // whole rating meaningless, so it costs a deliberate tap
+                        // rather than an idle one.
+                        if skill.visualCheck != nil, !hasPassedACheck {
+                            isConfirmingUnchecked = true
+                        } else {
+                            markLearned()
                         }
                     } label: {
                         Text("I've got it")
@@ -441,7 +448,35 @@ struct SkillLessonView: View {
             .padding(.top, 12)
             .padding(.bottom, 16)
             .background(Theme.Colors.background.opacity(0.98))
+            .confirmationDialog(
+                "Let me see it first",
+                isPresented: $isConfirmingUnchecked,
+                titleVisibility: .visible
+            ) {
+                Button("Show me instead") { isPhotographing = true }
+                Button("Mark it anyway", role: .destructive) { markLearned() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("I have not watched you do this one yet. Marking it learned "
+                     + "without showing me is fine if you already know it, but it will "
+                     + "not count toward your rating.")
+            }
         }
+    }
+
+    private func markLearned() {
+        Haptics.notify(.success)
+        awarded = skill.xp
+        if SkillProgressStore.markLearned(skill, in: context) {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                justLearned = true
+            }
+        }
+    }
+
+    /// Whether she has ever actually seen this one done.
+    private var hasPassedACheck: Bool {
+        attempts.contains { $0.outcome == .passed }
     }
 
     /// True when this skill was the last unlearned one in its region.

@@ -26,6 +26,10 @@ enum SkillCatalog {
     /// Flat list, map order preserved.
     static let allSkills: [Skill] = categories.flatMap(\.skills)
 
+    /// The scored trials: the diamonds on the map, and the only skills whose
+    /// result moves a cook's rating.
+    static let masteryTrials: [Skill] = allSkills.filter(\.isChallenge)
+
     private static let skillsByID: [String: Skill] = Dictionary(
         allSkills.map { ($0.id, $0) },
         // Duplicate ids are a content bug, caught by `SkillCatalogTests`. Keep

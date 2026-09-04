@@ -262,3 +262,107 @@ final class WeaknessRecommendationTests: XCTestCase {
         XCTAssertNil(done.weakestDemonstratedRegion, "nothing left to send them to")
     }
 }
+
+/// The wiring, which failed silently once and would have shipped.
+///
+/// An edit that was meant to pass trials into the reader never applied because
+/// the whitespace it matched on had changed. Everything still compiled, because
+/// `trials` defaults to empty and every rating call legitimately returns nil for
+/// a cook with no trials. The feature was simply dead: no rating, no region
+/// scores, no personal bests, whatever the database held.
+@MainActor
+final class ReaderWiringTests: XCTestCase {
+
+    private func trial(_ category: String, _ score: Int) -> TrialResult {
+        TrialResult(skillID: "\(category).x", categoryID: category, score: score)
+    }
+
+    /// The reader must actually use what it is handed. A reader given trials
+    /// and reporting nothing is the bug that shipped.
+    func testAReaderGivenTrialsUsesThem() {
+        let trials = [trial("knife", 88), trial("knife", 90),
+                      trial("heat", 84), trial("eggs", 86)]
+        let reader = SkillsProgressReader(progress: [], trials: trials)
+
+        XCTAssertEqual(reader.trials.count, 4)
+        XCTAssertNotNil(reader.cookRating, "four trials across three regions is placed")
+        XCTAssertNotNil(reader.cookRank)
+    }
+
+    func testRegionRatingsComeThroughTheReader() throws {
+        let knife = try XCTUnwrap(SkillCatalog.categories.first { $0.id == "knife" })
+        // Explicit timestamps, because the weighting is by recency and the
+        // first draft of this gave both trials `.now`. They sorted arbitrarily
+        // and the expected value flipped between 83 and 87 depending on which
+        // landed first, which is a test that would have failed at random on
+        // somebody else's machine.
+        let reader = SkillsProgressReader(progress: [], trials: [
+            TrialResult(skillID: "knife.x", categoryID: "knife", score: 90,
+                        finishedAt: Date()),
+            TrialResult(skillID: "knife.x", categoryID: "knife", score: 80,
+                        finishedAt: Date().addingTimeInterval(-86_400)),
+        ])
+        // (90 × 1 + 80 × 0.5) / 1.5, the newer result carrying twice the weight.
+        XCTAssertEqual(reader.rating(for: knife), 87, "recent weighted, not a plain mean")
+    }
+
+    func testPersonalBestsComeThroughTheReader() {
+        let reader = SkillsProgressReader(progress: [], trials: [
+            TrialResult(skillID: "knife.challenge-mirepoix", categoryID: "knife", score: 74),
+            TrialResult(skillID: "knife.challenge-mirepoix", categoryID: "knife", score: 91),
+            TrialResult(skillID: "eggs.challenge", categoryID: "eggs", score: 66),
+        ])
+        XCTAssertEqual(reader.personalBest(for: "knife.challenge-mirepoix"), 91, "the best, not the last")
+        XCTAssertEqual(reader.personalBest(for: "eggs.challenge"), 66)
+        XCTAssertNil(reader.personalBest(for: "meat.challenge-steak"), "never attempted")
+    }
+
+    /// And an empty reader stays honest rather than inventing a starting number.
+    func testAnEmptyReaderIsUnranked() {
+        let reader = SkillsProgressReader(progress: [], trials: [])
+        XCTAssertNil(reader.cookRating)
+        XCTAssertNil(reader.cookRank)
+    }
+}
+
+/// Placement has to be reachable with the content that actually exists.
+final class PlacementReachabilityTests: XCTestCase {
+
+    /// Only some mastery trials carry a visual check, and only those can be
+    /// scored. Asking for more placements than there are scoreable trials makes
+    /// the whole rating unreachable, which is what happened: placement wanted
+    /// four when the catalog holds five, so a cook had to complete eighty per
+    /// cent of every trial in the app before seeing a number.
+    func testPlacementIsReachableFromTheCatalogAsItStands() {
+        let scoreable = SkillCatalog.masteryTrials.filter { $0.visualCheck != nil }
+        XCTAssertGreaterThan(scoreable.count, 0, "nothing can be scored at all")
+
+        let regions = Set(scoreable.map(\.categoryID))
+        XCTAssertGreaterThanOrEqual(
+            regions.count, CookRating.regionsToPlace,
+            "placement spans \(CookRating.regionsToPlace) regions but only "
+            + "\(regions.count) have a scoreable trial")
+
+        // Retries count, so the bar is trials rather than distinct trials. It
+        // still must not ask for most of the catalog before saying anything.
+        XCTAssertLessThanOrEqual(
+            CookRating.trialsToPlace, scoreable.count,
+            "placement asks for \(CookRating.trialsToPlace) of \(scoreable.count) scoreable trials")
+    }
+
+    /// Unranked has to say what to do about it, in every state.
+    func testUnrankedAlwaysNamesTheWayOut() {
+        let states: [[TrialResult]] = [
+            [],
+            [TrialResult(skillID: "a", categoryID: "knife", score: 80)],
+            (0..<5).map { _ in TrialResult(skillID: "a", categoryID: "knife", score: 80) },
+        ]
+        for trials in states {
+            let line = CookRating.placementLine(trials)
+            XCTAssertTrue(line.hasPrefix("Unranked"))
+            XCTAssertTrue(line.contains("·"), "a bare 'Unranked' is a dead end: \(line)")
+            XCTAssertTrue(line.localizedCaseInsensitiveContains("trial"),
+                          "it has to name what earns a rating: \(line)")
+        }
+    }
+}

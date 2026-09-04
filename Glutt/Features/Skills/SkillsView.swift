@@ -10,8 +10,12 @@ struct SkillsView: View {
     @Environment(\.modelContext) private var context
     @Environment(Router.self) private var router
     @Query private var progressRows: [SkillProgress]
+    @Query private var trialRows: [TrialResult]
+    @State private var isShowingProfile = false
 
-    private var reader: SkillsProgressReader { SkillsProgressReader(progress: progressRows) }
+    private var reader: SkillsProgressReader {
+        SkillsProgressReader(progress: progressRows, trials: trialRows)
+    }
 
     var body: some View {
         NavigationStack {
@@ -28,6 +32,9 @@ struct SkillsView: View {
             }
             .background(Theme.Colors.background)
             .navigationBarHidden(true)
+            .sheet(isPresented: $isShowingProfile) {
+                CookProfileSheet(reader: reader)
+            }
         }
     }
 
@@ -79,7 +86,21 @@ struct SkillsView: View {
     /// is the product, so they get one line and the bear went to the path.
     private var progressLine: some View {
         let bar = reader.levelProgress
-        return VStack(alignment: .leading, spacing: 7) {
+        // Tappable, because this line is the only handle the deeper view needs.
+        // The alternative was a button or a chevron somewhere, which is another
+        // object on a screen whose whole argument is that the map is the
+        // feature.
+        return Button {
+            Haptics.selection()
+            isShowingProfile = true
+        } label: {
+            progressBody(bar)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func progressBody(_ bar: (level: Int, into: Int, needed: Int)) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
             // Rank and rating lead once a cook has earned them, and the level
             // moves underneath. Deliberately still ONE line rather than the
             // card this used to be: the map is the feature, and a rating
@@ -113,6 +134,18 @@ struct SkillsView: View {
                     .foregroundStyle(Theme.Colors.muted)
                     .lineLimit(1)
                     .fixedSize()
+            }
+
+            // While unplaced, one line explaining the whole mechanic.
+            //
+            // Without this the feature is invisible: a cook opens Skills, sees
+            // the same header they saw yesterday, and nothing anywhere says a
+            // rating exists or how it is earned. Silence is not restraint when
+            // the thing being withheld is the point.
+            if reader.cookRank == nil, !SkillCatalog.masteryTrials.isEmpty {
+                Text(CookRating.placementLine(reader.trials))
+                    .font(BrandFont.nunito(12, 700))
+                    .foregroundStyle(Theme.Colors.muted)
             }
 
             // The count only appears once the rank has taken its place above.

@@ -164,6 +164,7 @@
 		4B40244A0387FC1A1DF53F70 /* ButterChickenClipMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39931DD7F6CF39E1B3BE32B8 /* ButterChickenClipMappingTests.swift */; };
 		4B642F3ABF9E931C1F8D5604 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CF0F20EF027AE118381BF8D /* RootView.swift */; };
 		4BC65A92EE8C96F31225796D /* SkillChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAD6234EDD320EA7FB138843 /* SkillChatService.swift */; };
+		4E8FAE158BADB5516F977996 /* CookProfileSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516773436B816A2CD70733E9 /* CookProfileSheet.swift */; };
 		506F2ACDC07A7DF03B2BB349 /* GluttStepper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C030DE72417F905FCF9840A /* GluttStepper.swift */; };
 		50C6D17ADB0F198DF499F211 /* OptionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F53E9D323C8F67248EAD82D /* OptionRow.swift */; };
 		51DCE52A4E8E7DEE3C077A98 /* ImportedRecipeDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA97A87700CD96961371CCC /* ImportedRecipeDraft.swift */; };
@@ -653,6 +654,7 @@
 		4E39FFD0A1A83C6A68003690 /* StepClipModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepClipModels.swift; sourceTree = "<group>"; };
 		502695B7091FA29E6B8590A1 /* SkillCatalog+Eggs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SkillCatalog+Eggs.swift"; sourceTree = "<group>"; };
 		50BBD8FB30834FFB65A9DF93 /* PollyHeroScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollyHeroScreen.swift; sourceTree = "<group>"; };
+		516773436B816A2CD70733E9 /* CookProfileSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookProfileSheet.swift; sourceTree = "<group>"; };
 		51BA0C50DB25DC2354C5EE3D /* RecipeSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeSync.swift; sourceTree = "<group>"; };
 		51D92C8E360A657E37F798B8 /* PlatesFeedViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesFeedViewModel.swift; sourceTree = "<group>"; };
 		528768F4E45A7F8D5E44D4CB /* FakeLLMTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeLLMTransport.swift; sourceTree = "<group>"; };
@@ -1298,6 +1300,7 @@
 		574FA96568F462812FBC53A3 /* Skills */ = {
 			isa = PBXGroup;
 			children = (
+				516773436B816A2CD70733E9 /* CookProfileSheet.swift */,
 				83E71E2C9F9A8A4DAD9B2433 /* SkillAskPollyView.swift */,
 				0198B76755C927AF6E8E6C26 /* SkillLessonView.swift */,
 				6342DCE41CE98D0ED9327CBB /* SkillLookMirrorPanel.swift */,
@@ -2067,6 +2070,7 @@
 				19D5DE8E0D64A73F1756C3FD /* CookModeView.swift in Sources */,
 				CC323851C9B4AE018B17D78F /* CookPlan.swift in Sources */,
 				6793F9DC7BC9727DA673BE1C /* CookPlanCompiler.swift in Sources */,
+				4E8FAE158BADB5516F977996 /* CookProfileSheet.swift in Sources */,
 				CCA4A3A24F17F3E98873A82B /* CookRating.swift in Sources */,
 				BA055AC380B3FFBBD150F6F4 /* CookRecap.swift in Sources */,
 				496B45BC07B3D929584A833D /* CookRecapBuilder.swift in Sources */,

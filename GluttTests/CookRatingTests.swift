@@ -176,8 +176,150 @@ final class LessonsDoNotRateTests: XCTestCase {
                 if text.contains("RatingEvidence(") { writers.append(file.lastPathComponent) }
             }
         }
-        XCTAssertEqual(writers.sorted(), ["SkillPhotoCheck.swift"],
-                       "evidence should only be written where a check was judged")
+        XCTAssertEqual(
+            writers.sorted(), ["SkillCheckSimulator.swift", "SkillPhotoCheck.swift"],
+            "evidence should only be written where a check was judged")
+    }
+
+    /// The simulator can award a rating by tapping, so it must not be able to
+    /// ship. The whole file is `#if DEBUG`, not one function inside it.
+    ///
+    /// The rating only means anything because it cannot be tapped into
+    /// existence. A build where it can is a build where "verified" means
+    /// nothing, and the failure would be invisible: everything would work,
+    /// just for the wrong reason.
+    func testTheSimulatorCannotShip() throws {
+        let source = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent(
+                    "Glutt/Features/Skills/SkillCheckSimulator.swift"),
+            encoding: .utf8)
+
+        let lines = source.split(separator: "\n", omittingEmptySubsequences: false)
+        let first = lines.first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        XCTAssertEqual(first, "#if DEBUG", "the guard has to be the first thing in the file")
+        XCTAssertEqual(
+            lines.last { !$0.trimmingCharacters(in: .whitespaces).isEmpty }, "#endif",
+            "the guard has to close at the end, or part of the file ships")
+        // Directives only. The doc comment talks about `#if DEBUG`, and
+        // counting the prose along with the code made this fail on its own
+        // explanation.
+        let directives = lines.filter { $0.trimmingCharacters(in: .whitespaces).hasPrefix("#if") }
+        XCTAssertEqual(
+            directives.count, 1,
+            "one guard only, so there is no second branch to reason about")
+
+        // And the call site is guarded too, or the app would not compile in
+        // release while the file itself looked fine.
+        let view = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent("Glutt/Features/Skills/SkillLessonView.swift"),
+            encoding: .utf8)
+        if let call = view.range(of: "SkillCheckSimulator.recordPass") {
+            let before = view[view.startIndex..<call.lowerBound]
+            let opens = before.components(separatedBy: "#if DEBUG").count - 1
+            let closes = before.components(separatedBy: "#endif").count - 1
+            XCTAssertGreaterThan(opens, closes, "the call site is not inside #if DEBUG")
+        }
+    }
+}
+
+/// The debug simulator, which has to behave like the real path or it tests a
+/// code path that does not exist.
+@MainActor
+final class SkillCheckSimulatorTests: XCTestCase {
+
+    private func makeContext() throws -> ModelContext {
+        let container = try ModelContainer(
+            for: Schema([SkillProgress.self, SkillAttempt.self, RatingEvidence.self]),
+            configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
+        return ModelContext(container)
+    }
+
+    private func watchableKnifeSkills(_ count: Int) -> [Skill] {
+        Array(SkillCatalog.allSkills.filter { $0.visualCheck != nil }.prefix(count))
+    }
+
+    private func evidence(in context: ModelContext) throws -> [RatingEvidence] {
+        try context.fetch(FetchDescriptor<RatingEvidence>())
+    }
+
+    /// The point of the whole thing: three taps place a cook, exactly as three
+    /// verified checks would.
+    func testThreeSimulatedPassesPlaceACook() throws {
+        let context = try makeContext()
+        let skills = watchableKnifeSkills(3)
+        XCTAssertEqual(skills.count, 3)
+
+        for skill in skills {
+            XCTAssertTrue(SkillCheckSimulator.recordPass(for: skill, in: context))
+        }
+
+        let rows = try evidence(in: context)
+        XCTAssertEqual(rows.count, 3)
+        XCTAssertNotNil(CookRating.rating(from: rows), "three passes is a placement")
+        XCTAssertTrue(CookRating.isProvisional(rows), "and it is still provisional")
+    }
+
+    /// It writes the attempt too, so the lesson reads as passed and the history
+    /// says plainly that it was not earned.
+    func testItLeavesAnHonestAttemptBehind() throws {
+        let context = try makeContext()
+        let skill = try XCTUnwrap(watchableKnifeSkills(1).first)
+        SkillCheckSimulator.recordPass(for: skill, in: context)
+
+        let attempts = try context.fetch(FetchDescriptor<SkillAttempt>())
+        XCTAssertEqual(attempts.count, 1)
+        XCTAssertEqual(attempts.first?.outcome, .passed)
+        XCTAssertEqual(attempts.first?.source, .showing)
+        XCTAssertEqual(attempts.first?.note, SkillCheckSimulator.note)
+    }
+
+    /// A clean pass and a full count are the same claim. A row where they
+    /// disagreed would be a state the real path cannot produce.
+    func testTheCountMatchesTheAuthoredCriteria() throws {
+        let context = try makeContext()
+        let skill = try XCTUnwrap(
+            SkillCatalog.allSkills.first { $0.id == "knife.grip" })
+        let check = try XCTUnwrap(skill.visualCheck)
+        SkillCheckSimulator.recordPass(for: skill, in: context)
+
+        let row = try XCTUnwrap(try evidence(in: context).first)
+        let scoreable = check.observations.filter { $0.correct != nil }.count
+        XCTAssertEqual(row.criteriaObservable, scoreable)
+        XCTAssertEqual(row.criteriaMet, scoreable)
+        XCTAssertEqual(row.score, 100)
+        XCTAssertEqual(row.creditValue, 1.0)
+    }
+
+    /// A skill the app can never verify must not be placeable by tapping
+    /// either, or the simulator would grant a rating on evidence that has no
+    /// real counterpart.
+    func testASkillWithNoCheckWritesNothing() throws {
+        let context = try makeContext()
+        let unwatchable = try XCTUnwrap(
+            SkillCatalog.allSkills.first { $0.visualCheck == nil })
+        XCTAssertFalse(SkillCheckSimulator.recordPass(for: unwatchable, in: context))
+        XCTAssertTrue(try evidence(in: context).isEmpty)
+    }
+
+    /// Repeats damp exactly as they do for real evidence, so tapping one skill
+    /// twenty times is not a way to reach Head Chef.
+    func testTappingOneSkillIsNotALadder() throws {
+        let context = try makeContext()
+        let skill = try XCTUnwrap(watchableKnifeSkills(1).first)
+        for _ in 0..<6 { SkillCheckSimulator.recordPass(for: skill, in: context) }
+
+        let farmed = try evidence(in: context)
+        let varied = watchableKnifeSkills(6)
+        let variedContext = try makeContext()
+        for skill in varied { SkillCheckSimulator.recordPass(for: skill, in: variedContext) }
+
+        XCTAssertGreaterThan(
+            CookRating.rating(from: try evidence(in: variedContext))!,
+            CookRating.rating(from: farmed)!)
     }
 }
 

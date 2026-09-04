@@ -466,7 +466,20 @@ struct SkillLessonView: View {
                 // remove it later, because comments like that are how things
                 // ship. In release the choice is show her or leave it unlearned.
                 #if DEBUG
-                Button("Mark it anyway (debug)", role: .destructive) { markLearned() }
+                Button("Mark it anyway (debug)", role: .destructive) {
+                    // XP and the animation first, evidence second.
+                    //
+                    // The simulator writes a passing attempt, and a passing
+                    // attempt marks the skill learned on its way through
+                    // `recordAttempt`. Run the other way round, `markLearned`
+                    // then found it already learned, correctly returned false,
+                    // and the tap produced no XP line and no confirmation at
+                    // all. Nothing was broken and it looked like nothing had
+                    // happened, which is the worst way for test tooling to
+                    // behave.
+                    markLearned()
+                    SkillCheckSimulator.recordPass(for: skill, in: context)
+                }
                 #endif
                 Button("Cancel", role: .cancel) {}
             } message: {

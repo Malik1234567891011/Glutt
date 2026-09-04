@@ -566,6 +566,25 @@ struct PollyAdaptiveCanvasView: View {
         }
     }
 
+    /// The amounts for this step's ingredients, joined up from the plan's mise.
+    ///
+    /// Empty when the plan has no amounts, which is true of anything compiled
+    /// before `MiseItem.amount` existed, and empty rather than a row of bare
+    /// names because "yogurt · chicken" tells a cook nothing they cannot see in
+    /// front of them.
+    private func amountsLine(for step: CookPlan.PlanStep) -> String {
+        guard let mise = plan?.mise, !step.ingredientNames.isEmpty else { return "" }
+        let wanted = Set(step.ingredientNames.map { $0.lowercased() })
+        let parts = mise.compactMap { item -> String? in
+            guard wanted.contains(item.name.lowercased()),
+                  let amount = item.amount,
+                  !amount.trimmingCharacters(in: .whitespaces).isEmpty
+            else { return nil }
+            return "\(amount) \(item.name.lowercased())"
+        }
+        return parts.joined(separator: "  ·  ")
+    }
+
     private func defaultSheet(_ step: CookPlan.PlanStep) -> some View {
         let isSetup = CookPlan.isSetupStep(step)
         let items = checklist(for: step)
@@ -597,21 +616,43 @@ struct PollyAdaptiveCanvasView: View {
                 // Tools / Prep: the checklist IS the content.
                 setupChecklistPreview(items)
             } else {
-                Text(displayInstruction(step))
-                    .font(.system(size: 18))
-                    .foregroundStyle(CookCanvasTheme.secondaryText)
-                    .lineSpacing(5)
-                    .lineLimit(showStepDetail ? nil : 3)
-
-                Button {
-                    Haptics.selection()
-                    showStepDetail = true
-                } label: {
-                    Text("Tap to view more")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(CookCanvasTheme.green)
+                // The step as lines, whole, with nothing hidden behind a tap.
+                //
+                // This was `instruction` truncated to three lines with a "Tap to
+                // view more" underneath, and watching somebody cook they pressed
+                // it on nearly every step and read the paragraph. The screen was
+                // showing the same prose she had just spoken, cut off: too long
+                // to glance at, too short to work from. Now it shows the short
+                // lines, all of them, so a glance is enough and there is nothing
+                // to press.
+                VStack(alignment: .leading, spacing: 9) {
+                    ForEach(Array(step.glanceLines.enumerated()), id: \.offset) { _, line in
+                        HStack(alignment: .firstTextBaseline, spacing: 9) {
+                            Circle()
+                                .fill(CookCanvasTheme.green.opacity(0.55))
+                                .frame(width: 5, height: 5)
+                                .offset(y: -2)
+                            Text(line)
+                                .font(.system(size: 18))
+                                .foregroundStyle(CookCanvasTheme.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
+
+                // The amounts, where the cook is standing when they need them.
+                //
+                // Seven of the twelve cooks in the study had to stop and ask for
+                // a quantity mid-step, because the amounts live in the
+                // ingredients list and the step says "add the yogurt". The plan
+                // already knows both halves; nothing was joining them up.
+                if !amountsLine(for: step).isEmpty {
+                    Text(amountsLine(for: step))
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(CookCanvasTheme.primaryText.opacity(0.72))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
+                }
             }
 
             if !controller.timers.timers.isEmpty {
@@ -935,7 +976,15 @@ struct PollyAdaptiveCanvasView: View {
         switch controller.listeningMode {
         case .listening: return "Listening…"
         case .followUp: return "Listening…"
-        case .dormant: return controller.wakeWordAvailable ? "Say “Chef” or tap to talk" : "Tap to talk"
+        // Says what she is FOR, not just how to reach her.
+        //
+        // "Say Chef to talk" tells a cook the mechanism and not the offer, and
+        // people who do not know they can ask do not ask. This is the study's
+        // "uncommunicated affordances": cooks stayed stuck on things the
+        // assistant would happily have answered, because nothing suggested it.
+        case .dormant: return controller.wakeWordAvailable
+            ? "Say “Chef” if you need anything"
+            : "Tap to talk"
         }
     }
 

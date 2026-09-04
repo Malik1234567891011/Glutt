@@ -79,6 +79,20 @@ struct CollectionDetailView: View {
         ) {
             Button("Delete collection", role: .destructive) {
                 Haptics.notify(.error)
+                // Unhook any planned week pointing at this collection FIRST.
+                //
+                // `MealPlan.collection` is a to-one reference with no inverse
+                // and therefore no delete rule, so deleting the collection used
+                // to leave the plan holding a dangling row. The Recipes tab
+                // reads `plan.collection?.recipes` while it builds the library
+                // list, that tab is the one the app launches on, and the result
+                // was an app that crashed on every launch until the plan was
+                // gone too. Deleting a collection is a thing people do.
+                let planID = collection.persistentModelID
+                let plans = (try? context.fetch(FetchDescriptor<MealPlan>())) ?? []
+                for plan in plans where plan.collection?.persistentModelID == planID {
+                    plan.collection = nil
+                }
                 context.delete(collection)
                 dismiss()
             }

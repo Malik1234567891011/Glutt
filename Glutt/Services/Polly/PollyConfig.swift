@@ -61,7 +61,20 @@ enum PollyConfig {
     /// is one word now, so her own voice off the speaker could trigger it; the
     /// segment is dropped when she finishes and this covers the on-device
     /// recognizer's partial-result lag on top of that.
-    static let wakeSuppressionTailSeconds: TimeInterval = 1.2
+    /// How long after she stops talking the wake word stays deaf.
+    ///
+    /// Was 1.2 seconds, and that number was costing far more than it looked.
+    /// The natural moment to speak to somebody is the instant they stop, so a
+    /// cook saying "Chef" the moment she finished was landing inside the one
+    /// window where nothing could hear them. They then said it again, which is
+    /// exactly the behaviour that got reported: "he'd have to say chef a few
+    /// times for it to start listening."
+    ///
+    /// The tail exists so her own trailing words, still working through the
+    /// recognizer after playback stops, cannot wake her. The segment swap on
+    /// the same path does most of that work; this only has to cover what is
+    /// already in flight, which is a fraction of a second.
+    static let wakeSuppressionTailSeconds: TimeInterval = 0.45
     /// Never-silent contract: silent reconnect attempts before failing loud.
     /// (v1 allowed exactly one.)
     static let reconnectAttempts = 2

@@ -11,6 +11,9 @@ struct RecipesView: View {
     @Query private var pantryItems: [PantryItem]
     @Query private var cookHistory: [CookSession]
     @Query private var mealPlans: [MealPlan]
+    /// Every collection that still exists, so a plan's link can be checked
+    /// against reality before it is followed. See `plannedRecipeIDs`.
+    @Query private var collections: [RecipeCollection]
 
     // Heterogeneous on purpose: the feed pushes recipes, the chef rail pushes chefs.
     @State private var navPath = NavigationPath()
@@ -110,7 +113,25 @@ struct RecipesView: View {
     /// below, where the week rail already shows them as the set they are. Listing
     /// them twice would be worse than either.
     private var plannedRecipeIDs: Set<PersistentIdentifier> {
-        Set(mealPlans.flatMap { $0.collection?.recipes ?? [] }.map(\.persistentModelID))
+        // Only collections that genuinely still exist.
+        //
+        // This is the line that crashed the app on launch after somebody
+        // deleted a planned week's collection. `MealPlan.collection` has no
+        // inverse and so no delete rule, which leaves the plan pointing at a
+        // deleted row, and reading `.recipes` through it takes the process
+        // down. `WeekPlanRail` was given the same guard when this first
+        // happened and this second reader was missed, which is the argument for
+        // the guard living in one place rather than at each call site.
+        let live = Set(collections.map(\.persistentModelID))
+        return Set(
+            mealPlans
+                .compactMap { plan -> RecipeCollection? in
+                    guard let collection = plan.collection,
+                          live.contains(collection.persistentModelID) else { return nil }
+                    return collection
+                }
+                .flatMap { $0.recipes }
+                .map(\.persistentModelID))
     }
 
     private var visibleRecipes: [Recipe] {

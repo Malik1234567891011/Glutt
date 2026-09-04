@@ -54,7 +54,16 @@ struct SkillRecommendationMovesTests {
     @Test func theRecommendationFollowsTheMostRecentlyOpenedSkill() throws {
         let authored = SkillCatalog.authoredSkills
         let early = try #require(authored.first)
-        let late = try #require(authored.last { $0.categoryID != early.categoryID })
+        // Somewhere they could actually be sent. Picking the last authored
+        // skill in another category used to work and stopped when the catalog
+        // grew regions whose every skill sits behind a prerequisite: with
+        // nothing learned there is nothing available there, so the
+        // recommendation correctly falls back and the test failed for a reason
+        // that had nothing to do with hash order.
+        let late = try #require(authored.last {
+            $0.categoryID != early.categoryID
+                && SkillProgression.prerequisitesMet(for: $0, learnedIDs: [])
+        })
 
         var rows = [
             SkillProgress(skillID: early.id, startedAt: .now.addingTimeInterval(-600)),

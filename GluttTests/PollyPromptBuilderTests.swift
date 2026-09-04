@@ -303,6 +303,57 @@ final class PollyPromptBuilderTests: XCTestCase {
         XCTAssertTrue(strict.contains("STILL NOT A COMMENTARY"))
     }
 
+    /// The rules for a look nobody asked for.
+    ///
+    /// Every other seeing rule covers a look the conversation earned. These are
+    /// the ones a clock starts, and they need something the others do not: a way
+    /// to end the turn having said nothing. Without one a voice model finds
+    /// something to say every single time, and twenty of those is what gets the
+    /// glasses taken off.
+    func testUnpromptedLooksAreGivenAWayToSayNothing() {
+        let recipe = makeRecipe()
+        let prompt = instructions(recipe: recipe, seesContinuously: true, watchfulness: .watchful)
+        XCTAssertTrue(prompt.contains("UNPROMPTED LOOKS"))
+        XCTAssertTrue(prompt.contains("wait_for_user"), "silence needs a mechanism, not a wish")
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("say\n               NOTHING")
+                        || prompt.localizedCaseInsensitiveContains("NOTHING AT ALL"))
+        XCTAssertTrue(prompt.contains("NEVER NARRATE A LOOK"))
+        XCTAssertTrue(prompt.contains("NOT A CONVERSATION"),
+                      "she says her one thing and stops rather than opening a turn")
+    }
+
+    /// Hands off means hands off, including the clock. A cook who asked to be
+    /// left alone must not get a prompt describing looks they will never get.
+    func testHandsOffIsToldNothingAboutUnpromptedLooks() {
+        let recipe = makeRecipe()
+        let prompt = instructions(recipe: recipe, seesContinuously: true, watchfulness: .handsOff)
+        XCTAssertFalse(prompt.contains("UNPROMPTED LOOKS"))
+    }
+
+    /// Both watching levels used to be told never to say a thing was fine. That
+    /// is the difference between a chef watching over your shoulder and a smoke
+    /// alarm: the alarm only ever speaks when you have failed.
+    func testPraiseIsAllowedButHasToNameTheThing() {
+        let recipe = makeRecipe()
+        for level in [ChefWatchfulness.perfectionist, .watchful] {
+            let prompt = instructions(
+                recipe: recipe, seesContinuously: true, watchfulness: level)
+            XCTAssertFalse(
+                prompt.localizedCaseInsensitiveContains("never say a thing is fine"),
+                "\(level.rawValue) is still banned from ever approving anything")
+            XCTAssertFalse(
+                prompt.localizedCaseInsensitiveContains("do not confirm that things are fine"),
+                "\(level.rawValue) is still banned from ever approving anything")
+            XCTAssertTrue(
+                prompt.localizedCaseInsensitiveContains("once per step"),
+                "\(level.rawValue) has no cap on praise, which is how it becomes commentary")
+        }
+        // And it still has to be specific: vague approval is the failure mode.
+        let strict = instructions(
+            recipe: recipe, seesContinuously: true, watchfulness: .perfectionist)
+        XCTAssertTrue(strict.localizedCaseInsensitiveContains("\"looks good\" on its own is noise"))
+    }
+
     /// Watchfulness is a glasses idea. A phone cook must get the same prompt
     /// whatever is persisted, or a setting they never saw changes their cook.
     func testWatchfulnessDoesNotLeakIntoAPhoneCook() {

@@ -19,7 +19,8 @@
     "sync:supabase": "node scripts/syncToSupabase.js",
     "claim:supabase": "node scripts/claimSupabaseJobs.js",
     "pilot:creme-brulee": "node scripts/finishPilot.js 6tSdlo0r0Io",
-    "pilot:gnocchi": "node scripts/finishPilot.js 3sUJwjvmzk8"
+    "pilot:gnocchi": "node scripts/finishPilot.js 3sUJwjvmzk8",
+    "pilot:butter-chicken": "node scripts/finishPilot.js hDjK5C2aoSs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.850.0",

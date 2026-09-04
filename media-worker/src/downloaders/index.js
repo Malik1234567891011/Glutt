@@ -18,6 +18,34 @@ import { detectPlatform, validateSourceUrl, youtubeExternalId } from "../securit
 
 /** @typedef {{ filePath: string, infoPath?: string, ext: string, probe: SourceProbe }} DownloadedSource */
 
+/**
+ * Two flags that together decide whether YouTube gives us 1080p or 360p.
+ *
+ * `--js-runtimes`: yt-dlp needs a JavaScript engine to solve YouTube's player
+ * challenge and only enables deno by default. Node is already a hard dependency
+ * of this worker, so name it.
+ *
+ * `player_client`: this used to be pinned to `android,ios,web` to get around
+ * SABR breaking the web client. That is now the thing doing the damage —
+ * android's https formats come back without URLs and ios wants a PO token, so
+ * every DASH format is dropped and the only survivor is progressive format 18,
+ * 640x360. The butter chicken pilot archived a 4K source at 360p that way, and
+ * said nothing about it beyond a warning: the run "succeeded", and the master we
+ * would have cut every clip from was a quarter of the resolution of the phone
+ * playing it. `web_embedded` returns the full ladder and its URLs actually
+ * serve; yt-dlp's own defaults list the ladder and then 403 partway through the
+ * fragments. The two behind it are fallbacks for when that stops being true.
+ *
+ * This is the flag most likely to rot, because it tracks whatever YouTube did
+ * last month. `YT_DLP_PLAYER_CLIENT` overrides it without a code change, and the
+ * symptom to watch for is a 1080p source arriving as 640x360.
+ */
+const YT_ARGS = [
+  "--js-runtimes", process.env.YT_DLP_JS_RUNTIME || "node",
+  "--extractor-args",
+  `youtube:player_client=${process.env.YT_DLP_PLAYER_CLIENT || "web_embedded,web,tv_simply"}`,
+];
+
 class BaseDownloader {
   canHandle(_url) {
     return false;
@@ -39,12 +67,11 @@ export class YouTubeDownloader extends BaseDownloader {
 
   async probe(url) {
     validateSourceUrl(url.href);
-    // YouTube SABR / web-client breakage: prefer android+ios players.
     const { stdout } = await runCommand(config.ytDlpBin, [
       "--dump-single-json",
       "--skip-download",
       "--no-playlist",
-      "--extractor-args", "youtube:player_client=android,ios,web",
+      ...YT_ARGS,
       url.href,
     ], { timeoutMs: 120000 });
     const raw = JSON.parse(stdout);
@@ -95,7 +122,7 @@ export class YouTubeDownloader extends BaseDownloader {
     const outTemplate = path.join(destinationDirectory, "source.%(ext)s");
     await runCommand(config.ytDlpBin, [
       "--no-playlist",
-      "--extractor-args", "youtube:player_client=android,ios,web",
+      ...YT_ARGS,
       "-f", "bv*[height<=1080]+ba/b[height<=1080]/18/best",
       "--merge-output-format", "mp4",
       "--write-info-json",
@@ -112,7 +139,7 @@ export class YouTubeDownloader extends BaseDownloader {
     try {
       await runCommand(config.ytDlpBin, [
         "--no-playlist",
-        "--extractor-args", "youtube:player_client=android,ios,web",
+        ...YT_ARGS,
         "--skip-download",
         "--write-auto-subs",
         "--write-subs",

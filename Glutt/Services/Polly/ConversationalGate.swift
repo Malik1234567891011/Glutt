@@ -188,10 +188,21 @@ enum ConversationalGate {
         let text = normalize(raw)
         guard !text.isEmpty else { return false }
         if matchesAnyPhrase(text, interruptPhrases) { return true }
-        // The full phrase, not a bare "chef". Waking her by name is cheap to get
-        // wrong; cutting her off mid-sentence is not, so barge-in keeps the
-        // stricter test even though the wake word itself no longer needs it.
-        if WakeWordMatcher.containsWakePhrase(text) { return true }
+        // A bare "chef" counts, same as everywhere else.
+        //
+        // This used to demand the full "hey chef" to interrupt, on the grounds
+        // that cutting her off mid-sentence is expensive to get wrong. Watching
+        // somebody cook showed the other side of that trade and it is worse:
+        // they said "chef", nothing happened because she was still talking,
+        // and they said it again, and again. The moment a person most wants to
+        // interrupt is mid-sentence, and that was the one moment the short form
+        // did not work.
+        //
+        // A bare "chef" is allowed, but only where a cook would put it: at the
+        // front. Her own praise leaking through the speaker trails it instead,
+        // "beautiful, chef", and an existing test caught that the moment this
+        // was relaxed too far. See `containsSummons`.
+        if WakeWordMatcher.containsSummons(text) { return true }
         if hadQuestionMark || looksLikeDirectFollowUp(text) { return true }
         return false
     }

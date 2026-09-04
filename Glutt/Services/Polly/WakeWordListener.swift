@@ -21,6 +21,19 @@ enum WakeWordMatcher {
     /// deliberately stricter — see `containsWakePhrase`.
     static let leadIns: Set<String> = ["hey", "hay", "hi", "yo"]
 
+    /// Words a cook may put in front of her name when summoning her.
+    ///
+    /// Wider than `leadIns` and deliberately kept apart from it. A device log
+    /// of a real session caught `wake: heard "Chef" in "OK chef"`, which is how
+    /// people address somebody they are already mid-conversation with, so the
+    /// position rule in `containsSummons` has to accept it.
+    ///
+    /// It cannot go in `leadIns` itself: that set also answers "is this
+    /// utterance nothing but her name", and adding "okay" there turned a bare
+    /// "Okay" from an acknowledgement the cook mutters to themselves into an
+    /// address. A test caught it immediately.
+    static let summonsLeadIns: Set<String> = leadIns.union(["ok", "okay", "so", "and"])
+
     /// "Chef" plus the mis-hears an on-device recognizer commonly returns for it.
     static let names: Set<String> = ["chef", "chefs", "shef", "sheff", "chief"]
 
@@ -50,6 +63,30 @@ enum WakeWordMatcher {
     /// True if the transcript contains the wake word, with or without a lead-in.
     static func containsWake(_ transcript: String) -> Bool {
         !wakeEndIndices(words(transcript)).isEmpty
+    }
+
+    /// True when the name is used to SUMMON her, rather than to address the cook.
+    ///
+    /// The distinction is position, and it is the one that actually separates
+    /// the two cases. A cook calling her leads with it: "chef", "chef wait",
+    /// "hey chef, how long". Her own praise coming back through the speaker
+    /// trails it: "beautiful, chef", "nice one chef". Same word, opposite
+    /// speaker, and you can tell them apart by where it sits.
+    ///
+    /// This replaced a rule that demanded the full "hey chef" to interrupt her.
+    /// That was safe and too expensive: watching somebody cook, they said
+    /// "chef" mid-sentence, nothing happened, and they said it again and again.
+    /// Mid-sentence is exactly when a person wants to interrupt, and it was the
+    /// one moment the short form did not work.
+    static func containsSummons(_ transcript: String) -> Bool {
+        let tokens = words(transcript)
+        guard !tokens.isEmpty else { return false }
+        // Leading the utterance, allowing one lead-in word ("hey chef", "ok chef").
+        for index in wakeEndIndices(tokens) where index <= 1 {
+            if index == 0 { return true }
+            if summonsLeadIns.contains(tokens[0]) { return true }
+        }
+        return false
     }
 
     /// True only for the full "hey chef" form. Used where a false positive costs

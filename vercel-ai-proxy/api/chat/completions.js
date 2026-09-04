@@ -1,5 +1,6 @@
 import { isAuthorized } from "../_lib/auth.js";
 import { logUsage, installIdFrom, tokensFrom, featureFrom } from "../_lib/usage.js";
+import { isAnthropicModel, callAnthropic } from "../_lib/anthropic.js";
 
 function resolveOpenAIKey() {
   return (
@@ -11,7 +12,7 @@ function resolveOpenAIKey() {
 }
 
 export default async function handler(req, res) {
-  const proxyVersion = "2026-06-16-redeploy-1";
+  const proxyVersion = "2026-08-31-anthropic-4";
   res.setHeader("x-glutt-proxy-version", proxyVersion);
 
   if (req.method !== "POST") {
@@ -37,6 +38,23 @@ export default async function handler(req, res) {
   // surface's spend stays readable apart from the rest.
   const feature = featureFrom(req, "chat");
   const startedAt = Date.now();
+
+  // Claude goes to Anthropic, translated both ways. Everything else is the
+  // pass-through this endpoint has always been.
+  if (isAnthropicModel(model)) {
+    const startedAtClaude = Date.now();
+    const result = await callAnthropic(req.body || {});
+    let usage = {};
+    try { usage = tokensFrom(JSON.parse(result.raw)); } catch { /* error body */ }
+    try {
+      await logUsage({
+        installId: installIdFrom(req), feature, model,
+        ...usage, ms: Date.now() - startedAtClaude, ok: result.ok,
+      });
+    } catch { /* never fail a request over bookkeeping */ }
+    res.setHeader("Content-Type", "application/json");
+    return res.status(result.status).send(result.raw);
+  }
 
   try {
     const upstream = await fetch(`${openAIBaseURL}/chat/completions`, {

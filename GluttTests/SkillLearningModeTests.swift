@@ -18,13 +18,21 @@ final class SkillLearningModeTests: XCTestCase {
 
     /// The sentence that started all of this. "Look down at your hand and turn
     /// it slowly" is impossible while holding the camera.
+    ///
+    /// It turned out to be wrong in the other mode too. Looking down at a board
+    /// puts the knife at counter level and arm's length from a camera on the
+    /// cook's face, where it measured under 1% of the frame. The live framing
+    /// now asks for the knife held up, so both modes changed and only the reason
+    /// stayed the same.
     func testTheKnifeGripAsksForSomethingCompletelyDifferentInEachMode() {
         let check = SkillVisualCheck.chefKnifeGrip
         let live = check.framing(for: .watching)
         let photo = check.framing(for: .showing)
 
         XCTAssertNotEqual(live, photo)
-        XCTAssertTrue(live.contains("look down"), "live framing is first person")
+        XCTAssertTrue(
+            live.localizedCaseInsensitiveContains("your hand"),
+            "live framing is still first person, and has to aim their eyes at the hand")
         XCTAssertTrue(photo.contains("photo"), "photo framing asks for pictures")
         // The whole reason photos are not the lesser path here.
         XCTAssertTrue(
@@ -65,7 +73,13 @@ final class SkillLearningModeTests: XCTestCase {
             overall: overall,
             confidence: confidence,
             primaryIssueKey: issue,
-            observedEvidence: ["thumb on the blade face"])
+            observedEvidence: ["thumb on the blade face"],
+            observations: [
+                ["thumb": "onHandle", "remainingFingers": "onHandle"],
+                ["thumb": "onHandle", "remainingFingers": "onHandle"],
+            ],
+            toolPicture: 1,
+            landmark: "insideFist")
     }
 
     @MainActor

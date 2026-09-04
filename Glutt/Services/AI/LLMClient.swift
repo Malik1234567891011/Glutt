@@ -128,6 +128,7 @@ struct LLMClient {
         messages: [Message],
         temperature: Double = 0.4,
         jsonMode: Bool = false,
+        model: String? = nil,
         feature: String? = nil,
         timeout: TimeInterval = 30
     ) async throws -> String {
@@ -151,7 +152,12 @@ struct LLMClient {
         }
 
         var body: [String: Any] = [
-            "model": Self.model,
+            // Per call, falling back to the app-wide setting. Added so one
+            // surface can use a different model without moving everything:
+            // the knife grip check reads a fine spatial relationship that GPT
+            // was measured getting wrong nine ways out of nine, and the rest of
+            // the app has no such problem.
+            "model": model ?? Self.model,
             "temperature": temperature,
             "messages": messages.map(\.wireFormat),
         ]
@@ -209,12 +215,14 @@ struct LLMClient {
         messages: [Message],
         temperature: Double = 0.2,
         feature: String? = nil,
-        timeout: TimeInterval = 30
+        timeout: TimeInterval = 30,
+        model: String? = nil
     ) async throws -> T {
         let raw = try await chat(
             messages: messages,
             temperature: temperature,
             jsonMode: true,
+            model: model,
             feature: feature,
             timeout: timeout
         )

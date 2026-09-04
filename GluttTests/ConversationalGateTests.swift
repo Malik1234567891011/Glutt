@@ -240,6 +240,35 @@ final class ConversationalGateTests: XCTestCase {
                        "her own praise leaking through the speaker is not a barge-in")
     }
 
+    /// A bare "chef" interrupts her, but only where a cook would actually put
+    /// it: at the front.
+    ///
+    /// Barge-in used to demand the full "hey chef", which is safe and cost too
+    /// much. Watching somebody cook the butter chicken, they said "chef"
+    /// mid-sentence, nothing happened, and they said it again and again. The
+    /// moment a person most wants to interrupt is mid-sentence, and that was
+    /// the one moment the short form did not work.
+    ///
+    /// Position is what separates the two speakers. A cook leads with the name;
+    /// her own praise trails it.
+    func testABareChefInterruptsButHerOwnAddressDoesNot() {
+        for summons in ["chef", "chef wait", "chef stop", "hey chef", "ok chef what now"] {
+            XCTAssertTrue(
+                ConversationalGate.isClearInterruption(summons),
+                "\(summons) is the cook calling her")
+        }
+        // "that looks great chef" is deliberately NOT here. It trips an
+        // unrelated path: `directPrefixes` contains "look", and " look" matches
+        // inside "looks", so the sentence reads as "look at this" before the
+        // name is ever considered. That is a pre-existing loose match, it is
+        // reasonable for what it does, and it is not what this test is about.
+        for address in ["beautiful chef", "nice one chef", "perfect chef"] {
+            XCTAssertFalse(
+                ConversationalGate.isClearInterruption(address),
+                "\(address) is her talking to the cook, coming back through the speaker")
+        }
+    }
+
     func testLooksUnfinished() {
         XCTAssertTrue(ConversationalGate.looksUnfinished("I need to add the"))
         XCTAssertTrue(ConversationalGate.looksUnfinished("should I flip and"))

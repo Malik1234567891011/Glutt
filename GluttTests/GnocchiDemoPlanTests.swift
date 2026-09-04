@@ -203,6 +203,33 @@ final class GnocchiDemoPlanTests: XCTestCase {
         XCTAssertTrue(butter.contains("too hot for butter"), "and why")
     }
 
+    /// The bug the test below could not see.
+    ///
+    /// `CookPlanCompiler.compile` hands a bundled plan to `ensuringLeadingPrep()`
+    /// with no ingredient list, so `withAmounts` returns early and every amount
+    /// it would have filled in is dropped. The test below passes the ingredients
+    /// itself and stayed green while the real Prep step read "pick the fresh sage
+    /// leaves" with no number in it. The plan's own mise carries the amounts now,
+    /// which is what the `withAmounts` doc comment always intended for a
+    /// hand-written plan.
+    func testPrepAmountsSurviveTheCallTheCompilerActuallyMakes() throws {
+        let prepared = try plan().ensuringLeadingPrep()
+        let prep = try XCTUnwrap(prepared.steps.first { $0.id == CookPlan.prepStepID })
+        XCTAssertTrue(prep.instruction.contains("20"), "twenty sage leaves, with no help")
+        XCTAssertTrue(prep.instruction.contains("1 lemon"))
+    }
+
+    /// Everything else in this recipe names an amount, so the two lines that did
+    /// not read as though they were the ones you were supposed to know already.
+    func testEveryStepThatUsesAnIngredientSaysHowMuch() throws {
+        let boil = try step("s2").instruction
+        XCTAssertTrue(boil.contains("500g"), "\"drop the gnocchi in\" never said how many")
+        XCTAssertTrue(try step("s4").instruction.contains("500g"))
+        XCTAssertTrue(try step("s6").instruction.contains("20 sage leaves"))
+        XCTAssertTrue(try step("s5").instruction.contains("75g"))
+        XCTAssertTrue(try step("s3").instruction.contains("2 tbsp"))
+    }
+
     /// "Pick the fresh sage leaves" and nothing else made the cook stop and ask
     /// how many, which is the one question the recipe already answers. The prep
     /// step and its checklist now carry the amount.

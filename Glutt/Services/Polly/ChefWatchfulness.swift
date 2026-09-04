@@ -65,6 +65,25 @@ enum ChefWatchfulness: String, CaseIterable, Identifiable, Sendable {
 
     var watchesUnprompted: Bool { glanceInterval != nil }
 
+    /// How many unprompted looks one step is allowed to spend.
+    ///
+    /// The interval alone is not a limit. A six minute reduction at twelve
+    /// second intervals is thirty looks at a pan that is doing exactly one
+    /// thing, and a cook who hears about it thirty times mutes her and never
+    /// unmutes her. The budget is what turns "how often she looks" into "how
+    /// much she is willing to say about one step", which is the thing the level
+    /// names actually promise.
+    ///
+    /// Deliberately small. Most looks end in silence anyway, so a budget of two
+    /// is not two remarks, it is at most two, and usually none.
+    var glanceBudgetPerStep: Int {
+        switch self {
+        case .perfectionist: 3
+        case .watchful: 2
+        case .handsOff: 0
+        }
+    }
+
     /// The cook's choice, persisted across cooks.
     ///
     /// Read once at session start. Changing it mid-cook would mean rewriting the

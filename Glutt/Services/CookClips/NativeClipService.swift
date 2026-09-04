@@ -31,6 +31,7 @@ actor NativeClipService {
         "6tSdlo0r0Io": "/v1/pilot/creme-brulee",
         "7333706662634704161": "/v1/pilot/tiktok-scrambled-eggs",
         "3sUJwjvmzk8": "/v1/pilot/gnocchi-brown-butter",
+        "hDjK5C2aoSs": "/v1/pilot/butter-chicken",
     ]
 
     /// v2: v1 entries held signed URLs with no expiry and are not salvageable.

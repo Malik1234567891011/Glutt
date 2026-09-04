@@ -21,6 +21,16 @@ struct SkillPhotoCheckView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
+    /// Every scored trial, so a new score can say whether it beat the old one.
+    /// Read before the new result is written, which is what makes the
+    /// comparison honest.
+    @Query private var trials: [TrialResult]
+
+    /// The best this cook had at this trial BEFORE today's attempt.
+    private var personalBest: Int? {
+        trials.filter { $0.skillID == skill.id }.map(\.score).max()
+    }
+
     @State private var model: SkillPhotoCheckModel
     @State private var picking: PhotosPickerItem?
     @State private var showCamera = false
@@ -214,6 +224,36 @@ struct SkillPhotoCheckView: View {
 
     @ViewBuilder private var verdict: some View {
         VStack(alignment: .leading, spacing: 10) {
+            // A trial gets its number, big, before anything else.
+            //
+            // The one place in the whole feature that is allowed to celebrate.
+            // Nothing during the attempt shows a live score, because a HUD
+            // ticking over while somebody is trying to cook reads as a
+            // gamification demo rather than as cooking. Afterwards is
+            // different: they earned it and it should feel like it.
+            //
+            // Still cream, still the display face, still the region's colour.
+            // Turning black and neon because "game" would throw away the
+            // visual language the rest of the map is built from.
+            if let score = model.trialScore {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(score)")
+                        .font(BrandFont.bricolage(64, 700))
+                        .foregroundStyle(Theme.Colors.heading)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                    if let best = personalBest, score > best {
+                        Text("Personal best")
+                            .font(BrandFont.nunito(13, 800))
+                            .tracking(0.8)
+                            .foregroundStyle(Theme.Colors.accent)
+                    }
+                    Text(skill.title)
+                        .font(BrandFont.nunito(13.5, 700))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+                .padding(.bottom, 4)
+            }
             Text(model.verdictHeadline)
                 .font(BrandFont.bricolage(24, 700))
                 .foregroundStyle(model.didPass ? Theme.Colors.accent : Theme.Colors.heading)
@@ -222,6 +262,18 @@ struct SkillPhotoCheckView: View {
                 Text(model.verdictDetail)
                     .font(BrandFont.nunito(15, 600))
                     .foregroundStyle(Theme.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            // What could not be judged, said plainly.
+            //
+            // Admitting this reads as more trustworthy than quietly marking
+            // somebody down for a thing nobody could see, and it stops a thin
+            // result masquerading as a full one.
+            if let unscored = model.unscoredParts, !unscored.isEmpty {
+                Text("Not scored: \(unscored.joined(separator: ", "))")
+                    .font(BrandFont.nunito(12.5, 600))
+                    .foregroundStyle(Theme.Colors.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

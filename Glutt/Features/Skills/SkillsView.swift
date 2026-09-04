@@ -80,21 +80,48 @@ struct SkillsView: View {
     private var progressLine: some View {
         let bar = reader.levelProgress
         return VStack(alignment: .leading, spacing: 7) {
+            // Rank and rating lead once a cook has earned them, and the level
+            // moves underneath. Deliberately still ONE line rather than the
+            // card this used to be: the map is the feature, and a rating
+            // typeset at 52pt would push it below the fold again and turn the
+            // screen back into a profile. It matters because it is persistent
+            // and hard to get, not because it is large.
             HStack(spacing: 6) {
-                Text("Level \(bar.level)")
-                    .font(BrandFont.nunito(14.5, 800))
-                    .foregroundStyle(Theme.Colors.heading)
-                Text("·")
-                    .foregroundStyle(Theme.Colors.muted)
-                Text(reader.learnedCount == 1 ? "1 skill" : "\(reader.learnedCount) skills")
-                    .font(BrandFont.nunito(14, 700))
-                    .foregroundStyle(Theme.Colors.textSecondary)
+                if let rank = reader.cookRank, let rating = reader.cookRating {
+                    Text(rank.title)
+                        .font(BrandFont.nunito(14.5, 800))
+                        .foregroundStyle(Theme.Colors.heading)
+                    Text("·")
+                        .foregroundStyle(Theme.Colors.muted)
+                    Text(rating.formatted())
+                        .font(BrandFont.nunito(14.5, 800))
+                        .foregroundStyle(Theme.Colors.heading)
+                        .monospacedDigit()
+                } else {
+                    Text("Level \(bar.level)")
+                        .font(BrandFont.nunito(14.5, 800))
+                        .foregroundStyle(Theme.Colors.heading)
+                    Text("·")
+                        .foregroundStyle(Theme.Colors.muted)
+                    Text(reader.learnedCount == 1 ? "1 skill" : "\(reader.learnedCount) skills")
+                        .font(BrandFont.nunito(14, 700))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
                 Spacer(minLength: 0)
                 Text("\(bar.needed - bar.into) XP to \(bar.level + 1)")
                     .font(BrandFont.nunito(11.5, 700))
                     .foregroundStyle(Theme.Colors.muted)
                     .lineLimit(1)
                     .fixedSize()
+            }
+
+            // The count only appears once the rank has taken its place above.
+            if reader.cookRank != nil {
+                Text("Level \(bar.level) · "
+                     + (reader.learnedCount == 1 ? "1 skill learned"
+                        : "\(reader.learnedCount) skills learned"))
+                    .font(BrandFont.nunito(12, 700))
+                    .foregroundStyle(Theme.Colors.textSecondary)
             }
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {

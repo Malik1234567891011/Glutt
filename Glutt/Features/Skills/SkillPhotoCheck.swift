@@ -158,6 +158,37 @@ final class SkillPhotoCheckModel {
             confidence: assessment.confidence,
             source: .showing)
         _ = SkillProgressStore.recordAttempt(attempt, skill: skill, in: context)
+
+        // A mastery trial is also a scored result, and it is the only thing
+        // that moves a cook's rating. Ordinary lessons record an attempt and
+        // stop there, which is the whole distinction: reading is not doing.
+        guard skill.isChallenge, let categoryID = SkillCatalog.category(of: skill)?.id else { return }
+        let score = TrialScore.score(outcomes: [outcome.attemptOutcome])
+        // Zero means nothing was seen, which is a statement about the pictures
+        // rather than about the cooking. Recording it as a score would be a
+        // claim we cannot support.
+        guard score > 0 else { return }
+        context.insert(TrialResult(
+            skillID: skill.id,
+            categoryID: categoryID,
+            score: score,
+            coachCalls: 0,
+            unscored: assessment.unseenRegions(for: check).map(\.spokenName)))
+    }
+
+    /// Parts of the technique nobody could see, so the result can say so
+    /// rather than quietly marking them down for it.
+    var unscoredParts: [String]? {
+        guard case .answered = phase, let assessment else { return nil }
+        return assessment.unseenRegions(for: check).map(\.spokenName)
+    }
+
+    /// What the cook just scored, for the result screen. Nil when the attempt
+    /// was not a scored trial or nothing could be judged.
+    var trialScore: Int? {
+        guard skill.isChallenge, case .answered(let outcome) = phase else { return nil }
+        let score = TrialScore.score(outcomes: [outcome.attemptOutcome])
+        return score > 0 ? score : nil
     }
 }
 

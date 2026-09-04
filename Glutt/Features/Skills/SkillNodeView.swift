@@ -14,6 +14,9 @@ struct SkillNodeView: View {
     let skill: Skill
     let state: SkillState
     let tint: Color
+    /// The cook's best score at this trial, for mastery nodes they have
+    /// attempted. Nil everywhere else.
+    var personalBest: Int? = nil
     let onTap: () -> Void
 
     /// Shared with the map, which has to know where a node ends so the trail
@@ -115,6 +118,17 @@ struct SkillNodeView: View {
                 Text("NEXT")
                     .font(BrandFont.nunito(9.5, 800)).tracking(1.1)
                     .foregroundStyle(tint)
+            }
+            // A trial the cook has already beaten wears its best score.
+            //
+            // No personal-best module and no trophy card: the map itself is
+            // the cabinet. Scrolling past a diamond marked 94 is the record,
+            // in the place where it was set.
+            if let personalBest {
+                Text("\(personalBest)")
+                    .font(BrandFont.nunito(13, 800))
+                    .foregroundStyle(tint)
+                    .monospacedDigit()
             }
         }
         .frame(width: 112)

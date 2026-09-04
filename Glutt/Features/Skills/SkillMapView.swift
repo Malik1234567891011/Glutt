@@ -51,7 +51,12 @@ private struct SkillRegionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SkillRegionHeader(category: category, learned: learned, total: category.learnableCount)
+            SkillRegionHeader(
+                category: category,
+                learned: learned,
+                total: category.learnableCount,
+                rating: reader.rating(for: category),
+                isRateable: RegionRating.isRateable(category))
                 .padding(.horizontal, 24)
 
             GeometryReader { proxy in
@@ -67,7 +72,8 @@ private struct SkillRegionView: View {
                         SkillNodeView(
                             skill: skill,
                             state: reader.state(for: skill),
-                            tint: category.theme.tint
+                            tint: category.theme.tint,
+                            personalBest: reader.personalBest(for: skill.id)
                         ) { onOpen(skill) }
                         .position(center(of: index, skill: skill, width: proxy.size.width))
                     }
@@ -238,6 +244,14 @@ private struct SkillRegionHeader: View {
     let category: SkillCategory
     let learned: Int
     let total: Int
+    /// What this region has been shown to be worth, when there is anything to
+    /// show. Nil covers two different situations and both are correct: not
+    /// enough judged trials yet, and regions that cannot be judged at all.
+    let rating: Int?
+    /// True where a rating is possible in principle, so "Unranked" can be shown
+    /// as a thing to earn rather than left blank forever on a region that will
+    /// never have one.
+    let isRateable: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -269,6 +283,34 @@ private struct SkillRegionHeader: View {
                 .font(BrandFont.nunito(13, 600))
                 .foregroundStyle(Theme.Colors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            // The region's standard, under its own blurb rather than in a
+            // strip of scores across the top of the tab. Scrolling the world
+            // shows them one at a time, which is a dashboard nobody had to
+            // build.
+            //
+            // Nothing at all on Flavour & Seasoning or Cooking Intuition. They
+            // have no visual checks because you cannot photograph tasting as
+            // you go, and giving them a number for the sake of symmetry would
+            // be inventing a measurement. The asymmetry is the honest part.
+            if isRateable {
+                HStack(spacing: 6) {
+                    if let rating {
+                        Text("\(rating)")
+                            .font(BrandFont.nunito(15, 800))
+                            .foregroundStyle(category.theme.tint)
+                            .monospacedDigit()
+                        Text("skill rating")
+                            .font(BrandFont.nunito(11.5, 700))
+                            .foregroundStyle(Theme.Colors.muted)
+                    } else {
+                        Text("Unranked")
+                            .font(BrandFont.nunito(12, 700))
+                            .foregroundStyle(Theme.Colors.muted)
+                    }
+                }
+                .padding(.top, 2)
+            }
         }
         .padding(.top, 26)
     }

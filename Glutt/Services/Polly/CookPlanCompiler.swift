@@ -25,7 +25,10 @@ enum CookPlanCompiler {
     /// 3: the prompt learned to schedule rather than transcribe. Every plan
     /// cached before this was compiled under "preserve the recipe's order",
     /// which is exactly what put the potatoes in the oven after the chicken.
-    private static let cacheEpoch = 3
+    /// 4: steps gained `glance`, the three-to-five line version the card shows.
+    /// Plans compiled before it still work, falling back to sentence-split prose
+    /// via `glanceLines`, but they are worth re-compiling for.
+    private static let cacheEpoch = 4
 
     /// Content hash of everything that shapes a plan: title, step texts,
     /// ingredient names, and the serving scale. Stable across launches
@@ -73,7 +76,7 @@ enum CookPlanCompiler {
     /// audience, where the whole point is that Chef says "they are ready the
     /// moment they float" at the right second.
     ///
-    /// So this dish gets a hand-written plan, checked in, used verbatim. Keyed by
+    /// So these dishes get hand-written plans, checked in, used verbatim. Keyed by
     /// recipe title because that is what identifies a bundled dish across
     /// installs; `sourceURL` would be tidier but is re-stamped by content
     /// versions and has gone missing before (see `ChefContent.contentVersion` 5).
@@ -83,6 +86,7 @@ enum CookPlanCompiler {
     /// and the compiler takes over again.
     static let bundledPlans: [String: String] = [
         "Gnocchi with Brown Butter and Sage": "CookPlan-gnocchi-brown-butter-sage",
+        "Butter Chicken": "CookPlan-butter-chicken",
     ]
 
     static func bundledPlan(for recipe: Recipe, bundle: Bundle = .main) -> CookPlan? {
@@ -238,7 +242,7 @@ enum CookPlanCompiler {
                 "kind": "prep"|"active"|"passive"|"checkpoint",
                 "estimatedSeconds": int|null, "timerSeconds": int|null,
                 "dependsOn": [str], "visualCheck": str|null, "recovery": str|null,
-                "ingredientNames": [str]}]}
+                "ingredientNames": [str], "glance": [str]}]}
 
     Field docs:
     - title: the dish name, unchanged.
@@ -269,6 +273,19 @@ enum CookPlanCompiler {
     - recovery: for common failure points (burning, sticking, breaking, over-salting), \
     one sentence on how to rescue the dish. null otherwise.
     - ingredientNames: the ingredient names this step touches, matching the given list.
+    - glance: THE STEP AS 3 TO 5 VERY SHORT LINES, for a cook glancing at a screen \
+    with their hands full. This is not a summary of the instruction and not a rewrite \
+    of it in full sentences: it is the instruction broken into the physical things they \
+    do, in order, each one readable in about a second. \
+    Include the amounts, because a cook reading this is standing over the bowl and \
+    should never have to go and find them: "240g yogurt + 1 tbsp garam masala + 1 tbsp \
+    salt", not "the yogurt mixture". \
+    Say what done looks like where it matters: "no bare chicken showing". \
+    Four to eight words each. No leading dashes, no full stops, no "then", no pleasantries. \
+    Good: ["240g yogurt + 1 tbsp garam masala + 1 tbsp salt", "Whisk smooth", \
+    "Coat chicken, no bare meat showing", "Cover, 30 min"]. \
+    Bad: ["Whisk the yogurt together with the garam masala and the salt until it is \
+    one smooth colour"] — that is the instruction again, and it does not fit in a glance.
 
     Rules:
     - ALWAYS start with short setup steps BEFORE heat:

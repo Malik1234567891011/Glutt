@@ -350,7 +350,11 @@ struct PollySessionView: View {
         if controller.isHardMuted { return "Muted, tap the mic to turn on" }
         if controller.isThinking { return "Thinking…" }
         if controller.isPollySpeaking { return "Chef is talking" }
-        return controller.wakeWordAvailable ? "Say \u{201C}Chef\u{201D} to talk" : "Tap to talk"
+        // Not "to talk". A cook who does not know she can be asked things does
+        // not ask, and stays stuck on something she would have answered.
+        return controller.wakeWordAvailable
+            ? "Say \u{201C}Chef\u{201D} if you need anything"
+            : "Tap to talk"
     }
 
     private func engagedPillLabel(for controller: PollySessionController) -> String {

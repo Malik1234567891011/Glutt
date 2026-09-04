@@ -43,6 +43,51 @@ struct CookPlan: Codable, Equatable {
         let visualCheck: String?
         let recovery: String?
         let ingredientNames: [String]
+
+        /// The step as three to five short lines a cook can take in at a glance.
+        ///
+        /// The card used to show `instruction` truncated to three lines with a
+        /// "Tap to view more" underneath. Watching somebody cook, they pressed
+        /// that link on nearly every step and read the whole paragraph, because
+        /// the screen was showing the same prose she had just spoken, cut off.
+        /// It was doing neither job: too long to glance at, too short to rely on.
+        ///
+        /// A cook has wet hands and four seconds. "Whisk yogurt, garam masala,
+        /// salt" is readable in one look; a sixty word paragraph is not, at any
+        /// length of truncation. This is the study finding too: every one of
+        /// twelve cooks asked for repeats, and the longer the step the more they
+        /// asked.
+        ///
+        /// Empty on older cached plans, which is why `glanceLines` exists to
+        /// fall back rather than callers reading this directly.
+        let glance: [String]
+
+        /// What the card should actually show: the authored glance lines, or a
+        /// readable stand-in derived from the instruction.
+        ///
+        /// The fallback matters more than it looks. Plans are cached, and
+        /// bumping the cache epoch re-compiles them lazily, so for a while some
+        /// cooks are working from a plan written before `glance` existed. Those
+        /// cooks get sentence-split prose, which is not as good as an authored
+        /// line but is still a list of short things rather than a wall with a
+        /// "view more" under it.
+        var glanceLines: [String] {
+            if !glance.isEmpty { return glance }
+            return Self.split(instruction)
+        }
+
+        /// Break prose into glanceable pieces on sentence ends, then trim the
+        /// result to something a person can scan. Five is the ceiling because a
+        /// card taller than that is the wall we are trying to get rid of.
+        static func split(_ text: String) -> [String] {
+            let pieces = text
+                .replacingOccurrences(of: ", then ", with: ". ")
+                .split(whereSeparator: { ".!?".contains($0) })
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { $0.count > 2 }
+            return Array(pieces.prefix(5))
+        }
+
         /// The clip this step must play, when we already know the answer.
         ///
         /// Clip assignment is otherwise keyword-scored against the segment's
@@ -66,6 +111,7 @@ struct CookPlan: Codable, Equatable {
             visualCheck: String? = nil,
             recovery: String? = nil,
             ingredientNames: [String] = [],
+            glance: [String] = [],
             clipSegmentID: String? = nil
         ) {
             self.id = id
@@ -79,6 +125,7 @@ struct CookPlan: Codable, Equatable {
             self.visualCheck = visualCheck
             self.recovery = recovery
             self.ingredientNames = ingredientNames
+            self.glance = glance
             self.clipSegmentID = clipSegmentID
         }
 
@@ -88,7 +135,7 @@ struct CookPlan: Codable, Equatable {
         enum CodingKeys: String, CodingKey {
             case id, index, title, instruction, kind, estimatedSeconds
             case timerSeconds, dependsOn, visualCheck, recovery, ingredientNames
-            case clipSegmentID
+            case glance, clipSegmentID
         }
 
         init(from decoder: Decoder) throws {
@@ -105,6 +152,7 @@ struct CookPlan: Codable, Equatable {
             visualCheck = try c.decodeIfPresent(String.self, forKey: .visualCheck)
             recovery = try c.decodeIfPresent(String.self, forKey: .recovery)
             ingredientNames = try c.decodeIfPresent([String].self, forKey: .ingredientNames) ?? []
+            glance = try c.decodeIfPresent([String].self, forKey: .glance) ?? []
             clipSegmentID = try c.decodeIfPresent(String.self, forKey: .clipSegmentID)
         }
     }

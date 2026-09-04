@@ -1,0 +1,367 @@
+{
+  "title": "Butter Chicken",
+  "servings": 4,
+  "equipment": [
+    "large deep pan or braiser",
+    "lid for the pan",
+    "saucepan for the rice",
+    "mixing bowl",
+    "baking tray",
+    "tongs",
+    "wooden spoon",
+    "knife",
+    "cutting board",
+    "measuring spoons"
+  ],
+  "mise": [
+    {
+      "name": "Chicken thighs",
+      "prep": "cut into 2.5cm pieces",
+      "amount": "680 g of"
+    },
+    {
+      "name": "Yellow onion",
+      "prep": "dice",
+      "amount": "1"
+    },
+    {
+      "name": "Ginger",
+      "prep": "peel, then finely dice",
+      "amount": "5 cm of"
+    },
+    {
+      "name": "Garlic",
+      "prep": "thinly slice",
+      "amount": "6 cloves of"
+    },
+    {
+      "name": "Cilantro",
+      "prep": "pick",
+      "amount": "1 bunch of"
+    }
+  ],
+  "steps": [
+    {
+      "id": "tools",
+      "index": 0,
+      "title": "Tools",
+      "instruction": "Pull out a wide deep pan with a lid, a saucepan for the rice, a mixing bowl, a baking tray for the seared chicken, tongs, a wooden spoon, a knife and board, and your measuring spoons.",
+      "kind": "prep",
+      "estimatedSeconds": 90,
+      "timerSeconds": null,
+      "dependsOn": [],
+      "visualCheck": null,
+      "recovery": null,
+      "ingredientNames": [],
+      "glance": [
+        "Wide deep pan with a lid",
+        "Saucepan for rice, mixing bowl",
+        "Tray for seared chicken",
+        "Tongs, wooden spoon, knife, board"
+      ]
+    },
+    {
+      "id": "prep",
+      "index": 1,
+      "title": "Prep",
+      "instruction": "Before any heat: cut the chicken into 2.5cm pieces, dice the onion, peel and finely dice the ginger, thinly slice the garlic, and pick the cilantro leaves.",
+      "kind": "prep",
+      "estimatedSeconds": 300,
+      "timerSeconds": null,
+      "dependsOn": [
+        "tools"
+      ],
+      "visualCheck": null,
+      "recovery": null,
+      "ingredientNames": [
+        "Chicken thighs",
+        "Yellow onion",
+        "Ginger",
+        "Garlic",
+        "Cilantro"
+      ],
+      "glance": [
+        "Chicken into 2.5cm pieces",
+        "Dice onion",
+        "Peel and dice ginger",
+        "Thinly slice garlic",
+        "Pick cilantro leaves"
+      ]
+    },
+    {
+      "id": "s1",
+      "index": 2,
+      "title": "Marinate the chicken",
+      "instruction": "Whisk 240g of yogurt with 1 tbsp of garam masala and 1 tbsp of salt until it is one smooth colour, then turn the chicken through it with your hands until every piece is coated and no bare meat is showing. Cover it and into the fridge for at least 30 minutes, and overnight is better. If you already did this last night, say Chef to get my attention, then tell me and we will go straight to the pan.",
+      "kind": "active",
+      "estimatedSeconds": 240,
+      "timerSeconds": 1800,
+      "dependsOn": [
+        "prep"
+      ],
+      "visualCheck": "Every piece should come out white and slick with no bare chicken showing. It is a thick coat, not a dip, and it should cling rather than run off.",
+      "recovery": null,
+      "ingredientNames": [
+        "Full fat yogurt",
+        "Garam masala",
+        "Kosher salt",
+        "Chicken thighs"
+      ],
+      "clipSegmentID": "seg-bc-marinade",
+      "glance": [
+        "240g yogurt + 1 tbsp garam masala + 1 tbsp salt",
+        "Whisk smooth",
+        "Coat chicken, no bare meat showing",
+        "Cover, fridge 30 min or overnight",
+        "Already marinated? Say Chef and tell me"
+      ]
+    },
+    {
+      "id": "s2",
+      "index": 3,
+      "title": "Rice on",
+      "instruction": "Get the rice on now. It takes about 20 minutes and the curry takes about 25 from here, so it will be ready at the same time and it looks after itself while we cook. Say Chef and tell me when it is on.",
+      "kind": "active",
+      "estimatedSeconds": 180,
+      "timerSeconds": null,
+      "dependsOn": [
+        "s1"
+      ],
+      "visualCheck": null,
+      "recovery": null,
+      "ingredientNames": [
+        "Rice"
+      ],
+      "glance": [
+        "Rice on now, about 20 min",
+        "It looks after itself",
+        "Say Chef when it is on"
+      ]
+    },
+    {
+      "id": "s3",
+      "index": 4,
+      "title": "Get the pan properly hot",
+      "instruction": "Wide deep pan on medium-high with 2 tbsp of oil, and give it two or three minutes. Before any chicken goes near it, tilt the pan and watch the oil. It is ready when it has gone thin and ripples across the base.",
+      "kind": "checkpoint",
+      "estimatedSeconds": 180,
+      "timerSeconds": null,
+      "dependsOn": [
+        "s2"
+      ],
+      "visualCheck": "Ready is oil that has gone thin and runs fast, and ripples across the base when you tilt the pan. Thick and sluggish means it is not there yet. Wisps of smoke mean it has gone past.",
+      "recovery": "Too cool is the one that costs you the dish, because wet yogurt chicken in a warm pan steams instead of searing and it goes grey and stays grey. Give it another minute and look again. If it is smoking, off the heat for thirty seconds.",
+      "ingredientNames": [
+        "Vegetable oil"
+      ],
+      "clipSegmentID": "seg-bc-oil",
+      "glance": [
+        "Wide pan, medium-high, 2 tbsp oil",
+        "Two to three minutes",
+        "Tilt the pan: oil thin and rippling"
+      ]
+    },
+    {
+      "id": "s4",
+      "index": 5,
+      "title": "Sear the chicken",
+      "instruction": "Lift the chicken out of the marinade a few pieces at a time and lay them down with a gap around every one. Two or three batches, never all at once. Two minutes on the first side without touching them, then turn them. They are ready to come off when both faces are deep brown with black at the edges, and they should still be raw in the middle. Add a little more oil between batches if the pan looks dry, and pile the seared pieces on the tray.",
+      "kind": "checkpoint",
+      "estimatedSeconds": 600,
+      "timerSeconds": 120,
+      "dependsOn": [
+        "s3"
+      ],
+      "visualCheck": "Gaps around every piece the whole time they cook, never touching. Turned over they are deep brown with black at the edges, and still raw in the middle when you look at a cut side. That is correct, it finishes in the sauce later.",
+      "recovery": "If the pan has gone quiet and the chicken is sitting in its own liquid, it is crowded and it is steaming. Take half of it out, let the pan come back up to heat, and do it in two batches.",
+      "ingredientNames": [
+        "Chicken thighs"
+      ],
+      "clipSegmentID": "seg-bc-sear",
+      "glance": [
+        "Sear in 2 to 3 batches, never all at once",
+        "Gap around every piece",
+        "2 min untouched, then turn",
+        "Deep brown with black edges",
+        "Still raw inside, pile on the tray"
+      ]
+    },
+    {
+      "id": "s5",
+      "index": 6,
+      "title": "Onion, ginger, garlic, and the fond",
+      "instruction": "Heat down to medium, another 2 tbsp of oil, then the onion, ginger and garlic with salt and pepper. Stir and scrape the base of the pan the whole time. That dark crust the chicken left behind is the best flavour in the dish, and a splash of water lifts anything that will not come up on its own. About 3 minutes, until the onion is soft and the pan is dry again.",
+      "kind": "checkpoint",
+      "estimatedSeconds": 240,
+      "timerSeconds": 180,
+      "dependsOn": [
+        "s4"
+      ],
+      "visualCheck": "The base of the pan goes from dark and crusted to clean, and all that colour ends up in the onions. They should be soft and see through rather than white and squeaky, and the pan should be dry again before anything else goes in.",
+      "recovery": "If the crust is catching and the smell has turned sharp rather than sweet, the heat is too high. Drop it, splash in a little water and scrape straight away.",
+      "ingredientNames": [
+        "Vegetable oil",
+        "Yellow onion",
+        "Ginger",
+        "Garlic",
+        "Kosher salt",
+        "Black pepper"
+      ],
+      "clipSegmentID": "seg-bc-aromatics",
+      "glance": [
+        "Heat to medium, 2 tbsp oil",
+        "Onion, ginger, garlic, salt, pepper",
+        "Scrape the base the whole time",
+        "Splash of water lifts the crust",
+        "3 min, onion soft, pan dry"
+      ]
+    },
+    {
+      "id": "s6",
+      "index": 7,
+      "title": "Toast the spices",
+      "instruction": "Paprika, cumin, garam masala and turmeric straight onto the vegetables. One minute, stirring the whole time, until they go dark and glossy and the smell turns deep and sweet. Open the tomatoes before you start this, because you will want them in your hand.",
+      "kind": "checkpoint",
+      "estimatedSeconds": 90,
+      "timerSeconds": 60,
+      "dependsOn": [
+        "s5"
+      ],
+      "visualCheck": "They go in as dry powder and turn dark and glossy as they take up the fat, and the smell goes from dusty to deep and sweet. That is the whole window, about a minute.",
+      "recovery": "Ground spices burn in a way nothing later covers up, and the whole sauce ends up tasting of ash. If it smells sharp or starts to catch, get the tomatoes in immediately, they will stop the pan dead.",
+      "ingredientNames": [
+        "Paprika",
+        "Ground cumin",
+        "Garam masala",
+        "Turmeric"
+      ],
+      "clipSegmentID": "seg-bc-spices",
+      "glance": [
+        "Paprika, cumin, garam masala, turmeric",
+        "1 min, stirring constantly",
+        "Dark, glossy, smell turns sweet",
+        "Open the tomatoes first"
+      ]
+    },
+    {
+      "id": "s7",
+      "index": 8,
+      "title": "Tomatoes, then reduce",
+      "instruction": "Crushed tomatoes in, then swirl 160ml of water around the empty tin and tip that in too, so nothing is left behind. Stir it together, bring it to a simmer on medium and give it 5 to 8 minutes, until it has dropped by about a third and thickened. If you want it silky rather than rustic you can blend it now, but it is good either way.",
+      "kind": "checkpoint",
+      "estimatedSeconds": 480,
+      "timerSeconds": 360,
+      "dependsOn": [
+        "s6"
+      ],
+      "visualCheck": "It starts loose and splashy and ends up about a third smaller. It is there when it plops rather than ripples, and a spoon dragged across the base leaves a track that holds for a second before it fills in.",
+      "recovery": "If it is still thin after eight minutes, give it longer with the heat up a little. Thin now is thin at the end, because the cream only loosens it further.",
+      "ingredientNames": [
+        "Crushed tomatoes"
+      ],
+      "clipSegmentID": "seg-bc-tomatoes",
+      "glance": [
+        "Crushed tomatoes in",
+        "160ml water swirled round the tin",
+        "Simmer 5 to 8 min",
+        "Down by a third and thickened"
+      ]
+    },
+    {
+      "id": "s8",
+      "index": 9,
+      "title": "Chicken back in",
+      "instruction": "Everything on the tray goes back in, the juices that collected under it too. Push the pieces down so the sauce covers them, put the lid on and give it 3 to 5 minutes, until there is no pink left in the biggest piece.",
+      "kind": "active",
+      "estimatedSeconds": 300,
+      "timerSeconds": 240,
+      "dependsOn": [
+        "s7"
+      ],
+      "visualCheck": "Every piece pushed down under the sauce rather than sitting on top of it, and the lid on. Cut the biggest one in half at the end: no pink anywhere, and the juices run clear.",
+      "recovery": null,
+      "ingredientNames": [
+        "Chicken thighs"
+      ],
+      "clipSegmentID": "seg-bc-chicken-back",
+      "glance": [
+        "Chicken and its juices back in",
+        "Push under the sauce",
+        "Lid on, 3 to 5 min",
+        "No pink in the biggest piece"
+      ]
+    },
+    {
+      "id": "s9",
+      "index": 10,
+      "title": "Cream in",
+      "instruction": "Pour in the cream and stir it through until the sauce is one even orange. Bring it back to a lazy bubble, then straight down to low for 3 to 4 minutes, stirring often.",
+      "kind": "checkpoint",
+      "estimatedSeconds": 240,
+      "timerSeconds": 210,
+      "dependsOn": [
+        "s8"
+      ],
+      "visualCheck": "Red goes to an even orange in about a minute of stirring, with no white streaks left anywhere in the pan.",
+      "recovery": "Keep it at a lazy bubble and no more. Cream held at a hard boil splits, and a split sauce goes grainy with oil on top and will not stir back together. If it starts to look separated, off the heat and keep stirring.",
+      "ingredientNames": [
+        "Heavy cream"
+      ],
+      "clipSegmentID": "seg-bc-cream",
+      "glance": [
+        "Cream in, stir to one even orange",
+        "Back to a lazy bubble",
+        "Low for 3 to 4 min, stir often"
+      ]
+    },
+    {
+      "id": "s10",
+      "index": 11,
+      "title": "Butter, off the heat",
+      "instruction": "Heat off first, then the butter in, and stir without stopping until it has completely disappeared and the surface goes glossy. Now taste it and add salt until it tastes finished rather than nearly there.",
+      "kind": "checkpoint",
+      "estimatedSeconds": 90,
+      "timerSeconds": null,
+      "dependsOn": [
+        "s9"
+      ],
+      "visualCheck": "The butter melts in and the whole surface turns glossy. A thin yellow slick sitting on top means it has split instead of come together.",
+      "recovery": "If the butter is pooling rather than melting in, take the pan right off the heat and keep stirring. It usually pulls back together once the sauce cools a little.",
+      "ingredientNames": [
+        "Unsalted butter",
+        "Kosher salt"
+      ],
+      "clipSegmentID": "seg-bc-butter",
+      "glance": [
+        "Heat OFF first",
+        "Butter in, stir until it disappears",
+        "Surface goes glossy",
+        "Taste, salt until it tastes finished"
+      ]
+    },
+    {
+      "id": "s11",
+      "index": 12,
+      "title": "Serve",
+      "instruction": "Fluff the rice and pack some into one side of a shallow bowl. Ladle the curry against it so the two sit side by side rather than one on top of the other, then whole cilantro leaves over the top.",
+      "kind": "active",
+      "estimatedSeconds": 120,
+      "timerSeconds": null,
+      "dependsOn": [
+        "s10"
+      ],
+      "visualCheck": null,
+      "recovery": null,
+      "ingredientNames": [
+        "Rice",
+        "Cilantro"
+      ],
+      "clipSegmentID": "seg-bc-serve",
+      "glance": [
+        "Fluff the rice, pack it to one side",
+        "Ladle curry alongside, not on top",
+        "Whole cilantro leaves over"
+      ]
+    }
+  ]
+}

@@ -479,6 +479,7 @@ struct SkillLessonView: View {
                     // behave.
                     markLearned()
                     SkillCheckSimulator.recordPass(for: skill, in: context)
+                    announcePromotion()
                 }
                 #endif
                 Button("Cancel", role: .cancel) {}
@@ -487,6 +488,45 @@ struct SkillLessonView: View {
                      + "toward your rating.")
             }
         }
+    }
+
+    /// A rank crossed by whatever just happened, said once.
+    ///
+    /// Only ever populated where evidence was actually written, which in a
+    /// shipping build means a verified check rather than a lesson. Marking a
+    /// lesson learned writes no evidence, so this stays nil and the wall
+    /// between reading and doing holds.
+    @State private var promotion: CookRank?
+
+    /// The same banner the check verdict shows, so a promotion looks like
+    /// itself wherever it lands rather than being two designs.
+    private func promotionBanner(_ rank: CookRank) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            CookRankBadge(rank: rank, size: 44, isCurrent: true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("You made \(rank.title)")
+                    .font(BrandFont.nunito(15.5, 800))
+                    .foregroundStyle(Theme.Colors.heading)
+                Text(CookRankCeremony.line(for: rank))
+                    .font(BrandFont.nunito(12.5, 600))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Colors.greenTint)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.group, style: .continuous))
+        .transition(.scale(scale: 0.92).combined(with: .opacity))
+        .accessibilityElement(children: .combine)
+    }
+
+    private func announcePromotion() {
+        let rows = (try? context.fetch(FetchDescriptor<RatingEvidence>())) ?? []
+        guard let earned = CookRankCeremony.pending(for: rows) else { return }
+        CookRankCeremony.record(earned)
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.78)) { promotion = earned }
     }
 
     private func markLearned() {
@@ -520,6 +560,9 @@ struct SkillLessonView: View {
         VStack(spacing: 10) {
             if justFinishedRegion, let category {
                 regionComplete(category)
+            }
+            if let promotion {
+                promotionBanner(promotion)
             }
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")

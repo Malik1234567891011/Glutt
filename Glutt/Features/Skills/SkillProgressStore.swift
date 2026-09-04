@@ -130,6 +130,9 @@ enum SkillProgressStore {
             try context.delete(model: RatingEvidence.self)
             try context.save()
             SkillStreak.reset()
+            // Or the next promotion is swallowed as already celebrated on a
+            // store that no longer has any evidence in it.
+            CookRankCeremony.reset()
             PollyDebugLog.shared.log("skills: reset to a fresh install")
         } catch {
             PollyDebugLog.shared.log("skills: could not reset — \(error.localizedDescription)")

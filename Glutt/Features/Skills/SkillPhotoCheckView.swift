@@ -30,6 +30,13 @@ struct SkillPhotoCheckView: View {
         evidence.contains { $0.skillID == skill.id && $0.credit == .clean }
     }
 
+    /// The promotion this result earned, captured ONCE when the verdict lands.
+    ///
+    /// Held in state rather than recomputed, because `CookRankCeremony.record`
+    /// spends it: a view that asked again after recording would find nothing
+    /// and the banner would vanish mid read.
+    @State private var promotion: CookRank?
+
     @State private var model: SkillPhotoCheckModel
     @State private var picking: PhotosPickerItem?
     @State private var showCamera = false
@@ -221,8 +228,40 @@ struct SkillPhotoCheckView: View {
 
     // MARK: Verdict
 
+    /// A promotion, said once, where the cook already is.
+    ///
+    /// Inline in the verdict rather than a modal on top of a modal, and with
+    /// no confetti, matching the region-complete moment in the lesson. The
+    /// toque is the whole celebration: it is visibly taller than the one
+    /// before it, which is a thing you can only earn.
+    @ViewBuilder private func promotionBanner(_ rank: CookRank) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            CookRankBadge(rank: rank, size: 46, isCurrent: true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("You made \(rank.title)")
+                    .font(BrandFont.nunito(16, 800))
+                    .foregroundStyle(Theme.Colors.heading)
+                Text(CookRankCeremony.line(for: rank))
+                    .font(BrandFont.nunito(13, 600))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Colors.greenTint)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.group, style: .continuous))
+        .transition(.scale(scale: 0.92).combined(with: .opacity))
+        .accessibilityElement(children: .combine)
+    }
+
     @ViewBuilder private var verdict: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if let promotion {
+                promotionBanner(promotion)
+                    .padding(.bottom, 2)
+            }
             // Verified, said plainly, with no number attached.
             //
             // The earlier version printed a big 0-100 here. That number came
@@ -319,7 +358,37 @@ struct SkillPhotoCheckView: View {
         // Written the moment she answers rather than when the sheet closes, so
         // an attempt survives somebody swiping this away in frustration. The
         // failed ones are the most useful rows in the history.
-        .onAppear { model.record(in: context) }
+        .onAppear {
+            model.record(in: context)
+            announcePromotion()
+        }
+    }
+
+    /// Say the promotion if this result earned one.
+    ///
+    /// Fetched from the context rather than read off `@Query`, because the
+    /// row was written one line ago and the query has not republished yet. A
+    /// stale read would defer every promotion by one check, which is the kind
+    /// of bug that looks like nothing at all.
+    ///
+    /// Never after a safety stop. A cook who has just been told to get their
+    /// fingers off the blade is not being congratulated in the same breath,
+    /// even if the arithmetic says they crossed a line. The promotion is not
+    /// lost: `CookRankCeremony` is a high-water mark, so it waits and lands on
+    /// the next result that can carry it.
+    private func announcePromotion() {
+        guard case .answered(let outcome) = model.phase,
+              outcome.attemptOutcome != .stoppedForSafety
+        else { return }
+
+        let rows = (try? context.fetch(FetchDescriptor<RatingEvidence>())) ?? []
+        guard let earned = CookRankCeremony.pending(for: rows) else { return }
+
+        CookRankCeremony.record(earned)
+        Haptics.celebrate()
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.78)) {
+            promotion = earned
+        }
     }
 
     @ViewBuilder private func failure(_ message: String) -> some View {

@@ -224,9 +224,9 @@ enum SkillVisualAssessor {
             // a real hazard either way: that closure runs on another actor.
             let answer: SkillVisualAssessment = {
                 var merged = decoded
-                if let region = check.decisiveRegion, let reading = separate {
+                if let observation = check.decisiveObservation, let reading = separate {
                     merged.decisive = SkillVisualAssessment.DecisiveReading(
-                        region: region.rawValue, answer: reading)
+                        observationID: observation.id, answer: reading)
                 }
                 return merged
             }()
@@ -334,7 +334,7 @@ enum SkillVisualAssessor {
             ],
             toolPicture: 1)
         assessment.decisive = SkillVisualAssessment.DecisiveReading(
-            region: region.rawValue, answer: reading)
+            observationID: observation.id, answer: reading)
         return assessment
     }
 
@@ -834,7 +834,15 @@ struct SkillVisualAssessment: Decodable, Sendable, Equatable {
 
     /// A reading taken in its own request.
     struct DecisiveReading: Sendable, Equatable {
-        let region: String
+        /// The question's id, NOT its region.
+        ///
+        /// It held the region's rawValue and was compared against
+        /// `observation.id`, which matched only because the decisive question
+        /// took the default id. The moment one was given an explicit id the
+        /// separate reading would have stopped matching and been dropped in
+        /// silence, and the whole point of asking it on its own is that it is
+        /// the more trustworthy of the two answers.
+        let observationID: String
         let answer: String
     }
 
@@ -931,7 +939,7 @@ struct SkillVisualAssessment: Decodable, Sendable, Equatable {
     func reading(for observation: SkillObservation) -> String? {
         // A reading taken on its own wins. It was measured right where the one
         // buried in the full prompt was measured wrong, on the same pictures.
-        if let decisive, decisive.region == observation.id {
+        if let decisive, decisive.observationID == observation.id {
             return decisive.answer == observation.cannotTell ? nil : decisive.answer
         }
         let answers = observations

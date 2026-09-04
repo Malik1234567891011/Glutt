@@ -1240,7 +1240,7 @@ final class SkillDecisiveReadingTests: XCTestCase {
             observations: [["remainingFingers": rubric], ["remainingFingers": rubric]],
             toolPicture: 2)
         if let alone {
-            a.decisive = .init(region: "remainingFingers", answer: alone)
+            a.decisive = .init(observationID: "remainingFingers", answer: alone)
         }
         return a
     }

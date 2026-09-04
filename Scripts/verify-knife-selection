@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Run the real hand selection over the archived frames and check it sends the
+# hand that is actually holding the knife.
+#
+# This exists because the selection cannot be tested where it ships:
+# VNDetectHumanHandPoseRequest returns nothing at all in the iOS Simulator, so a
+# simulator test passes by finding no hands, and running it on the device
+# crashes before the test bundle connects. So the detection lives in
+# Glutt/Services/Polly/HandBoxes.swift with no UIKit in it, and this compiles
+# that exact file into a macOS tool. Same source, same constants.
+#
+#   ./scripts/verify-knife-selection          # 100 runs
+#   ./scripts/verify-knife-selection 10       # quicker
+set -euo pipefail
+cd "$(dirname "$0")/.."
+OUT=$(mktemp -d)
+swiftc -O -target arm64-apple-macos13 \
+  Glutt/Services/Polly/HandBoxes.swift \
+  scripts/knife-check/main.swift \
+  -o "$OUT/knife-check"
+"$OUT/knife-check" "${1:-100}"

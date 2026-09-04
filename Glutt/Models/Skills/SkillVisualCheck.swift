@@ -61,6 +61,96 @@ struct SkillVisualCheck: Hashable, Sendable {
     /// allowed to comment on: a finger nobody saw cannot be corrected.
     let helpfulVisibility: [SkillVisibilityRegion]
 
+    /// One purely perceptual question whose answer the CODE turns into a
+    /// verdict, because the reader cannot be trusted to draw the conclusion.
+    ///
+    /// This exists because of nine experiments on one archived frame in which
+    /// the cook's whole hand was closed around the steel. Every framing was
+    /// tried and every one came back "on the handle": a minimal one line prompt,
+    /// the full uncropped frame, a free description with no schema at all, a
+    /// forced two way choice with both answers spelled out, gpt-4.1, gpt-5, and
+    /// asking whether metal passed through the fist. It is not our prompt, not
+    /// the crop, not the resolution and not the model tier. It is a language
+    /// prior: hand plus knife means hand on handle, and it beats the pixels.
+    ///
+    /// One framing broke through. Asked to LOCATE the collar where steel meets
+    /// handle, it answered correctly, "a white or pale collar just below the
+    /// fist", and then concluded "fist on handle" in the same breath, which its
+    /// own sentence contradicts. Perception was right; inference was not.
+    ///
+    /// So the reader is asked only where the collar is, forbidden from saying
+    /// anything about grip, and the meaning is worked out here.
+    let landmark: SkillLandmarkQuestion?
+
+    /// Things worth knowing, said while a look is running.
+    ///
+    /// A look is not instant. A device log timed one at forty six seconds
+    /// between the cook asking and the answer arriving, and what filled it was
+    /// "right, let me have a look" and then nothing. Silence that long reads as
+    /// the app having died.
+    ///
+    /// So the wait carries the part of a lesson there is otherwise never room
+    /// for: WHY the technique is shaped the way it is. Each one has to be worth
+    /// a cook's attention on its own, which rules out restating the instruction
+    /// they were just given. Used in order and not repeated within a lesson, so
+    /// a cook who looks four times hears four different things.
+    let waitingFacts: [String]
+
+    /// The one observation asked on its own, in its own request, away from the
+    /// rubric.
+    ///
+    /// Measured, on the same model and the same two pictures of a hand closed
+    /// around a knife blade:
+    ///
+    ///     asked inside the full system prompt   onHandle   (wrong)
+    ///     asked on its own                      onBlade    (right)
+    ///
+    /// And on a genuine pinch grip the small request answered `onHandle`, so it
+    /// is discriminating rather than just alarmed. The full prompt is fourteen
+    /// thousand characters of technique, mistakes, equipment and framing, and
+    /// somewhere in all of that the deciding question stops being read. The
+    /// answer is not to write it more loudly; it is to ask it by itself.
+    let decisiveRegion: SkillVisibilityRegion?
+
+    /// Readings that must hold before a cook can be told they got it right.
+    ///
+    /// Everything else in this file guards against a false correction, because
+    /// a false correction is what makes a cook stop trusting the coach. That
+    /// left the opposite direction completely unguarded, and the opposite
+    /// direction is the dangerous one: a cook held a chef's knife with their
+    /// whole hand wrapped around the BLADE, fingers across the cutting edge,
+    /// and was told "yep, that's it, looks perfect" at 0.90 confidence.
+    ///
+    /// A pass is a claim too. If the pictures cannot confirm it, the honest
+    /// answer is to ask for another look, not to congratulate somebody whose
+    /// fingers are on the edge.
+    let passRequires: [SkillVisibilityRegion: [String]]
+
+    /// Readings that mean stop, whatever else the verdict said.
+    ///
+    /// Separate from `passRequires` because the words are different: one asks
+    /// for another look, this one tells them to let go and re-grip. Kept out of
+    /// the model's own `safety.immediateConcern`, which it did not raise on the
+    /// hand closed around a blade, because a narrow perceptual question is
+    /// answered far more reliably than "is this dangerous".
+    let dangerousReadings: [SkillVisibilityRegion: [String]]
+
+    /// The narrow, closed-answer questions asked about each picture, before any
+    /// verdict is reached.
+    ///
+    /// The reason this exists, plainly: asked "which grip is this", the model
+    /// picks a familiar answer and then writes evidence to match it. Across one
+    /// archived session the `observedEvidence` strings repeated word for word
+    /// between looks, two templates, and one of them was produced from an
+    /// unreadable smear. Evidence written after the conclusion cannot check the
+    /// conclusion.
+    ///
+    /// "Where is the thumb: on the blade, on the handle, or cannot tell" is a
+    /// question about pixels. It is answered per picture, so three pictures give
+    /// three answers that can disagree, and disagreement is a real result rather
+    /// than noise hidden inside one confident verdict.
+    let observations: [SkillObservation]
+
     /// Everything the assessor is asked to report on.
     var reportedVisibility: [SkillVisibilityRegion] { requiredVisibility + helpfulVisibility }
 
@@ -168,6 +258,12 @@ struct SkillVisualCheck: Hashable, Sendable {
         framesPerLook: Int = 3,
         requiredVisibility: [SkillVisibilityRegion],
         helpfulVisibility: [SkillVisibilityRegion] = [],
+        observations: [SkillObservation] = [],
+        waitingFacts: [String] = [],
+        decisiveRegion: SkillVisibilityRegion? = nil,
+        landmark: SkillLandmarkQuestion? = nil,
+        dangerousReadings: [SkillVisibilityRegion: [String]] = [:],
+        passRequires: [SkillVisibilityRegion: [String]] = [:],
         parts: [SkillCheckPart] = [],
         rubric: SkillVisualRubric,
         retryFraming: String,
@@ -185,6 +281,12 @@ struct SkillVisualCheck: Hashable, Sendable {
         self.framesPerLook = framesPerLook
         self.requiredVisibility = requiredVisibility
         self.helpfulVisibility = helpfulVisibility
+        self.observations = observations
+        self.waitingFacts = waitingFacts
+        self.decisiveRegion = decisiveRegion
+        self.landmark = landmark
+        self.passRequires = passRequires
+        self.dangerousReadings = dangerousReadings
         self.parts = parts
         self.rubric = rubric
         self.retryFraming = retryFraming
@@ -377,6 +479,83 @@ enum SkillAssessmentMode: String, Hashable, Sendable {
 /// Replaces relying on array order alone. Order still breaks ties, but a
 /// cosmetic flaw authored above a safety issue can no longer outrank it, and
 /// the ladder here is the one an instructor actually uses.
+/// A question about where a landmark sits, and what each answer means.
+///
+/// Every case is a plain thing to look for. None of them is a judgement, and the
+/// reader is told not to make one, because the moment it is allowed to conclude
+/// it reaches for the familiar answer instead of the visible one.
+struct SkillLandmarkQuestion: Sendable, Equatable, Hashable {
+    /// Asked exactly as written.
+    let question: String
+    /// The only accepted answers, in the order they are offered.
+    let answers: [String]
+    /// The answer that means stop the lesson now.
+    let dangerous: String
+    /// The answer that means they have it right.
+    let correct: String
+    /// The answer that maps to a named mistake in the rubric.
+    let mistake: (answer: String, key: String)?
+    /// The answer meaning it could not be found.
+    let cannotTell: String
+
+    init(
+        question: String,
+        answers: [String],
+        dangerous: String,
+        correct: String,
+        mistake: (answer: String, key: String)? = nil,
+        cannotTell: String = "cannotTell"
+    ) {
+        self.question = question
+        self.answers = answers
+        self.dangerous = dangerous
+        self.correct = correct
+        self.mistake = mistake
+        self.cannotTell = cannotTell
+    }
+
+    static func == (a: Self, b: Self) -> Bool {
+        a.question == b.question && a.answers == b.answers
+            && a.dangerous == b.dangerous && a.correct == b.correct
+            && a.mistake?.answer == b.mistake?.answer && a.mistake?.key == b.mistake?.key
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(question)
+        hasher.combine(answers)
+    }
+}
+
+/// One narrow perceptual question about a picture, with a closed answer set.
+///
+/// Keyed by region so it refines what `visibility` already reports: instead of
+/// "can you see the thumb", which the model answers `sufficient` to
+/// unconditionally, this asks where the thumb actually is and offers
+/// "cannotTell" as a first class answer rather than a failure.
+struct SkillObservation: Sendable, Equatable, Hashable {
+    /// The part of the technique this is about.
+    let region: SkillVisibilityRegion
+    /// Asked exactly as written, so the wording can be tuned per skill.
+    let question: String
+    /// The only answers accepted. Must include an honest "cannot tell" option,
+    /// or the question becomes a forced choice and forced choices get guessed.
+    let answers: [String]
+    /// The answer that means "I could not place it", excluded from the majority.
+    let cannotTell: String
+
+    init(
+        region: SkillVisibilityRegion,
+        question: String,
+        answers: [String],
+        cannotTell: String = "cannotTell"
+    ) {
+        self.region = region
+        self.question = question
+        self.answers = answers
+        self.cannotTell = cannotTell
+    }
+}
+
 enum SkillMistakeSeverity: Int, Hashable, Sendable, Comparable {
     /// Cosmetic. Say it only when nothing else is wrong.
     case cosmetic = 0
@@ -586,6 +765,23 @@ struct SkillCoachableMistake: Hashable, Sendable {
     /// one thing the cook can check for themselves.
     let requiresVisible: [SkillVisibilityRegion]
 
+    /// The plain observations that have to hold before this correction is
+    /// allowed out, keyed by region.
+    ///
+    /// This exists because `requiresVisible` turned out to be unenforceable.
+    /// Across a whole archived session the model marked every region
+    /// `sufficient` every single time, including on a frame that was an
+    /// unreadable smear, so a gate built on its own visibility report can never
+    /// fire. Asking "where is the thumb" with three possible answers is a
+    /// different kind of question: narrow, checkable, and answered from the
+    /// picture rather than from the verdict it is about to give.
+    ///
+    /// The rule is positive evidence, not absence of contradiction. Handle grip
+    /// requires the thumb to READ as on the handle. A thumb it cannot place is
+    /// not permission to correct, which is exactly what the rubric text has
+    /// always said and the code was not enforcing.
+    let impliedBy: [SkillVisibilityRegion: [String]]
+
     init(
         key: String,
         observation: String,
@@ -594,7 +790,8 @@ struct SkillCoachableMistake: Hashable, Sendable {
         isContextual: Bool = false,
         severity: SkillMistakeSeverity = .outcomeCost,
         confidenceFloor: Double? = nil,
-        requiresVisible: [SkillVisibilityRegion] = []
+        requiresVisible: [SkillVisibilityRegion] = [],
+        impliedBy: [SkillVisibilityRegion: [String]] = [:]
     ) {
         self.key = key
         self.observation = observation
@@ -604,5 +801,6 @@ struct SkillCoachableMistake: Hashable, Sendable {
         self.severity = severity
         self.confidenceFloor = confidenceFloor
         self.requiresVisible = requiresVisible
+        self.impliedBy = impliedBy
     }
 }

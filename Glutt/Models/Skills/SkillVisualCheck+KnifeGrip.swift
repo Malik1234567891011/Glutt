@@ -17,9 +17,24 @@ extension SkillVisualCheck {
     static let chefKnifeGrip = SkillVisualCheck(
         id: "knife.grip.pinch",
         assessmentMode: .process,
+        // Rewritten after the archive showed the old one causing the failures it
+        // was supposed to prevent.
+        //
+        // It used to say "rest the blade on your board, look down at your hand".
+        // On a head mounted camera that is the worst thing a cook can do: the
+        // knife ends up at counter level, at arm's length, low in the frame and
+        // often behind whichever hand happens to be nearer. Measured across the
+        // archive, the knife hand came out between 0.9 and 5.3 per cent of the
+        // picture, and every look that passed had it held up and central.
+        //
+        // So the instruction now asks for the thing that works. This is not the
+        // cook compensating for a weak system, it is the system stating a real
+        // constraint plainly, the way every document scanner and barcode reader
+        // does.
         framingInstruction:
-            "Rest the blade on your board, look down at your hand, and turn it slowly, like you "
-            + "are showing me both sides of the knife. I will read it as you go.",
+            "Hold the knife up in front of you, about chest height, and look at YOUR HAND "
+            + "rather than at the tip. Then turn your hand slowly, like you are showing me "
+            + "both sides of the blade.",
         // The clearest case in the catalog for why photo mode is a different
         // lesson rather than a worse camera. Wearing glasses, a cook can never
         // see both faces of their own blade, so the live instruction is a plea
@@ -65,6 +80,94 @@ extension SkillVisualCheck {
         // behind the blade in any correct pinch grip, so demanding both is
         // demanding a view that does not exist.
         helpfulVisibility: [.thumb, .indexFinger, .remainingFingers, .wrist],
+        // The whole lesson turns on one fact: where the thumb is.
+        //
+        // Everything else about a pinch grip and a handle grip is identical.
+        // In both, the middle, ring and little fingers wrap the handle, so a
+        // hand full of curled fingers is not evidence either way, and asking
+        // "which grip is this" gets a familiar answer rather than a looked-at
+        // one. Asked instead where the thumb is, with permission to say it
+        // cannot tell, the question becomes one about pixels.
+        observations: [
+            SkillObservation(
+                region: .thumb,
+                question:
+                    "Ring 1 is drawn on the thumb tip. Is the pixel under ring 1 on the "
+                    + "flat METAL face of the blade, or on the HANDLE behind it? Answer for "
+                    + "what the ring is sitting on, not for what the grip looks like overall. "
+                    + "Say cannotTell if ring 1 is not drawn or the thumb is hidden.",
+                answers: ["onBlade", "onHandle", "cannotTell"]
+            ),
+            // The question nobody was asking, and the one that matters most.
+            //
+            // A cook held the knife with their whole hand wrapped round the
+            // BLADE, every finger across the cutting edge, and was told "yep,
+            // that's it, looks perfect". Her reading was not even wrong by her
+            // own vocabulary: thumb on blade and index on blade is exactly what
+            // a correct pinch grip looks like. Nothing in the schema could tell
+            // a thumb and finger pinching the steel from a fist closed around
+            // it, because nothing ever asked where the other three fingers
+            // were.
+            SkillObservation(
+                region: .remainingFingers,
+                question:
+                    "On a chef's knife the blade is the wide flat steel and the handle is "
+                    + "the narrower part beyond the collar. Are the middle, ring and little "
+                    + "fingers wrapped around the wide STEEL BLADE, or around the narrower "
+                    + "HANDLE? `onBlade` means the hand is closed around the steel, which is "
+                    + "dangerous. `onHandle` is correct and normal. Say cannotTell if those "
+                    + "fingers are hidden or out of frame.",
+                answers: ["onHandle", "onBlade", "cannotTell"]
+            ),
+            SkillObservation(
+                region: .indexFinger,
+                question:
+                    "Ring 2 is drawn on the index fingertip. Is the pixel under ring 2 on "
+                    + "the METAL blade or on the HANDLE? Say cannotTell if ring 2 is not "
+                    + "drawn, or the finger is behind the blade where you cannot see it, "
+                    + "which is common and perfectly normal.",
+                answers: ["onBlade", "onHandle", "cannotTell"]
+            ),
+        ],
+        // Said while a look runs, in order, one per look.
+        //
+        // Every one of these answers "why is it shaped like that", which is the
+        // half of a knife lesson that normally gets cut for time. None of them
+        // restates the instruction, because a cook who has just been told where
+        // to put their thumb does not need telling again while they wait.
+        waitingFacts: [
+            "While that comes through, here is why this grip and not the obvious one. "
+            + "Pinching the blade puts your hand at the point the knife turns around. "
+            + "Hold it at the back of the handle instead and your hand is a few inches "
+            + "behind that point, so every small wobble at your wrist arrives at the tip "
+            + "much bigger. Same hand, same knife, completely different accuracy.",
+
+            "Something worth knowing while I look. Your bottom three fingers are not "
+            + "aiming anything. They carry the weight, and that is all they do, which is "
+            + "why they can stay loose. The aiming is entirely the thumb and index finger "
+            + "on the steel. People who find chopping tiring are usually gripping with all "
+            + "five as though the knife were trying to escape.",
+
+            "One more thing while that lands. You can feel the angle of the blade through "
+            + "the two fingers on the steel, which you cannot do through a handle. That is "
+            + "the part that eventually lets you cut without watching the knife, because "
+            + "your hand knows whether it is straight without you looking.",
+
+            "A last one. That flat area where the blade meets the handle is not a "
+            + "leftover. It is deliberately squared off on a chef's knife precisely so "
+            + "there is somewhere to pinch, which is a reasonable clue that this grip was "
+            + "not invented by whoever wrote the recipe you are following.",
+        ],
+        // Asked by itself. Inside the full prompt this same question came back
+        // `onHandle` on a hand wrapped round the steel; on its own, `onBlade`.
+        decisiveRegion: .remainingFingers,
+        // Fingers curled around the blade is not a grip note, it is a stop.
+        dangerousReadings: [.remainingFingers: ["onBlade"]],
+        // And she may not say "that's it" without having seen the other three
+        // fingers land somewhere safe. A pass she cannot support becomes "let
+        // me see that again", which costs a moment; the alternative cost a cook
+        // being congratulated with their hand around the edge.
+        passRequires: [.remainingFingers: ["onHandle"]],
         // The whole grip, on one screen. Four parts of one shape rather than
         // four steps of a sequence, because that is what a hand does.
         parts: [
@@ -127,7 +230,18 @@ extension SkillVisualCheck {
                         + "where the cutting happens, so the knife goes where you point it.",
                     isContextual: true,
                     severity: .outcomeCost,
-                    requiresVisible: [.controlPoint]
+                    // The thumb, not just the control point. The whole
+                    // difference between this mistake and a correct pinch is
+                    // where the thumb is, so concluding it without having seen
+                    // the thumb is not a weak judgement, it is no judgement.
+                    requiresVisible: [.controlPoint, .thumb],
+                    // And the pictures have to agree that it is on the handle.
+                    // On an archived look she called a textbook pinch grip
+                    // `handleGrip` at 0.85 while the thumb sat plainly on the
+                    // blade in a sharp, well framed close up. Under this rule
+                    // that verdict cannot leave the building, because her own
+                    // reading of the thumb would contradict it.
+                    impliedBy: [.thumb: ["onHandle"]]
                 ),
                 SkillCoachableMistake(
                     key: "pointerGrip",
@@ -229,6 +343,7 @@ extension SkillVisualCheck {
             variationSummary: "Own variation on the pinch grip, and in control of the knife."
         ),
         retryFraming:
-            "Keep hold of it and turn your hand slowly, and I will pick it up as it comes round.",
+            "Look at your hand rather than the point of the knife, and turn it slowly. Your "
+            + "hand keeps dropping just below what I can see.",
     )
 }

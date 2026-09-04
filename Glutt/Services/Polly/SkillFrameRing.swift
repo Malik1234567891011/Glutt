@@ -28,9 +28,14 @@ final class SkillFrameRing {
     /// stream is running either way and this is a copy out of its buffer.
     static let sampleInterval: TimeInterval = 0.6
 
-    /// About four seconds of history. Enough that a question asked mid sentence
-    /// still has frames from before the cook started moving again.
-    static let capacity = 7
+    /// About six seconds of history.
+    ///
+    /// Was seven samples, a little over four, and that was less than the look
+    /// now waits: the lesson asks them to turn their hand and then watches for
+    /// four seconds before reading, so a four second memory held barely the
+    /// turn and nothing before it. Ten covers the whole movement with room
+    /// either side. Small JPEGs, so the cost is nothing worth counting.
+    static let capacity = 10
 
     private var samples: [Sample] = []
     private var task: Task<Void, Never>?

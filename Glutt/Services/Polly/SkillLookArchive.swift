@@ -25,7 +25,27 @@ import UIKit
 /// **Debug builds only.** Every call site is inside `#if DEBUG`, and writing a
 /// cook's kitchen to disk in a shipping app would be indefensible.
 #if DEBUG
+/// Why this look happened, which decides whether a failed one is a bug.
+///
+/// A lesson starts looking the moment the cook says something that sounds like
+/// "does this look right", without waiting for Chef to decide to call the tool.
+/// When she then says something conversational instead, that speculative look is
+/// thrown away and its request is cancelled. That cancellation is correct
+/// behaviour and the cook never sees it, but in the archive it is
+/// indistinguishable from a look the cook was actually waiting on: both land as
+/// `NSURLErrorDomain Code=-999 "cancelled"`. Four of eight checks in one session
+/// read as failures for this reason, which made the feature look far more broken
+/// than it was.
+enum SkillLookOrigin: String {
+    case speculative = "started early, before she called for it"
+    case requested = "she called for it"
+}
+
 enum SkillLookArchive {
+
+    /// Task-local so nothing has to thread it through `deps.assess`, and so it
+    /// follows the assessment into whatever child task does the request.
+    @TaskLocal static var origin: SkillLookOrigin = .requested
 
     /// `Documents/SkillLooks`, which is what `appDataContainer` exposes.
     private static var root: URL? {
@@ -105,6 +125,7 @@ enum SkillLookArchive {
     ) -> String {
         var out = ["\(check.id)", ""]
 
+        out.append("origin: \(origin.rawValue)")
         out.append("frames sent: \(frames.count)")
         for (index, jpeg) in frames.enumerated() {
             let size = UIImage(data: jpeg).map { "\(Int($0.size.width))x\(Int($0.size.height))" }
@@ -123,6 +144,12 @@ enum SkillLookArchive {
 
         guard let assessment else {
             out.append("NO ASSESSMENT: \(error ?? "unknown failure")")
+            if origin == .speculative, error?.contains("-999") == true {
+                out.append("")
+                out.append("NOT A BUG. This look was started early on the chance the cook")
+                out.append("wanted one, she went on talking instead, and it was thrown away.")
+                out.append("The cook saw nothing and waited for nothing.")
+            }
             return out.joined(separator: "\n")
         }
 
@@ -146,6 +173,20 @@ enum SkillLookArchive {
             out.append("  SAFETY       \(assessment.safety.description ?? "unspecified")")
         }
         out.append("")
+
+        if !check.observations.isEmpty {
+            out.append("where she placed each part, picture by picture")
+            out.append("  (this is the reading the correction is now gated on)")
+            for observation in check.observations {
+                let perPicture = assessment.observations.enumerated().map { index, reading in
+                    "\(index + 1):\(reading[observation.region.rawValue] ?? "-")"
+                }.joined(separator: "  ")
+                let agreed = assessment.reading(for: observation) ?? "NO MAJORITY"
+                out.append("  \(observation.region.rawValue.padding(toLength: 14, withPad: " ", startingAt: 0))"
+                    + "\(perPicture.isEmpty ? "nothing reported" : perPicture)  ->  \(agreed)")
+            }
+            out.append("")
+        }
 
         out.append("what she claims she actually saw")
         for line in assessment.observedEvidence {

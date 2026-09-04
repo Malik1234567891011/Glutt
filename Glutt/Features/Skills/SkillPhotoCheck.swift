@@ -107,6 +107,8 @@ final class SkillPhotoCheckModel {
             return "That is not the tool this lesson is for"
         case .safetyStop:
             return "Stop for a second"
+        case .confirmWithCook:
+            return "One thing I want to check"
         }
     }
 
@@ -127,6 +129,11 @@ final class SkillPhotoCheckModel {
             return "It looked like \(reading). This lesson is written for something else."
         case .safetyStop(let reason):
             return reason
+        case .confirmWithCook(_, let question):
+            // Asked, not asserted. The reading behind this catches every hand
+            // that really is on the blade and also flags correct pinch grips,
+            // so the cook settles it rather than being told.
+            return question.capitalizedFirst
         }
     }
 

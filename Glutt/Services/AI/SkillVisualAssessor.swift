@@ -32,6 +32,27 @@ enum SkillVisualAssessor {
     /// carries one image each. Several views of a mostly static hand is the
     /// point: one blurred or occluded instant then costs a frame rather than
     /// the answer.
+    /// Which model reads the pictures for a physical skill.
+    ///
+    /// Not the app default, and the reason is measured. On one archived frame
+    /// with the cook's whole hand closed around a knife blade, GPT reported "on
+    /// the handle" under nine different framings: a one line prompt, the full
+    /// uncropped frame, a free description with no schema at all, a forced two
+    /// way choice with both answers written out, gpt-4.1 and gpt-5. Hands are
+    /// usually on handles, and that expectation beat the pixels every time.
+    ///
+    /// That is a property of a model family rather than of our prompt, so the
+    /// cheapest way to find out whether it is shared is to ask a different
+    /// family. Only the vision read moves; everything else in the app stays put.
+    static let visionModel = "claude-sonnet-5"
+
+    /// Answer from the single question when it is decisive, instead of waiting
+    /// for the full rubric request.
+    ///
+    /// Set to `false` to restore the old behaviour completely. See the block in
+    /// `assess` for what this trades away.
+    static let answerFromTheSingleQuestionAlone = true
+
     static func assess(
         check: SkillVisualCheck,
         frames: [Data],
@@ -46,9 +67,47 @@ enum SkillVisualAssessor {
         // One crop per hand, newest frame first, capped at the frame budget.
         // Two hands in the newest frame beats one hand in each of three, because
         // the question is which hand rather than which moment.
-        let focused = Array(frames.flatMap(SkillFrameFocus.focusOnHands).prefix(check.framesPerLook))
-        let usable = focused.compactMap { ImagePrep.prepareForVision($0.jpeg) }
-        guard !usable.isEmpty else { throw AssessorError.noUsableFrames }
+        // The wide shot AND the close ups, not one or the other.
+        //
+        // Sending only crops is what let a look come back `handleGrip` at 0.95
+        // on a picture with no knife in it. A crop with nothing around it cannot
+        // be told apart from a patch of skin, so there was no way for her to
+        // notice that the thing she was describing was not there. The wide frame
+        // answers "is a knife in this scene at all, and which hand is holding
+        // it"; the crops answer "where exactly is the thumb". Neither question
+        // can be answered from the other's picture.
+        let perFrame = frames.map(SkillFrameFocus.focusOnHands)
+        // Every hand in the newest frame, because which hand is the question.
+        //
+        // When there is only one, spend the remaining budget on that same hand a
+        // moment earlier instead, since a knife grip cannot be read from a
+        // single angle: the thumb is on one face of the blade and the curled
+        // index finger on the other.
+        let newest = (perFrame.first ?? []).filter { $0.coverage != nil }
+        var closeUps: [SkillFrameFocus.Focused]
+        if newest.count > 1 {
+            closeUps = Array(newest.prefix(3))
+        } else {
+            closeUps = perFrame.compactMap { $0.first { $0.coverage != nil } }
+        }
+        // Two close ups, not three. Each picture is real latency on the slow
+        // request, and a look that times out at forty five seconds is worth
+        // less than a slightly thinner one that arrives.
+        closeUps = Array(closeUps.prefix(min(2, check.framesPerLook)))
+        // 1600, not the 1280 default: the first frame is now a real photograph
+        // rather than a video still, and the whole point of taking it is detail
+        // that a smaller picture cannot carry.
+        let wide = frames.first.flatMap { ImagePrep.prepareForVision($0, maxDimension: 1600) }
+
+        var composed: [(jpeg: Data, isWide: Bool)] = []
+        if let wide { composed.append((wide, true)) }
+        for shot in closeUps {
+            guard let prepared = ImagePrep.prepareForVision(shot.jpeg) else { continue }
+            composed.append((prepared, false))
+        }
+        guard !composed.isEmpty else { throw AssessorError.noUsableFrames }
+        let usable = composed.map(\.jpeg)
+        let focused = perFrame.flatMap { $0 }
 
         // Refuse rather than answer badly.
         //
@@ -65,29 +124,132 @@ enum SkillVisualAssessor {
             throw VisualFrameRejection.subjectTooFar
         }
 
-        var messages: [LLMClient.Message] = [.system(systemPrompt(check: check))]
-        for (index, jpeg) in usable.enumerated() {
-            messages.append(.user(
-                "View \(index + 1) of \(usable.count) of the same grip, "
-                    + (index == 0 ? "most recent." : "a moment earlier."),
-                imageData: jpeg))
+        var messages: [LLMClient.Message] = [
+            .system(systemPrompt(check: check, pictures: composed.count))
+        ]
+        var closeUpNumber = 0
+        for (index, shot) in composed.enumerated() {
+            let caption: String
+            if shot.isWide {
+                caption = "Picture \(index + 1): the whole scene, as the cook sees it. "
+                    + "Use this one to work out what is actually here and which hand is "
+                    + "holding it. Do not read fine detail from it."
+            } else {
+                closeUpNumber += 1
+                caption = "Picture \(index + 1): a close up of the hand, "
+                    + (closeUpNumber == 1 ? "taken at the same moment." : "taken a moment earlier.")
+                    + " Read the detail from this one."
+            }
+            messages.append(.user(caption, imageData: shot.jpeg))
         }
         messages.append(.user(userPrompt(check: check)))
 
+#if DEBUG
+        await MainActor.run { SkillLookMirror.shared.show(sent: usable) }
+#endif
+
+        // Asked alongside the rubric, not inside it.
+        //
+        // Started before the main request and awaited after, so the cook waits
+        // for one round trip rather than two.
+        async let decisive = decisiveReading(check: check, pictures: usable, client: client)
+        // Awaited before the slow request is even attempted, so its answer is
+        // in hand whether that one succeeds, fails or times out.
+        let separate = await decisive
+
+        // ONE SWITCH. Set to false and every look goes back to making the slow
+        // rubric request first, exactly as it did before.
+        //
+        // Why this is worth having: a cook session answers "does this look
+        // right" in about a second, because it drops the frame straight into
+        // the Realtime session that is already open, already warm and already
+        // holding the context. A skill check instead opens a fresh HTTP request
+        // carrying fifteen thousand characters of rubric and three pictures,
+        // and waits for the whole JSON before anybody hears a word. Measured on
+        // device: twenty seven and thirty two seconds, and one timeout at
+        // forty five.
+        //
+        // The single question is two pictures and one sentence, and it already
+        // decides everything that gates the lesson: stop, pass, or ask. When it
+        // gives a straight answer there is nothing the slow request adds that
+        // the cook is waiting to hear.
+        //
+        // WHAT IS LOST while this is on: the specific named corrections. Nobody
+        // hears "your index finger is along the spine" or "your wrist is bent",
+        // and a wrong knife is not called out, because only the rubric request
+        // knows about those. It is speed against detail, and it is here as a
+        // switch rather than a rewrite precisely because that trade is worth
+        // watching before it is settled.
+        if answerFromTheSingleQuestionAlone,
+           let quick = standaloneAnswer(check: check, reading: separate) {
+            PollyDebugLog.shared.log(
+                "skill: single question was decisive, skipping the slow rubric request")
+#if DEBUG
+            await MainActor.run {
+                SkillLookMirror.shared.answered(
+                    "\(quick.overall.rawValue) · from the single question alone",
+                    readings: check.decisiveRegion.map {
+                        ["\($0.rawValue)  \(separate ?? "-")"]
+                    } ?? [])
+            }
+            SkillLookArchive.save(
+                frames: usable, check: check, assessment: quick,
+                handCoverage: focused.compactMap(\.coverage).max(),
+                originals: frames)
+#endif
+            return quick
+        }
+
         do {
-            let answer = try await client.chatJSON(
+            let decoded = try await client.chatJSON(
                 SkillVisualAssessment.self,
                 messages: messages,
                 temperature: 0.1,
                 feature: usageFeature,
-                timeout: 45
+                // 60, not 45. Measured: this request takes forty six seconds on
+                // a good run, so the old limit was cutting off answers that were
+                // about to arrive. It is a backstop rather than a budget, since
+                // the single question already answers the cook in a few seconds
+                // if this one never lands.
+                timeout: 60,
+                model: visionModel
             )
             // Archived AFTER the answer so the pictures and the verdict land in
             // one folder. `usable` rather than `frames`: these are the bytes the
             // model actually received, downscaled and recompressed, and judging
             // its eyesight against the originals would be judging the wrong
             // images.
+            // Built once and left alone. A `var` here is captured by the debug
+            // mirror's closure below, which Swift 6 makes an error and which is
+            // a real hazard either way: that closure runs on another actor.
+            let answer: SkillVisualAssessment = {
+                var merged = decoded
+                if let region = check.decisiveRegion, let reading = separate {
+                    merged.decisive = SkillVisualAssessment.DecisiveReading(
+                        region: region.rawValue, answer: reading)
+                }
+                return merged
+            }()
+            if let region = check.decisiveRegion, let reading = separate {
+                PollyDebugLog.shared.log(
+                    "skill: asked on its own, \(region.rawValue) is \(reading)")
+            }
+
 #if DEBUG
+            await MainActor.run {
+                SkillLookMirror.shared.answered(
+                    "\(answer.overall.rawValue)"
+                        + (answer.primaryIssueKey.map { " · \($0)" } ?? "")
+                        + " · \(Int(answer.confidence * 100))%"
+                        + " · tool in picture \(answer.toolPicture)",
+                    readings: check.observations.map { observation in
+                        let each = answer.observations.enumerated().map { index, reading in
+                            "\(index + 1):\(reading[observation.region.rawValue] ?? "-")"
+                        }.joined(separator: "  ")
+                        let agreed = answer.reading(for: observation) ?? "no majority"
+                        return "\(observation.region.rawValue)  \(each)  → \(agreed)"
+                    })
+            }
             SkillLookArchive.save(
                 frames: usable, check: check, assessment: answer,
                 handCoverage: focused.compactMap(\.coverage).max(),
@@ -96,6 +258,9 @@ enum SkillVisualAssessor {
             return answer
         } catch {
 #if DEBUG
+            await MainActor.run {
+                SkillLookMirror.shared.failed(String(describing: error).prefix(120).description)
+            }
             // A failed look is worth keeping too. Half the arguments about what
             // she can see turn out to be about a request that never landed.
             SkillLookArchive.save(
@@ -104,7 +269,116 @@ enum SkillVisualAssessor {
                 handCoverage: focused.compactMap(\.coverage).max(),
                 originals: frames)
 #endif
+            // The small question may well have landed even though the big one
+            // did not, and it is the one that decides the outcome anyway.
+            //
+            // A cook asked, waited forty five seconds and got nothing, because
+            // the rubric request timed out. That request carries four pictures
+            // and fifteen thousand characters and is genuinely slow; the single
+            // question carries two pictures and one sentence and comes back in
+            // a few seconds. Losing the whole look because the slow half died,
+            // while holding a perfectly good answer to the only question that
+            // gates safety, is the worst possible trade.
+            if let answer = standaloneAnswer(check: check, reading: separate) {
+                PollyDebugLog.shared.log(
+                    "skill: rubric request failed, answering from the single question instead")
+                return answer
+            }
             throw error
+        }
+    }
+
+    /// A verdict built from the single question alone.
+    ///
+    /// Deliberately thin. It knows where the deciding part of the hand is and
+    /// nothing else, so it never names a specific mistake: it can stop a cook
+    /// whose hand is on the steel, and it can confirm one whose hand is not.
+    /// Anything subtler waits for a request that actually completes.
+    ///
+    /// Nil when the single question could not place it either, because then
+    /// there is genuinely nothing to say and the caller should report the
+    /// failure honestly.
+    private static func standaloneAnswer(
+        check: SkillVisualCheck,
+        reading: String?
+    ) -> SkillVisualAssessment? {
+        guard let region = check.decisiveRegion,
+              let observation = check.observations.first(where: { $0.region == region }),
+              let reading, reading != observation.cannotTell,
+              observation.answers.contains(reading)
+        else { return nil }
+
+        // Enough visibility for the decision layer to get as far as the gates,
+        // which is honest: to place these fingers on the blade or the handle it
+        // had to see both the hand and the tool.
+        let visibility = Dictionary(
+            uniqueKeysWithValues: check.requiredVisibility.map { ($0.rawValue, SkillVisualAssessment.Visibility.sufficient) })
+
+        let dangerous = check.dangerousReadings[region]?.contains(reading) ?? false
+        var assessment = SkillVisualAssessment(
+            equipment: SkillVisualAssessment.Equipment(
+                reading: "the tool for this lesson", supported: true, confidence: 0.7),
+            visibility: visibility,
+            overall: dangerous ? .needsAdjustment : .ready,
+            confidence: 0.7,
+            // Says where the verdict came from, so the archive does not go
+            // blank on this path.
+            //
+            // It did: every fast look wrote an empty "what she claims she
+            // actually saw", which is the one section built to settle arguments
+            // about her eyesight. A faster answer that cannot be checked
+            // afterwards is a bad trade.
+            observedEvidence: [
+                "answered from the single question alone, without the rubric request",
+                "\(region.rawValue) read as \(reading)",
+            ],
+            toolPicture: 1)
+        assessment.decisive = SkillVisualAssessment.DecisiveReading(
+            region: region.rawValue, answer: reading)
+        return assessment
+    }
+
+    /// Ask the one deciding question on its own, with nothing else in scope.
+    ///
+    /// Never throws. This runs beside the real assessment and a failure here
+    /// must leave that assessment exactly as it was rather than taking the whole
+    /// look down with it.
+    private static func decisiveReading(
+        check: SkillVisualCheck,
+        pictures: [Data],
+        client: LLMClient
+    ) async -> String? {
+        guard let region = check.decisiveRegion,
+              let observation = check.observations.first(where: { $0.region == region }),
+              !pictures.isEmpty
+        else { return nil }
+
+        struct OneAnswer: Decodable { let answer: String }
+
+        // The close ups only. The wide shot is context for the rubric and here
+        // it is just another thing to be distracted by.
+        var content: [LLMClient.Message] = [.system(
+            "You look at photographs of a cook's hand and answer ONE question about what is "
+            + "in them. Answer only from what is visible. Reply with JSON and nothing else.")]
+        for (index, jpeg) in pictures.suffix(2).enumerated() {
+            content.append(.user("Picture \(index + 1).", imageData: jpeg))
+        }
+        content.append(.user(
+            observation.question
+            + "\n\nReply exactly as {\"answer\": \"\(observation.answers.joined(separator: " | "))\"}"))
+
+        do {
+            let reply = try await client.chatJSON(
+                OneAnswer.self,
+                messages: content,
+                temperature: 0,
+                feature: "\(usageFeature)_decisive",
+                timeout: 30,
+                model: visionModel)
+            return observation.answers.contains(reply.answer) ? reply.answer : nil
+        } catch {
+            PollyDebugLog.shared.log("skill: the single question failed — \(error.localizedDescription)")
+            return nil
         }
     }
 
@@ -112,7 +386,7 @@ enum SkillVisualAssessor {
 
     /// Built from the rubric rather than written here, so authoring a new
     /// physical skill never means editing this file.
-    static func systemPrompt(check: SkillVisualCheck) -> String {
+    static func systemPrompt(check: SkillVisualCheck, pictures: Int = 3) -> String {
         let r = check.rubric
         return """
         You are helping a cooking instructor evaluate \(r.subject). The images are
@@ -172,6 +446,67 @@ enum SkillVisualAssessor {
         there, and it is worse than any wrong correction because nothing
         downstream can catch it.
 
+        # First, find the tool. `toolPicture` before anything else.
+        You are given a wide shot and then one close up per hand. The cook has
+        two hands and usually only one of them is holding anything, so at least
+        one close up is of a hand holding nothing, or holding a phone, or resting
+        on the counter. That is expected and it is not a mistake by anyone.
+        Your first job is to say which picture actually shows the tool this
+        lesson is about, by its number. Use the wide shot to work out what is in
+        the scene and where, then name the close up that shows it.
+        If NO picture shows the tool, answer 0, set `overall` to `cannotAssess`,
+        and stop there. Do not judge a hand that is not holding the tool, and
+        never describe a tool you cannot see. Saying "the whole hand is behind
+        the blade on the handle" about a picture with no blade in it has
+        happened, and it is worse than any wrong correction, because nothing
+        downstream can catch it.
+        Everything after this point is about the picture you just named. Ignore
+        the others except as context.
+
+        # The one question that decides this lesson
+        \(check.landmark?.question ?? "")
+        Answer it in the `landmark` field. Answer it from what you can find in
+        the picture, not from what a hand holding a knife usually looks like.
+        Hands are usually on handles, and that expectation has been measured
+        overriding the pixels on this exact question, so treat a familiar-looking
+        answer as a warning rather than a confirmation.
+
+        # The magenta rings are there to help you, use them
+        The close up pictures have small magenta rings drawn on the cook's
+        fingertips, numbered 1 to 5: 1 thumb, 2 index, 3 middle, 4 ring,
+        5 little. We put them there, they are not in the kitchen, and they are
+        placed by a hand tracker rather than by you.
+        Use them as anchors. When a question asks about a finger, find its ring
+        and answer for what is directly under and just inside that ring, rather
+        than judging the pose as a whole. A grip that "looks like" a familiar one
+        is exactly how a hand closed around a blade gets read as a correct pinch,
+        because both of them put the thumb and index finger on the steel. The
+        rings on fingers 3, 4 and 5 are what separate the two, and they are worth
+        more than any impression of the shape.
+        If a ring is missing, that finger was not located. Say cannotTell rather
+        than guessing where it went.
+
+        # Answer the picture questions first, and answer them per picture
+        `observations` comes first in the JSON for a reason: it is what you can
+        SEE, and it has to be settled before you decide what it MEANS.
+        You have been given \(pictures) pictures, so `observations` must contain
+        exactly \(pictures) entries, in the same order, one per picture, using
+        only the answers offered. Not fewer. A picture you skip is a picture
+        nobody asked about, and the one you are most tempted to skip is the one
+        that is hardest to read, which is exactly the one carrying the answer.
+        Answer each picture on its own. Do not copy your answer for picture one
+        into picture two because they are the same hand. They were taken at
+        different moments from different angles and they genuinely differ, and
+        two pictures disagreeing is useful information that the app knows what
+        to do with.
+        `cannotTell` is a real answer and a good one. Use it whenever the part
+        is hidden, out of frame, facing away, or too small or too blurred to
+        place. It is not a failure and it costs nothing: the app simply asks the
+        cook to turn their hand. Guessing costs a great deal, because a wrong
+        correction is the one thing that makes a cook stop believing you.
+        The wide picture will often be `cannotTell` for everything. That is
+        correct and expected. Read the scene from it, not the detail.
+
         # How to answer
         1. FIRST decide whether you can see enough. Report visibility per region
            honestly. A region hidden behind something, or out of frame, is
@@ -195,6 +530,21 @@ enum SkillVisualAssessor {
            short list of plain physical observations, each one something another
            person could verify from the same image. Your conclusions belong in the
            other fields.
+           Keep them SHORT. Two or three, a dozen words each at most. A cook is
+           standing there holding a knife while you write them, and one archived
+           look spent its time on five sentences of hedging about which picture
+           showed what. None of that reaches them; it only makes them wait.
+           An observation about something that is not in the picture is not an
+           observation. These images are cropped tight around a hand, so fingers
+           run off the edge constantly. If a finger leaves the frame you cannot
+           see where it ends, and that region is `insufficient`. Marking it
+           `sufficient` and then writing "the remaining fingers are wrapped round
+           the handle" is a guess with an observation's wording, and it has
+           already been caught doing exactly that on a picture where those
+           fingers were outside the image entirely.
+           Before you mark a region `sufficient`, check that you could point at
+           it in the picture. If you could not, it is `insufficient`, and that is
+           a perfectly good answer.
         4. Be conservative. A false correction is worse than a missed one: it makes
            a cook distrust everything else you say. When two readings are possible,
            report the lower confidence.
@@ -203,7 +553,7 @@ enum SkillVisualAssessor {
            any criticism to the cook, so there is no cost to being honest.
 
         Reply with JSON only, no prose around it, in exactly this shape:
-        \(schema(check: check))
+        \(schema(check: check, pictures: pictures))
         """
     }
 
@@ -294,6 +644,14 @@ enum SkillVisualAssessor {
 
     /// The regions that actually gate an assessment, named in the prompt so the
     /// model is not left inferring which ones matter.
+    /// The closed answer sets, spelled out so the model has no room to invent
+    /// a fourth answer.
+    private static func observationFields(_ check: SkillVisualCheck) -> String {
+        check.observations
+            .map { "\"\($0.region.rawValue)\": \"\($0.answers.joined(separator: " | "))\"" }
+            .joined(separator: ", ")
+    }
+
     private static func requiredList(_ check: SkillVisualCheck) -> String {
         let names = check.requiredVisibility.map { "`\($0.rawValue)`" }
         guard let last = names.last else { return "nothing" }
@@ -305,16 +663,39 @@ enum SkillVisualAssessor {
         lines.map { "- \($0)" }.joined(separator: "\n")
     }
 
-    private static func schema(check: SkillVisualCheck) -> String {
+    private static func schema(check: SkillVisualCheck, pictures: Int) -> String {
         let regions = check.reportedVisibility
             .map { "\"\($0.rawValue)\": \"sufficient | partial | insufficient\"" }
             .joined(separator: ",\n            ")
         let criteria = check.rubric.coachingOrder
             .map { "\"\($0.key)\"" }
             .joined(separator: " | ")
+        // ONE ENTRY PER PICTURE, generated from the real count.
+        //
+        // This used to print exactly two entries whatever it had been given, and
+        // the model copied the shape it was shown: a look with three pictures
+        // came back with two readings, a look with four came back with three.
+        // The picture it dropped was picture three, the only one in which the
+        // cook's thumb was visible, so the majority came out `NO MAJORITY` and
+        // the grip could not be judged. The answer was in the frame, in the
+        // request, and never asked about.
+        let entries = (1...max(1, pictures))
+            .map { "            { \"picture\": \($0), \(observationFields(check)) }" }
+            .joined(separator: ",\n")
+        let observations = check.observations.isEmpty ? "" : """
+          "observations": [
+        \(entries)
+          ],
+
+        """
+        let landmark = check.landmark.map {
+            "  \"landmark\": \"\($0.answers.joined(separator: " | "))\",\n"
+        } ?? ""
         return """
         {
-          "equipment": {
+          "toolPicture": 0,
+        \(landmark)
+        \(observations)  "equipment": {
             "reading": "what tool you believe this is, in plain words",
             "supported": true,
             "confidence": 0.0
@@ -332,7 +713,7 @@ enum SkillVisualAssessor {
           "overall": "ready | acceptableVariation | needsAdjustment | cannotAssess | unsupportedEquipment",
           "confidence": 0.0,
           "primaryIssueKey": "null, or one of: \(criteria)",
-          "observedEvidence": ["short plain observations, two to five of them"]
+          "observedEvidence": ["two or three observations, each under twelve words"]
         }
         """
     }
@@ -385,6 +766,54 @@ struct SkillVisualAssessment: Decodable, Sendable, Equatable {
     let primaryIssueKey: String?
     let observedEvidence: [String]
 
+    /// One entry per picture: region name to the answer given for it.
+    ///
+    /// Kept as raw strings because the answer sets are authored per skill and
+    /// this type must not need editing to add one.
+    let observations: [[String: String]]
+
+    /// Which picture the tool was actually in, 1 based. Zero means none of them.
+    ///
+    /// The cropper sends one close up per hand and cannot tell which hand holds
+    /// what, because the hand holding a knife is the one whose landmarks the
+    /// knife is covering. So the reader picks, and this is the answer.
+    let toolPicture: Int
+
+    /// Where the deciding landmark sits, when the check asks for one. Raw
+    /// because the answers are authored per skill.
+    let landmark: String?
+
+    /// A reading taken in its own request, which outranks anything this
+    /// assessment says about the same region. See `decisiveRegion`.
+    var decisive: DecisiveReading?
+
+    /// A reading taken in its own request.
+    struct DecisiveReading: Sendable, Equatable {
+        let region: String
+        let answer: String
+    }
+
+    /// A value from the model that we want as a string and will accept in any
+    /// scalar shape it arrives in.
+    ///
+    /// Written after a schema that listed `"picture": 1` alongside the answers
+    /// threw `typeMismatch: expected String, found number` on every single look
+    /// in a session. The lesson went completely silent, because a look that
+    /// cannot be decoded is a look with no answer to say. Nothing about one
+    /// stray integer should be able to do that, so this decodes whatever turns
+    /// up and lets the unknown keys sit there harmlessly.
+    private struct LooseScalar: Decodable {
+        let text: String
+        init(from decoder: Decoder) throws {
+            let value = try decoder.singleValueContainer()
+            if let string = try? value.decode(String.self) { text = string }
+            else if let int = try? value.decode(Int.self) { text = String(int) }
+            else if let double = try? value.decode(Double.self) { text = String(double) }
+            else if let bool = try? value.decode(Bool.self) { text = String(bool) }
+            else { text = "" }
+        }
+    }
+
     // Tolerant decoding: a model that omits an optional field should not fail
     // the whole assessment, because the app can say "I could not see" perfectly
     // well from a partial answer and cannot say anything at all from a throw.
@@ -402,12 +831,17 @@ struct SkillVisualAssessment: Decodable, Sendable, Equatable {
         // "null" arrives as a real string often enough to be worth handling.
         let key = try c.decodeIfPresent(String.self, forKey: .primaryIssueKey)
         primaryIssueKey = (key == "null" || key?.isEmpty == true) ? nil : key
+        let loose = try c.decodeIfPresent([[String: LooseScalar]].self, forKey: .observations) ?? []
+        observations = loose.map { $0.mapValues(\.text) }
+        toolPicture = try c.decodeIfPresent(Int.self, forKey: .toolPicture) ?? 0
+        landmark = try c.decodeIfPresent(String.self, forKey: .landmark)
         observedEvidence = try c.decodeIfPresent([String].self, forKey: .observedEvidence) ?? []
     }
 
     private enum CodingKeys: String, CodingKey {
         case equipment, handedness, visibility, safety, techniqueFamily
         case overall, confidence, primaryIssueKey, observedEvidence
+        case observations, toolPicture, landmark
     }
 
     /// Test seam.
@@ -420,7 +854,10 @@ struct SkillVisualAssessment: Decodable, Sendable, Equatable {
         overall: Overall,
         confidence: Double,
         primaryIssueKey: String? = nil,
-        observedEvidence: [String] = []
+        observedEvidence: [String] = [],
+        observations: [[String: String]] = [],
+        toolPicture: Int = 0,
+        landmark: String? = nil
     ) {
         self.equipment = equipment
         self.handedness = handedness
@@ -431,6 +868,38 @@ struct SkillVisualAssessment: Decodable, Sendable, Equatable {
         self.confidence = confidence
         self.primaryIssueKey = primaryIssueKey
         self.observedEvidence = observedEvidence
+        self.observations = observations
+        self.toolPicture = toolPicture
+        self.landmark = landmark
+    }
+
+    /// What the pictures agreed on for one region, or nil when they did not.
+    ///
+    /// A majority of the pictures that could place it, and "could not place it"
+    /// does not vote. Three pictures reading onBlade, onBlade, cannotTell is a
+    /// clear answer; onBlade, onHandle, cannotTell is not, and returning nil
+    /// there is the honest outcome rather than picking the first.
+    ///
+    /// Ties return nil on purpose. A tie is the model telling us it changed its
+    /// mind between two pictures of the same hand, which is exactly the noise
+    /// that produced opposite verdicts on near identical grips.
+    func reading(for observation: SkillObservation) -> String? {
+        // A reading taken on its own wins. It was measured right where the one
+        // buried in the full prompt was measured wrong, on the same pictures.
+        if let decisive, decisive.region == observation.region.rawValue {
+            return decisive.answer == observation.cannotTell ? nil : decisive.answer
+        }
+        let answers = observations
+            .compactMap { $0[observation.region.rawValue] }
+            .filter { $0 != observation.cannotTell }
+        guard !answers.isEmpty else { return nil }
+
+        var tally: [String: Int] = [:]
+        for answer in answers { tally[answer, default: 0] += 1 }
+        let ranked = tally.sorted { $0.value > $1.value }
+        guard let top = ranked.first else { return nil }
+        if ranked.count > 1, ranked[1].value == top.value { return nil }
+        return top.key
     }
 
     /// Whether every region the check needs came back usable.

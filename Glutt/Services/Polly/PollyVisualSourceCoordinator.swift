@@ -99,6 +99,18 @@ final class PollyVisualSourceCoordinator: PollyVisualSource {
     /// somewhere around Chef's first sentence, so by the time anyone is
     /// chopping she can already see. Left until the cook first asks "does this
     /// look right", it would be fifteen seconds of silence at the worst moment.
+    /// Ask the glasses for the sharpest stream they will give, for the callers
+    /// that need to read something small.
+    ///
+    /// Cooking judges a pan and leaves this alone. A knife grip is a thumb
+    /// against a blade, a few dozen pixels on the default stream, and the
+    /// archive shows the same correct grip coming back `ready` one moment and
+    /// `needsAdjustment` the next. More pixels is the only thing that helps a
+    /// reader that cannot see the detail it is being asked about.
+    func preferHighestDetail() {
+        glasses.resolution = .high
+    }
+
     func startGlassesIfAvailable() async {
         guard activeKind == nil, glassesPossible else { return }
         lastGlassesDropReason = nil

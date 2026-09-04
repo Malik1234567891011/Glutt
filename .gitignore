@@ -54,3 +54,9 @@ media-worker/bin/yt-dlp
 
 # Agent worktrees. Real git worktrees, never content to commit.
 .claude/worktrees/
+
+# Frames pulled off a phone by scripts/pull-skill-looks.sh and pull-cook-looks.sh.
+# These are photographs of somebody's actual kitchen and hands. Debug artefacts,
+# never repository contents.
+skill-looks/
+cook-looks/

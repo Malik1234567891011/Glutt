@@ -306,3 +306,104 @@ final class SkillRubricIntegrityTests: XCTestCase {
         }
     }
 }
+
+extension SkillRubricIntegrityTests {
+
+    /// A mistake may only be gated on a question somebody actually asks.
+    ///
+    /// `impliedBy` blocks a correction until the pictures support it. If it
+    /// names a region with no matching `SkillObservation`, nothing ever answers
+    /// and the correction can never be said at all, which is a silent failure:
+    /// the lesson simply stops correcting and no test notices.
+    func testEveryImpliedByNamesAQuestionTheCheckAsks() {
+        for (skill, check) in checks {
+            let asked = Set(check.observations.map { $0.region })
+            for mistake in check.rubric.coachingOrder {
+                for region in mistake.impliedBy.keys {
+                    XCTAssertTrue(
+                        asked.contains(region),
+                        "\(skill.id)/\(mistake.key) is gated on \(region.rawValue), which no "
+                        + "observation on this check asks about, so it can never fire")
+                }
+            }
+        }
+    }
+
+    /// Every answer a mistake will accept has to be one the question offers,
+    /// and must never be the cannot-tell answer. Correcting somebody on the
+    /// strength of a part she could not place is the whole thing this prevents.
+    func testImpliedAnswersExistAndAreNotTheEscapeHatch() {
+        for (skill, check) in checks {
+            for mistake in check.rubric.coachingOrder {
+                for (region, allowed) in mistake.impliedBy {
+                    guard let observation = check.observations.first(where: { $0.region == region })
+                    else { continue }
+                    for answer in allowed {
+                        XCTAssertTrue(
+                            observation.answers.contains(answer),
+                            "\(skill.id)/\(mistake.key) accepts \(answer) for "
+                            + "\(region.rawValue), which is not an answer it offers")
+                        XCTAssertNotEqual(
+                            answer, observation.cannotTell,
+                            "\(skill.id)/\(mistake.key) would correct on a part she could "
+                            + "not place")
+                    }
+                }
+            }
+        }
+    }
+
+    /// Every question must offer its own cannot-tell answer, or it is a forced
+    /// choice, and a forced choice about a hidden thumb gets guessed.
+    func testEveryQuestionLetsHerSaySheCannotTell() {
+        for (skill, check) in checks {
+            for observation in check.observations {
+                XCTAssertTrue(
+                    observation.answers.contains(observation.cannotTell),
+                    "\(skill.id) asks about \(observation.region.rawValue) with no way to "
+                    + "say it could not be placed")
+            }
+        }
+    }
+}
+
+extension SkillRubricIntegrityTests {
+
+    /// A pass gate or a danger reading is useless if nobody asks the question,
+    /// and worse than useless silently: `passRequires` with no matching
+    /// observation refuses every pass forever, and `dangerousReadings` with no
+    /// matching observation never fires at all.
+    func testPassGatesAndDangersNameQuestionsWeActuallyAsk() {
+        for (skill, check) in checks {
+            let asked = Set(check.observations.map { $0.region })
+            for region in check.passRequires.keys {
+                XCTAssertTrue(
+                    asked.contains(region),
+                    "\(skill.id) will never pass: it requires a reading of \(region.rawValue) "
+                    + "that no observation asks for")
+            }
+            for region in check.dangerousReadings.keys {
+                XCTAssertTrue(
+                    asked.contains(region),
+                    "\(skill.id) can never fire its safety stop: it watches \(region.rawValue) "
+                    + "and no observation asks about it")
+            }
+        }
+    }
+
+    /// The two must not contradict each other, or a grip is both required and
+    /// forbidden and the cook is stuck in a loop they cannot get out of.
+    func testAPassIsNeverAlsoADanger() {
+        for (skill, check) in checks {
+            for (region, safe) in check.passRequires {
+                let dangerous = Set(check.dangerousReadings[region] ?? [])
+                for answer in safe {
+                    XCTAssertFalse(
+                        dangerous.contains(answer),
+                        "\(skill.id) treats \(region.rawValue)=\(answer) as both a pass and a "
+                        + "danger")
+                }
+            }
+        }
+    }
+}

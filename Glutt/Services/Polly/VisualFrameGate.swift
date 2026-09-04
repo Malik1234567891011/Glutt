@@ -59,9 +59,12 @@ enum VisualFrameRejection: String, Sendable, Error {
     var suggestion: String {
         switch self {
         case .lookRequestFailed:
-            return "Nothing reached you, and it is not their camera or their hands. Say you did "
-                + "not get a look that time and offer to try again in a moment. Do not ask them "
-                + "to move, hold still, or check anything."
+            return "The pictures were taken fine and the request to read them failed, so this is "
+                + "your problem and not theirs. Say something went wrong on your end and you did "
+                + "not get a look that time, and offer to try again in a moment. Do NOT say you "
+                + "cannot see, do not mention the camera or the glasses, and do not ask them to "
+                + "move, turn, hold still or check anything, because everything at their end "
+                + "worked."
         case .subjectTooFar:
             return "Their hand is in shot but far too small to read, because the camera is "
                 + "framing the whole room. Ask them to bring their hand up in front of them, "

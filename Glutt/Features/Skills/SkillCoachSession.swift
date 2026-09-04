@@ -163,6 +163,23 @@ final class SkillCoachSession {
     /// feature is broken.
     private var unusableViews = 0
 
+    /// How many waiting facts this lesson has spent, so a cook who looks four
+    /// times hears four different things rather than the same one four times.
+    private var factsUsed = 0
+
+    /// Set the moment a look produces an answer, so the filler knows whether it
+    /// is still wanted.
+    private var lookAnswered = false
+
+    /// Whether the glasses were up a moment ago, so losing them can be told
+    /// apart from never having had them.
+    private var hadSight = false
+
+    /// Whether she has said anything since the last tool call, which is how a
+    /// dead end is told apart from a tool that behaved.
+    private var spokeSinceTool = true
+    private var deadEndTask: Task<Void, Never>?
+
     /// A response is generating. Asking for a second one while the first is in
     /// flight is rejected by the server and loses the turn.
     private var responseInFlight = false
@@ -180,6 +197,10 @@ final class SkillCoachSession {
     /// the one thing that must never be silently dropped, so the follow up is
     /// steered with the sentence rather than hoped for.
     private var pendingSay = ""
+
+    /// When we last said a look out loud without being asked, so a tool call
+    /// that arrives late does not make her repeat herself.
+    private var deliveredLookAt: Date?
 
     init(
         skill: Skill,
@@ -344,24 +365,60 @@ final class SkillCoachSession {
     /// The gaps get longer rather than hammering: a cook who has not put them on
     /// yet will put them on in the next minute, and a cook who has none is
     /// costing us nothing but a few log lines.
+    /// Get the glasses up, and KEEP them up for the rest of the lesson.
+    ///
+    /// This used to return the moment they connected, and a device log shows
+    /// what that cost. The glasses came up at 1.3 seconds, died at 10.0 with
+    /// "session error, session ended by device", and nothing noticed: no
+    /// reconnect, no word to the cook, and no camera for the remaining seventy
+    /// seconds of the lesson. She carried on teaching a grip she could not see,
+    /// and the cook carried on holding a knife up to nothing.
+    ///
+    /// A one shot connect is the wrong shape for hardware on somebody's face
+    /// that can be taken off, walk out of range, or drop its session on its own.
+    /// This watches for the rest of the lesson.
     private func startGlasses() {
         glassesTask?.cancel()
         glassesTask = Task { [weak self] in
-            let waits: [TimeInterval] = [0, 4, 8, 15, 25]
-            for (attempt, wait) in waits.enumerated() {
-                if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
+            var attempt = 0
+            while true {
                 guard let self, !Task.isCancelled, self.phase != .ended else { return }
-                if self.visuals.activeKind == .metaGlasses { return }
                 guard self.visuals.glassesPossible else { return }
-                PollyDebugLog.shared.log("skill: reaching for the glasses (try \(attempt + 1))")
+
+                if self.visuals.activeKind == .metaGlasses {
+                    // Up. Watch rather than return.
+                    attempt = 0
+                    self.hadSight = true
+                    try? await Task.sleep(for: .seconds(Self.glassesWatchIntervalSeconds))
+                    continue
+                }
+
+                attempt += 1
+                if attempt == 1, self.hadSight {
+                    // Tell her she has gone blind, or she keeps offering to look
+                    // at something she can no longer see.
+                    self.hadSight = false
+                    PollyDebugLog.shared.log("skill: the glasses went, reaching for them again")
+                    await self.refreshSightIfNeeded()
+                }
+                PollyDebugLog.shared.log("skill: reaching for the glasses (try \(attempt))")
+                // Before the stream is configured, not after: the resolution is
+                // read when the camera opens.
+                self.visuals.preferHighestDetail()
                 await self.visuals.startGlassesIfAvailable()
                 if self.visuals.activeKind == .metaGlasses {
-                    PollyDebugLog.shared.log("skill: glasses up on try \(attempt + 1)")
+                    PollyDebugLog.shared.log("skill: glasses up on try \(attempt)")
+                    self.hadSight = true
                     await self.refreshSightIfNeeded()
-                    return
+                    continue
                 }
+
+                // Back off, but never give up entirely: a cook who puts the
+                // glasses back on two minutes in should get a lesson that can
+                // see, without restarting anything.
+                let wait = min(30, Double(attempt) * 4)
+                try? await Task.sleep(for: .seconds(wait))
             }
-            PollyDebugLog.shared.log("skill: gave up on the glasses")
         }
     }
 
@@ -403,6 +460,21 @@ final class SkillCoachSession {
         (transport as? RealtimeWebRTCTransport)?.forceMicOpenForWake()
         PollyDebugLog.shared.log("skill: AWAKE, mic open")
         armDormancy(after: PollyConfig.initialListenWindowSeconds)
+
+        // Saying her name over her stops her, which the cook session has always
+        // done and this one never did.
+        //
+        // The mic was opened and she carried on talking, so a cook who wanted to
+        // stop her had to wait out the sentence and say it again. Cancelling the
+        // response is only half of it: the audio already sent is sitting in the
+        // output buffer and keeps playing after the response is gone, so the
+        // buffer is cleared too. Same pair, same order, as `PollySessionController`.
+        guard isSpeaking, let transport else { return }
+        Task {
+            try? await transport.send(.responseCancel)
+            try? await transport.send(.outputAudioBufferClear)
+            PollyDebugLog.shared.log("skill: cut her off, they said her name over her")
+        }
     }
 
     /// Back to waiting for the word.
@@ -410,6 +482,18 @@ final class SkillCoachSession {
         dormancyTask?.cancel()
         dormancyTask = nil
         guard isAwake else { return }
+
+        // Not while the clip is on screen.
+        //
+        // A device log has the mic closing at 80.46s with the demonstration
+        // still playing. A cook watching a clip is exactly the person about to
+        // say "can you play that again" or "wait, which finger", and they would
+        // have been talking to a closed microphone.
+        if showingDemonstration {
+            PollyDebugLog.shared.log("skill: staying awake, the clip is still on screen")
+            armDormancy(after: PollyConfig.maxListeningSeconds)
+            return
+        }
         isAwake = false
         (transport as? RealtimeWebRTCTransport)?.setMicMode(.dormant)
         PollyDebugLog.shared.log("skill: dormant (\(reason))")
@@ -441,6 +525,7 @@ final class SkillCoachSession {
     func end() async {
         frames.stop()
         earlyLook?.cancel()
+        deadEndTask?.cancel()
         glassesTask?.cancel()
         dormancyTask?.cancel()
         wakeWord.stop()
@@ -498,6 +583,7 @@ final class SkillCoachSession {
         switch event {
         case .outputAudioStarted:
             isSpeaking = true
+            spokeSinceTool = true
             wakeWord.setSuppressed(true)
             PollyDebugLog.shared.log("skill: she is speaking")
         case .outputAudioStopped:
@@ -576,26 +662,82 @@ final class SkillCoachSession {
     }
 
     private func run(_ call: RealtimeFunctionCall) async {
+        // Cleared no matter which tool ran, and a watchdog armed behind it.
+        //
+        // `isThinking` was set the moment a tool call arrived and only cleared
+        // inside `reply()`. `focus_on` and `show_the_video` never call `reply`,
+        // so it stayed true for the rest of the lesson: the screen said
+        // "thinking" forever, and `isListening` is gated on `!isThinking`, so
+        // the lesson stopped showing itself as listening too. One missing line
+        // took out the status display and the listening indicator together.
+        defer {
+            isThinking = false
+            armDeadEndWatchdog(after: call.name)
+        }
+
         switch call.name {
         case "check_the_hold":
+            // She may be asking for a look we already gave. That happens when
+            // she took longer than the grace period to call the tool: the answer
+            // has been said, the cook has already acted on it, and looking again
+            // would talk over them with a verdict about a hand that has moved.
+            if let delivered = deliveredLookAt,
+               deps.now().timeIntervalSince(delivered) < Self.recentlyDeliveredWindow {
+                PollyDebugLog.shared.log("skill: that look was already given, not repeating it")
+                // Answered without starting a turn, exactly like `focus_on`.
+                // She has already said the verdict out loud; a bare
+                // response.create here just invents a second sentence about a
+                // hand that has moved since.
+                try? await transport?.send(.createFunctionOutput(
+                    callId: call.callId,
+                    output: #"{"outcome":"already_answered","note":"You just told them this. Say nothing further about it."}"#))
+                return
+            }
             let payload = await runHoldAndAssess(announce: false)
             await reply(to: call, with: payload)
         case "focus_on":
             let raw = Self.stringArgument("part", from: call.argumentsJSON) ?? ""
             focusedPart = check.parts.first { $0.region.rawValue == raw }?.region
-            PollyDebugLog.shared.log("skill: focused on \(focusedPart?.rawValue ?? "nothing (\(raw))")")
-            // No response.create: this is a screen update, not a turn. Asking her
-            // to speak again here would make her repeat the sentence she is
-            // already in the middle of saying.
+            let part = focusedPart
+            PollyDebugLog.shared.log("skill: focused on \(part?.rawValue ?? "nothing (\(raw))")")
             try? await transport?.send(.createFunctionOutput(
                 callId: call.callId, output: #"{"showing":true}"#))
+
+            // Then CARRY ON TEACHING. This used to create nothing at all.
+            //
+            // The old reasoning was that she is mid sentence and asking her to
+            // speak again would repeat it. That is simply not true: tool calls
+            // arrive on `response.done`, so by the time this runs her turn has
+            // already finished. A device log shows the whole cost. The cook
+            // asked her to explain it, she said "alright, let's walk through it
+            // piece by piece", called `focus_on`, and stopped. Fifteen seconds
+            // of nothing, then dormant. The screen said "thinking" the entire
+            // time.
+            await startSpeaking(
+                "You just highlighted \(part?.spokenName ?? "that part") on their screen. "
+                + "Now teach it. One clear instruction about that part and what it should feel "
+                + "like, then stop and let them try it. Do not announce what you are about to "
+                + "do, and do not repeat the sentence you just said.")
         case "show_the_video":
             showDemonstration()
-            // No response.create, same as `focus_on`. This is a screen change
-            // while she is mid sentence saying "here it is", and asking her to
-            // speak again would make her say it twice.
             try? await transport?.send(.createFunctionOutput(
                 callId: call.callId, output: #"{"showing":true}"#))
+
+            // She TALKS OVER the clip. That is the whole point of playing it.
+            //
+            // This used to create no response at all, on the reasoning that she
+            // was mid sentence saying "here it is". A device log shows what
+            // actually happened: the clip went up at 63.0s, she stopped talking
+            // at 65.5s, and it played out the remaining fifteen seconds in
+            // silence. A cook watching a clip on their own could have found that
+            // on the internet.
+            await startSpeaking(
+                "The demonstration clip is on their screen now and it loops silently. Talk them "
+                + "through it while they watch, pointing at what is happening: where the thumb "
+                + "sits, what the bottom fingers are doing, what to look at. Keep going for a "
+                + "few sentences, the way you would if you were stood beside them pointing at a "
+                + "screen. Then ask whether that made sense and whether they want to see it "
+                + "again, and tell them what to do when they are ready to try it themselves.")
         case "finish_lesson":
             finishLesson()
             await reply(to: call, with: #"{"done":true}"#)
@@ -626,7 +768,6 @@ final class SkillCoachSession {
 
     private func reply(to call: RealtimeFunctionCall, with output: String) async {
         try? await transport?.send(.createFunctionOutput(callId: call.callId, output: output))
-        await waitForHerToFinish()
 
         // Steered rather than open ended. She called this tool in the same
         // breath as "hold it there for five seconds", so as far as the model is
@@ -634,18 +775,13 @@ final class SkillCoachSession {
         // frequently returns silence. The cook is standing there holding a
         // knife waiting to be told what happened, so the one thing that cannot
         // be left to chance is that she says it.
-        responseInFlight = true
-        if pendingSay.isEmpty {
-            try? await transport?.send(.responseCreate)
-        } else {
-            let line = pendingSay
-            pendingSay = ""
-            try? await transport?.send(.responseCreateWithInstructions(
-                "You have just looked at their hand. Tell them what you found now, in your own "
-                + "words, leading with this and nothing else: \"\(line)\" "
-                + "Keep it to a sentence or two. Do not add a second correction, do not repeat "
-                + "the instruction you gave before the hold, and do not thank them for waiting."))
-        }
+        let line = pendingSay
+        pendingSay = ""
+        await startSpeaking(line.isEmpty ? nil :
+            "You have just looked at their hand. Tell them what you found now, in your own "
+            + "words, leading with this and nothing else: \"\(line)\" "
+            + "Keep it to a sentence or two. Do not add a second correction, do not repeat "
+            + "the instruction you gave before the hold, and do not thank them for waiting.")
         isThinking = false
     }
 
@@ -659,29 +795,123 @@ final class SkillCoachSession {
     /// usually been running since the cook finished their sentence.
     private func beginEarlyLook() {
         guard phase == .live, earlyLook == nil, visuals.activeKind != nil else { return }
+        // A fresh question is not the old one. Without this, a cook who fixed
+        // their grip and asked again inside the window would have the new look
+        // suppressed as a duplicate of the answer to the previous one.
+        deliveredLookAt = nil
         stage = .analysing
         earlyLookStartedAt = deps.now()
         let ring = frames
         let check = check
         let assess = deps.assess
         earlyLook = Task {
+            // Watch them turn it BEFORE reading anything.
+            //
+            // A look used to fire on the instant the cook stopped speaking, so
+            // it read the pose they were in while asking rather than the one
+            // they were about to show. The lesson tells them to turn their hand
+            // slowly, because the thumb is on one face of the blade and the
+            // curled index finger on the other and no single moment shows both,
+            // and then it never gave them time to turn it. The bridging line,
+            // "right, let me have a look", plays through exactly this window,
+            // so the wait costs nothing anybody notices.
+            try? await Task.sleep(for: .seconds(Self.turnYourHandSeconds))
             var shots = ring.spread(check.framesPerLook, within: check.lookbackSeconds)
             if shots.isEmpty {
                 await ring.fillNow(upTo: check.framesPerLook)
                 shots = ring.spread(check.framesPerLook, within: check.lookbackSeconds)
             }
             guard !shots.isEmpty else { throw SkillVisualAssessor.AssessorError.noUsableFrames }
+#if DEBUG
+            // Marked so a discarded one does not read as a broken check later.
+            return try await SkillLookArchive.$origin.withValue(.speculative) {
+                try await assess(check, shots)
+            }
+#else
             return try await assess(check, shots)
+#endif
         }
         PollyDebugLog.shared.log("skill: looking already, before she answered")
 
-        // If she never actually calls the tool, do not leave the screen looking
-        // like it is mid check forever.
+        // If she never calls the tool, say the answer anyway.
+        //
+        // This used to throw the look away after twenty seconds, and a device
+        // log showed exactly what that costs. The cook asked "does this look
+        // good?", the look started on the spot and finished, and she answered
+        // by calling `focus_on`, which updates the screen and deliberately does
+        // not start a turn. So nothing was ever said. The lesson sat there for
+        // twenty seconds, binned a completed assessment, and went dormant with
+        // the cook still holding the knife up waiting.
+        //
+        // A finished answer to a question the cook actually asked is never
+        // thrown away now. If she has not claimed it, we say it for her.
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(20))
+            try? await Task.sleep(for: .seconds(Self.unclaimedLookGrace))
             guard let self, self.earlyLook != nil else { return }
-            self.discardEarlyLook(reason: "nobody used it")
+            await self.deliverUnclaimedLook()
         }
+    }
+
+    /// How long she gets to ask for the look herself before we deliver it.
+    ///
+    /// Long enough that the ordinary path, where she calls the tool a second or
+    /// two after the cook finishes speaking, always wins. Short enough that a
+    /// cook holding a knife up is not left waiting on a turn that is never
+    /// coming.
+    /// How long the cook gets to turn their hand before anything is read.
+    /// How often to check the glasses are still there once they are up.
+    static let glassesWatchIntervalSeconds: TimeInterval = 3
+
+    /// How long a tool call gets to be followed by speech before the lesson
+    /// assumes it dead ended. Comfortably longer than the gap between a tool
+    /// result and her next word, comfortably shorter than a cook giving up.
+    static let deadEndGraceSeconds: TimeInterval = 4
+
+    static let turnYourHandSeconds: TimeInterval = 4
+
+    /// How long a look gets to answer on its own before anything fills the gap.
+    ///
+    /// 3.5 was too eager. The fast path answers in the high single digits, so a
+    /// fact started at 3.5 seconds and the verdict arrived on top of it: the
+    /// cook got the fact AND the answer, which is exactly the clutter the fact
+    /// was meant to prevent.
+    ///
+    /// 7 sits past where most fast answers land and well short of the twenty to
+    /// thirty seconds a rubric request takes. The cost is up to seven seconds of
+    /// quiet after they ask, which reads as somebody looking rather than
+    /// somebody who has crashed. Going much further would leave a slow look in
+    /// silence, which is the problem the facts were written for.
+    static let fillerHeadStartSeconds: TimeInterval = 7
+
+    static let unclaimedLookGrace: TimeInterval = 8
+
+    /// How long after saying a look unprompted a tool call counts as asking for
+    /// the same one.
+    static let recentlyDeliveredWindow: TimeInterval = 15
+
+    /// Say the result of a look nobody asked for out loud.
+    ///
+    /// Goes through the same steering as a tool reply, because a bare
+    /// `response.create` here returns silence often enough to be the bug all
+    /// over again.
+    private func deliverUnclaimedLook() async {
+        guard phase == .live, earlyLook != nil else { return }
+        PollyDebugLog.shared.log("skill: she never asked for the look, delivering it anyway")
+
+        _ = await runHoldAndAssess(announce: true)
+        guard phase == .live else { return }
+
+        let line = pendingSay
+        pendingSay = ""
+        guard !line.isEmpty else { return }
+
+        deliveredLookAt = deps.now()
+        await startSpeaking(
+            "You have just looked at their hand. Tell them what you found now, in your own "
+            + "words, leading with this and nothing else: \"\(line)\" "
+            + "Keep it to a sentence or two. Do not add a second correction and do not "
+            + "thank them for waiting.")
+        isThinking = false
     }
 
     private func discardEarlyLook(reason: String) {
@@ -719,15 +949,36 @@ final class SkillCoachSession {
 
         // Say something while it runs. Usually this is the only thing the cook
         // waits for, because the looking started when they asked.
-        await speakWhileLooking()
+        // Only fill the silence if there is going to be one.
+        //
+        // The single question can now answer in a few seconds, and starting a
+        // twenty five second fact in front of a three second answer means
+        // cutting her off mid sentence, which is worse than the silence it was
+        // meant to cover. So the filler waits to find out whether it is needed.
+        lookAnswered = false
+        let fillerHeadStart = Self.fillerHeadStartSeconds
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(fillerHeadStart))
+            guard let self, !self.lookAnswered, self.phase == .live else { return }
+            await self.speakWhileLooking()
+        }
 
         let assessment: SkillVisualAssessment
         do {
             if let running = earlyLook {
-                // Already started when they asked. This is the ordinary path.
-                assessment = try await running.value
+                // Claimed BEFORE the await, not after, and that ordering is the
+                // whole bug.
+                //
+                // `await` suspends, so with the clearing underneath it two
+                // callers both passed this `if let`, both waited on the same
+                // task, and both went on to speak. A device log caught it
+                // exactly: the tool called at 23.7s and the eight second grace
+                // timer fired at 28.7s still seeing a look nobody had claimed,
+                // so the cook heard "let me have a look" twice and then got the
+                // same verdict twice, forty six seconds later.
                 earlyLook = nil
                 earlyLookStartedAt = nil
+                assessment = try await running.value
                 PollyDebugLog.shared.log(
                     "skill: used the early look (\(String(format: "%.1f", deps.now().timeIntervalSince(started)))s old)")
             } else {
@@ -768,10 +1019,17 @@ final class SkillCoachSession {
             // A dropped request is not a camera fault, and telling a cook their
             // glasses failed when the network did sends them to fix hardware
             // that is working.
-            let isTransport = error is URLError
-                || (error as NSError).domain == NSURLErrorDomain
+            // Anything that is not the camera is not "I cannot see".
+            //
+            // A cook watching the live panel fill with frames, being told there
+            // is no view, goes and fiddles with their glasses. The camera was
+            // never the problem: the request failed, or the model was rejected,
+            // or the proxy is not deployed. `noFrames` is reserved for an actual
+            // absence of pictures now, which is the only case where asking them
+            // to check the camera is honest.
+            let cameraReallyFailed = error is SkillVisualAssessor.AssessorError
             return handleUnusable(
-                reason: isTransport ? .lookRequestFailed : .noFrames,
+                reason: cameraReallyFailed ? .noFrames : .lookRequestFailed,
                 seconds: deps.now().timeIntervalSince(started),
                 startedAt: started)
         }
@@ -811,18 +1069,104 @@ final class SkillCoachSession {
             seconds: deps.now().timeIntervalSince(started),
             startedAt: started)
 
+        lookAnswered = true
         return payload(for: outcome, assessment: assessment)
     }
 
     private func speakWhileLooking() async {
         guard phase == .live, !responseInFlight else { return }
         responseInFlight = true
-        try? await transport?.send(.responseCreateWithInstructions(
-            "You are looking at their hand right now. Say ONE short line, six words or fewer, "
-            + "that you are having a look. Something like \"right, let me have a look\" or "
-            + "\"okay, looking now\". Do not ask a question and do not say anything about what "
-            + "you can see yet, because you have not finished looking."))
-        PollyDebugLog.shared.log("skill: bridging line while looking")
+
+        // Fill the wait with something worth hearing.
+        //
+        // A look was timed at forty six seconds on a device, and what covered it
+        // was "right, let me have a look" followed by nothing. A second filler
+        // line would only have made it "still looking", which is worse: it says
+        // the app is alive and has nothing to offer. So the wait carries the
+        // reason the technique is shaped this way, which is the half of a lesson
+        // that otherwise never gets said.
+        let instructions: String
+        if factsUsed < check.waitingFacts.count {
+            let fact = check.waitingFacts[factsUsed]
+            factsUsed += 1
+            instructions =
+                "You are looking at their hand right now and it will take a few seconds. "
+                + "Say this, in your own words, keeping every part of the point: \"\(fact)\" "
+                + "Do not rush it and do not summarise it down to one line, it is there to "
+                + "fill the wait. Do not say anything about what you can see yet, because you "
+                + "have not finished looking, and do not ask a question at the end."
+            PollyDebugLog.shared.log("skill: filling the wait with fact \(factsUsed)")
+        } else {
+            instructions =
+                "You are looking at their hand right now. Say ONE short line, six words or "
+                + "fewer, that you are having a look. Do not ask a question and do not say "
+                + "anything about what you can see yet."
+            PollyDebugLog.shared.log("skill: bridging line while looking")
+        }
+        try? await transport?.send(.responseCreateWithInstructions(instructions))
+    }
+
+    /// Catch a turn that ended with a tool call and nothing said.
+    ///
+    /// The guarantee the cook asked for, in the only form that can actually be
+    /// guaranteed: not "every tool remembers to speak", which is a promise about
+    /// code nobody has written yet, but "if a tool call is followed by silence,
+    /// something notices".
+    ///
+    /// It happened twice from the same cause. `focus_on` deliberately created no
+    /// response on the false reasoning that she was mid sentence, when tool
+    /// calls in fact arrive after the turn has finished. She said "let's walk
+    /// through it piece by piece", highlighted a part, and stopped. Fifteen
+    /// seconds of nothing, then dormant, with the screen showing "thinking".
+    ///
+    /// Only ever fires when NOTHING was said after the tool, so a tool that
+    /// speaks properly never triggers it, and a cook being given time to try
+    /// something is never nagged.
+    private func armDeadEndWatchdog(after tool: String) {
+        deadEndTask?.cancel()
+        spokeSinceTool = false
+        deadEndTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.deadEndGraceSeconds))
+            guard let self, !Task.isCancelled, self.phase == .live else { return }
+            guard !self.spokeSinceTool, !self.isSpeaking, !self.responseInFlight else { return }
+
+            PollyDebugLog.shared.log("skill: \(tool) ended the turn in silence, picking it back up")
+            await self.startSpeaking(
+                "Your last turn ended without you saying anything, which leaves the cook staring "
+                + "at a screen waiting. Carry straight on with the lesson from where you were. "
+                + "Do not apologise, do not mention this, and do not start again from the "
+                + "beginning.")
+        }
+    }
+
+    /// Start her talking, having made sure she is not already.
+    ///
+    /// This is why she said the same thing twice. `waitForHerToFinish` spins for
+    /// six seconds and then carries on whatever the answer was, so a response
+    /// still in flight got a SECOND `response.create` stacked on top of it, both
+    /// steered with the same sentence. Two responses, one line, said twice.
+    ///
+    /// Waiting longer would not fix it: sooner or later the wait times out and
+    /// the same thing happens. The stale response has to actually go, and its
+    /// audio with it, which is the pair `PollySessionController` has always used
+    /// for barge-in.
+    private func startSpeaking(_ instructions: String?) async {
+        guard phase == .live, let transport else { return }
+        await waitForHerToFinish()
+
+        if responseInFlight {
+            PollyDebugLog.shared.log("skill: she was still going, cutting the old response")
+            try? await transport.send(.responseCancel)
+            try? await transport.send(.outputAudioBufferClear)
+            responseInFlight = false
+        }
+
+        responseInFlight = true
+        if let instructions {
+            try? await transport.send(.responseCreateWithInstructions(instructions))
+        } else {
+            try? await transport.send(.responseCreate)
+        }
     }
 
     /// Do not talk over the bridging line with the verdict.
@@ -844,6 +1188,7 @@ final class SkillCoachSession {
         seconds: TimeInterval,
         startedAt: Date
     ) -> String {
+        lookAnswered = true
         unusableViews += 1
         record(
             outcome: .inconclusive,
@@ -939,6 +1284,49 @@ final class SkillCoachSession {
     ) -> String {
         let evidence = assessment.observedEvidence
         switch outcome {
+        case .confirmWithCook(let confirmed, let question):
+            // A question, not a verdict, and deliberately so.
+            //
+            // The reading behind this caught every hand that really was closed
+            // around a blade across the archive, and it also flagged two
+            // textbook pinch grips. Asserting on a signal like that either
+            // stops people who are doing it right or lets through people who
+            // are not, depending on which way you lean it. Asking costs a cook
+            // who is correct one word, and it is the only move in this whole
+            // loop that consults the one person who can actually see the grip.
+            stage = .coaching(outcome: .inconclusive)
+
+            // She asked a question, so she has to be listening for the answer.
+            //
+            // A device log caught the opposite: the question went out at 46.96s
+            // and the mic closed at 47.51s, half a second later, because the
+            // dormancy clock had been running since before the look. The cook
+            // answered into a dead microphone, had to say "Chef" again, and
+            // came back with "why are you asking me that, just take another
+            // look and decide yourself". Which is fair.
+            if !isAwake { wakeUp() } else { armDormancy(after: PollyConfig.maxListeningSeconds) }
+
+            // Lead with what IS right. A bare "are your fingers on the blade?"
+            // reads as an accusation and throws away everything she did see,
+            // when in this case the thumb and index were perfect and only the
+            // bottom three were out of shot.
+            // `spokenName` already carries "your", so this reads as
+            // "Your thumb and your index finger are exactly right."
+            let named = confirmed.map(\.spokenName).joined(separator: " and ")
+            let praise = confirmed.isEmpty
+                ? ""
+                : "\(named.prefix(1).uppercased())\(named.dropFirst()) "
+                    + "\(confirmed.count == 1 ? "is" : "are") exactly right. "
+            return json([
+                "outcome": "confirm_with_cook",
+                "say": "\(praise)I could not see the rest clearly, so tell me: \(question)",
+                "then": "Wait for their answer and believe it. If they say the handle, tell them "
+                    + "that is the grip and move on. If they say the blade, tell them calmly to "
+                    + "put it down and slide their hand back behind the collar onto the handle, "
+                    + "then look again. Do not repeat the question, do not lecture, and do not "
+                    + "make them ask you to look again.",
+            ], evidence: evidence)
+
         case .safetyStop(let reason):
             stage = .safetyStop(reason: reason)
             return json([
@@ -1010,14 +1398,17 @@ final class SkillCoachSession {
             stage = .coaching(outcome: .passed)
             var body: [String: String] = [
                 "outcome": "passed",
+                // They have finished something. "Yep, that is it" is what you
+                // say to a passing glance, not to somebody who has just learned
+                // a thing they will use every day for the rest of their life.
                 "say": isVariation
                     ? "That is a little different from the textbook pinch, and you have got good "
-                        + "control of the knife, so I am happy with it."
-                    : "Yep, that is it.",
-                "then": "Name specifically what they got right, using the evidence. Then ask "
-                    + "whether it feels comfortable or tense, because you cannot see that. If "
-                    + "they say it is fine, say why the grip matters in one line and call "
-                    + "finish_lesson.",
+                        + "control of the knife, so I am happy with it. Nicely done."
+                    : "That is it. That is the pinch grip, you have got it.",
+                "then": "Congratulate them properly and tell them the skill is done, in one "
+                    + "sentence, warmly and without gushing. Name what they got right using the "
+                    + "evidence. Then ask whether it feels comfortable or tense, because you "
+                    + "cannot see that. If they say it is fine, call finish_lesson.",
             ]
             if isVariation {
                 body["nuance"] = "Do not try to move them onto the textbook version. They have "
@@ -1040,7 +1431,7 @@ final class SkillCoachSession {
     ) {
         // Nothing was judged, so nothing changes.
         switch outcome {
-        case .cannotSee, .unsupportedEquipment, .safetyStop: return
+        case .cannotSee, .unsupportedEquipment, .safetyStop, .confirmWithCook: return
         case .correct, .passed: break
         }
 

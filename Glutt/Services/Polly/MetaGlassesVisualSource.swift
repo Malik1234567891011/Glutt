@@ -40,11 +40,24 @@ final class MetaGlassesVisualSource: PollyVisualSource {
     /// resolution and frame rate produce better individual frames, because there
     /// is less compression in the way, and cooking changes slowly enough that
     /// seven chances a second to find a sharp one is plenty.
+    ///
+    /// That reasoning holds for a pan, which fills a third of the view. It does
+    /// not hold for a thumb. Measured across an archive of knife grip checks the
+    /// hand came out between 2.3% and 6.5% of the frame, which on a 504x896
+    /// stream is a hand about 110 pixels across and a thumbnail of maybe fifteen.
+    /// Two near identical pictures of the same correct grip came back `ready` and
+    /// `needsAdjustment`, which is what guessing looks like. Skill lessons raise
+    /// this to `.high` for that reason; cooking is left alone, because there the
+    /// subject is big and the memory cost is not worth paying.
     var resolution: StreamingResolution = .medium
     var frameRate: UInt = 7
 
     /// How stale a frame may be before Polly is told the view has gone.
     var defaultMaxFrameAge: TimeInterval = 1.5
+
+    /// The last frame size we told anybody about, so the log records changes
+    /// rather than seven identical lines a second.
+    private var lastLoggedFrameSize: CGSize?
 
     private var gate = VisualFrameGate()
     /// Small image window, long sharpness memory. See `VisualFrameBuffer`: a
@@ -393,7 +406,8 @@ final class MetaGlassesVisualSource: PollyVisualSource {
         startStallWatchdog()
         camera.start()
         let size = resolution.videoFrameSize
-        PollyDebugLog.shared.log("glasses: camera \(size.width)x\(size.height) @ \(frameRate) fps")
+        PollyDebugLog.shared.log(
+            "glasses: camera asked for \(size.width)x\(size.height) @ \(frameRate) fps")
 
         // Which network the cook is actually on while Chef watches.
         //
@@ -519,7 +533,14 @@ final class MetaGlassesVisualSource: PollyVisualSource {
             PollyDebugLog.shared.log("glasses: photo did not arrive, using stream frame")
             return await captureFrame()
         }
-        return await Task.detached { VisualFramePipeline.prepare(image) }.value
+        // Kept large on purpose. `prepare` defaults to `frameMaxDimension`,
+        // which is 1024 and right for a video frame nobody is reading detail
+        // from. Shrinking a real photograph to that throws away the entire
+        // reason for taking one: a knife grip is decided by a bolster a few
+        // pixels wide, and it does not survive the trip down to 1024.
+        return await Task.detached {
+            VisualFramePipeline.prepare(image, maxDimension: 1600, quality: 0.9)
+        }.value
     }
 
     /// The selected frame plus everything the tool layer needs to explain itself.
@@ -846,8 +867,20 @@ final class MetaGlassesVisualSource: PollyVisualSource {
                 return
             }
             let captured = Date()
+            let delivered = image.size
             Task { @MainActor in
                 defer { self.admission.release() }
+                // What actually arrived, which is not always what was asked for.
+                // An archive of knife checks holds frames at 504x896 early in a
+                // session and 360x640 later in the same one, with nothing in the
+                // code changing between them, so the link downgrades on its own.
+                // Logged once per size so a degraded session says so out loud
+                // rather than just producing worse answers.
+                if self.lastLoggedFrameSize != delivered {
+                    self.lastLoggedFrameSize = delivered
+                    PollyDebugLog.shared.log(
+                        "glasses: frames arriving at \(Int(delivered.width))x\(Int(delivered.height))")
+                }
                 self.frameSequence += 1
                 self.ingest(
                     BufferedVisualFrame(

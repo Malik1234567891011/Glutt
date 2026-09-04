@@ -47,8 +47,21 @@ struct SkillChatServiceTests {
 
     /// A mapped but unwritten skill still opens. Polly has to be told the screen
     /// is a placeholder, or she answers as though a lesson were on it.
-    @Test func promptSaysWhenTheLessonIsNotWrittenYet() throws {
-        let unwritten = try #require(SkillCatalog.allSkills.first { $0.lesson == nil })
+    ///
+    /// Built here rather than fished out of the catalog. It used to take the
+    /// first skill with no lesson, and every skill in the catalog has one now,
+    /// so the require failed and took the whole suite with it. The branch it
+    /// covers is still reachable, because nothing stops a skill being mapped
+    /// before it is written, and this is the case that must not regress: an
+    /// instructor confidently teaching a lesson that is not on the screen.
+    @Test func promptSaysWhenTheLessonIsNotWrittenYet() {
+        let unwritten = Skill(
+            id: "test.unwritten",
+            categoryID: "basics",
+            title: "Something Mapped But Unwritten",
+            shortDescription: "On the map, no lesson behind it.",
+            lesson: nil)
+
         let prompt = SkillChatService.systemPrompt(skill: unwritten, prefs: UserPrefs())
         #expect(prompt.contains("not finished yet"))
     }

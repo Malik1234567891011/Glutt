@@ -24,6 +24,26 @@ struct SkillCoachView: View {
     /// one there: `PollySessionController` owns its own and a lesson is not a
     /// cook. Its own coordinator also means a lesson can never inherit a phone
     /// camera someone turned on during a recipe.
+    /// Cycles the suggestion under the buttons.
+    ///
+    /// One fixed line taught one thing. A cook who has read "Chef, does this
+    /// look right?" fifty times has still never been told they can just ask for
+    /// the video, because nothing on screen ever said so.
+    @State private var hintIndex = 0
+    private let hintTimer = Timer.publish(every: 4.5, on: .main, in: .common).autoconnect()
+
+    /// Only offers the video on skills that have one, because a suggestion that
+    /// does not work is worse than no suggestion.
+    private var hints: [String] {
+        var lines = ["Try “Chef, does this look right?”"]
+        if skill.animationAsset != nil {
+            lines.append("Try “Chef, pull up the video”")
+        }
+        return lines
+    }
+
+    private var hint: String { hints[hintIndex % hints.count] }
+
     @State private var visuals = PollyVisualSourceCoordinator(
         phone: PhoneCameraVisualSource(camera: PollyCameraController()))
     @State private var session: SkillCoachSession?
@@ -42,6 +62,12 @@ struct SkillCoachView: View {
                 Spacer(minLength: 0)
                 saidLine
                 statusStrip
+#if DEBUG
+                // In the stack rather than floating over it. As an overlay this
+                // sat on top of the footer and swallowed taps meant for the copy
+                // log button, which is the one control a test session needs.
+                SkillLookMirrorPanel()
+#endif
                 footer
             }
             .padding(Theme.Spacing.lg)
@@ -329,9 +355,14 @@ struct SkillCoachView: View {
     @ViewBuilder private var footer: some View {
         VStack(spacing: Theme.Spacing.sm) {
             if let session, session.phase == .live, !session.isAwake, session.wakeWordAvailable {
-                Text("Try “Chef, does this look right?”")
+                Text(hint)
                     .font(.footnote)
                     .foregroundStyle(Theme.Colors.muted)
+                    .contentTransition(.opacity)
+                    .animation(.easeInOut(duration: 0.35), value: hint)
+                    .onReceive(hintTimer) { _ in
+                        withAnimation { hintIndex += 1 }
+                    }
             }
             HStack(spacing: Theme.Spacing.sm) {
                 Button(isFinished ? "Done" : "End lesson") { dismiss() }

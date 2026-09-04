@@ -18,6 +18,8 @@ const FIXTURES = {
   "6tSdlo0r0Io": () => import("../fixtures/cremeBruleeSegments.js").then((m) => m.cremeBruleeSegments),
   "3sUJwjvmzk8": () =>
     import("../fixtures/gnocchiBrownButterSegments.js").then((m) => m.gnocchiBrownButterSegments),
+  hDjK5C2aoSs: () =>
+    import("../fixtures/butterChickenSegments.js").then((m) => m.butterChickenSegments),
 };
 
 async function main() {

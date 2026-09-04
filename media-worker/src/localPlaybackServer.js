@@ -19,6 +19,7 @@ const PILOT_ROUTES = {
   "/v1/pilot/creme-brulee": "6tSdlo0r0Io",
   "/v1/pilot/tiktok-scrambled-eggs": "7333706662634704161",
   "/v1/pilot/gnocchi-brown-butter": "3sUJwjvmzk8",
+  "/v1/pilot/butter-chicken": "hDjK5C2aoSs",
 };
 
 

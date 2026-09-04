@@ -20,7 +20,7 @@ struct Chef: Identifiable, Hashable {
     }
 }
 
-/// Guest chefs and their signature dishes (Gordon ships six; Nick and Joshua
+/// Guest chefs and their signature dishes (Gordon ships six; Joshua six; Nick
 /// five; Preppy Kitchen ships the Crème Brûlée clip pilot).
 ///
 /// Chef dishes are real `Recipe` rows (so pantry match, Cook Mode and Polly all
@@ -118,7 +118,15 @@ enum ChefContent {
     /// 7: Kitchen Sanctuary + Gnocchi with Brown Butter and Sage, the live demo
     ///    dish. Its step text carries the doneness cues verbatim so they survive
     ///    even if the cook plan is ever recompiled from the recipe.
-    private static let contentVersion = 8
+    /// 9: Joshua Weissman's Butter Chicken, his new rank one, with a bundled
+    ///    cook plan and materialized clips. Same rule as the gnocchi: the cues
+    ///    the cook needs (rippling oil, gaps in the pan, no white streaks in the
+    ///    cream) are written into the recipe steps as well as the plan.
+    /// 10: quantities in the gnocchi steps that only said "the gnocchi" and "the
+    ///    sage leaves". Everything else in that recipe names an amount, so the
+    ///    two that did not read as though they were the ones you had to know
+    ///    already.
+    private static let contentVersion = 10
     private static let contentVersionKey = "glutt.chefContent.contentVersion"
 
     /// Idempotent: inserts missing chef dishes and refreshes their copy when
@@ -534,6 +542,47 @@ enum ChefContent {
 
     private static let joshuaWeissman: [Dish] = [
         Dish(
+            title: "Butter Chicken",
+            summary: "Yogurt marinated chicken in a spiced tomato cream sauce",
+            servings: 4, prepMinutes: 20, cookMinutes: 30,
+            difficulty: .intermediate,
+            tags: ["Signature", "Chicken", "Curry"],
+            imageAsset: "chefButterChicken",
+            ingredients: [
+                ("Chicken thighs", 680, "g"),
+                ("Full fat yogurt", 240, "g"),
+                ("Garam masala", 2, "tbsp"),
+                ("Kosher salt", 1, "tbsp"),
+                ("Vegetable oil", 4, "tbsp"),
+                ("Yellow onion", 1, nil),
+                ("Ginger", 5, "cm"),
+                ("Garlic", 6, "clove"),
+                ("Paprika", 2, "tsp"),
+                ("Ground cumin", 2, "tsp"),
+                ("Turmeric", 1.5, "tsp"),
+                ("Crushed tomatoes", 397, "g"),
+                ("Heavy cream", 240, "ml"),
+                ("Unsalted butter", 28, "g"),
+                ("Rice", 2, "cup"),
+                ("Cilantro", 1, "bunch"),
+                ("Black pepper", nil, nil),
+            ],
+            steps: [
+                ("Whisk 240g of yogurt with 1 tbsp of garam masala and 1 tbsp of salt until it is one smooth colour. Cut the chicken into even 2.5cm pieces and turn them through it with your hands until no bare meat is showing. Cover and chill at least 30 minutes, and overnight is better.", 1800),
+                ("Get the rice on. It takes about 20 minutes and the curry takes about 25 from here, so from now on it looks after itself.", 180),
+                ("Wide deep pan on medium-high with 2 tbsp of oil, two or three minutes. Tilt the pan before anything goes in: the oil should have gone thin and ripple across the base. A pan that is only warm steams the yogurt off the chicken and the meat never colours.", 180),
+                ("Lay the chicken in with a gap around every piece, in two or three batches. Two minutes on the first side without touching it, then turn. It comes out deep brown with black at the edges, and still raw in the middle.", 600),
+                ("Heat down to medium, another 2 tbsp of oil, then the onion, ginger and garlic with salt and pepper. Stir and scrape the base the whole time: the dark crust the chicken left is the best flavour in the dish, and a splash of water lifts what will not come. About 3 minutes, until the onion is soft and the pan is dry again.", 240),
+                ("Paprika, cumin, garam masala and turmeric onto the vegetables. One minute, moving the whole time, until they darken, go glossy and the smell turns deep and sweet. Ground spices go bitter seconds after that, so have the tomatoes open before you start.", 90),
+                ("Crushed tomatoes in, then swirl 160ml of water around the empty tin and add that too. Simmer 5 to 8 minutes, until it has dropped by about a third and a spoon leaves a track across the base. Blend it now if you want it silky.", 480),
+                ("Chicken back in with the juices from the tray. Push it under the sauce, lid on, and simmer 3 to 5 minutes until there is no pink left in the biggest piece.", 300),
+                ("Pour in the cream and stir until the sauce is one even orange with no white streaks. Keep it at a lazy bubble for 3 to 4 minutes. Boiled hard, cream splits and goes grainy.", 240),
+                ("Heat off. Butter in, stirring without stopping until it has completely gone. That is what makes it glossy rather than greasy. Taste, and salt it until it tastes finished.", 90),
+                ("Rice packed into one side of a shallow bowl, curry ladled against it, whole cilantro leaves over the top.", nil),
+            ],
+            sourceURL: "https://www.youtube.com/watch?v=hDjK5C2aoSs"
+        ),
+        Dish(
             title: "Birria Tacos",
             summary: "Chile braised beef, cheese crisped tortillas, consomme",
             servings: 6, prepMinutes: 20, cookMinutes: 180,
@@ -747,13 +796,13 @@ enum ChefContent {
             ],
             steps: [
                 ("Get a pot of well salted water on to boil, and while it comes up, pick 20 sage leaves off their stems. Zest the lemon and halve it.", 300),
-                ("Drop the gnocchi into the boiling water. They are ready the moment they float and bob on the surface, which takes about 2 minutes. Floating is the whole signal, and leaving them in after that turns them gluey.", 120),
+                ("Drop all 500g of the gnocchi into the boiling water. They are ready the moment they float and bob on the surface, which takes about 2 minutes. Floating is the whole signal, and leaving them in after that turns them gluey.", 120),
                 ("Drain the gnocchi into a fine mesh sieve, then tip them into a bowl. Keep them, not the water.", nil),
                 ("Heat 2 tbsp olive oil in a frying pan over medium-high. Test it before the gnocchi go in: flick in a few drops of water, and they should skitter and bead across the surface. If they vanish with a crack the pan is too hot, so take it off the heat for thirty seconds.", 120),
                 ("Fry the gnocchi with a pinch of salt and pepper for 5 to 6 minutes, turning them, until golden and crisp on two sides. Give them room or they steam instead of colouring.", 360),
                 ("Tip the gnocchi back into the bowl and wipe the pan out if anything caught.", nil),
                 ("Turn the heat down to medium and melt 75g of butter. It will foam, and then the foam will subside. Watch the milk solids at the bottom: the moment they turn the colour of a hazelnut and it smells nutty, it is done, about 2 to 3 minutes. Black flecks and a sharp smell mean it has gone past, and burnt butter cannot be brought back.", 180),
-                ("Drop in the sage leaves. They will crackle and go still and crisp in about 2 minutes, and the flavour mellows as they fry.", 120),
+                ("Drop in all 20 sage leaves. They will crackle and go still and crisp in about 2 minutes, and the flavour mellows as they fry.", 120),
                 ("Turn the heat down to low, then add 2 tsp of minced garlic and stir it through for 30 seconds, no longer. It is wet, so it will spit as it goes in. It only wants to smell sweet, and garlic in hot butter turns bitter fast.", 30),
                 ("Return the gnocchi to the pan with a quarter teaspoon each of salt and pepper, and stir for 1 minute to coat everything in the butter.", 60),
                 ("Take the pan off the heat, then add the lemon zest and the juice of half the lemon and stir it through. Off the heat so the lemon stays bright.", nil),

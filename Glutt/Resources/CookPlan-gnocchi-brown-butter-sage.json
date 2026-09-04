@@ -15,11 +15,13 @@
   "mise": [
     {
       "name": "fresh sage leaves",
-      "prep": "pick"
+      "prep": "pick",
+      "amount": "20"
     },
     {
       "name": "lemon",
-      "prep": "zest, then halve"
+      "prep": "zest, then halve",
+      "amount": "1"
     }
   ],
   "steps": [
@@ -73,7 +75,7 @@
       "id": "s2",
       "index": 3,
       "title": "Boil, then drain",
-      "instruction": "Drop the gnocchi into the boiling water. They are done the moment they float, about 2 minutes, and they go straight into the sieve to drain, then into the bowl. Do not wait for me: when they float, drain them, then say Chef and tell me.",
+      "instruction": "Drop all 500g of the gnocchi into the boiling water. They are done the moment they float, about 2 minutes, and they go straight into the sieve to drain, then into the bowl. Do not wait for me: when they float, drain them, then say Chef and tell me.",
       "kind": "checkpoint",
       "estimatedSeconds": 150,
       "timerSeconds": 120,
@@ -109,7 +111,7 @@
       "id": "s4",
       "index": 5,
       "title": "Fry the gnocchi",
-      "instruction": "Gnocchi into the hot oil with a pinch of salt and pepper. Five to six minutes, turning them so they colour on two sides. They are ready when they are deep golden and crisp on the flat sides.",
+      "instruction": "All 500g of the gnocchi into the hot oil with a pinch of salt and pepper. Five to six minutes, turning them so they colour on two sides. They are ready when they are deep golden and crisp on the flat sides.",
       "kind": "active",
       "estimatedSeconds": 360,
       "timerSeconds": 360,
@@ -147,7 +149,7 @@
       "id": "s6",
       "index": 7,
       "title": "Crisp the sage",
-      "instruction": "Sage leaves straight into the browned butter. About 2 minutes. They are done when they stop crackling.",
+      "instruction": "All 20 sage leaves straight into the browned butter. About 2 minutes. They are done when they stop crackling.",
       "kind": "active",
       "estimatedSeconds": 120,
       "timerSeconds": 120,

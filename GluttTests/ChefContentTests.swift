@@ -37,6 +37,8 @@ final class ChefContentTests: XCTestCase {
                 XCTAssertEqual(count, 1, "Preppy Kitchen should ship the Crème Brûlée pilot")
             case "kitchen-sanctuary":
                 XCTAssertEqual(count, 1, "Kitchen Sanctuary should ship the gnocchi demo dish")
+            case "joshua-weissman":
+                XCTAssertEqual(count, 6, "Joshua should ship six (Butter Chicken leads with a bundled plan)")
             default:
                 XCTAssertEqual(count, 5, "\(chef.name) should ship five")
             }
@@ -48,7 +50,7 @@ final class ChefContentTests: XCTestCase {
         ChefContent.install(context: context)
 
         let recipes = try context.fetch(FetchDescriptor<Recipe>())
-        XCTAssertEqual(recipes.count, 18)
+        XCTAssertEqual(recipes.count, 19)
 
         let wellington = recipes.first { $0.title == "Beef Wellington" }
         XCTAssertEqual(wellington?.chefSlug, "gordon-ramsay")
@@ -78,7 +80,7 @@ final class ChefContentTests: XCTestCase {
         ChefContent.install(context: context)
 
         let recipes = try context.fetch(FetchDescriptor<Recipe>())
-        XCTAssertEqual(recipes.count, 18)
+        XCTAssertEqual(recipes.count, 19)
     }
 
     func testRankedReturnsTheFiveInPackOrder() throws {

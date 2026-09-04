@@ -28,6 +28,18 @@ final class PollySessionController {
         /// Reports finished-session duration for AI cost accounting. Best-effort.
         var reportSessionUsage: (TimeInterval, String?, RealtimeUsage?) async -> Void
         var now: () -> Date
+        /// Whether Chef can see continuously, which today means the glasses are
+        /// streaming. Takes the session's own coordinator so `.live` stays a
+        /// static value.
+        ///
+        /// Injected because there is otherwise no way to drive the unprompted
+        /// look loop in a test: a simulator cannot wear glasses, and
+        /// `-fakeGlasses` fakes the answer to "are they paired", not a camera
+        /// that delivers frames. Every read of this question goes through here
+        /// so the prompt and the looks can never disagree about it.
+        var seesContinuously: @MainActor (PollyVisualSourceCoordinator) -> Bool = {
+            $0.activeKind == .metaGlasses
+        }
 
         static let live = Dependencies(
             mintToken: { voice, textOnly in
@@ -161,6 +173,17 @@ final class PollySessionController {
     /// When the current listening turn opened. Never pushed out by the cook
     /// speaking, which is the whole point: see `closeIfListeningTooLong`.
     private var listeningStartedAt: Date?
+
+    // MARK: Unprompted looks
+
+    /// The step the glance clock is currently running for. Changing step resets
+    /// the clock and the budget, so every step gets its own looks rather than
+    /// one long step spending them all.
+    private var glanceStepID: String?
+    /// Start of the current quiet stretch: the later of the last look, the end of
+    /// the last turn, and the moment this step opened.
+    private var glanceQuietSince: Date?
+    private var glancesThisStep = 0
 
     var stepIndex: Int { registry?.state.stepIndex ?? 0 }
 
@@ -916,7 +939,7 @@ final class PollySessionController {
                 // have usually won that race. When they have not, she gets the
                 // phone wording and the first successful look corrects her,
                 // because the frame result names its own source.
-                seesContinuously: visuals.activeKind == .metaGlasses,
+                seesContinuously: deps.seesContinuously(visuals),
                 watchfulness: watchfulness,
                 chef: chef),
             tools: PollyToolRegistry.toolDefinitions,
@@ -926,7 +949,7 @@ final class PollySessionController {
             audioPinnedAtMint: true,
             textOnlyOutput: chef.elevenLabsVoiceID != nil)
         liveConfig = config
-        promptAssumesContinuousSight = visuals.activeKind == .metaGlasses
+        promptAssumesContinuousSight = deps.seesContinuously(visuals)
         // Values captured, not `self`: the rebuild must reproduce the prompt
         // exactly as it was at session start apart from the one flag, and
         // reading these off the controller later would silently pick up state
@@ -1586,7 +1609,7 @@ final class PollySessionController {
     /// pre-connect check never could: glasses that drop or arrive mid-cook.
     private func refreshSeeingRulesIfNeeded() async {
         guard let transport, let rebuild = rebuildInstructions, var config = liveConfig else { return }
-        let seesNow = visuals.activeKind == .metaGlasses
+        let seesNow = deps.seesContinuously(visuals)
         guard seesNow != promptAssumesContinuousSight else { return }
 
         config.instructions = rebuild(seesNow)
@@ -2395,5 +2418,69 @@ final class PollySessionController {
             try? await transport?.send(.responseCreate)
             isThinking = true
         }
+
+        await takeGlanceIfDue()
+    }
+
+    // MARK: - Unprompted looks
+
+    /// The clock behind "Chef watches the whole cook".
+    ///
+    /// A realtime model cannot act on its own. Everything else that makes her
+    /// speak is a reaction: the cook says something, or a tool comes back. So the
+    /// watchfulness levels described a behaviour nothing produced, and the only
+    /// looks that ever happened were the ones a cook thought to ask for. This is
+    /// the one place a turn starts with nobody having said anything.
+    ///
+    /// It is deliberately hard to fire. Glasses streaming, a step that can be
+    /// judged on camera, a quiet room, a budget that runs out, and after all that
+    /// the model is still told that saying nothing is the usual answer.
+    private func takeGlanceIfDue() async {
+        guard let plan, plan.steps.indices.contains(stepIndex) else { return }
+        let step = plan.steps[stepIndex]
+        let now = deps.now()
+
+        // Step changed: fresh clock, fresh budget. Without this a long step
+        // spends every look the cook gets and the next one gets none.
+        if glanceStepID != step.id {
+            glanceStepID = step.id
+            glanceQuietSince = now
+            glancesThisStep = 0
+        }
+        guard ChefGlance.canJudge(step) else { return }
+
+        // Anything the conversation did counts as noise for these purposes, so
+        // she never lands a look on the back of her own last sentence. Read off
+        // the timestamps the session already keeps rather than adding another
+        // write site to every path that can speak.
+        let quietSince = [glanceQuietSince, lastAssistantSpeechEndedAt,
+                          lastValidInteractionAt, lastUserSpeechStartedAt]
+            .compactMap { $0 }
+            .max()
+
+        let conditions = ChefGlance.Conditions(
+            canSee: deps.seesContinuously(visuals),
+            watchfulness: watchfulness,
+            isBusy: isPollySpeaking || isThinking || isEngaged || isHoldingForAssistant
+                || awaitingTranscript || isHardMuted || isAwaitingVerbalGo
+                || mediaState.isPlaying,
+            now: now,
+            quietSince: quietSince,
+            glancesThisStep: glancesThisStep)
+        guard ChefGlance.isDue(conditions) else { return }
+
+        glancesThisStep += 1
+        glanceQuietSince = now
+        guard let brief = ChefGlance.brief(for: step, number: glancesThisStep) else { return }
+
+        PollyDebugLog.shared.log(
+            "glance: unprompted look \(glancesThisStep)/\(watchfulness.glanceBudgetPerStep) at \(step.id)")
+        // The brief goes in as a conversation item rather than as response
+        // instructions, because she has to look before she answers and the
+        // follow-up response after the tool result would not carry instructions
+        // attached to this one.
+        try? await transport?.send(.createUserText(brief))
+        try? await transport?.send(.responseCreate)
+        isThinking = true
     }
 }

@@ -20,6 +20,8 @@ const PILOT_FIXTURES = {
   gBJjRYk0yC0: () => import("../fixtures/eggsBenedictSegments.js").then((m) => m.eggsBenedictSegments),
   Cyskqnp1j64: () => import("../fixtures/beefWellingtonSegments.js").then((m) => m.beefWellingtonSegments),
   "6tSdlo0r0Io": () => import("../fixtures/cremeBruleeSegments.js").then((m) => m.cremeBruleeSegments),
+  hDjK5C2aoSs: () =>
+    import("../fixtures/butterChickenSegments.js").then((m) => m.butterChickenSegments),
 };
 
 async function setProgress(jobId, assetId, { stage, progress, status }) {

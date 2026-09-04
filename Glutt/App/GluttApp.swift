@@ -98,6 +98,17 @@ struct GluttApp: App {
             if ProcessInfo.processInfo.arguments.contains("-seed") {
                 SeedData.seedIfNeeded(context: container.mainContext)
             }
+            // Wipe Skills back to a fresh install, for testing progression from
+            // the beginning without losing recipes, kitchen or anything else.
+            //
+            // An environment variable rather than a launch argument because
+            // `devicectl` splits arguments into single-letter flags and chokes
+            // on any that contain an "l" — see DevBuild for the same problem.
+            //
+            //   xcrun devicectl device process launch --device <udid> \
+            //     --environment-variables '{"GLUTT_RESET_SKILLS":"1"}' \
+            //     com.omarlahmimi.glutt
+            SkillProgressStore.resetEverythingIfRequested(context: container.mainContext)
             // Technique lessons (fry an egg, etc.) for every user — not Beta-only.
             CookingBasics.install(context: container.mainContext)
             // Guest chefs and their signature dishes. Bundled, free, and kept out

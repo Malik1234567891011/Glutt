@@ -454,12 +454,24 @@ struct SkillLessonView: View {
                 titleVisibility: .visible
             ) {
                 Button("Show me instead") { isPhotographing = true }
-                Button("Mark it anyway", role: .destructive) { markLearned() }
+                // Debug only, and compiled out of anything a cook installs.
+                //
+                // The escape hatch exists so this branch can be tested without
+                // cooking every skill, and that is the ONLY reason it exists.
+                // Shipping it would make the whole rating meaningless: a cook
+                // could mark every checkable skill learned without ever showing
+                // one, and "demonstrated" would mean nothing.
+                //
+                // Behind `#if DEBUG` rather than behind a comment saying to
+                // remove it later, because comments like that are how things
+                // ship. In release the choice is show her or leave it unlearned.
+                #if DEBUG
+                Button("Mark it anyway (debug)", role: .destructive) { markLearned() }
+                #endif
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("I have not watched you do this one yet. Marking it learned "
-                     + "without showing me is fine if you already know it, but it will "
-                     + "not count toward your rating.")
+                Text("I have not watched you do this one yet. Show me and it counts "
+                     + "toward your rating.")
             }
         }
     }

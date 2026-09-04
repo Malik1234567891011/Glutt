@@ -109,4 +109,31 @@ enum SkillProgressStore {
         ])
         return true
     }
+
+    /// Put Skills back to how a brand new cook finds it.
+    ///
+    /// Every skill unlearned, every attempt and every judged trial gone, so
+    /// level, XP, streak, region ratings and Cook Rating all start from
+    /// nothing. Nothing outside Skills is touched: recipes, the kitchen, the
+    /// plan and cook history are left exactly as they are, because the point is
+    /// to retest one tab rather than to factory reset a phone.
+    ///
+    /// **Debug builds only, and gated behind an environment variable**, so it
+    /// cannot fire in anything a real cook installs and cannot be reached by
+    /// tapping something by accident.
+    static func resetEverythingIfRequested(context: ModelContext) {
+        #if DEBUG
+        guard ProcessInfo.processInfo.environment["GLUTT_RESET_SKILLS"] == "1" else { return }
+        do {
+            try context.delete(model: SkillProgress.self)
+            try context.delete(model: SkillAttempt.self)
+            try context.delete(model: TrialResult.self)
+            try context.save()
+            SkillStreak.reset()
+            PollyDebugLog.shared.log("skills: reset to a fresh install")
+        } catch {
+            PollyDebugLog.shared.log("skills: could not reset — \(error.localizedDescription)")
+        }
+        #endif
+    }
 }

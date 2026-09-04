@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 @testable import Glutt
 
@@ -364,5 +365,113 @@ final class PlacementReachabilityTests: XCTestCase {
             XCTAssertTrue(line.localizedCaseInsensitiveContains("trial"),
                           "it has to name what earns a rating: \(line)")
         }
+    }
+}
+
+/// Self-certifying a checkable skill, which must not be possible in a shipped
+/// build.
+final class SelfCertificationTests: XCTestCase {
+
+    private func source(_ path: String) throws -> String {
+        try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent(path),
+            encoding: .utf8)
+    }
+
+    /// "Mark it anyway" is a testing affordance and nothing else. Left in a
+    /// release build a cook could mark every checkable skill learned without
+    /// ever showing one, and "demonstrated" would mean nothing.
+    ///
+    /// Asserted on the compile guard rather than on a comment, because a
+    /// comment saying "remove before shipping" is how things ship.
+    func testTheBypassIsCompiledOutOfReleaseBuilds() throws {
+        let view = try source("Glutt/Features/Skills/SkillLessonView.swift")
+        guard let range = view.range(of: "Mark it anyway") else {
+            // Fine: it has been removed entirely, which is the end state.
+            return
+        }
+        let before = view[..<range.lowerBound]
+        guard let guardStart = before.range(of: "#if DEBUG", options: .backwards) else {
+            return XCTFail("the bypass is not behind a compile guard")
+        }
+        // And the guard must still be open at that point.
+        let between = before[guardStart.upperBound...]
+        XCTAssertFalse(
+            between.contains("#endif"),
+            "the DEBUG guard closes before the bypass, so it would ship")
+    }
+
+    /// A checkable skill still has to be reachable for somebody who genuinely
+    /// knows it: the offer to show her is always there.
+    func testTheHonestPathIsAlwaysOffered() throws {
+        let view = try source("Glutt/Features/Skills/SkillLessonView.swift")
+        XCTAssertTrue(view.contains("Show me instead"))
+    }
+
+    /// The reset is a testing tool too, and must not be reachable in a release
+    /// build or by tapping anything.
+    func testTheSkillResetCannotFireInARealBuild() throws {
+        let store = try source("Glutt/Features/Skills/SkillProgressStore.swift")
+        guard let range = store.range(of: "GLUTT_RESET_SKILLS") else {
+            return XCTFail("the reset hook moved")
+        }
+        let before = store[..<range.lowerBound]
+        guard let guardStart = before.range(of: "#if DEBUG", options: .backwards) else {
+            return XCTFail("the reset is not behind a compile guard")
+        }
+        XCTAssertFalse(
+            before[guardStart.upperBound...].contains("#endif"),
+            "the DEBUG guard closes before the reset, so it would ship")
+    }
+}
+
+/// The reset, tested where its effect can actually be observed.
+///
+/// The device console does not carry the app's debug log, so "it launched" is
+/// not evidence that it reset. This exercises the same deletes against a real
+/// in-memory store.
+@MainActor
+final class SkillResetTests: XCTestCase {
+
+    private func loadedContext() throws -> ModelContext {
+        let container = try ModelContainer(
+            for: SkillProgress.self, SkillAttempt.self, TrialResult.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let context = ModelContext(container)
+        context.insert(SkillProgress(skillID: "knife.grip", learnedAt: .now, xpAwarded: 20))
+        context.insert(SkillProgress(skillID: "eggs.crack", learnedAt: .now, xpAwarded: 20))
+        context.insert(SkillAttempt(
+            skillID: "knife.grip", checkID: "knife.grip.pinch", startedAt: .now,
+            seconds: 3, outcome: .passed, note: "ok"))
+        context.insert(TrialResult(skillID: "knife.challenge-mirepoix",
+                                   categoryID: "knife", score: 88))
+        try context.save()
+        return context
+    }
+
+    /// Everything Skills owns goes, so level, XP, ratings and bests all start
+    /// from nothing.
+    func testItClearsEverythingSkillsOwns() throws {
+        let context = try loadedContext()
+        XCTAssertEqual(try context.fetch(FetchDescriptor<SkillProgress>()).count, 2)
+
+        // The same three deletes the reset performs.
+        try context.delete(model: SkillProgress.self)
+        try context.delete(model: SkillAttempt.self)
+        try context.delete(model: TrialResult.self)
+        try context.save()
+
+        XCTAssertTrue(try context.fetch(FetchDescriptor<SkillProgress>()).isEmpty)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<SkillAttempt>()).isEmpty)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<TrialResult>()).isEmpty)
+
+        // And a reader over the empty store reads as a brand new cook.
+        let fresh = SkillsProgressReader(progress: [], trials: [])
+        XCTAssertEqual(fresh.learnedCount, 0)
+        XCTAssertEqual(fresh.levelProgress.level, 1)
+        XCTAssertNil(fresh.cookRating)
+        XCTAssertEqual(CookRating.placementLine([]), "Unranked · pass a trial to start")
     }
 }

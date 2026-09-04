@@ -151,6 +151,30 @@ struct SkillVisualCheck: Hashable, Sendable {
     /// than noise hidden inside one confident verdict.
     let observations: [SkillObservation]
 
+    /// How many authored criteria an assessment met, out of how many could be
+    /// seen.
+    ///
+    /// Lives here so the number a cook is shown on the result screen and the
+    /// number stored against their rating are literally the same arithmetic.
+    /// It was briefly written out twice and that is exactly how two numbers
+    /// that must agree start disagreeing.
+    ///
+    /// A criterion nobody could place is in neither total: it cannot be met
+    /// and it cannot be failed, because failing to see something is a fact
+    /// about the photograph rather than about the cook.
+    func criteria(met assessment: SkillVisualAssessment) -> (met: Int, observable: Int)? {
+        var met = 0
+        var observable = 0
+        for observation in observations {
+            guard let wanted = observation.correct,
+                  let reading = assessment.reading(for: observation)
+            else { continue }
+            observable += 1
+            if reading == wanted { met += 1 }
+        }
+        return observable > 0 ? (met, observable) : nil
+    }
+
     /// Everything the assessor is asked to report on.
     var reportedVisibility: [SkillVisibilityRegion] { requiredVisibility + helpfulVisibility }
 
@@ -543,15 +567,26 @@ struct SkillObservation: Sendable, Equatable, Hashable {
     /// The answer that means "I could not place it", excluded from the majority.
     let cannotTell: String
 
+    /// The answer that means this part of the technique is right.
+    ///
+    /// Authored, not inferred, and it is what makes a real score possible
+    /// without asking a model how good the cooking was. Each observation is a
+    /// narrow question with a known right answer, so "three of three criteria
+    /// verified" is something the app counted rather than something a model
+    /// felt. Nil where the question is diagnostic rather than pass/fail.
+    let correct: String?
+
     init(
         region: SkillVisibilityRegion,
         question: String,
         answers: [String],
+        correct: String? = nil,
         cannotTell: String = "cannotTell"
     ) {
         self.region = region
         self.question = question
         self.answers = answers
+        self.correct = correct
         self.cannotTell = cannotTell
     }
 }

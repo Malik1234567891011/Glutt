@@ -231,22 +231,48 @@ struct SkillPhotoCheckView: View {
             // observation as a measured performance. A check that establishes
             // "the pinch grip is correct" is one piece of positive evidence,
             // and dressing it as 88/100 claims precision nobody measured.
-            if model.didPass {
+            if let criteria = model.criteria {
+                // The count, not a percentage.
+                //
+                // "3 of 3" is a claim anybody can check against the same
+                // photograph, and every point of it traces to a question
+                // somebody wrote down. "100" invites a cook to wonder what it
+                // was measuring, and an 84 would be worse: precision nobody
+                // measured. Same number, honestly presented.
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 7) {
-                        Image(systemName: skill.isChallenge
-                              ? "diamond.fill" : "checkmark.seal.fill")
-                            .font(.system(size: 19, weight: .semibold))
-                        Text(verifiedBefore ? "Verified again" : "Verified")
-                            .font(BrandFont.bricolage(30, 700))
+                    HStack(alignment: .firstTextBaseline, spacing: 7) {
+                        Text("\(criteria.met)")
+                            .font(BrandFont.bricolage(52, 700))
+                            .foregroundStyle(criteria.met == criteria.observable
+                                             ? Theme.Colors.accent : Theme.Colors.heading)
+                            .monospacedDigit()
+                        Text("of \(criteria.observable)")
+                            .font(BrandFont.bricolage(22, 700))
+                            .foregroundStyle(Theme.Colors.textSecondary)
                     }
-                    .foregroundStyle(Theme.Colors.accent)
+                    Text(criteria.met == criteria.observable
+                         ? "Everything I could see was right"
+                         : "\(criteria.observable - criteria.met) to fix")
+                        .font(BrandFont.nunito(13.5, 700))
+                        .foregroundStyle(Theme.Colors.textSecondary)
                     Text(skill.isChallenge
                          ? "Mastery trial · counts strongly toward your Cook Rating"
                          : "Counts toward your Cook Rating")
-                        .font(BrandFont.nunito(13, 700))
-                        .foregroundStyle(Theme.Colors.textSecondary)
+                        .font(BrandFont.nunito(12, 600))
+                        .foregroundStyle(Theme.Colors.muted)
                 }
+                .padding(.bottom, 4)
+            } else if model.didPass {
+                // No per-criterion questions on this check, so there is nothing
+                // to count and nothing is invented.
+                HStack(spacing: 7) {
+                    Image(systemName: skill.isChallenge
+                          ? "diamond.fill" : "checkmark.seal.fill")
+                        .font(.system(size: 19, weight: .semibold))
+                    Text(verifiedBefore ? "Verified again" : "Verified")
+                        .font(BrandFont.bricolage(30, 700))
+                }
+                .foregroundStyle(Theme.Colors.accent)
                 .padding(.bottom, 4)
             }
             Text(model.verdictHeadline)

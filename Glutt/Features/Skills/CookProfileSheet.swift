@@ -156,7 +156,8 @@ struct CookProfileSheet: View {
     /// Split out because the type checker gave up on it inline.
     private func subtitle(for evidence: RatingEvidence) -> String {
         let kind = evidence.kind == .masteryTrial ? "Mastery trial" : "Skill check"
-        return "\(kind) · \(evidence.spokenCredit)"
+        // The count where there is one, the coarse outcome otherwise.
+        return "\(kind) · \(evidence.spokenScore ?? evidence.spokenCredit)"
     }
 
     private var progress: (done: Int, needed: Int) {

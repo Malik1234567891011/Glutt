@@ -77,7 +77,7 @@ enum CookRating {
     static func rating(from evidence: [RatingEvidence]) -> Int? {
         guard isPlaced(evidence) else { return nil }
         let movement = effective(evidence).reduce(0.0) { total, item in
-            total + (item.0.credit.rawValue - neutralCredit) * item.weight * pointsPerWeight
+            total + (item.0.creditValue - neutralCredit) * item.weight * pointsPerWeight
         }
         return placementBase + Int(movement.rounded())
     }
@@ -171,7 +171,7 @@ enum RegionRating {
         for (index, item) in weighted.enumerated() {
             let recency = pow(0.7, Double(index))
             let weight = item.weight * recency
-            total += item.0.credit.rawValue * weight
+            total += item.0.creditValue * weight
             weightSum += weight
         }
         guard weightSum > 0 else { return nil }

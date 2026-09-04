@@ -96,7 +96,8 @@ extension SkillVisualCheck {
                     + "flat METAL face of the blade, or on the HANDLE behind it? Answer for "
                     + "what the ring is sitting on, not for what the grip looks like overall. "
                     + "Say cannotTell if ring 1 is not drawn or the thumb is hidden.",
-                answers: ["onBlade", "onHandle", "cannotTell"]
+                answers: ["onBlade", "onHandle", "cannotTell"],
+                correct: "onBlade"
             ),
             // The question nobody was asking, and the one that matters most.
             //
@@ -117,7 +118,8 @@ extension SkillVisualCheck {
                     + "HANDLE? `onBlade` means the hand is closed around the steel, which is "
                     + "dangerous. `onHandle` is correct and normal. Say cannotTell if those "
                     + "fingers are hidden or out of frame.",
-                answers: ["onHandle", "onBlade", "cannotTell"]
+                answers: ["onHandle", "onBlade", "cannotTell"],
+                correct: "onHandle"
             ),
             SkillObservation(
                 region: .indexFinger,
@@ -126,7 +128,8 @@ extension SkillVisualCheck {
                     + "the METAL blade or on the HANDLE? Say cannotTell if ring 2 is not "
                     + "drawn, or the finger is behind the blade where you cannot see it, "
                     + "which is common and perfectly normal.",
-                answers: ["onBlade", "onHandle", "cannotTell"]
+                answers: ["onBlade", "onHandle", "cannotTell"],
+                correct: "onBlade"
             ),
         ],
         // Said while a look runs, in order, one per look.

@@ -13,12 +13,17 @@ import SwiftData
 /// An ordinary watchable node is thinner evidence than a trial, not *no*
 /// evidence, and the difference is a weight rather than a gate.
 ///
-/// # This is not a score
+/// # The score is counted, not guessed
 ///
-/// Nothing here asks a model how good the cooking was. The checking pipeline
-/// answers narrow authored questions, the app decides what those answers mean,
-/// and this records the decision. A node that establishes "the pinch grip is
-/// correct" is one small piece of positive evidence, not an 84 out of 100.
+/// There IS a score, and it is a real measurement rather than a judgement. No
+/// model is ever asked how good the cooking was. Each check asks two or three
+/// narrow authored questions with known right answers — is the thumb on the
+/// blade, are the bottom fingers on the handle — and the score is simply how
+/// many of them were right out of how many could be seen.
+///
+/// So "2 of 3" is a claim anybody can check by looking at the same photograph,
+/// and every point of it can be traced to a question somebody wrote down. That
+/// is the difference between this and an 84 out of 100 nobody can account for.
 ///
 /// # Uncertainty never costs anything
 ///
@@ -54,6 +59,20 @@ final class RatingEvidence {
     /// loud rather than quietly counting them against the cook.
     var unscored: [String]
 
+    /// How many authored criteria this attempt met, and how many could
+    /// actually be seen.
+    ///
+    /// This is what makes a real score possible without asking a model how
+    /// good the cooking was. Each criterion is a narrow authored question with
+    /// a known right answer, so "two of three" is something the app counted.
+    /// A criterion nobody could see is in neither number: it cannot be met and
+    /// it cannot be failed.
+    ///
+    /// Zero observable means the check had no per-criterion questions, and the
+    /// coarse `credit` carries the result instead.
+    var criteriaMet: Int
+    var criteriaObservable: Int
+
     init(
         skillID: String,
         categoryID: String,
@@ -62,7 +81,9 @@ final class RatingEvidence {
         weight: Double,
         occurredAt: Date = .now,
         coachCalls: Int = 0,
-        unscored: [String] = []
+        unscored: [String] = [],
+        criteriaMet: Int = 0,
+        criteriaObservable: Int = 0
     ) {
         self.skillID = skillID
         self.categoryID = categoryID
@@ -72,6 +93,8 @@ final class RatingEvidence {
         self.occurredAt = occurredAt
         self.coachCalls = coachCalls
         self.unscored = unscored
+        self.criteriaMet = criteriaMet
+        self.criteriaObservable = criteriaObservable
     }
 
     /// Where the evidence came from.
@@ -86,9 +109,9 @@ final class RatingEvidence {
 
     /// How well it went, as the authored rubric saw it.
     ///
-    /// Three states, not a hundred. The checking pipeline reports pass,
-    /// correction or danger; anything less certain than that writes no row at
-    /// all, so there is no state here for "we are not sure".
+    /// A coarse fallback, used when a check has no per-criterion questions to
+    /// count. Where it does, `score` carries the real answer and this only
+    /// records the shape of the outcome.
     enum Credit: Double, Codable, Sendable {
         /// Verified, nothing to fix.
         case clean = 1.0
@@ -100,6 +123,38 @@ final class RatingEvidence {
     }
 
     var kind: Kind { Kind(rawValue: kindRaw) ?? .skillCheck }
+
+    /// 0 to 100, counted rather than guessed, or nil when this check had no
+    /// per-criterion questions to count.
+    ///
+    /// Not a holistic quality judgement and never asked of a model. It answers
+    /// exactly one thing: of the authored criteria that could be seen, how many
+    /// were right.
+    var score: Int? {
+        guard criteriaObservable > 0 else { return nil }
+        return Int((Double(criteriaMet) / Double(criteriaObservable) * 100).rounded())
+    }
+
+    /// How much this counts toward a rating, 0 to 1.
+    ///
+    /// The measured score where there is one, the coarse outcome otherwise. A
+    /// safety failure is floored at zero whatever the criteria said, because a
+    /// hand on the blade is not a near miss.
+    var creditValue: Double {
+        if credit == .unsafe { return 0 }
+        guard let score else { return credit.rawValue }
+        return Double(score) / 100
+    }
+
+    /// What the cook is told, which is the count rather than the percentage.
+    ///
+    /// "2 of 3 checks" is a thing somebody can argue with; "67" invites them to
+    /// wonder what the other 33 was.
+    var spokenScore: String? {
+        guard criteriaObservable > 0 else { return nil }
+        return "\(criteriaMet) of \(criteriaObservable)"
+    }
+
     var credit: Credit { Credit(rawValue: creditRaw) ?? .corrected }
     var wasIndependent: Bool { coachCalls == 0 }
 

@@ -229,3 +229,103 @@ final class RegionRatingTests: XCTestCase {
             for: knife, evidence: [evidence("heat", skill: "a"), evidence("eggs", skill: "b")]))
     }
 }
+
+/// The score, which is counted rather than guessed.
+final class CountedScoreTests: XCTestCase {
+
+    private let check = SkillVisualCheck.chefKnifeGrip
+
+    private func assessment(_ readings: [String: String]) -> SkillVisualAssessment {
+        SkillVisualAssessment(
+            equipment: .init(reading: "chef's knife", supported: true, confidence: 0.9),
+            visibility: Dictionary(uniqueKeysWithValues:
+                check.reportedVisibility.map { ($0.rawValue, .sufficient) }),
+            overall: .ready, confidence: 0.9,
+            observations: [readings, readings],
+            toolPicture: 2)
+    }
+
+    /// Every authored criterion has a declared right answer, or it cannot be
+    /// counted and quietly contributes nothing.
+    func testTheKnifeGripDeclaresWhatCorrectMeans() {
+        for observation in check.observations {
+            XCTAssertNotNil(
+                observation.correct,
+                "\(observation.region.rawValue) has no right answer, so it can never be scored")
+            XCTAssertTrue(
+                observation.answers.contains(observation.correct ?? ""),
+                "the right answer is not one of the offered answers")
+            XCTAssertNotEqual(
+                observation.correct, observation.cannotTell,
+                "cannotTell can never be the right answer")
+        }
+    }
+
+    /// A textbook pinch grip: thumb and index on the steel, bottom three on
+    /// the handle.
+    func testAPerfectGripScoresEverythingItCouldSee() throws {
+        let counted = try XCTUnwrap(check.criteria(met: assessment([
+            "thumb": "onBlade", "indexFinger": "onBlade", "remainingFingers": "onHandle",
+        ])))
+        XCTAssertEqual(counted.met, 3)
+        XCTAssertEqual(counted.observable, 3)
+    }
+
+    func testOneThingWrongCostsExactlyOne() throws {
+        let counted = try XCTUnwrap(check.criteria(met: assessment([
+            "thumb": "onHandle", "indexFinger": "onBlade", "remainingFingers": "onHandle",
+        ])))
+        XCTAssertEqual(counted.met, 2)
+        XCTAssertEqual(counted.observable, 3)
+    }
+
+    /// The rule the whole system rests on: a criterion nobody could place is
+    /// in neither total. It cannot be met and it cannot be failed.
+    func testWhatCouldNotBeSeenIsInNeitherTotal() throws {
+        let counted = try XCTUnwrap(check.criteria(met: assessment([
+            "thumb": "onBlade", "indexFinger": "cannotTell", "remainingFingers": "onHandle",
+        ])))
+        XCTAssertEqual(counted.met, 2)
+        XCTAssertEqual(counted.observable, 2, "the hidden finger must not be counted against them")
+    }
+
+    /// And seeing nothing is not a zero, it is nothing to score.
+    func testSeeingNothingIsNotAZero() {
+        XCTAssertNil(check.criteria(met: assessment([
+            "thumb": "cannotTell", "indexFinger": "cannotTell", "remainingFingers": "cannotTell",
+        ])))
+    }
+
+    /// The score reaches the rating: 3 of 3 must be worth more than 2 of 3.
+    func testABetterScoreIsWorthMoreToTheRating() {
+        func evidence(met: Int, observable: Int) -> RatingEvidence {
+            RatingEvidence(skillID: "knife.grip", categoryID: "knife", kind: .skillCheck,
+                           credit: .clean, weight: 1.0,
+                           criteriaMet: met, criteriaObservable: observable)
+        }
+        XCTAssertEqual(evidence(met: 3, observable: 3).score, 100)
+        XCTAssertEqual(evidence(met: 2, observable: 3).score, 67)
+        XCTAssertGreaterThan(
+            evidence(met: 3, observable: 3).creditValue,
+            evidence(met: 2, observable: 3).creditValue)
+    }
+
+    /// A hand on the blade is not a near miss, whatever the criteria said.
+    func testASafetyFailureIsFlooredAtZero() {
+        let unsafe = RatingEvidence(
+            skillID: "knife.grip", categoryID: "knife", kind: .skillCheck,
+            credit: .unsafe, weight: 1.0, criteriaMet: 2, criteriaObservable: 3)
+        XCTAssertEqual(unsafe.creditValue, 0)
+    }
+
+    /// A check with no per-criterion questions falls back to the coarse
+    /// outcome rather than inventing a count.
+    func testAChecklessOfCriteriaFallsBack() {
+        let coarse = RatingEvidence(
+            skillID: "x", categoryID: "basics", kind: .skillCheck,
+            credit: .clean, weight: 1.0)
+        XCTAssertNil(coarse.score)
+        XCTAssertNil(coarse.spokenScore)
+        XCTAssertEqual(coarse.creditValue, 1.0)
+    }
+}

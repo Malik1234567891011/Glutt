@@ -173,6 +173,8 @@ final class SkillPhotoCheckModel {
         guard let categoryID = SkillCatalog.category(of: skill)?.id,
               let credit = EvidenceWeight.credit(for: outcome.attemptOutcome)
         else { return }
+        let counted = check.criteria(met: assessment)
+
         context.insert(RatingEvidence(
             skillID: skill.id,
             categoryID: categoryID,
@@ -181,7 +183,19 @@ final class SkillPhotoCheckModel {
             // Captured at write time from the skill's difficulty, so retuning
             // the table later cannot silently rewrite a cook's history.
             weight: EvidenceWeight.weight(for: skill),
-            unscored: assessment.unseenRegions(for: check).map(\.spokenName)))
+            unscored: assessment.unseenRegions(for: check).map(\.spokenName),
+            criteriaMet: counted?.met ?? 0,
+            criteriaObservable: counted?.observable ?? 0))
+    }
+
+    /// How many authored criteria this attempt met, out of how many could be
+    /// seen. Nil when the check has no per-criterion questions to count.
+    ///
+    /// The same arithmetic the write path does, so the number a cook is shown
+    /// and the number stored against their rating cannot drift apart.
+    var criteria: (met: Int, observable: Int)? {
+        guard case .answered = phase, let assessment else { return nil }
+        return check.criteria(met: assessment)
     }
 
     /// Parts of the technique nobody could see, so the result can say so

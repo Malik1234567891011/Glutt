@@ -393,6 +393,10 @@ final class RealtimeWebRTCTransport: NSObject, RealtimeTransporting, @unchecked 
             voiceReopened = true
             resolveTrackLocked()
         }
+        // Say so out loud. Every wake path in the app funnels through here, so
+        // this is the one place that can promise the cook always hears it.
+        // See `ListeningEarcon` for why a pill on a screen was not enough.
+        Task { @MainActor in ListeningEarcon.play() }
         PollyDebugLog.shared.log("governor: force open for wake")
     }
 

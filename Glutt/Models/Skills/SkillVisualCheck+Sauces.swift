@@ -39,6 +39,29 @@ extension SkillVisualCheck {
         outcomeFraming: "Tip the pan toward the light a little so I can see the colour.",
         requiredVisibility: [.cookingSurface],
         helpfulVisibility: [.fat],
+        observations: [
+            SkillObservation(
+                region: .cookingSurface,
+                id: "fondColour",
+                question:
+                    "What is stuck to the base of the pan? `goldenToBrown` means golden through "
+                        + "deep brown residue. `blackBurnt` means black carbonised material. `noFond` "
+                        + "means the base is essentially clean. Say cannotTell if you cannot see the "
+                        + "base.",
+                answers: ["goldenToBrown", "blackBurnt", "noFond", "cannotTell"],
+                correct: "goldenToBrown"
+            ),
+            SkillObservation(
+                region: .fat,
+                id: "fatDealtWith",
+                question:
+                    "How much fat is left in the pan? `pouredOff` means a thin film at most. "
+                        + "`deepPool` means a substantial pool of fat still sitting in it. Say "
+                        + "cannotTell if you cannot judge the depth.",
+                answers: ["pouredOff", "deepPool", "cannotTell"],
+                correct: "pouredOff"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .cookingSurface, label: "Golden to deep brown, not black"),
             SkillCheckPart(region: .fat, label: "Excess fat dealt with"),
@@ -119,6 +142,38 @@ extension SkillVisualCheck {
         outcomeFraming: "Lift a spoonful and let it run back off so I can see the body.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.cookingSurface, .tool, .fat],
+        observations: [
+            SkillObservation(
+                region: .cookingSurface,
+                id: "fondLifted",
+                question:
+                    "After deglazing, is the base of the pan clear of stuck-on fond, or is it "
+                        + "still stuck there? `cleared` or `stillStuck`. Say cannotTell if you cannot "
+                        + "see the base.",
+                answers: ["cleared", "stillStuck", "cannotTell"],
+                correct: "cleared"
+            ),
+            SkillObservation(
+                region: .liquid,
+                id: "spoonCoat",
+                question:
+                    "When the spoon is lifted, does the sauce coat it, or run straight off like "
+                        + "water? `coats` or `runsOff`. Say cannotTell if no picture shows the spoon "
+                        + "out of the sauce.",
+                answers: ["coats", "runsOff", "cannotTell"],
+                correct: "coats"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "cohesive",
+                question:
+                    "Is there a separate layer of clear fat or oil sitting on or beside the "
+                        + "sauce? `cohesive` means one uniform sauce. `split` means visible free fat. "
+                        + "Say cannotTell if you cannot see the surface clearly.",
+                answers: ["cohesive", "split", "cannotTell"],
+                correct: "cohesive"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .cookingSurface, label: "Fond lifted into the liquid"),
             SkillCheckPart(region: .liquid, label: "Reduced to real body"),
@@ -220,6 +275,28 @@ extension SkillVisualCheck {
         outcomeFraming: "Stop whisking and look down at it so I can see whether it holds.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.tool, .workSurface],
+        observations: [
+            SkillObservation(
+                region: .liquid,
+                id: "oilAddition",
+                question:
+                    "How is the oil going in? `gradual` means a thin stream or in stages while "
+                        + "whisking. `allAtOnce` means poured in in one go. Say cannotTell if no "
+                        + "picture catches the oil going in.",
+                answers: ["gradual", "allAtOnce", "cannotTell"],
+                correct: "gradual"
+            ),
+            SkillObservation(
+                region: .liquid,
+                id: "emulsion",
+                question:
+                    "After the whisking stops, what does it look like? `evenCloudy` means uniform "
+                        + "and slightly cloudy. `separated` means two visible layers. Say cannotTell if "
+                        + "you cannot see into the bowl.",
+                answers: ["evenCloudy", "separated", "cannotTell"],
+                correct: "evenCloudy"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .liquid, label: "Oil going in slowly", id: "stream"),
             SkillCheckPart(region: .liquid, label: "Cloudy and even, not separated", id: "held"),
@@ -314,6 +391,27 @@ extension SkillVisualCheck {
         outcomeFraming: "Look straight down into the bowl so I can see whether it is holding.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.tool],
+        observations: [
+            SkillObservation(
+                region: .liquid,
+                id: "state",
+                question:
+                    "What does it look like sitting still? `evenOpaque` means uniform, opaque and "
+                        + "slightly thickened. `separated` means a greasy layer or oil droplets "
+                        + "gathering on the surface. Say cannotTell if you cannot see into the bowl.",
+                answers: ["evenOpaque", "separated", "cannotTell"],
+                correct: "evenOpaque"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "coatsWhisk",
+                question:
+                    "Does it coat the whisk, or run off it? `coats` or `runsOff`. Say cannotTell "
+                        + "if no picture shows the whisk lifted out.",
+                answers: ["coats", "runsOff", "cannotTell"],
+                correct: "coats"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .liquid, label: "Even and opaque, not separated", id: "held"),
             SkillCheckPart(region: .tool, label: "Coats the whisk", id: "coat"),
@@ -397,6 +495,36 @@ extension SkillVisualCheck {
             "Draw a spoon through it, or lift the spoon out, so I can see how it coats.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.tool, .cookingSurface],
+        observations: [
+            SkillObservation(
+                region: .liquid,
+                id: "smooth",
+                question:
+                    "Is the sauce smooth, or are there visible lumps in it? `smooth` or `lumpy`. "
+                        + "Say cannotTell if you cannot see the surface clearly.",
+                answers: ["smooth", "lumpy", "cannotTell"],
+                correct: "smooth"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "spoonCoat",
+                question:
+                    "When the spoon is lifted or drawn through, does the sauce coat the back of "
+                        + "it, or run straight off like water? `coats` or `runsOff`. Say cannotTell if "
+                        + "no picture shows the spoon out of the sauce.",
+                answers: ["coats", "runsOff", "cannotTell"],
+                correct: "coats"
+            ),
+            SkillObservation(
+                region: .cookingSurface,
+                id: "broughtToSimmer",
+                question:
+                    "Is the sauce bubbling at a simmer, or sitting still below one? `simmering` "
+                        + "or `still`. Say cannotTell if you cannot see the surface.",
+                answers: ["simmering", "still", "cannotTell"],
+                correct: "simmering"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .liquid, label: "Smooth, no lumps"),
             SkillCheckPart(region: .tool, label: "Coats the back of a spoon"),

@@ -54,6 +54,36 @@ extension SkillVisualCheck {
             ", with butter, flour, a pan and a whisk or wooden spoon.",
         requiredVisibility: [.cookingSurface],
         helpfulVisibility: [.fat, .tool, .heatSource],
+        observations: [
+            SkillObservation(
+                region: .fat,
+                id: "flourCoated",
+                question:
+                    "Is all the flour coated in fat and smooth, or are there dry powdery pockets "
+                        + "in it? `coated` or `powdery`. Say cannotTell if you cannot see into the pan.",
+                answers: ["coated", "powdery", "cannotTell"],
+                correct: "coated"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "evenColour",
+                question:
+                    "Is the roux one even colour across the pan, or are there darker scorched "
+                        + "spots in it? `even` or `scorchedSpots`. Say cannotTell if you cannot see the "
+                        + "whole surface.",
+                answers: ["even", "scorchedSpots", "cannotTell"],
+                correct: "even"
+            ),
+            SkillObservation(
+                region: .cookingSurface,
+                id: "noBlackFlecks",
+                question:
+                    "Are there black flecks in the roux? `none` or `blackFlecks`. Say cannotTell "
+                        + "if the pan is too dark to judge.",
+                answers: ["none", "blackFlecks", "cannotTell"],
+                correct: "none"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .cookingSurface, label: "Colour matching the stage you want"),
             SkillCheckPart(region: .fat, label: "Every bit of flour coated in fat"),
@@ -158,6 +188,37 @@ extension SkillVisualCheck {
         outcomeFraming: "Lift the spoon out and let it run off so I can see how it coats.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.cookingSurface, .tool],
+        observations: [
+            SkillObservation(
+                region: .liquid,
+                id: "smooth",
+                question:
+                    "Is the sauce smooth, or are there visible lumps in it? `smooth` or `lumpy`. "
+                        + "Say cannotTell if you cannot see the surface clearly.",
+                answers: ["smooth", "lumpy", "cannotTell"],
+                correct: "smooth"
+            ),
+            SkillObservation(
+                region: .liquid,
+                id: "colour",
+                question:
+                    "What colour is it? `paleIvory` means white to pale cream. `browned` means it "
+                        + "has taken tan or brown colour. Say cannotTell if the lighting does not let "
+                        + "you judge.",
+                answers: ["paleIvory", "browned", "cannotTell"],
+                correct: "paleIvory"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "spoonCoat",
+                question:
+                    "When the spoon is lifted, does the sauce coat the back of it in an even "
+                        + "layer, or run straight off like milk? `coats` or `runsOff`. Say cannotTell "
+                        + "if no picture shows the spoon out of the sauce.",
+                answers: ["coats", "runsOff", "cannotTell"],
+                correct: "coats"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .liquid, label: "Smooth, no lumps"),
             SkillCheckPart(region: .liquid, label: "Pale ivory, not browned", id: "colour"),
@@ -264,6 +325,37 @@ extension SkillVisualCheck {
         outcomeFraming: "Lift the spoon and let it run off so I can see the body.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.cookingSurface, .tool],
+        observations: [
+            SkillObservation(
+                region: .cookingSurface,
+                id: "rouxColour",
+                question:
+                    "What colour was the roux taken to? `blond` means a light golden tan. `white` "
+                        + "means no colour at all. `brown` means it went past blond into brown. Say "
+                        + "cannotTell if no picture shows the roux.",
+                answers: ["blond", "white", "brown", "cannotTell"],
+                correct: "blond"
+            ),
+            SkillObservation(
+                region: .liquid,
+                id: "smooth",
+                question:
+                    "Is the sauce smooth, or are there visible lumps in it? `smooth` or `lumpy`. "
+                        + "Say cannotTell if you cannot see the surface clearly.",
+                answers: ["smooth", "lumpy", "cannotTell"],
+                correct: "smooth"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "body",
+                question:
+                    "On the lifted spoon, does the sauce sit in a light even coat, or thick and "
+                        + "pasty, or run straight off? `lightCoat`, `pasty` or `runsOff`. Say "
+                        + "cannotTell if no picture shows the spoon out of the sauce.",
+                answers: ["lightCoat", "pasty", "runsOff", "cannotTell"],
+                correct: "lightCoat"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .cookingSurface, label: "Roux taken to blond, not brown"),
             SkillCheckPart(region: .liquid, label: "Velvety and smooth"),
@@ -357,6 +449,36 @@ extension SkillVisualCheck {
             "Lift a spoonful and let it run off so I can see the colour and the body.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.cookingSurface, .tool, .fat],
+        observations: [
+            SkillObservation(
+                region: .cookingSurface,
+                id: "baseColour",
+                question:
+                    "How is the browned base? `browned` means deep golden to brown. `burnt` means "
+                        + "black and carbonised. Say cannotTell if no picture shows it.",
+                answers: ["browned", "burnt", "cannotTell"],
+                correct: "browned"
+            ),
+            SkillObservation(
+                region: .liquid,
+                id: "gloss",
+                question:
+                    "What does the finished sauce look like? `deepBrownGlossy` means dark and "
+                        + "shining. `dullOrPale` means thin, pale or matte. Say cannotTell if you "
+                        + "cannot see it clearly.",
+                answers: ["deepBrownGlossy", "dullOrPale", "cannotTell"],
+                correct: "deepBrownGlossy"
+            ),
+            SkillObservation(
+                region: .fat,
+                id: "skimmed",
+                question:
+                    "Is there a separate layer of fat floating on the surface? `none` or "
+                        + "`fatLayer`. Say cannotTell if you cannot see the surface.",
+                answers: ["none", "fatLayer", "cannotTell"],
+                correct: "none"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .cookingSurface, label: "Base browned, not burnt"),
             SkillCheckPart(region: .liquid, label: "Deep brown and glossy"),
@@ -465,6 +587,27 @@ extension SkillVisualCheck {
         outcomeFraming: "Draw a spoon through it so I can see the consistency.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.cookingSurface, .tool],
+        observations: [
+            SkillObservation(
+                region: .cookingSurface,
+                id: "nothingCatching",
+                question:
+                    "Is there darkened scorched material stuck to the bottom of the pan? `none` "
+                        + "or `scorched`. Say cannotTell if you cannot see the base.",
+                answers: ["none", "scorched", "cannotTell"],
+                correct: "none"
+            ),
+            SkillObservation(
+                region: .liquid,
+                id: "reduced",
+                question:
+                    "Does the sauce look concentrated and thickened, or thin and watery with "
+                        + "liquid separating out at the edges? `concentrated` or `watery`. Say "
+                        + "cannotTell if you cannot see it clearly.",
+                answers: ["concentrated", "watery", "cannotTell"],
+                correct: "concentrated"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .cookingSurface, label: "Nothing catching on the bottom"),
             SkillCheckPart(region: .liquid, label: "Reduced and concentrated"),
@@ -558,6 +701,36 @@ extension SkillVisualCheck {
         outcomeFraming: "Stop and let it sit for a moment so I can see whether it holds.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.tool],
+        observations: [
+            SkillObservation(
+                region: .liquid,
+                id: "evenGlossy",
+                question:
+                    "What does it look like in the bowl? `evenGlossy` means uniform, opaque and "
+                        + "shining. `separated` means visible oil droplets or a broken curdled look. "
+                        + "Say cannotTell if you cannot see into the bowl.",
+                answers: ["evenGlossy", "separated", "cannotTell"],
+                correct: "evenGlossy"
+            ),
+            SkillObservation(
+                region: .liquid,
+                id: "noFreeOil",
+                question:
+                    "Is there free oil sitting on the surface? `none` or `freeOil`. Say "
+                        + "cannotTell if you cannot see the surface.",
+                answers: ["none", "freeOil", "cannotTell"],
+                correct: "none"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "holdsShape",
+                question:
+                    "On the lifted whisk, does it hold a shape, or run off? `holds` or `runsOff`. "
+                        + "Say cannotTell if no picture shows the whisk lifted out.",
+                answers: ["holds", "runsOff", "cannotTell"],
+                correct: "holds"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .liquid, label: "Thick, glossy and even", id: "held"),
             SkillCheckPart(region: .liquid, label: "No free oil on top", id: "clean"),
@@ -655,6 +828,36 @@ extension SkillVisualCheck {
         outcomeFraming: "Lift the whisk out so I can see how it falls off.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.tool, .cookingSurface],
+        observations: [
+            SkillObservation(
+                region: .liquid,
+                id: "smooth",
+                question:
+                    "Is the sauce smooth, or grainy with visible particles of cooked egg in it? "
+                        + "`smooth` or `grainy`. Say cannotTell if you cannot see the surface clearly.",
+                answers: ["smooth", "grainy", "cannotTell"],
+                correct: "smooth"
+            ),
+            SkillObservation(
+                region: .liquid,
+                id: "noSeparation",
+                question:
+                    "Is there an oily layer or pool of butter separating out? `none` or "
+                        + "`oilySeparation`. Say cannotTell if you cannot see the surface.",
+                answers: ["none", "oilySeparation", "cannotTell"],
+                correct: "none"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "body",
+                question:
+                    "Falling off the whisk, does it fall in a thick ribbon that sits on the "
+                        + "surface, or run off thin like liquid? `ribbon` or `thin`. Say cannotTell if "
+                        + "no picture shows the whisk lifted out.",
+                answers: ["ribbon", "thin", "cannotTell"],
+                correct: "ribbon"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .liquid, label: "Smooth and glossy, no grain", id: "smooth"),
             SkillCheckPart(region: .liquid, label: "No oily separation", id: "held"),
@@ -779,6 +982,36 @@ extension SkillVisualCheck {
         outcomeFraming: "Lift the whisk out so I can see how it coats and falls.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.tool, .cookingSurface, .fat],
+        observations: [
+            SkillObservation(
+                region: .liquid,
+                id: "opaqueCreamy",
+                question:
+                    "What does the sauce look like? `opaqueCreamy` means pale, opaque and glossy. "
+                        + "`oilySeparated` means clear butter fat has separated out of it. Say "
+                        + "cannotTell if you cannot see it clearly.",
+                answers: ["opaqueCreamy", "oilySeparated", "cannotTell"],
+                correct: "opaqueCreamy"
+            ),
+            SkillObservation(
+                region: .cookingSurface,
+                id: "notBoiling",
+                question:
+                    "Once the butter is going in, is the sauce boiling, or is the surface still? "
+                        + "`notBoiling` or `boiling`. Say cannotTell if you cannot see the surface.",
+                answers: ["notBoiling", "boiling", "cannotTell"],
+                correct: "notBoiling"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "coatsWhisk",
+                question:
+                    "Does the sauce coat the whisk, or run off it? `coats` or `runsOff`. Say "
+                        + "cannotTell if no picture shows the whisk lifted out.",
+                answers: ["coats", "runsOff", "cannotTell"],
+                correct: "coats"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .liquid, label: "Opaque and creamy, not oily", id: "held"),
             SkillCheckPart(region: .cookingSurface, label: "Off the boil once butter goes in"),

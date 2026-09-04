@@ -382,20 +382,71 @@ final class AuthoredCriteriaTests: XCTestCase {
         }
     }
 
-    /// Knife Skills is authored end to end, so a cook working through the first
-    /// real region gets counted scores rather than the coarse fallback.
-    func testTheKnifeRegionIsFullyAuthored() throws {
-        let knife = try XCTUnwrap(SkillCatalog.categories.first { $0.id == "knife" })
-        let watchable = knife.skills.filter { $0.visualCheck != nil }
-        XCTAssertGreaterThan(watchable.count, 5)
+    /// The whole catalog is authored, not just the region I happened to start
+    /// with. Every watchable check needs at least two scoreable criteria, or
+    /// its score is binary and the coarse outcome would serve the cook better.
+    ///
+    /// One deliberate exception, named rather than skipped silently. A blanket
+    /// "some checks are exempt" would let the next unauthored check hide
+    /// behind it.
+    func testEveryWatchableCheckIsAuthored() {
+        // Judged against a target the cook names out loud before each egg, so
+        // there is no fixed right answer to author. Scoring it would mean
+        // inventing one and marking people wrong for hitting what they aimed
+        // at.
+        let judgedAgainstASpokenTarget = ["eggs.challenge"]
 
-        for skill in watchable {
-            let check = try XCTUnwrap(skill.visualCheck)
+        for (skill, check) in checks where !judgedAgainstASpokenTarget.contains(skill.id) {
             let scoreable = check.observations.filter { $0.correct != nil }
             XCTAssertGreaterThanOrEqual(
-                scoreable.count, 2,
-                "\(skill.id) has \(scoreable.count) scoreable criteria, so its score "
-                + "would be binary or absent")
+                scoreable.count, SkillVisualCheck.minimumCountableCriteria,
+                "\(skill.id) has \(scoreable.count) scoreable criteria, so it can never "
+                + "produce a counted score")
         }
+    }
+
+    /// Regression: the count has to reach real skills, not just compile.
+    func testTheCatalogActuallyProducesCountedScores() throws {
+        let authored = checks.filter { $0.check.observations.contains { $0.correct != nil } }
+        XCTAssertGreaterThan(
+            authored.count, 40,
+            "only \(authored.count) of \(checks.count) checks can be scored")
+    }
+
+    /// The decisive region must ask exactly one question.
+    ///
+    /// The standalone gate resolves it by region, so a second question in the
+    /// same region would not break the build or fail loudly: it would quietly
+    /// start asking about the wrong thing, and the most important gate in the
+    /// check would go on returning a confident answer to a question nobody
+    /// meant to ask.
+    func testTheDecisiveRegionAsksOneQuestion() {
+        for (skill, check) in checks {
+            guard let region = check.decisiveRegion else { continue }
+            let inRegion = check.observations.filter { $0.region == region }
+            XCTAssertEqual(
+                inRegion.count, 1,
+                "\(skill.id) makes .\(region.rawValue) decisive but asks "
+                + "\(inRegion.count) questions about it: \(inRegion.map(\.id))")
+            XCTAssertNotNil(check.decisiveObservation, "\(skill.id) has no decisive question")
+        }
+    }
+
+    /// One criterion is a pass or a fail, not a score, and reporting it as one
+    /// is harsher than having authored nothing: zero out of one beats the
+    /// `corrected` credit down to nothing.
+    func testASingleCriterionIsNotAScore() throws {
+        let check = SkillVisualCheck.chefKnifeGrip
+        let readings = ["thumb": "onBlade", "indexFinger": "cannotTell",
+                        "remainingFingers": "cannotTell"]
+        let assessment = SkillVisualAssessment(
+            equipment: .init(reading: "chef's knife", supported: true, confidence: 0.9),
+            visibility: Dictionary(uniqueKeysWithValues:
+                check.reportedVisibility.map { ($0.rawValue, .sufficient) }),
+            overall: .ready, confidence: 0.9,
+            observations: [readings, readings], toolPicture: 2)
+        XCTAssertNil(
+            check.criteria(met: assessment),
+            "one criterion seen is not a score, it is a coin flip with a number on it")
     }
 }

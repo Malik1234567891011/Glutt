@@ -63,6 +63,37 @@ extension SkillVisualCheck {
             " and get your pan on the heat.",
         requiredVisibility: [.cookingSurface, .fat],
         helpfulVisibility: [.ingredient],
+        observations: [
+            SkillObservation(
+                region: .fat,
+                id: "coverage",
+                question:
+                    "When the pan is tilted, does the oil run as a continuous film across the "
+                        + "base, or are there dry bare patches it does not reach? `continuous` or "
+                        + "`barePatches`. Say cannotTell if you cannot see the base.",
+                answers: ["continuous", "barePatches", "cannotTell"],
+                correct: "continuous"
+            ),
+            SkillObservation(
+                region: .ingredient,
+                id: "depth",
+                question:
+                    "How much oil is there? `thinFilm` means just enough to coat the base. "
+                        + "`pooled` means deep enough that food would sit in a pool of it. Say "
+                        + "cannotTell if you cannot judge the depth.",
+                answers: ["thinFilm", "pooled", "cannotTell"],
+                correct: "thinFilm"
+            ),
+            SkillObservation(
+                region: .cookingSurface,
+                id: "notSmoking",
+                question:
+                    "Is the oil actively giving off smoke? `notSmoking` or `smoking`. Say "
+                        + "cannotTell if you cannot see above the pan.",
+                answers: ["notSmoking", "smoking", "cannotTell"],
+                correct: "notSmoking"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .fat, label: "A thin film, right across the base"),
             SkillCheckPart(region: .cookingSurface, label: "No dry bare patches"),
@@ -162,6 +193,36 @@ extension SkillVisualCheck {
             ", with your pan hot and the food ready to go in.",
         requiredVisibility: [.cookingSurface, .ingredient],
         helpfulVisibility: [.liquid, .fat],
+        observations: [
+            SkillObservation(
+                region: .ingredient,
+                id: "notStacked",
+                question:
+                    "Is every piece lying flat on the pan, or are some sitting on top of others? "
+                        + "`flat` or `stacked`. Say cannotTell if you cannot see the whole pan.",
+                answers: ["flat", "stacked", "cannotTell"],
+                correct: "flat"
+            ),
+            SkillObservation(
+                region: .cookingSurface,
+                id: "gapsVisible",
+                question:
+                    "Is there visible bare pan between the pieces? `visible` or `packed`. Say "
+                        + "cannotTell if you cannot see the pan surface.",
+                answers: ["visible", "packed", "cannotTell"],
+                correct: "visible"
+            ),
+            SkillObservation(
+                region: .liquid,
+                id: "noPooling",
+                question:
+                    "Is liquid collecting in the pan around the food? `dry` means the base is "
+                        + "essentially dry and sizzling. `pooling` means visible liquid. Say cannotTell "
+                        + "if you cannot see the base.",
+                answers: ["dry", "pooling", "cannotTell"],
+                correct: "dry"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .ingredient, label: "Nothing stacked on top of anything else"),
             SkillCheckPart(region: .cookingSurface, label: "Pan surface visible between pieces"),
@@ -253,6 +314,36 @@ extension SkillVisualCheck {
             ", get your pan on the heat, and have your butter ready.",
         requiredVisibility: [.fat],
         helpfulVisibility: [.cookingSurface, .ingredient],
+        observations: [
+            SkillObservation(
+                region: .cookingSurface,
+                id: "noBlackSpecks",
+                question:
+                    "Are there black specks in the butter or on the pan base? `none` or "
+                        + "`blackSpecks`. Say cannotTell if the pan is too dark to judge.",
+                answers: ["none", "blackSpecks", "cannotTell"],
+                correct: "none"
+            ),
+            SkillObservation(
+                region: .cookingSurface,
+                id: "notSmoking",
+                question:
+                    "Is the pan giving off visible smoke? `notSmoking` or `smoking`. Say "
+                        + "cannotTell if you cannot see above the pan.",
+                answers: ["notSmoking", "smoking", "cannotTell"],
+                correct: "notSmoking"
+            ),
+            SkillObservation(
+                region: .fat,
+                id: "stage",
+                question:
+                    "Which stage is the butter at? `melting`, `foaming` for pale yellow and "
+                        + "bubbling, `goldenSolids` for browning milk solids, `brown` for full brown "
+                        + "butter, or `burnt` for black and acrid. Say cannotTell if you cannot see the "
+                        + "colour.",
+                answers: ["melting", "foaming", "goldenSolids", "brown", "burnt", "cannotTell"]
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .fat, label: "Colour matches what you are going for"),
             SkillCheckPart(region: .cookingSurface, label: "No black specks in the pan"),

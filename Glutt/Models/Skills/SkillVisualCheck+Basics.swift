@@ -29,6 +29,39 @@ extension SkillVisualCheck {
             ", with a pot of liquid on the heat.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.cookingSurface, .heatSource],
+        observations: [
+            SkillObservation(
+                region: .liquid,
+                id: "holdingState",
+                question:
+                    "Is the pot holding a recognisable state, either a gentle simmer with small "
+                        + "bubbles breaking steadily, or a proper rolling boil across the surface? "
+                        + "`holding` means it is clearly one of those. `neither` means it is sputtering "
+                        + "irregularly or barely moving, so no state is being held. Say cannotTell if "
+                        + "you cannot see the surface.",
+                answers: ["holding", "neither", "cannotTell"],
+                correct: "holding"
+            ),
+            SkillObservation(
+                region: .liquid,
+                id: "whichState",
+                question:
+                    "Which is it? `simmer` for small bubbles breaking gently. `boil` for "
+                        + "continuous bubbling and a visibly rolling surface. Say cannotTell if you "
+                        + "cannot see the surface.",
+                answers: ["simmer", "boil", "cannotTell"]
+            ),
+            SkillObservation(
+                region: .cookingSurface,
+                id: "notClimbing",
+                question:
+                    "Is the liquid staying well below the rim, or is it foaming and climbing "
+                        + "toward the top of the pot? `controlled` or `climbing`. Say cannotTell if the "
+                        + "rim is out of frame.",
+                answers: ["controlled", "climbing", "cannotTell"],
+                correct: "controlled"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .liquid, label: "Bubble size and rate match the job"),
             SkillCheckPart(region: .cookingSurface, label: "Not climbing toward the rim"),
@@ -135,6 +168,28 @@ extension SkillVisualCheck {
             ", with your thermometer and something cooking to check.",
         requiredVisibility: [.tool, .ingredient],
         helpfulVisibility: [.cookingSurface],
+        observations: [
+            SkillObservation(
+                region: .tool,
+                id: "tipDepth",
+                question:
+                    "Where is the sensing tip of the probe sitting? `thickest` means it is buried "
+                        + "in the thickest part of the food. `shallow` means it is barely in, or has "
+                        + "gone straight through a thin edge and out the other side. Say cannotTell if "
+                        + "you cannot see where the tip ends up.",
+                answers: ["thickest", "shallow", "cannotTell"],
+                correct: "thickest"
+            ),
+            SkillObservation(
+                region: .ingredient,
+                id: "clearOfBoneAndPan",
+                question:
+                    "Is the tip clear of bone and not resting against the pan? `clear` or "
+                        + "`touching`. Say cannotTell if the tip is hidden.",
+                answers: ["clear", "touching", "cannotTell"],
+                correct: "clear"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .tool, label: "Tip in the thickest part"),
             SkillCheckPart(region: .ingredient, label: "Clear of bone and of the pan"),

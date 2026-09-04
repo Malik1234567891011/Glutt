@@ -28,6 +28,36 @@ extension SkillVisualCheck {
             ", with your pan hot and the food ready to go in.",
         requiredVisibility: [.cookingSurface, .ingredient],
         helpfulVisibility: [.fat, .liquid],
+        observations: [
+            SkillObservation(
+                region: .cookingSurface,
+                id: "noPooling",
+                question:
+                    "Is there liquid pooling in the pan around the food, or is the base "
+                        + "essentially dry and sizzling? `sizzling` or `pooling`. Say cannotTell if you "
+                        + "cannot see the base of the pan.",
+                answers: ["sizzling", "pooling", "cannotTell"],
+                correct: "sizzling"
+            ),
+            SkillObservation(
+                region: .fat,
+                id: "fatFilm",
+                question:
+                    "Is there a visible film of fat under and around the food, or is the pan dry? "
+                        + "`film` or `dry`. Say cannotTell if you cannot see the pan surface.",
+                answers: ["film", "dry", "cannotTell"],
+                correct: "film"
+            ),
+            SkillObservation(
+                region: .ingredient,
+                id: "colouring",
+                question:
+                    "Are the pieces taking on brown colour, or still pale and grey? `colouring` "
+                        + "or `pale`. Say cannotTell if you cannot see the food clearly.",
+                answers: ["colouring", "pale", "cannotTell"],
+                correct: "colouring"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .ingredient, label: "Colouring, not sitting in liquid"),
             SkillCheckPart(region: .cookingSurface, label: "Pan holding its heat"),
@@ -146,6 +176,37 @@ extension SkillVisualCheck {
             "Now lift or turn it so I can see the face that was against the pan.",
         requiredVisibility: [.ingredient],
         helpfulVisibility: [.cookingSurface, .fat, .liquid],
+        observations: [
+            SkillObservation(
+                region: .ingredient,
+                id: "surfaceDry",
+                question:
+                    "As the food goes into the pan, does its surface look dry and matte, or wet "
+                        + "and glossy? `dry` or `wet`. Say cannotTell if no picture catches it going "
+                        + "in.",
+                answers: ["dry", "wet", "cannotTell"],
+                correct: "dry"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "crust",
+                question:
+                    "Look at the face that was against the pan. Is it `deepBrown` and evenly "
+                        + "coloured, `blackened` in patches, or still `pale`? Say cannotTell if that "
+                        + "face never comes into view.",
+                answers: ["deepBrown", "blackened", "pale", "cannotTell"],
+                correct: "deepBrown"
+            ),
+            SkillObservation(
+                region: .cookingSurface,
+                id: "crowding",
+                question:
+                    "Is there visible bare pan between the pieces, or are they packed edge to "
+                        + "edge? `spaced` or `packed`. Say cannotTell if you cannot see the whole pan.",
+                answers: ["spaced", "packed", "cannotTell"],
+                correct: "spaced"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .ingredient, label: "Surface dry going in"),
             SkillCheckPart(region: .result, label: "Deep brown crust, not black", id: "crust"),
@@ -281,6 +342,39 @@ extension SkillVisualCheck {
         outcomeFraming: "Now show me the base of the pan after you have scraped it.",
         requiredVisibility: [.cookingSurface],
         helpfulVisibility: [.liquid, .tool, .fat],
+        observations: [
+            SkillObservation(
+                region: .cookingSurface,
+                id: "fondColour",
+                question:
+                    "What is stuck to the base of the pan before the liquid goes in? `brownFond` "
+                        + "means golden to deep brown stuck-on residue. `blackBurnt` means black "
+                        + "carbonised material. `noFond` means the base is essentially clean. Say "
+                        + "cannotTell if you cannot see the base.",
+                answers: ["brownFond", "blackBurnt", "noFond", "cannotTell"],
+                correct: "brownFond"
+            ),
+            SkillObservation(
+                region: .liquid,
+                id: "bubbling",
+                question:
+                    "Once the liquid is in, is it actively bubbling, or sitting flat and still? "
+                        + "`bubbling` or `flat`. Say cannotTell if no picture shows the liquid in the "
+                        + "pan.",
+                answers: ["bubbling", "flat", "cannotTell"],
+                correct: "bubbling"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "baseCleared",
+                question:
+                    "After scraping, is the base of the pan largely clear of stuck-on residue? "
+                        + "`cleared` or `stillStuck`. Say cannotTell if you cannot see the base "
+                        + "afterwards.",
+                answers: ["cleared", "stillStuck", "cannotTell"],
+                correct: "cleared"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .cookingSurface, label: "Brown bits, not black"),
             SkillCheckPart(region: .liquid, label: "Liquid in and bubbling"),
@@ -407,6 +501,39 @@ extension SkillVisualCheck {
             "Now draw a spoon through it, or lift the spoon out, so I can see how it coats.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.cookingSurface, .tool],
+        observations: [
+            SkillObservation(
+                region: .liquid,
+                id: "bubbleRate",
+                question:
+                    "How hard is it bubbling? `controlled` means a steady simmer or gentle boil. "
+                        + "`violent` means it is thrashing and spitting over the sides. `barelyMoving` "
+                        + "means almost nothing is happening. Say cannotTell if you cannot see the "
+                        + "surface.",
+                answers: ["controlled", "violent", "barelyMoving", "cannotTell"],
+                correct: "controlled"
+            ),
+            SkillObservation(
+                region: .cookingSurface,
+                id: "edgesClean",
+                question:
+                    "Is there darkened scorched material at the edges where the liquid line sits? "
+                        + "`clean` or `scorched`. Say cannotTell if you cannot see the sides of the "
+                        + "pan.",
+                answers: ["clean", "scorched", "cannotTell"],
+                correct: "clean"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "spoonCoat",
+                question:
+                    "When the spoon is lifted or drawn through, does the liquid coat the back of "
+                        + "it, or run straight off like water? `coats` or `runsOff`. Say cannotTell if "
+                        + "no picture shows the spoon out of the liquid.",
+                answers: ["coats", "runsOff", "cannotTell"],
+                correct: "coats"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .liquid, label: "Bubbling at a controlled rate"),
             SkillCheckPart(region: .cookingSurface, label: "Nothing catching at the edges"),
@@ -531,6 +658,39 @@ extension SkillVisualCheck {
             "Now lift a spoonful and let it run off, so I can see the body it has.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.cookingSurface, .tool, .fat],
+        observations: [
+            SkillObservation(
+                region: .cookingSurface,
+                id: "fondColour",
+                question:
+                    "What was in the pan at the start? `brownFond` means golden to deep brown "
+                        + "stuck-on residue. `blackBurnt` means black carbonised material. `noFond` "
+                        + "means the base was essentially clean. Say cannotTell if you cannot see the "
+                        + "base before the liquid goes in.",
+                answers: ["brownFond", "blackBurnt", "noFond", "cannotTell"],
+                correct: "brownFond"
+            ),
+            SkillObservation(
+                region: .liquid,
+                id: "spoonCoat",
+                question:
+                    "When the spoon is lifted, does the sauce coat it, or run straight off like "
+                        + "water? `coats` or `runsOff`. Say cannotTell if no picture shows the spoon "
+                        + "out of the sauce.",
+                answers: ["coats", "runsOff", "cannotTell"],
+                correct: "coats"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "cohesive",
+                question:
+                    "Is there a separate layer of clear fat or oil sitting on or beside the "
+                        + "sauce? `cohesive` means it is one uniform sauce. `split` means visible free "
+                        + "fat. Say cannotTell if you cannot see the surface clearly.",
+                answers: ["cohesive", "split", "cannotTell"],
+                correct: "cohesive"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .cookingSurface, label: "Started from brown fond"),
             SkillCheckPart(region: .liquid, label: "Reduced to real body"),

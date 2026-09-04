@@ -44,6 +44,36 @@ extension SkillVisualCheck {
         outcomeFraming: "Now turn it over so I can see both faces and the edges.",
         requiredVisibility: [.ingredient],
         helpfulVisibility: [.workSurface, .guidingHand],
+        observations: [
+            SkillObservation(
+                region: .ingredient,
+                id: "evenCoverage",
+                question:
+                    "Is the salt spread evenly across the face, or sitting in clumps with bare "
+                        + "patches between? `even` or `clumped`. Say cannotTell if you cannot see the "
+                        + "surface clearly.",
+                answers: ["even", "clumped", "cannotTell"],
+                correct: "even"
+            ),
+            SkillObservation(
+                region: .ingredient,
+                id: "edgesSeasoned",
+                question:
+                    "Are the sides and edges seasoned as well as the flat faces? `seasoned` or "
+                        + "`bare`. Say cannotTell if the edges never come into view.",
+                answers: ["seasoned", "bare", "cannotTell"],
+                correct: "seasoned"
+            ),
+            SkillObservation(
+                region: .ingredient,
+                id: "surfaceDry",
+                question:
+                    "Was the surface dry when the salt went on, or wet and glossy? `dry` or "
+                        + "`wet`. Say cannotTell if no picture catches it before seasoning.",
+                answers: ["dry", "wet", "cannotTell"],
+                correct: "dry"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .ingredient, label: "Even coverage, no bare patches", id: "even"),
             SkillCheckPart(region: .ingredient, label: "Edges done too", id: "edges"),
@@ -128,6 +158,26 @@ extension SkillVisualCheck {
         outcomeFraming: "Hold it steady and turn it so I can see the light on the surface.",
         requiredVisibility: [.ingredient],
         helpfulVisibility: [.workSurface],
+        observations: [
+            SkillObservation(
+                region: .ingredient,
+                id: "matte",
+                question:
+                    "Does the surface look matte, or wet and glossy where the light hits it? "
+                        + "`matte` or `glossy`. Say cannotTell if the lighting does not let you judge.",
+                answers: ["matte", "glossy", "cannotTell"],
+                correct: "matte"
+            ),
+            SkillObservation(
+                region: .ingredient,
+                id: "creasesDone",
+                question:
+                    "Are the folds, creases and skin side also blotted dry, or still visibly wet? "
+                        + "`dry` or `stillWet`. Say cannotTell if you cannot see into the folds.",
+                answers: ["dry", "stillWet", "cannotTell"],
+                correct: "dry"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .ingredient, label: "Surface matte, not shiny", id: "matte"),
             SkillCheckPart(region: .ingredient, label: "Folds and creases done too", id: "folds"),
@@ -189,6 +239,28 @@ extension SkillVisualCheck {
             ", with a thermometer and something cooking to check.",
         requiredVisibility: [.tool, .ingredient],
         helpfulVisibility: [.cookingSurface],
+        observations: [
+            SkillObservation(
+                region: .tool,
+                id: "tipDepth",
+                question:
+                    "Where is the sensing tip of the probe sitting? `thickest` means buried in "
+                        + "the thickest part. `shallow` means barely in, or straight through a thin "
+                        + "edge and out the other side. Say cannotTell if you cannot see where the tip "
+                        + "ends up.",
+                answers: ["thickest", "shallow", "cannotTell"],
+                correct: "thickest"
+            ),
+            SkillObservation(
+                region: .ingredient,
+                id: "clearOfBoneAndPan",
+                question:
+                    "Is the tip clear of bone and not resting against the pan? `clear` or "
+                        + "`touching`. Say cannotTell if the tip is hidden.",
+                answers: ["clear", "touching", "cannotTell"],
+                correct: "clear"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .tool, label: "Tip in the thickest part"),
             SkillCheckPart(region: .ingredient, label: "Clear of bone and pan"),
@@ -284,6 +356,36 @@ extension SkillVisualCheck {
         outcomeFraming: "Lift or turn it so I can see the face that was against the pan.",
         requiredVisibility: [.ingredient],
         helpfulVisibility: [.cookingSurface, .fat, .tool],
+        observations: [
+            SkillObservation(
+                region: .ingredient,
+                id: "surfaceDry",
+                question:
+                    "As the meat goes into the pan, does its surface look dry and matte, or wet "
+                        + "and glossy? `dry` or `wet`. Say cannotTell if no picture catches it going "
+                        + "in.",
+                answers: ["dry", "wet", "cannotTell"],
+                correct: "dry"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "crust",
+                question:
+                    "Look at the face that was against the pan. Is it `deepBrown` and evenly "
+                        + "coloured, `blackened` in patches, or still `pale`? Say cannotTell if that "
+                        + "face never comes into view.",
+                answers: ["deepBrown", "blackened", "pale", "cannotTell"],
+                correct: "deepBrown"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "thermometerSeen",
+                question:
+                    "Is a thermometer probe visible going into the meat at any point? `yes` or "
+                        + "`no`. Say cannotTell if you are unsure what the tool is.",
+                answers: ["yes", "no", "cannotTell"]
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .ingredient, label: "Went in dry"),
             SkillCheckPart(region: .result, label: "Deep brown, not black", id: "crust"),
@@ -397,6 +499,28 @@ extension SkillVisualCheck {
             ", with a steak searing and butter to hand.",
         requiredVisibility: [.cookingSurface, .fat],
         helpfulVisibility: [.ingredient, .tool],
+        observations: [
+            SkillObservation(
+                region: .fat,
+                id: "butterColour",
+                question:
+                    "What colour is the butter in the pan? `goldenFoaming` means pale to golden "
+                        + "and actively foaming. `blackened` means dark brown to black with burnt "
+                        + "specks. Say cannotTell if the pan is too dark to judge.",
+                answers: ["goldenFoaming", "blackened", "cannotTell"],
+                correct: "goldenFoaming"
+            ),
+            SkillObservation(
+                region: .cookingSurface,
+                id: "tiltAway",
+                question:
+                    "Which way is the pan tilted? `away` means the fat pools at the far side, "
+                        + "away from the cook. `towardCook` means it pools at the near side. `flat` "
+                        + "means it is not tilted. Say cannotTell if you cannot see the angle.",
+                answers: ["away", "towardCook", "flat", "cannotTell"],
+                correct: "away"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .fat, label: "Butter foaming and golden, not black"),
             SkillCheckPart(region: .cookingSurface, label: "Handle tilted away from you"),
@@ -497,6 +621,38 @@ extension SkillVisualCheck {
         outcomeFraming: "Open it out like a book and look straight down at it.",
         requiredVisibility: [.tool, .guidingHand],
         helpfulVisibility: [.ingredient, .result, .workSurface],
+        observations: [
+            SkillObservation(
+                region: .guidingHand,
+                id: "topHandFlat",
+                question:
+                    "Where is the hand holding the meat? `flatOnTop` means laid flat on top of "
+                        + "it, above the blade. `inPath` means fingers are out in front of where the "
+                        + "knife is travelling. Say cannotTell if that hand is out of frame.",
+                answers: ["flatOnTop", "inPath", "cannotTell"],
+                correct: "flatOnTop"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "bladeLevel",
+                question:
+                    "Is the blade going in horizontally and staying level, or angled up or down "
+                        + "into the meat? `horizontal` or `angled`. Say cannotTell if you cannot see "
+                        + "the blade in the meat.",
+                answers: ["horizontal", "angled", "cannotTell"],
+                correct: "horizontal"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "stillHinged",
+                question:
+                    "Opened out, are the two halves still joined along the far edge, or cut fully "
+                        + "apart into two pieces? `hinged` or `separated`. Say cannotTell if you cannot "
+                        + "see the far edge.",
+                answers: ["hinged", "separated", "cannotTell"],
+                correct: "hinged"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .guidingHand, label: "Top hand flat and high, never in front"),
             SkillCheckPart(region: .tool, label: "Blade level, going in horizontally"),
@@ -599,6 +755,36 @@ extension SkillVisualCheck {
             "After it has rested, slice it and show me a cut face.",
         requiredVisibility: [.ingredient],
         helpfulVisibility: [.cookingSurface, .result, .tool, .fat],
+        observations: [
+            SkillObservation(
+                region: .result,
+                id: "crust",
+                question:
+                    "Look at the seared face. Is it `deepBrown` and evenly coloured, `blackened` "
+                        + "in patches, or still `pale`? Say cannotTell if that face never comes into "
+                        + "view.",
+                answers: ["deepBrown", "blackened", "pale", "cannotTell"],
+                correct: "deepBrown"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "evenToEdge",
+                question:
+                    "On the cut face, is the colour fairly even from the crust in to the centre, "
+                        + "or is there a thick grey overcooked band under the crust? `even` or "
+                        + "`thickGreyBand`. Say cannotTell if you cannot see a cut face.",
+                answers: ["even", "thickGreyBand", "cannotTell"],
+                correct: "even"
+            ),
+            SkillObservation(
+                region: .tool,
+                id: "thermometerSeen",
+                question:
+                    "Is a thermometer probe visible going into the steak at any point? `yes` or "
+                        + "`no`. Say cannotTell if you are unsure what the tool is.",
+                answers: ["yes", "no", "cannotTell"]
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .ingredient, label: "Target named before starting"),
             SkillCheckPart(region: .result, label: "Deep crust, no bitter char", id: "crust"),

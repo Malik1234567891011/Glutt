@@ -112,6 +112,20 @@ struct SkillVisualCheck: Hashable, Sendable {
     /// answer is not to write it more loudly; it is to ask it by itself.
     let decisiveRegion: SkillVisibilityRegion?
 
+    /// The single question the decisive region asks, resolved once.
+    ///
+    /// Two call sites used to look this up themselves with `first(where:)` on
+    /// the region, which was correct only while every region held exactly one
+    /// question. Now that several questions can share a region, the first
+    /// match is no longer the right match, and the failure would be silent:
+    /// the standalone gate would keep firing and would keep asking about the
+    /// wrong thing. `decisiveRegionAsksOneQuestion` in the tests is what keeps
+    /// this honest.
+    var decisiveObservation: SkillObservation? {
+        guard let decisiveRegion else { return nil }
+        return observations.first { $0.region == decisiveRegion }
+    }
+
     /// Readings that must hold before a cook can be told they got it right.
     ///
     /// Everything else in this file guards against a false correction, because
@@ -172,8 +186,23 @@ struct SkillVisualCheck: Hashable, Sendable {
             observable += 1
             if reading == wanted { met += 1 }
         }
-        return observable > 0 ? (met, observable) : nil
+        return observable >= Self.minimumCountableCriteria ? (met, observable) : nil
     }
+
+    /// Below this many criteria actually seen, there is no counted score.
+    ///
+    /// One criterion is not a score, it is a pass or a fail, and reporting it
+    /// as one would be worse than the coarse outcome rather than better: a
+    /// single missed criterion would read as zero out of one, which is harsher
+    /// than the `corrected` credit the same attempt earns without any authored
+    /// criteria at all. Authoring one question would then punish a cook for
+    /// the app knowing more about their attempt.
+    ///
+    /// Deliberately checked against what was SEEN rather than what was
+    /// written, because the two failure modes are the same failure. A check
+    /// with one authored criterion and a check whose other two came back
+    /// `cannotTell` have both counted exactly one thing.
+    static let minimumCountableCriteria = 2
 
     /// Everything the assessor is asked to report on.
     var reportedVisibility: [SkillVisibilityRegion] { requiredVisibility + helpfulVisibility }

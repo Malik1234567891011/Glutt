@@ -303,7 +303,7 @@ enum SkillVisualAssessor {
         reading: String?
     ) -> SkillVisualAssessment? {
         guard let region = check.decisiveRegion,
-              let observation = check.observations.first(where: { $0.region == region }),
+              let observation = check.decisiveObservation,
               let reading, reading != observation.cannotTell,
               observation.answers.contains(reading)
         else { return nil }
@@ -348,8 +348,7 @@ enum SkillVisualAssessor {
         pictures: [Data],
         client: LLMClient
     ) async -> String? {
-        guard let region = check.decisiveRegion,
-              let observation = check.observations.first(where: { $0.region == region }),
+        guard let observation = check.decisiveObservation,
               !pictures.isEmpty
         else { return nil }
 

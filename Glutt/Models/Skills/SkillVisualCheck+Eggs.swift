@@ -51,6 +51,44 @@ extension SkillVisualCheck {
         outcomeFraming: "Tip them onto a plate and look down so I can see the texture.",
         requiredVisibility: [.cookingSurface, .ingredient],
         helpfulVisibility: [.fat, .tool, .result],
+        observations: [
+            SkillObservation(
+                region: .result,
+                id: "stillGlossy",
+                question:
+                    "On the plate, do the eggs look soft and glossy, or dry and firm with a matte "
+                        + "surface? `glossy` or `dry`. Say cannotTell if you cannot see them clearly.",
+                answers: ["glossy", "dry", "cannotTell"],
+                correct: "glossy"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "evenCurds",
+                question:
+                    "Are the curds a fairly consistent size, or a mix of large clumps and fine "
+                        + "grains? `consistent` or `mixed`. Say cannotTell if the texture is not "
+                        + "visible.",
+                answers: ["consistent", "mixed", "cannotTell"],
+                correct: "consistent"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "noWeeping",
+                question:
+                    "Is there watery liquid separating out around the eggs on the plate? `none` "
+                        + "or `weeping`. Say cannotTell if you cannot see the plate around them.",
+                answers: ["none", "weeping", "cannotTell"],
+                correct: "none"
+            ),
+            SkillObservation(
+                region: .cookingSurface,
+                id: "browning",
+                question:
+                    "Are there brown or tan patches on the curds? `none` or `browned`. Say "
+                        + "cannotTell if the colour is not clear.",
+                answers: ["none", "browned", "cannotTell"]
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .ingredient, label: "Curds the size you wanted"),
             SkillCheckPart(region: .cookingSurface, label: "No browning unless you want it"),
@@ -177,6 +215,37 @@ extension SkillVisualCheck {
         outcomeFraming: "Slide it onto a plate and look straight down at it.",
         requiredVisibility: [.ingredient],
         helpfulVisibility: [.cookingSurface, .fat, .result],
+        observations: [
+            SkillObservation(
+                region: .ingredient,
+                id: "whiteSet",
+                question:
+                    "Is the white fully set, including the thicker part immediately around the "
+                        + "yolk? `set` means opaque throughout. `clearJelly` means there is still "
+                        + "translucent uncooked white. Say cannotTell if you cannot see around the "
+                        + "yolk.",
+                answers: ["set", "clearJelly", "cannotTell"],
+                correct: "set"
+            ),
+            SkillObservation(
+                region: .cookingSurface,
+                id: "undersideBurnt",
+                question:
+                    "Look at the underside and the edges. Are they burnt, blackened or blistered? "
+                        + "`notBurnt` covers everything from pale through lacy golden brown. `burnt` "
+                        + "means black. Say cannotTell if the underside never comes into view.",
+                answers: ["notBurnt", "burnt", "cannotTell"],
+                correct: "notBurnt"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "yolkState",
+                question:
+                    "What state is the yolk in? `runny`, `jammy` or `hardSet`. Say cannotTell if "
+                        + "the yolk is not visible or was broken.",
+                answers: ["runny", "jammy", "hardSet", "cannotTell"]
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .ingredient, label: "White set right up to the yolk"),
             SkillCheckPart(region: .result, label: "Yolk the way you wanted it", id: "yolk"),
@@ -296,6 +365,35 @@ extension SkillVisualCheck {
             "Cut it in half or take the top off, and hold it steady where I can see inside.",
         requiredVisibility: [.result],
         helpfulVisibility: [.ingredient, .workSurface],
+        observations: [
+            SkillObservation(
+                region: .result,
+                id: "whiteSet",
+                question:
+                    "Is the white fully set, or is there still clear jelly in it? `set` or "
+                        + "`clearJelly`. Say cannotTell if you cannot see the white clearly.",
+                answers: ["set", "clearJelly", "cannotTell"],
+                correct: "set"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "notBlownOut",
+                question:
+                    "Does the egg look intact, or is there a ragged blown-out tail of white where "
+                        + "it escaped through a crack in the shell? `intact` or `blownOut`. Say "
+                        + "cannotTell if you cannot see the outside of the egg.",
+                answers: ["intact", "blownOut", "cannotTell"],
+                correct: "intact"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "yolkState",
+                question:
+                    "What state is the yolk in? `liquid`, `jammy` or `hardSet`. Say cannotTell if "
+                        + "the yolk is not visible.",
+                answers: ["liquid", "jammy", "hardSet", "cannotTell"]
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .result, label: "White fully set", id: "white"),
             SkillCheckPart(region: .result, label: "Yolk as loose as you wanted", id: "yolk"),
@@ -378,6 +476,27 @@ extension SkillVisualCheck {
         outcomeFraming: "Hold the cut half steady where I can see the yolk.",
         requiredVisibility: [.result],
         helpfulVisibility: [.ingredient, .workSurface],
+        observations: [
+            SkillObservation(
+                region: .result,
+                id: "yolkSet",
+                question:
+                    "Is the yolk set right through, pale to golden yellow? `set` means firm all "
+                        + "the way in. `soft` means there is still a darker soft or liquid centre. Say "
+                        + "cannotTell if you cannot see the middle of the yolk.",
+                answers: ["set", "soft", "cannotTell"],
+                correct: "set"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "noGreyRing",
+                question:
+                    "Is there a grey-green layer where the yolk meets the white? `none` or "
+                        + "`greyGreen`. Say cannotTell if the boundary is not visible.",
+                answers: ["none", "greyGreen", "cannotTell"],
+                correct: "none"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .result, label: "Yolk set right through", id: "set"),
             SkillCheckPart(region: .result, label: "No grey-green ring", id: "ring"),
@@ -462,6 +581,38 @@ extension SkillVisualCheck {
         outcomeFraming: "Lift it out on a spoon and hold it still where I can see it.",
         requiredVisibility: [.liquid],
         helpfulVisibility: [.ingredient, .result, .tool],
+        observations: [
+            SkillObservation(
+                region: .liquid,
+                id: "waterState",
+                question:
+                    "What is the water doing? `gentleSimmer` means small bubbles rising, surface "
+                        + "barely moving. `rollingBoil` means the surface is churning. `still` means no "
+                        + "bubbles at all. Say cannotTell if you cannot see the water.",
+                answers: ["gentleSimmer", "rollingBoil", "still", "cannotTell"],
+                correct: "gentleSimmer"
+            ),
+            SkillObservation(
+                region: .ingredient,
+                id: "entryHeight",
+                question:
+                    "How does the egg go in? `close` means released from a cup or spoon held at "
+                        + "or near the water surface. `dropped` means it falls from a height. Say "
+                        + "cannotTell if no picture catches it going in.",
+                answers: ["close", "dropped", "cannotTell"],
+                correct: "close"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "whiteGathered",
+                question:
+                    "Does the white stay gathered around the yolk, or stream away in wispy "
+                        + "strands? `gathered` or `streaming`. Say cannotTell if you cannot see the egg "
+                        + "in the water.",
+                answers: ["gathered", "streaming", "cannotTell"],
+                correct: "gathered"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .liquid, label: "Water gently simmering, not boiling"),
             SkillCheckPart(region: .ingredient, label: "Egg slid in from close to the water"),
@@ -564,6 +715,36 @@ extension SkillVisualCheck {
         outcomeFraming: "Turn it onto a plate and look straight down at it.",
         requiredVisibility: [.cookingSurface, .ingredient],
         helpfulVisibility: [.result, .fat, .tool],
+        observations: [
+            SkillObservation(
+                region: .cookingSurface,
+                id: "stillGlossyWhenFolded",
+                question:
+                    "At the moment it is folded or rolled, is the surface still slightly glossy "
+                        + "and moist, or already dry and fully set? `glossy` or `dry`. Say cannotTell "
+                        + "if no picture catches the fold.",
+                answers: ["glossy", "dry", "cannotTell"],
+                correct: "glossy"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "holdsTogether",
+                question:
+                    "On the plate, is it in one piece, or torn and split open? `onePiece` or "
+                        + "`torn`. Say cannotTell if you cannot see it clearly.",
+                answers: ["onePiece", "torn", "cannotTell"],
+                correct: "onePiece"
+            ),
+            SkillObservation(
+                region: .ingredient,
+                id: "surfaceColour",
+                question:
+                    "What colour is the outside? `pale` for the French style with no colour "
+                        + "taken, `golden` for a browned surface. Say cannotTell if the colour is not "
+                        + "clear.",
+                answers: ["pale", "golden", "cannotTell"]
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .ingredient, label: "Surface matching your style"),
             SkillCheckPart(region: .cookingSurface, label: "Folded before it dried out"),

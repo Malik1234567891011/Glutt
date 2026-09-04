@@ -181,7 +181,7 @@ reading them now" → the verdict, with **Done** or **Try it again**.
    per-picture questions — "is the pixel under ring 4 steel or handle" — with
    **cannotTell** as a first-class answer. The single deciding question goes out
    as its own small request, because inside the full rubric prompt it gets
-   drowned.
+   drowned. These same questions are what the Cook Rating counts.
 
 ### What she is allowed to say
 
@@ -213,6 +213,10 @@ to grade you.
 
 ## Progress
 
+There are two numbers, and they deliberately measure different things.
+
+### Level and XP: what you have learned
+
 - **XP per skill:** 20 beginner, 30 intermediate, 40 advanced, +35 for a mastery
   challenge. Awarded as a snapshot at the time, so retuning the values later
   never rewrites history.
@@ -223,6 +227,54 @@ to grade you.
 - The recommendation follows the most recently opened skill, staying in the
   region you are working in rather than sending you elsewhere with one node
   left.
+
+Reading a lesson and pressing "I've got it" moves this and nothing else.
+
+### Cook Rating: what you can actually do
+
+A quiet row under the header, reading `Cook Rating … Unranked ›`, opening a
+sheet. Not a card, not a second XP bar.
+
+**Unranked is a real state.** There is no invented starting number. Under the
+row sits the way out of it: `3 verified checks to place`. Below eight pieces of
+evidence the rating is shown but marked *provisional*, because three narrow
+observations is not a picture of somebody's cooking.
+
+**Only being watched moves it.** Every verified check writes one piece of
+evidence: which skill, which region, how it went, and what it was worth. A
+mastery trial is worth five ordinary beginner checks. The same check passed a
+second time is worth half, a third time a quarter, so twenty photographs of one
+easy grip is worth slightly less than two.
+
+**The score is counted, not judged.** No model is ever asked how good the
+cooking was. Each check asks two or three narrow authored questions with known
+right answers, and the score is how many were right out of how many could be
+seen. So `2 of 3` is a claim anybody can check by looking at the same
+photograph. 48 of the 49 watchable checks are authored this way.
+
+Two rules decide what gets a question at all. It has to be something a
+photograph can settle, so nothing about grip pressure or how sharp the knife
+is. And it has to be something the cook was told to aim at, so a yolk's
+looseness, a butter stage and an omelette's colour are asked but never scored:
+those are the cook's choice, and marking somebody wrong for hitting what they
+aimed at is worse than not scoring them.
+
+**Uncertainty costs nothing, ever.** An unusable picture, a part nobody could
+see, or an inconclusive check writes no row at all. Not a zero, nothing. A
+criterion that could not be seen is in neither total. And a check where only
+one criterion could be read produces no score either, because one criterion is
+a pass or a fail rather than a score, and calling it one would be harsher than
+having asked nothing.
+
+**Ranks** are kitchen brigade titles rather than invented tiers, numbered
+downward within a rank the way a kitchen does it: Prep Cook III through I, Line
+Cook III through I, Chef de Partie, Sous Chef, Head Chef.
+
+**Regions get their own standard** out of 100 in the sheet, weighted toward
+recent work so a cook who was poor in January and good in March reads as good.
+Flavour & Seasoning and Cooking Intuition read **Not scored** rather than a
+dash, because you cannot photograph tasting as you go and a dash reads as
+missing data.
 
 ---
 

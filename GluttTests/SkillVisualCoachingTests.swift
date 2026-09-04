@@ -532,7 +532,7 @@ final class SkillAttemptProgressTests: XCTestCase {
     private func attempt(_ outcome: SkillAttemptOutcome, seconds: Double = 5) -> SkillAttempt {
         SkillAttempt(
             skillID: skill.id, checkID: "knife.grip.pinch", seconds: seconds,
-            outcome: outcome, note: "note")
+            outcome: outcome, note: "note", source: .showing)
     }
 
     /// Being watched doing it correctly is a stronger claim than tapping a

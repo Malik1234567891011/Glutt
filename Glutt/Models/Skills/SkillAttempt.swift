@@ -59,6 +59,14 @@ final class SkillAttempt {
     /// history that flattened them would be quietly overstating one of them.
     var sourceRaw: String?
 
+    /// No default on `source`, deliberately.
+    ///
+    /// It defaulted to `.watching`, which on this branch is the mode that does
+    /// not exist. Nothing was writing a wrong row, because the one production
+    /// caller states it, but a second caller that forgot the argument would
+    /// have silently tagged every photo check as a glasses attempt and there
+    /// would have been no error to notice. Making it required costs one word
+    /// at each call site and removes the trap on both branches.
     init(
         skillID: String,
         checkID: String,
@@ -69,7 +77,7 @@ final class SkillAttempt {
         mistakeKey: String? = nil,
         equipmentReading: String? = nil,
         confidence: Double = 0,
-        source: SkillLearningMode = .watching
+        source: SkillLearningMode
     ) {
         self.skillID = skillID
         self.checkID = checkID

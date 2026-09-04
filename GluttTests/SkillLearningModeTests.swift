@@ -189,8 +189,18 @@ final class SkillLearningModeTests: XCTestCase {
 
         let watched = SkillAttempt(
             skillID: "knife.grip", checkID: "knife.grip.pinch",
-            outcome: .passed, note: "ok")
-        XCTAssertEqual(watched.source, .watching, "the default matches every row written so far")
+            outcome: .passed, note: "ok", source: .watching)
+        XCTAssertEqual(watched.source, .watching)
+
+        // A row written before the column existed. Those were all glasses, so
+        // that is what they read back as. This is the ONLY place `.watching`
+        // still comes from: `source` is required at every call site now, so a
+        // new row can no longer land on it by omission.
+        let older = SkillAttempt(
+            skillID: "knife.grip", checkID: "knife.grip.pinch",
+            outcome: .passed, note: "ok", source: .showing)
+        older.sourceRaw = nil
+        XCTAssertEqual(older.source, .watching, "rows written before the column were glasses")
     }
 
 }

@@ -557,6 +557,17 @@ struct SkillLandmarkQuestion: Sendable, Equatable, Hashable {
 /// unconditionally, this asks where the thumb actually is and offers
 /// "cannotTell" as a first class answer rather than a failure.
 struct SkillObservation: Sendable, Equatable, Hashable {
+    /// What this question is called in the JSON, and what makes two questions
+    /// about the same region distinguishable.
+    ///
+    /// Defaults to the region, which is what every early check wanted: one
+    /// question about the thumb, one about the index finger. Outcome checks
+    /// need more than that. Judging a dice means asking whether the pieces are
+    /// even, whether the faces are square and whether they were cut rather
+    /// than crushed — three separate things, all of them about `.result`, and
+    /// keying by region alone allowed only one of them to be asked.
+    let id: String
+
     /// The part of the technique this is about.
     let region: SkillVisibilityRegion
     /// Asked exactly as written, so the wording can be tuned per skill.
@@ -578,11 +589,13 @@ struct SkillObservation: Sendable, Equatable, Hashable {
 
     init(
         region: SkillVisibilityRegion,
+        id: String? = nil,
         question: String,
         answers: [String],
         correct: String? = nil,
         cannotTell: String = "cannotTell"
     ) {
+        self.id = id ?? region.rawValue
         self.region = region
         self.question = question
         self.answers = answers

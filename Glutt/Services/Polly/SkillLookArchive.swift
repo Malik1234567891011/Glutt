@@ -179,10 +179,10 @@ enum SkillLookArchive {
             out.append("  (this is the reading the correction is now gated on)")
             for observation in check.observations {
                 let perPicture = assessment.observations.enumerated().map { index, reading in
-                    "\(index + 1):\(reading[observation.region.rawValue] ?? "-")"
+                    "\(index + 1):\(reading[observation.id] ?? "-")"
                 }.joined(separator: "  ")
                 let agreed = assessment.reading(for: observation) ?? "NO MAJORITY"
-                out.append("  \(observation.region.rawValue.padding(toLength: 14, withPad: " ", startingAt: 0))"
+                out.append("  \(observation.id.padding(toLength: 14, withPad: " ", startingAt: 0))"
                     + "\(perPicture.isEmpty ? "nothing reported" : perPicture)  ->  \(agreed)")
             }
             out.append("")

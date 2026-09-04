@@ -83,6 +83,32 @@ extension SkillVisualCheck {
             "Now fan the slices out a little and look straight down at the cut faces.",
         requiredVisibility: [.tool, .ingredient],
         helpfulVisibility: [.guidingHand, .result, .workSurface],
+        observations: [
+            SkillObservation(
+                region: .tool,
+                id: "bladeTravel",
+                question:
+                    "Is the blade being drawn or pushed THROUGH the food, or pressed straight down into it? `travelling` means the cut used the length of the blade. `pressing` means it was pushed down like a guillotine. Say cannotTell if no picture catches the blade in the food.",
+                answers: ["travelling", "pressing", "cannotTell"],
+                correct: "travelling"
+            ),
+            SkillObservation(
+                region: .guidingHand,
+                id: "handBehind",
+                question:
+                    "Is the guiding hand behind the blade, out of its path? `behind` is correct. `inPath` means fingers are where the blade is travelling. Say cannotTell if that hand is out of frame.",
+                answers: ["behind", "inPath", "cannotTell"],
+                correct: "behind"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "cleanFaces",
+                question:
+                    "Look at the cut faces of the slices. Are they clean and smooth, or torn and crushed where the blade dragged? `clean` or `torn`. Say cannotTell if you cannot see a cut face clearly.",
+                answers: ["clean", "torn", "cannotTell"],
+                correct: "clean"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .tool, label: "Blade travelling, not just pressing down"),
             SkillCheckPart(region: .guidingHand, label: "Guiding hand behind the blade"),
@@ -202,6 +228,24 @@ extension SkillVisualCheck {
             "Look straight down at the board so I can see the whole pile in one layer.",
         requiredVisibility: [.result],
         helpfulVisibility: [.workSurface, .guidingHand, .tool],
+        observations: [
+            SkillObservation(
+                region: .result,
+                id: "sizeBand",
+                question:
+                    "Are the pieces broadly in one size band, the sort of rough chop that cooks evenly, or wildly mixed? `even` or `mixed`. A rough chop does not need to be neat, only consistent enough. Say cannotTell if you cannot see the pieces.",
+                answers: ["even", "mixed", "cannotTell"],
+                correct: "even"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "noChunks",
+                question:
+                    "Is there a much larger chunk hiding among the rest, the kind that would still be raw when the others are done? `noChunks` means nothing stands out. `hasChunks` means at least one does. Say cannotTell if the pile is obscured.",
+                answers: ["noChunks", "hasChunks", "cannotTell"],
+                correct: "noChunks"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .result, label: "Pieces in a useful size band", id: "band"),
             SkillCheckPart(region: .result, label: "No giant chunks hiding in it", id: "outliers"),
@@ -291,6 +335,32 @@ extension SkillVisualCheck {
             + "not whether they are perfect.",
         requiredVisibility: [.result],
         helpfulVisibility: [.workSurface, .guidingHand, .tool],
+        observations: [
+            SkillObservation(
+                region: .result,
+                id: "evenSize",
+                question:
+                    "Are the dice a similar size to each other? `even` or `uneven`. Say cannotTell if you cannot see enough of them.",
+                answers: ["even", "uneven", "cannotTell"],
+                correct: "even"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "squareFaces",
+                question:
+                    "Are the pieces roughly cube shaped with square faces, or wedged and triangular? `square` or `wedged`. Say cannotTell if the shapes are not clear.",
+                answers: ["square", "wedged", "cannotTell"],
+                correct: "square"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "cleanCut",
+                question:
+                    "Do the pieces look cut, or crushed and squashed at the edges by a dull blade? `clean` or `crushed`. Say cannotTell if you cannot see the edges.",
+                answers: ["clean", "crushed", "cannotTell"],
+                correct: "clean"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .result, label: "Pieces a similar size", id: "size"),
             SkillCheckPart(region: .result, label: "Faces roughly square, not wedged", id: "square"),
@@ -398,6 +468,38 @@ extension SkillVisualCheck {
         outcomeFraming: "Look straight down at it so I can see the individual pieces.",
         requiredVisibility: [.result],
         helpfulVisibility: [.workSurface, .guidingHand, .tool],
+        observations: [
+            SkillObservation(
+                region: .result,
+                id: "fineEnough",
+                question:
+                    "Is this mince fine enough that the pieces would disappear into a dish, "
+                    + "or is it really a small dice with visible chunks? `fine` or `chunky`. "
+                    + "Say cannotTell if you cannot see the individual pieces.",
+                answers: ["fine", "chunky", "cannotTell"],
+                correct: "fine"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "evenMince",
+                question:
+                    "Are the pieces a similar size to each other, or a mix of dust and larger "
+                    + "bits? `even` or `mixed`. Say cannotTell if you cannot see the pile "
+                    + "clearly.",
+                answers: ["even", "mixed", "cannotTell"],
+                correct: "even"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "notPaste",
+                question:
+                    "Has it been worked so far that it has gone wet and pasty, or are the "
+                    + "pieces still separate? `separate` or `pasty`. Say cannotTell if you "
+                    + "cannot judge the texture.",
+                answers: ["separate", "pasty", "cannotTell"],
+                correct: "separate"
+            ),
+        ],
         parts: boardParts,
         rubric: SkillVisualRubric(
             subject: "a spread of finely minced food on a board",
@@ -495,6 +597,32 @@ extension SkillVisualCheck {
         outcomeFraming: "Look straight down at them so I can compare their thickness.",
         requiredVisibility: [.result],
         helpfulVisibility: [.workSurface, .guidingHand, .tool, .ingredient],
+        observations: [
+            SkillObservation(
+                region: .result,
+                id: "evenThickness",
+                question:
+                    "Are the sticks a similar thickness to each other? `even` or `uneven`. Say cannotTell if you cannot see enough of them.",
+                answers: ["even", "uneven", "cannotTell"],
+                correct: "even"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "squareSection",
+                question:
+                    "Are the sticks square in cross section, or wedge shaped and tapering? `square` or `wedged`. Say cannotTell if the shapes are not clear.",
+                answers: ["square", "wedged", "cannotTell"],
+                correct: "square"
+            ),
+            SkillObservation(
+                region: .guidingHand,
+                id: "handClear",
+                question:
+                    "Did the guiding hand stay clear of the blade's path? `clear` or `inPath`. Say cannotTell if that hand is out of frame.",
+                answers: ["clear", "inPath", "cannotTell"],
+                correct: "clear"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .result, label: "Sticks a similar thickness", id: "thickness"),
             SkillCheckPart(region: .result, label: "Square-ish, not wedge shaped", id: "square"),
@@ -591,6 +719,32 @@ extension SkillVisualCheck {
         outcomeFraming: "Now spread the dice out into one layer and look straight down.",
         requiredVisibility: [.ingredient, .tool],
         helpfulVisibility: [.guidingHand, .result, .workSurface],
+        observations: [
+            SkillObservation(
+                region: .ingredient,
+                id: "flatFace",
+                question:
+                    "Is the onion sitting on a flat cut face, or rolling on its curved side? `flat` or `rolling`. A flat face is what stops it moving. Say cannotTell if you cannot see how it sits.",
+                answers: ["flat", "rolling", "cannotTell"],
+                correct: "flat"
+            ),
+            SkillObservation(
+                region: .guidingHand,
+                id: "handBehind",
+                question:
+                    "Is the guiding hand behind the blade rather than in its path? `behind` or `inPath`. Say cannotTell if that hand is out of frame.",
+                answers: ["behind", "inPath", "cannotTell"],
+                correct: "behind"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "evenDice",
+                question:
+                    "Are the dice a similar size to each other? `even` or `uneven`. Say cannotTell if you cannot see the pieces.",
+                answers: ["even", "uneven", "cannotTell"],
+                correct: "even"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .ingredient, label: "Cut face flat on the board"),
             SkillCheckPart(region: .guidingHand, label: "Hand behind the blade"),
@@ -711,6 +865,38 @@ extension SkillVisualCheck {
         outcomeFraming: "Look straight down so I can see the individual pieces.",
         requiredVisibility: [.result],
         helpfulVisibility: [.workSurface, .guidingHand, .tool],
+        observations: [
+            SkillObservation(
+                region: .result,
+                id: "fineEnough",
+                question:
+                    "Is the garlic fine enough to melt into a dish, or still in visible "
+                    + "chunks that would catch and burn? `fine` or `chunky`. Say cannotTell "
+                    + "if you cannot see the individual pieces.",
+                answers: ["fine", "chunky", "cannotTell"],
+                correct: "fine"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "evenMince",
+                question:
+                    "Are the pieces a similar size, or a mix of paste and larger bits? "
+                    + "`even` or `mixed`. Uneven garlic burns in parts before the rest "
+                    + "cooks. Say cannotTell if you cannot see the pile clearly.",
+                answers: ["even", "mixed", "cannotTell"],
+                correct: "even"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "notPaste",
+                question:
+                    "Has it been worked into a wet paste, or are the pieces still separate? "
+                    + "`separate` or `pasty`. Say cannotTell if you cannot judge the "
+                    + "texture.",
+                answers: ["separate", "pasty", "cannotTell"],
+                correct: "separate"
+            ),
+        ],
         parts: boardParts,
         rubric: SkillVisualRubric(
             subject: "minced garlic spread on a board",
@@ -795,6 +981,32 @@ extension SkillVisualCheck {
             "Look straight down at them so I can see whether they are still dry and leafy.",
         requiredVisibility: [.result],
         helpfulVisibility: [.workSurface, .guidingHand, .tool],
+        observations: [
+            SkillObservation(
+                region: .result,
+                id: "stillGreen",
+                question:
+                    "Are the herbs still green and leafy, or dark and bruised? `green` or `bruised`. Say cannotTell if you cannot see them clearly.",
+                answers: ["green", "bruised", "cannotTell"],
+                correct: "green"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "notWet",
+                question:
+                    "Is there a wet dark smear on the board where the herbs were worked over, or is the board clean around them? `dry` or `smeared`. Say cannotTell if you cannot see the board.",
+                answers: ["dry", "smeared", "cannotTell"],
+                correct: "dry"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "evenCut",
+                question:
+                    "Are the pieces evenly cut, or a mix of dust and whole leaves? `even` or `mixed`. Say cannotTell if you cannot see the pile.",
+                answers: ["even", "mixed", "cannotTell"],
+                correct: "even"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .result, label: "Still green and leafy", id: "leafy"),
             SkillCheckPart(region: .result, label: "Not wet or bruised into the board", id: "dry"),
@@ -893,6 +1105,24 @@ extension SkillVisualCheck {
         outcomeFraming: "Now make three slices and show me the face of one of them.",
         requiredVisibility: [.ingredient],
         helpfulVisibility: [.tool, .result, .guidingHand, .workSurface],
+        observations: [
+            SkillObservation(
+                region: .tool,
+                id: "crossingFibres",
+                question:
+                    "Is the knife crossing the muscle fibres at roughly a right angle, or running along them? `crossing` or `along`. The fibres are the fine parallel lines in the meat. Say cannotTell if you cannot make out the grain or the blade.",
+                answers: ["crossing", "along", "cannotTell"],
+                correct: "crossing"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "shortFibres",
+                question:
+                    "On the cut face, are the fibres short, so the face looks like a bundle of short ends, or long and stringy running the length of the slice? `short` or `long`. Say cannotTell if you cannot see a cut face.",
+                answers: ["short", "long", "cannotTell"],
+                correct: "short"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .ingredient, label: "Grain direction found"),
             SkillCheckPart(region: .tool, label: "Knife crossing the fibres"),
@@ -999,6 +1229,32 @@ extension SkillVisualCheck {
             "Look straight down so I can see all three together and compare them.",
         requiredVisibility: [.result],
         helpfulVisibility: [.workSurface, .ingredient],
+        observations: [
+            SkillObservation(
+                region: .result,
+                id: "threePiles",
+                question:
+                    "Are there three separate piles of vegetable, or has it been mixed together or left incomplete? `three` or `notThree`. Say cannotTell if you cannot see the board.",
+                answers: ["three", "notThree", "cannotTell"],
+                correct: "three"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "onionDouble",
+                question:
+                    "Is the onion pile roughly twice the size of each of the other two? `double` or `notDouble`. Say cannotTell if you cannot compare the piles.",
+                answers: ["double", "notDouble", "cannotTell"],
+                correct: "double"
+            ),
+            SkillObservation(
+                region: .result,
+                id: "consistentWithin",
+                question:
+                    "Within each pile, are the pieces a similar size to each other? `consistent` or `mixed`. Say cannotTell if you cannot see the pieces.",
+                answers: ["consistent", "mixed", "cannotTell"],
+                correct: "consistent"
+            ),
+        ],
         parts: [
             SkillCheckPart(region: .result, label: "Three piles, sized for the cook", id: "size"),
             SkillCheckPart(region: .result, label: "Roughly twice as much onion", id: "ratio"),

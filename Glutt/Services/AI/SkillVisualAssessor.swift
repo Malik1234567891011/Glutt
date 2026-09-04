@@ -244,10 +244,10 @@ enum SkillVisualAssessor {
                         + " · tool in picture \(answer.toolPicture)",
                     readings: check.observations.map { observation in
                         let each = answer.observations.enumerated().map { index, reading in
-                            "\(index + 1):\(reading[observation.region.rawValue] ?? "-")"
+                            "\(index + 1):\(reading[observation.id] ?? "-")"
                         }.joined(separator: "  ")
                         let agreed = answer.reading(for: observation) ?? "no majority"
-                        return "\(observation.region.rawValue)  \(each)  → \(agreed)"
+                        return "\(observation.id)  \(each)  → \(agreed)"
                     })
             }
             SkillLookArchive.save(
@@ -648,7 +648,7 @@ enum SkillVisualAssessor {
     /// a fourth answer.
     private static func observationFields(_ check: SkillVisualCheck) -> String {
         check.observations
-            .map { "\"\($0.region.rawValue)\": \"\($0.answers.joined(separator: " | "))\"" }
+            .map { "\"\($0.id)\": \"\($0.answers.joined(separator: " | "))\"" }
             .joined(separator: ", ")
     }
 
@@ -886,11 +886,11 @@ struct SkillVisualAssessment: Decodable, Sendable, Equatable {
     func reading(for observation: SkillObservation) -> String? {
         // A reading taken on its own wins. It was measured right where the one
         // buried in the full prompt was measured wrong, on the same pictures.
-        if let decisive, decisive.region == observation.region.rawValue {
+        if let decisive, decisive.region == observation.id {
             return decisive.answer == observation.cannotTell ? nil : decisive.answer
         }
         let answers = observations
-            .compactMap { $0[observation.region.rawValue] }
+            .compactMap { $0[observation.id] }
             .filter { $0 != observation.cannotTell }
         guard !answers.isEmpty else { return nil }
 

@@ -329,3 +329,73 @@ final class CountedScoreTests: XCTestCase {
         XCTAssertEqual(coarse.creditValue, 1.0)
     }
 }
+
+/// The authored criteria across the catalog.
+///
+/// A check whose observations are wrong is worse than one with none: it scores
+/// people against something nobody meant.
+final class AuthoredCriteriaTests: XCTestCase {
+
+    private var checks: [(skill: Skill, check: SkillVisualCheck)] {
+        SkillCatalog.allSkills.compactMap { skill in
+            skill.visualCheck.map { (skill, $0) }
+        }
+    }
+
+    /// Every question must have a right answer that is actually one of the
+    /// answers offered, and it must never be the escape hatch.
+    func testEveryQuestionHasAReachableRightAnswer() {
+        for (skill, check) in checks {
+            for observation in check.observations {
+                guard let correct = observation.correct else { continue }
+                XCTAssertTrue(
+                    observation.answers.contains(correct),
+                    "\(skill.id)/\(observation.id) is scored against \(correct), "
+                    + "which is not one of \(observation.answers)")
+                XCTAssertNotEqual(
+                    correct, observation.cannotTell,
+                    "\(skill.id)/\(observation.id) would score a cook for not being seen")
+            }
+        }
+    }
+
+    /// Ids have to be unique within a check, or two questions collide in the
+    /// JSON and one silently overwrites the other.
+    func testQuestionIdsAreUniqueWithinACheck() {
+        for (skill, check) in checks {
+            let ids = check.observations.map(\.id)
+            XCTAssertEqual(
+                Set(ids).count, ids.count,
+                "\(skill.id) asks two questions under the same id: \(ids)")
+        }
+    }
+
+    /// Every question must offer a way to say it could not be seen, or it is a
+    /// forced choice and forced choices get guessed.
+    func testEveryQuestionCanSayItCouldNotTell() {
+        for (skill, check) in checks {
+            for observation in check.observations {
+                XCTAssertTrue(
+                    observation.answers.contains(observation.cannotTell),
+                    "\(skill.id)/\(observation.id) has no way to say it could not be seen")
+            }
+        }
+    }
+
+    /// Knife Skills is authored end to end, so a cook working through the first
+    /// real region gets counted scores rather than the coarse fallback.
+    func testTheKnifeRegionIsFullyAuthored() throws {
+        let knife = try XCTUnwrap(SkillCatalog.categories.first { $0.id == "knife" })
+        let watchable = knife.skills.filter { $0.visualCheck != nil }
+        XCTAssertGreaterThan(watchable.count, 5)
+
+        for skill in watchable {
+            let check = try XCTUnwrap(skill.visualCheck)
+            let scoreable = check.observations.filter { $0.correct != nil }
+            XCTAssertGreaterThanOrEqual(
+                scoreable.count, 2,
+                "\(skill.id) has \(scoreable.count) scoreable criteria, so its score "
+                + "would be binary or absent")
+        }
+    }
+}

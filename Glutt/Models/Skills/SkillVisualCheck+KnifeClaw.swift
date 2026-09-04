@@ -56,6 +56,51 @@ extension SkillVisualCheck {
         // two things, so seeing one of them is seeing nothing.
         requiredVisibility: [.guidingHand, .tool],
         helpfulVisibility: [.thumb, .ingredient, .workSurface],
+        // The three things a photograph of a claw grip can actually settle,
+        // taken straight from the parts below so the cook is scored on exactly
+        // what the lesson told them to do.
+        observations: [
+            SkillObservation(
+                region: .guidingHand,
+                question:
+                    "Look at the hand holding the food, not the knife. Are the fingertips "
+                    + "curled back so the knuckles are the part nearest the blade, or are the "
+                    + "fingers flat and extended with the tips exposed? `curled` means the "
+                    + "fingertips are tucked behind the knuckles. `flat` means they are not. "
+                    + "Say cannotTell if the guiding hand is out of frame or you cannot see "
+                    + "the fingertips.",
+                answers: ["curled", "flat", "cannotTell"],
+                correct: "curled"
+            ),
+            SkillObservation(
+                region: .thumb,
+                question:
+                    "On that same guiding hand, is the thumb tucked in BEHIND the fingers, or "
+                    + "is it out to the side or forward where the blade could reach it? "
+                    + "`tucked` means behind the fingers and out of the blade's path. "
+                    + "`exposed` means it is not. Say cannotTell if the thumb is hidden by "
+                    + "the hand or out of frame, which is common and normal.",
+                answers: ["tucked", "exposed", "cannotTell"],
+                correct: "tucked"
+            ),
+            SkillObservation(
+                region: .tool,
+                question:
+                    "Where is the flat side of the blade in relation to the knuckles of the "
+                    + "guiding hand? `againstKnuckles` means it is riding against or very "
+                    + "close to them, which is what guides the cut. `away` means there is "
+                    + "clear space between the blade and the hand. Say cannotTell if the "
+                    + "blade is not near the hand in any picture, which happens when the "
+                    + "photo was taken between cuts.",
+                answers: ["againstKnuckles", "away", "cannotTell"],
+                correct: "againstKnuckles"
+            ),
+        ],
+        // Fingertips out in front of the knuckles is the thing this whole skill
+        // exists to prevent, and it is the one a photograph can settle.
+        decisiveRegion: .guidingHand,
+        dangerousReadings: [.guidingHand: ["flat"]],
+        passRequires: [.guidingHand: ["curled"]],
         parts: [
             SkillCheckPart(region: .guidingHand, label: "Fingertips curled back behind your knuckles"),
             SkillCheckPart(region: .thumb, label: "Thumb tucked in behind your fingers"),

@@ -89,7 +89,12 @@ struct NotificationsFooter: View {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
             DispatchQueue.main.async {
                 Analytics.capture(.onboardingNotifications, ["outcome": granted ? "granted" : "denied"])
-                if granted { ReminderScheduler.schedulePlatesDailyReminder() }
+                // Nothing is scheduled here. `EngagementScheduler` runs once
+                // onboarding finishes and again on every foreground, and it
+                // only speaks when there is something true to say. Scheduling
+                // at the moment of granting would mean a brand new cook with an
+                // empty kitchen gets a notification for having no recipes,
+                // seconds after being asked for permission.
                 onDone()
             }
         }

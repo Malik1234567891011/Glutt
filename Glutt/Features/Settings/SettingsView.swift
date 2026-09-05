@@ -39,6 +39,7 @@ struct SettingsView: View {
                 helpSection
                 subscriptionSection
                 accountSection
+                remindersSection
                 nutritionSection
                 tasteProfileSection
                 dietarySection
@@ -375,6 +376,34 @@ struct SettingsView: View {
     }
 
     // MARK: - Nutrition
+
+    /// One switch, because there is one kind of reminder.
+    ///
+    /// Glutt sends at most one engagement notification a day, chosen from what
+    /// is actually true about this kitchen, so a per-category settings screen
+    /// would be more controls than the system has behaviours. Cook timers are
+    /// not covered here: those are a response to something the cook started,
+    /// and switching reminders off should not silence a pan.
+    private var remindersSection: some View {
+        Section {
+            Toggle("Cooking reminders", isOn: Binding(
+                get: { EngagementScheduler.isEnabled() },
+                set: { enabled in
+                    Haptics.selection()
+                    EngagementScheduler.setEnabled(enabled)
+                    if enabled {
+                        Task { await EngagementScheduler.refresh(context: context) }
+                    } else {
+                        EngagementScheduler.cancelAll()
+                    }
+                }
+            ))
+        } header: {
+            Text("Reminders")
+        } footer: {
+            Text("At most one a day, and only when there is something worth saying: food to use up, a recipe you saved and have not cooked, or the next skill on your map. Timers you start while cooking are unaffected.")
+        }
+    }
 
     private var nutritionSection: some View {
         Section {

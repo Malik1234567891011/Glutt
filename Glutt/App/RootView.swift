@@ -135,6 +135,12 @@ struct RootView: View {
                 drainImportInbox()
                 Task { await RecipeImageBackfill.sweep(in: context) }
                 sync.requestSync()
+                // Recompute on every return to the app. Opening Glutt is the
+                // only way the state behind a reminder can change, so this is
+                // also what makes a stale one disappear: use the spinach, come
+                // back, and the reminder about the spinach is gone.
+                Task { await EngagementScheduler.refresh(
+                    context: context, isEntitled: gate.access == .unlocked) }
             }
             // Also on the way out: the share extension runs while the app is
             // backgrounded, and this is what lets it count what's in the kitchen.
@@ -174,15 +180,18 @@ struct RootView: View {
         .task { mirrorPantryForShareExtension() }
         .task { await RecipeImageBackfill.sweep(in: context) }
         .task(id: needsOnboarding) {
-            // Notification permission is requested exactly once, on onboarding
-            // screen 9. At launch we only (re)schedule if it's already granted —
-            // "Maybe later" must keep meaning *not now*.
-            guard !needsOnboarding,
-                  !ProcessInfo.processInfo.arguments.contains("-uiPreview") else { return }
-            let settings = await UNUserNotificationCenter.current().notificationSettings()
-            if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
-                ReminderScheduler.schedulePlatesDailyReminder()
-            }
+            // Permission is still requested exactly once, in onboarding.
+            // "Maybe later" keeps meaning *not now*: `EngagementScheduler`
+            // checks authorization itself and does nothing without it.
+            guard !needsOnboarding else { return }
+            // Glutt is a hard paywall. A reminder to somebody whose
+            // subscription lapsed is an invitation to a screen they cannot get
+            // past, about food they cannot cook, arriving daily.
+            await EngagementScheduler.refresh(
+                context: context, isEntitled: gate.access == .unlocked)
+            #if DEBUG
+            EngagementPreview.scheduleIfRequested()
+            #endif
         }
         .fullScreenCover(isPresented: $router.demoCookOnLaunch) {
             if let recipe = recipes.first {

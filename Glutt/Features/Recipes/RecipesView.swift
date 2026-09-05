@@ -289,6 +289,13 @@ struct RecipesView: View {
             .onChange(of: router.pendingImportURL) { handlePendingImport() }
             .onChange(of: router.recipeToOpenID) { openRequestedRecipe() }
             .onAppear(perform: openRequestedRecipe)
+            .onChange(of: router.recipeRemoteIDToOpen) { openNotifiedRecipe() }
+            .onAppear(perform: openNotifiedRecipe)
+            // "Your kitchen is waiting" opens the screen where a link becomes a
+            // recipe, rather than dropping somebody on an empty library and
+            // leaving them to find it.
+            .onChange(of: router.showSaveHelp) { openSaveHelp() }
+            .onAppear(perform: openSaveHelp)
             .onAppear {
                 if router.openFirstRecipeOnLaunch, let first = libraryRecipes.first {
                     router.openFirstRecipeOnLaunch = false
@@ -652,6 +659,23 @@ struct RecipesView: View {
 
     private func handlePendingImport() {
         if router.pendingImportURL != nil { isShowingImport = true }
+    }
+
+    private func openSaveHelp() {
+        guard router.showSaveHelp else { return }
+        router.showSaveHelp = false
+        isShowingImport = true
+    }
+
+    /// Opens the recipe a notification named, by its stable `remoteID`.
+    ///
+    /// Nothing happens if it has since been deleted, which is the correct
+    /// outcome: the tap still lands on the library rather than on an error.
+    private func openNotifiedRecipe() {
+        guard let remoteID = router.recipeRemoteIDToOpen else { return }
+        router.recipeRemoteIDToOpen = nil
+        guard let recipe = allRecipes.first(where: { $0.remoteID == remoteID }) else { return }
+        open(recipe)
     }
 
     private func openRequestedRecipe() {

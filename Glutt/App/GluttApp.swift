@@ -12,8 +12,21 @@ final class NotificationRoutingDelegate: NSObject, UNUserNotificationCenterDeleg
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        let destination = response.notification.request.content.userInfo["destination"] as? String
-        if destination == "plates" {
+        let info = response.notification.request.content.userInfo
+
+        // Engagement notifications carry a full glutt:// URL so the tap lands
+        // on the exact thing the notification was about, through the routing
+        // the app already has rather than a second navigation system.
+        if let raw = info["url"] as? String, let url = URL(string: raw) {
+            router?.handle(url: url)
+            return
+        }
+
+        // The old repeating Discover reminder. Nothing schedules it any more
+        // and `EngagementScheduler` cancels it, but one may still be pending on
+        // a device that has not launched the new build yet, so its tap keeps
+        // working rather than opening nowhere.
+        if info["destination"] as? String == "plates" {
             router?.selectedTab = .discover
         }
     }

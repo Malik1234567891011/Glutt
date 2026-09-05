@@ -35,30 +35,18 @@ enum PrepDetector {
     }
 }
 
-/// Schedules the daily "today's plate is ready" local notification.
+/// Notification permission, and nothing else.
+///
+/// This used to also schedule a repeating 07:00 "Today's Plate is ready, 12
+/// fresh recipes to swipe through" for everybody, every day, forever. It
+/// advertised the shallowest surface in the product at an hour when nobody is
+/// deciding what to cook, with a recipe count that was hardcoded rather than
+/// counted. `EngagementScheduler` replaces it with one notification chosen from
+/// what is actually true about this person's kitchen, and explicitly cancels
+/// the old repeating request on installs that already have one pending.
 enum ReminderScheduler {
 
     static func requestPermissionIfNeeded() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
-    }
-
-    /// A single repeating 07:00-local nudge that the daily deck is ready.
-    /// Idempotent: re-scheduling replaces the one pending request.
-    static func schedulePlatesDailyReminder() {
-        let id = "plates-daily"
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [id])
-
-        let content = UNMutableNotificationContent()
-        content.title = "Today's Plate is ready 🍳"
-        content.body = "12 fresh recipes to swipe through. Tap to explore."
-        content.sound = .default
-        content.userInfo = ["destination": "plates"]
-
-        var components = DateComponents()
-        components.hour = 7
-        components.minute = 0
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-        center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
     }
 }

@@ -35,7 +35,18 @@ struct SkillsView: View {
             .sheet(isPresented: $isShowingProfile) {
                 CookProfileSheet(reader: reader)
             }
+            // A skill named by a notification. Resolved here rather than in the
+            // router so the catalog lookup stays next to the map that owns it.
+            .onChange(of: router.skillIDToOpen) { openNotifiedSkill() }
+            .onAppear(perform: openNotifiedSkill)
         }
+    }
+
+    private func openNotifiedSkill() {
+        guard let id = router.skillIDToOpen else { return }
+        router.skillIDToOpen = nil
+        guard let skill = SkillCatalog.skill(id) else { return }
+        open(skill)
     }
 
     /// Opening a lesson goes through the router, so the SwiftData writes the

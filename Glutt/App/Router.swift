@@ -56,6 +56,21 @@ final class Router {
     /// SwiftData id of a freshly-imported recipe to open (set once the inbox is
     /// drained AND a `glutt://recipe?import=` link is handled — order-independent).
     var recipeToOpenID: PersistentIdentifier?
+
+    /// A recipe named by its stable `remoteID`, from a notification tap.
+    ///
+    /// Separate from `recipeToOpenID` because a notification is written days
+    /// before it is tapped and cannot carry a `PersistentIdentifier` or a
+    /// session-scoped import UUID. `RecipesView` resolves it, the same way it
+    /// already resolves the other two.
+    var recipeRemoteIDToOpen: UUID?
+
+    /// A skill named by catalog id, from a notification tap.
+    var skillIDToOpen: String?
+
+    /// Set when the cook should be shown how to save a recipe, which is what an
+    /// empty library actually needs rather than an empty list.
+    var showSaveHelp = false
     /// Import-uuid → SwiftData id for recipes drained this session.
     private var importedThisSession: [UUID: PersistentIdentifier] = [:]
     /// Import uuid requested by a "View recipe" deep link, awaiting its drain.
@@ -138,6 +153,13 @@ final class Router {
         // removed Today/Plan/Progress tabs fall back to the home (Recipes) tab so
         // any lingering notification/deep link still opens somewhere sensible.
         case "polly", "today", "plan", "progress": selectedTab = .recipes
+        case "skill":
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            skillIDToOpen = components?.queryItems?.first(where: { $0.name == "id" })?.value
+            selectedTab = .skills
+        case "save-help":
+            selectedTab = .recipes
+            showSaveHelp = true
         case "import":
             let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
             if let urlParameter = components?.queryItems?.first(where: { $0.name == "url" })?.value {
@@ -149,6 +171,10 @@ final class Router {
             if let raw = components?.queryItems?.first(where: { $0.name == "import" })?.value,
                let uuid = UUID(uuidString: raw) {
                 requestOpenRecipe(importID: uuid)
+            } else if let raw = components?.queryItems?.first(where: { $0.name == "rid" })?.value,
+                      let uuid = UUID(uuidString: raw) {
+                recipeRemoteIDToOpen = uuid
+                selectedTab = .recipes
             } else {
                 selectedTab = .recipes
             }

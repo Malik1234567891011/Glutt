@@ -32,7 +32,6 @@ struct OnboardingFlow: View {
     /// scaffold screens and fade when a full-screen special is on either side.
     @State private var fromScreen = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.requestReview) private var requestReview
 
     /// How long screen 6 is left alone before the rating card is asked for.
     ///
@@ -44,7 +43,7 @@ struct OnboardingFlow: View {
     private static let reviewPromptDelay = Duration.milliseconds(1800)
 
     /// Screens that share the cream chrome + footer scaffold.
-    private static let scaffoldScreens: Set<Int> = [1, 2, 3, 4, 5, 7, 8]
+    private static let scaffoldScreens: Set<Int> = [1, 2, 3, 4, 5, 7, 8, 9]
 
     /// "Already have an account? Log in" is always offered. What it does next
     /// depends on whether there is a subscription to find.
@@ -109,9 +108,12 @@ struct OnboardingFlow: View {
         }
         // Fixed progress bar above the sliding pages — it stays put and just
         // grows as you advance, including across the Polly video page. (Welcome
-        // 0 and the tutorial 9 show no bar.)
+        // 0, the Polly hero and the tutorial show no bar.)
         .overlay(alignment: .top) {
-            if (1...8).contains(flow.screen) {
+            // Asks the flow rather than repeating the range. This was
+            // hardcoded to 1...8, so inserting Skills at 8 silently pushed the
+            // notifications screen out of it and it lost its progress bar.
+            if flow.showsChrome {
                 OnboardingChrome(progress: flow.progress)
             }
         }
@@ -140,44 +142,24 @@ struct OnboardingFlow: View {
         }
         // The App Store rating card, asked for once, on the Polly hero (6).
         //
-        // Placed here rather than in `PollyHeroScreen` because it is navigation
-        // timing, not content — the screen stays a pure view, and the ask is
-        // visible next to the funnel event above it.
+        // No App Store rating card here any more.
         //
-        // Why 6: it is the emotional peak (chef footage, the hands-free
-        // promise), it lands right after the user has invested in goals and
-        // rules and been shown the 4-week payoff, and the screen already carries
-        // the "4.9 ★ rated / Loved by 1M+ home cooks" laurel — the card arrives
-        // on top of visible social proof. It is also two screens clear of the
-        // notification permission dialog (8) and four clear of the paywall, so
-        // no two system dialogs stack up and nobody is asked to rate the app
-        // moments before being asked to pay for it.
-        //
-        // Keyed on `flow.screen`, so tapping Continue inside the delay cancels
-        // the task and the ask is never spent — they get it on a later run
-        // instead of having it fired at a screen they already left.
-        .task(id: flow.screen) {
-            guard flow.screen == 6, ReviewPrompt.shouldAsk() else { return }
-            try? await Task.sleep(for: Self.reviewPromptDelay)
-            guard !Task.isCancelled else { return }
-            ReviewPrompt.markAsked(.onboardingPolly)
-            requestReview()
-        }
+        // It used to fire on screen 6, a beat after the Polly hero settled, on
+        // top of a "4.9 ★ rated" laurel that was not true. Asking somebody to
+        // rate an app they have not cooked a single thing with buys a rating of
+        // the onboarding, and iOS only allows three asks a year. `ReviewPrompt`
+        // is left intact, latch and analytics and all, so the ask can be moved
+        // to a real success moment (a finished cook, a passed mastery trial) in
+        // its own change rather than smuggled into this one.
         .onAppear {
             #if DEBUG
-            // `-resetReviewPrompt YES`: re-arm the rating card so it can be
-            // reached again. Clears our latch only — iOS keeps its own
-            // 3-per-year throttle on top.
-            if UserDefaults.standard.bool(forKey: "resetReviewPrompt") {
-                ReviewPrompt.resetForTesting()
-            }
-            // Staging hook: launch with `-onboardingScreen 6`, plus
-            // `-onboardingPhase 2` on screen 9 (the import tutorial).
+            // Staging hook: launch with `-onboardingScreen 8`, plus
+            // `-onboardingPhase 2` on the import tutorial.
             let jump = UserDefaults.standard.integer(forKey: "onboardingScreen")
             guard jump > 0 else { return }
             fromScreen = jump
             flow.go(jump)
-            if jump == 9 {
+            if jump == OnboardingFlowModel.tutorialScreen {
                 let phase = UserDefaults.standard.integer(forKey: "onboardingPhase")
                 for _ in 0..<min(phase, 3) { _ = flow.tutorialTap() }
                 if phase >= 4 { flow.completeImport() }
@@ -190,7 +172,7 @@ struct OnboardingFlow: View {
         reduceMotion ? .easeInOut(duration: 0.3) : .spring(response: 0.42, dampingFraction: 0.92)
     }
 
-    /// Welcome (0), Polly (6) and the tutorial (9) render full-screen; every
+    /// Welcome (0), Polly (6) and the tutorial (10) render full-screen; every
     /// other screen renders inside the shared scaffold.
     @ViewBuilder private var screenLayer: some View {
         switch flow.screen {
@@ -207,7 +189,7 @@ struct OnboardingFlow: View {
             // Copy slides in; the backdrop (a separate layer, above) fades.
             PollyHeroScreen { advance() }
                 .transition(pageTransition)
-        case 9:
+        case OnboardingFlowModel.tutorialScreen:
             ImportTutorialScreen(flow: flow, onFinish: { finish() })
                 .transition(pageTransition)
         default:
@@ -259,7 +241,8 @@ struct OnboardingFlow: View {
         case 4: RulesScreen(state: state)
         case 5: FourWeeksScreen()
         case 7: AIFeaturesScreen()
-        default: NotificationsSoftAskScreen() // 8
+        case 8: SkillsScreen()
+        default: NotificationsSoftAskScreen() // 9
         }
     }
 
@@ -279,11 +262,11 @@ struct OnboardingFlow: View {
         case 4:
             OnboardingPrimaryButton(title: "Continue", action: advance)
                 .padding(.horizontal, 22).padding(.bottom, 8)
-        case 8:
+        case 9:
             // The single notifications page: "Turn on" fires the real OS prompt,
             // "Maybe later" skips — both land on the import tutorial.
             NotificationsFooter(onDone: { navigate { flow.skipToTutorial() } })
-        default: // 1, 2, 5, 7
+        default: // 1, 2, 5, 7, 8
             OnboardingPrimaryButton(title: "Continue", action: advance)
                 .padding(.horizontal, 24).padding(.bottom, 10)
         }

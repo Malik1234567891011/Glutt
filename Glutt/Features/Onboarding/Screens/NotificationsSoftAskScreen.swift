@@ -7,16 +7,32 @@ import UserNotifications
 struct NotificationsSoftAskScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Three real ones.
+    ///
+    /// The previous set advertised "Plan this week in 2 minutes, pick a few
+    /// meals and Glutt builds your list", which is not a notification Glutt has
+    /// ever sent, and dressed the other two in numbers the engine does not
+    /// know at send time. These are the strings `EngagementPlanner` actually
+    /// produces, one from each of the three things it can talk about: the
+    /// kitchen, a saved recipe, and the Skills map.
+    ///
+    /// The times are the real ones too. Food lands at 17:30, when people decide
+    /// what is for dinner; skills at 19:00, after it. Spread across three days
+    /// because at most one of these arrives a day.
     private static let notes: [(title: String, body: String, time: String, duration: Double, delay: Double)] = [
-        ("Tonight's dinner is 20 minutes away", "You've got everything for Creamy Tomato Rigatoni.", "now", 5.0, 0),
-        ("Plan this week in 2 minutes", "Pick a few meals and Glutt builds your list.", "8:00 AM", 5.4, 0.55),
-        ("Use it before it turns", "Your spinach and mushrooms expire Sunday.", "Sun", 5.8, 1.05),
+        ("Spinach won't keep much longer", "Glutt can build tonight's dinner around it.", "5:30 PM", 5.0, 0),
+        ("No shopping needed tonight", "Your kitchen already covers Creamy Lemon Chicken Rice Bowl.", "Tue", 5.4, 0.55),
+        ("Ready for the next one?", "Claw Grip is next on your Skills map.", "Mon", 5.8, 1.05),
     ]
 
     var body: some View {
         VStack(spacing: 0) {
-            OnboardingHeadline("Turn on gentle nudges", size: 27, maxWidth: 280)
-            OnboardingSubhead("Cook on rhythm, never nagging").padding(.top, 8)
+            OnboardingHeadline("One reminder a day, at most", size: 27, maxWidth: 300)
+            // The old pair ("gentle nudges" / "never nagging") promised a
+            // temperament. This promises a rule the code actually keeps:
+            // `EngagementPlanner.minimumGapHours` is 22, and the ladder is
+            // allowed to return nothing at all.
+            OnboardingSubhead("And only when it's true").padding(.top, 8)
             VStack(spacing: 12) {
                 ForEach(Self.notes, id: \.title) { note in
                     card(note)

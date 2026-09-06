@@ -360,6 +360,7 @@
 		B997F7F5C96448B424A74DAD /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECDB51EACA72CE8D071EAD9 /* Enums.swift */; };
 		BA055AC380B3FFBBD150F6F4 /* CookRecap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 380E742BF50C39FA5E22B56C /* CookRecap.swift */; };
 		BBEC29DDA807E89B6920EDEA /* SkillCatalog+Basics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2CF6F32F5160E810417B528 /* SkillCatalog+Basics.swift */; };
+		BC8EDFE2E16629E712C5CE41 /* CookPlanTimerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2EA195B532C7AB341674E4 /* CookPlanTimerTests.swift */; };
 		BCAF6E69D024CE1177D2F204 /* PlatesLauncherCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DDECE4B39D1229473B5DFA9 /* PlatesLauncherCard.swift */; };
 		BCC50C98CE0527AC1C937CBE /* ImportPipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 760EF4DCF55EB8C52DE51A6D /* ImportPipelineTests.swift */; };
 		BD6C7D5502786F91F964B849 /* RecipeChatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14A58378C62D1510EDA63020 /* RecipeChatStore.swift */; };
@@ -722,6 +723,7 @@
 		6AC3301AD5C183494C51667C /* VisualFrameGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualFrameGate.swift; sourceTree = "<group>"; };
 		6B05849C95C9F525292121A2 /* SkillCatalog+MotherSauces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SkillCatalog+MotherSauces.swift"; sourceTree = "<group>"; };
 		6CCAE5721C916554A3016BF6 /* CookRankLadderSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookRankLadderSheet.swift; sourceTree = "<group>"; };
+		6D2EA195B532C7AB341674E4 /* CookPlanTimerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookPlanTimerTests.swift; sourceTree = "<group>"; };
 		6D3533E8376C43D34EDA406C /* FourWeeksScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourWeeksScreen.swift; sourceTree = "<group>"; };
 		6D5309E5D67C8CADD57F6598 /* SkillAttempt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillAttempt.swift; sourceTree = "<group>"; };
 		6D9F150DFC70660877D485E4 /* SubscriptionGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionGateTests.swift; sourceTree = "<group>"; };
@@ -1125,6 +1127,7 @@
 				38D0D8556472146695E807BD /* CookingBasicsTests.swift */,
 				D23C66664D3534808D99EA91 /* CookPlanCompilerTests.swift */,
 				E719012B888538722A1C490F /* CookPlanTests.swift */,
+				6D2EA195B532C7AB341674E4 /* CookPlanTimerTests.swift */,
 				E631C71B391A2FBFDED5CEB7 /* CookRankCeremonyTests.swift */,
 				C0033FC9996957C82A63847F /* CookRatingTests.swift */,
 				52969CBCE393533D0AC1BE94 /* CookRecapBuilderTests.swift */,
@@ -1993,6 +1996,7 @@
 				B5173F564600C68301504D51 /* CookBriefingBuilderTests.swift in Sources */,
 				F344F24FD367B7A3C0F65F9D /* CookPlanCompilerTests.swift in Sources */,
 				95DB7718664F7BE654B65721 /* CookPlanTests.swift in Sources */,
+				BC8EDFE2E16629E712C5CE41 /* CookPlanTimerTests.swift in Sources */,
 				4456E69408CFF37EC55BD3CF /* CookRankCeremonyTests.swift in Sources */,
 				651B0645015BA660089221C8 /* CookRatingTests.swift in Sources */,
 				EF4BCE72D6A0DB7A1FE0EEF2 /* CookRecapBuilderTests.swift in Sources */,

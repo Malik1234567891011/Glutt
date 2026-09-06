@@ -40,7 +40,9 @@ enum CookPlanCompiler {
             .joined(separator: "|")
         let material = "v\(cacheEpoch)|"
             + recipe.title
-            + "|" + recipe.sortedSteps.map(\.text).joined(separator: "|")
+            + "|" + recipe.sortedSteps
+                .map { "\($0.text)#\($0.durationSeconds ?? -1)" }
+                .joined(separator: "|")
             + "|" + ingredientNames
             + "|" + String(format: "%.2f", scale)
         let digest = SHA256.hash(data: Data(material.utf8))
@@ -264,7 +266,10 @@ enum CookPlanCompiler {
     "passive" = unattended waiting (simmer, bake, rest, marinate), "checkpoint" = a \
     judgement moment (taste, doneness test).
     - timerSeconds: REQUIRED on every "passive" step — the unattended wait in seconds. \
-    null on other kinds unless a precise timer genuinely helps.
+    null on other kinds unless a precise timer genuinely helps. If a step line carries \
+    an [authored timing: Ns], that number came from the recipe itself: use it as \
+    timerSeconds even on an "active" step, because a cook who was told "4 minutes per \
+    side" wants a timer for it. Split it across the steps you split it into.
     - estimatedSeconds: your realistic hands-on estimate for the step, null if unknowable.
     - dependsOn: ids of steps that must be finished first; [] when only the previous \
     step matters.
@@ -341,9 +346,23 @@ enum CookPlanCompiler {
                 return "- \(ingredient.name)"
             }
             .joined(separator: "\n")
+        // Hand over the authored timing rather than making the model re-derive
+        // it from the prose it is about to rewrite.
+        //
+        // This line used to be text only. The recipe already knew that "sear
+        // four minutes per side" is 480 seconds, we did not send it, and the
+        // model dutifully returned `timerSeconds: null` because the contract
+        // below only REQUIRES a timer on passive steps. The cook then got a
+        // step naming a duration with nothing to tap. No prose parsing is
+        // needed to fix that, only sending the number we already have.
         let stepLines = recipe.sortedSteps
             .enumerated()
-            .map { "\($0.offset + 1). \($0.element.text)" }
+            .map { offset, step in
+                guard let seconds = step.durationSeconds, seconds > 0 else {
+                    return "\(offset + 1). \(step.text)"
+                }
+                return "\(offset + 1). \(step.text) [authored timing: \(seconds)s]"
+            }
             .joined(separator: "\n")
         return """
         RECIPE: \(recipe.title)

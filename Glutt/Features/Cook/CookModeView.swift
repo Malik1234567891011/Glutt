@@ -131,15 +131,21 @@ struct CookModeView: View {
                     .frame(width: 40, height: 40)
                     .overlay(Circle().stroke(Theme.Colors.border, lineWidth: 1))
                     .clipShape(Circle())
+                    // The drawn circle stays 40; only the tappable area grows.
+                    // This is the screen used with wet hands, and 40 is under
+                    // the 44 minimum on the two controls that leave it.
+                    .frame(width: 48, height: 48)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("Stop cooking")
             Spacer()
             VStack(spacing: 1) {
                 Text(recipe.title)
-                    .font(.system(size: 13, weight: .heavy))
+                    .font(BrandFont.nunito(13, 800, relativeTo: .caption1, maxSize: 20))
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .lineLimit(1)
                 Text(stepCounterLabel)
-                    .font(.system(size: 11.5, weight: .bold))
+                    .font(BrandFont.nunito(11.5, 700, relativeTo: .caption2, maxSize: 18))
                     .foregroundStyle(Theme.Colors.textSecondary)
             }
             Spacer()
@@ -153,7 +159,10 @@ struct CookModeView: View {
                     .frame(width: 40, height: 40)
                     .overlay(Circle().stroke(Theme.Colors.border, lineWidth: 1))
                     .clipShape(Circle())
+                    .frame(width: 48, height: 48)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("All ingredients")
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)
@@ -184,45 +193,54 @@ struct CookModeView: View {
                 }
 
                 Text(CookModeView.silentInstruction(step.instruction))
-                    .font(.gluttCookStep)
+                    // Capped at 40. The instruction is the thing somebody
+                    // reads from across a counter, so it should grow further
+                    // than anything else here, but past 40 it starts pushing
+                    // the supporting blocks off the screen entirely.
+                    .font(BrandFont.bricolage(27, 600, relativeTo: .title2, maxSize: 40))
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                // Directly under the instruction, above the supporting blocks.
+                //
+                // It used to sit between LOOK FOR and IF IT GOES WRONG, which
+                // put a solid amber button immediately above an amber tinted
+                // block: two ambers touching, the louder one not the warning.
+                // It also split the two callouts. The timer is the action the
+                // instruction implies, so it reads in that order and the two
+                // ambers end up separated by the olive block between them.
+                if let duration = step.offerableTimerSeconds {
+                    timerChip(for: step, index: index, duration: duration)
+                }
 
                 if let look = step.visualCheck, !look.isEmpty {
                     calloutRow("LOOK FOR", look, tint: Theme.Colors.accent)
                 }
 
-                if let duration = step.timerSeconds ?? step.estimatedSeconds,
-                   duration > 0, step.kind == .passive {
-                    timerChip(for: step, index: index, duration: duration)
-                }
-
                 if let recovery = step.recovery, !recovery.isEmpty {
-                    calloutRow("IF IT GOES WRONG", recovery, tint: Theme.Colors.warning)
+                    calloutRow("IF IT GOES WRONG", recovery,
+                               tint: Theme.Colors.warning, opacity: 0.18)
                 }
 
                 let used = ingredients(for: step)
                 if !used.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                        Text("FOR THIS STEP")
-                            .font(.system(size: 12, weight: .heavy))
-                            .textCase(.uppercase)
-                            .foregroundStyle(Theme.Colors.accent)
-                        ForEach(used) { ingredient in
-                            HStack {
-                                Circle()
-                                    .fill(Theme.Colors.accent.opacity(0.5))
-                                    .frame(width: 6, height: 6)
-                                Text(ingredientLabel(ingredient))
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(Theme.Colors.textPrimary)
+                    supportBlock("FOR THIS STEP",
+                                 tint: Theme.Colors.textSecondary,
+                                 surface: Theme.Colors.textSecondary) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(used) { ingredient in
+                                HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
+                                    Circle()
+                                        .fill(Theme.Colors.textSecondary.opacity(0.5))
+                                        .frame(width: 5, height: 5)
+                                    Text(ingredientLabel(ingredient))
+                                        .font(BrandFont.nunito(15, 600, relativeTo: .subheadline, maxSize: 26))
+                                        .foregroundStyle(Theme.Colors.textPrimary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
                             }
                         }
                     }
-                    .padding(Theme.Spacing.md)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.Colors.card)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.photo, style: .continuous))
                 }
             }
             .padding(Theme.Spacing.lg)
@@ -247,11 +265,12 @@ struct CookModeView: View {
                     .foregroundStyle(.white)
             }
             .padding(.horizontal, Theme.Spacing.md)
-            .padding(.vertical, 12)
+            .padding(.vertical, 15)
             .background(Theme.Colors.warning)
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Start a \(TimerManager.format(seconds: duration)) timer")
     }
 
     // MARK: - Timers bar
@@ -349,8 +368,11 @@ struct CookModeView: View {
     /// numbering (`PollySessionSubviews.stepPage`) so the same dish reads the
     /// same way whichever way the cook runs it.
     private func badgeText(_ step: CookPlan.PlanStep, index: Int) -> String {
-        if step.id == CookPlan.toolsStepID { return "Tools" }
-        if step.id == CookPlan.prepStepID { return "Prep" }
+        // The badge under this already names the step "Tools" or "Prep". The
+        // header's job is where you are, not what it is called, so repeating
+        // the word verbatim added nothing. "Setup" says the thing the badge
+        // does not: that this comes before the counted steps.
+        if CookPlan.isSetupStep(step) { return "Setup" }
         return "\(max(1, index + 1 - setupCount))"
     }
 
@@ -392,21 +414,59 @@ struct CookModeView: View {
         return rebuilt.isEmpty ? text : rebuilt
     }
 
-    private func calloutRow(_ label: String, _ text: String, tint: Color) -> some View {
+    /// The one construction every supporting block on this screen uses.
+    ///
+    /// LOOK FOR, IF IT GOES WRONG and FOR THIS STEP are peers: three things the
+    /// cook may want while doing the same step. They used to be built three
+    /// different ways, and the difference was not carrying meaning. Two were a
+    /// colour tinted 10% over the cream; the third was an opaque near-white
+    /// card, which read as a different class of object sitting on top of the
+    /// page rather than a sibling of the two above it.
+    ///
+    /// Now they share padding, radius, label style, and the gap between label
+    /// and body, and differ only in tint strength, which is the one axis
+    /// carrying actual meaning:
+    ///
+    /// - **LOOK FOR** accent at 10%, an olive wash. Calm: this is what success
+    ///   looks like, and it is not urgent.
+    /// - **FOR THIS STEP** a warm neutral at 10%. The quietest, because it is
+    ///   reference rather than instruction.
+    /// - **IF IT GOES WRONG** amber at 18%, and the only one that reads as a
+    ///   raised voice. It is the block a cook needs when something is actually
+    ///   burning, so it is allowed to be found faster than its peers.
+    @ViewBuilder
+    private func supportBlock(
+        _ label: String,
+        tint: Color,
+        surface: Color,
+        opacity: Double = 0.10,
+        @ViewBuilder content: () -> some View
+    ) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(label)
-                .font(.system(size: 12, weight: .heavy))
+                .font(BrandFont.nunito(12, 800, relativeTo: .caption2, maxSize: 19))
                 .textCase(.uppercase)
                 .foregroundStyle(tint)
-            Text(text)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .fixedSize(horizontal: false, vertical: true)
+            content()
         }
         .padding(Theme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(tint.opacity(0.10))
+        .background(surface.opacity(opacity))
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.photo, style: .continuous))
+    }
+
+    private func calloutRow(
+        _ label: String,
+        _ text: String,
+        tint: Color,
+        opacity: Double = 0.10
+    ) -> some View {
+        supportBlock(label, tint: tint, surface: tint, opacity: opacity) {
+            Text(text)
+                .font(BrandFont.nunito(15, 600, relativeTo: .subheadline, maxSize: 26))
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     /// What this step touches. The compiler names them (`ingredientNames`), and

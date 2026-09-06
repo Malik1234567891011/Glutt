@@ -76,6 +76,25 @@ struct CookPlan: Codable, Equatable {
             return Self.split(instruction)
         }
 
+        /// The seconds a countdown should be offered for on this step, or nil.
+        ///
+        /// `timerSeconds` wins whatever the kind. The compiler is asked for it
+        /// on every `passive` step and told it may also set it on other kinds
+        /// "unless a precise timer genuinely helps", so an ACTIVE step that
+        /// carries one is the model saying a timer helps here. The cooking
+        /// screen used to require `kind == .passive` and threw exactly that
+        /// case away: "sear four minutes per side" is active work, arrives with
+        /// a timer, and offered none.
+        ///
+        /// `estimatedSeconds` only counts on a passive step, because elsewhere
+        /// it is hands-on time rather than an unattended wait, and counting
+        /// down a cook's own working speed would be noise.
+        var offerableTimerSeconds: Int? {
+            if let timerSeconds, timerSeconds > 0 { return timerSeconds }
+            guard kind == .passive, let estimatedSeconds, estimatedSeconds > 0 else { return nil }
+            return estimatedSeconds
+        }
+
         /// Break prose into glanceable pieces on sentence ends, then trim the
         /// result to something a person can scan. Five is the ceiling because a
         /// card taller than that is the wall we are trying to get rid of.
@@ -739,10 +758,10 @@ extension CookPlan {
         let laterStepID: String
     }
 
-    /// How long a step ties up an appliance. `timerSeconds` is the unattended
-    /// wait and is what matters here; `estimatedSeconds` is hands-on time.
+    /// How long a step ties up an appliance. See `PlanStep.offerableTimerSeconds`,
+    /// which is the same question asked by the cooking screen.
     private static func occupancySeconds(_ step: PlanStep) -> Int? {
-        step.timerSeconds ?? (step.kind == .passive ? step.estimatedSeconds : nil)
+        step.offerableTimerSeconds
     }
 
     static func appliance(for step: PlanStep) -> Appliance? {

@@ -16,20 +16,31 @@ import SwiftData
 /// already syncs its collection names, so a restored library comes back with
 /// the five meals still grouped under the week they belong to. The plan record
 /// is a receipt of one shop, not a thing worth pushing.
+/// # Every non-optional attribute carries an inline default
+///
+/// Not style. SwiftData infers its migration from the model, and an attribute
+/// that is mandatory in the destination with no default gives the inferred
+/// mapping nothing to write, so the whole store fails to open with
+/// "missing attribute values on mandatory destination attribute" and
+/// `GluttApp`'s container turns that into a `fatalError`. That is a launch
+/// crash on update, for everybody, and it was reproducible here: a store made
+/// before this file existed could not migrate onto it.
+///
+/// The defaults in `init` do not help. Migration never calls it.
 @Model
 final class MealPlan {
     /// Stable identity for the generated plan, carried from the in-memory draft
     /// so re-committing an edited plan updates this row instead of adding one.
-    var planID: UUID
+    var planID: UUID = UUID()
     /// Display name, also the collection's name ("Week of Aug 6").
-    var name: String
-    var servingsPerMeal: Int
-    var mealCount: Int
+    var name: String = ""
+    var servingsPerMeal: Int = 4
+    var mealCount: Int = 5
     /// Rough dollar target the plan was generated against. Steers the list
     /// toward cheap staples.
     var budgetTarget: Int?
     /// Ceiling the cook set on how many distinct things to buy.
-    var ingredientTarget: Int
+    var ingredientTarget: Int = 22
     /// Estimated cost of the shop, as a low and high bound in whole dollars.
     ///
     /// Shown, unlike the target, but never as a bare figure: the UI always
@@ -39,17 +50,17 @@ final class MealPlan {
     var estimatedCostLow: Int?
     var estimatedCostHigh: Int?
     /// Free text the cook typed at setup ("no pork, one vegetarian night").
-    var notes: String
+    var notes: String = ""
     /// The meals in generated order. The collection is a set, and "meal 3" has
     /// to keep meaning the same dish across a swap.
-    var mealTitles: [String]
-    var createdAt: Date
+    var mealTitles: [String] = []
+    var createdAt: Date = Date.now
 
     /// The library collection holding this plan's recipes.
     var collection: RecipeCollection?
 
     @Relationship(deleteRule: .cascade, inverse: \MealPlanLine.plan)
-    var lines: [MealPlanLine]
+    var lines: [MealPlanLine] = []
 
     var sortedLines: [MealPlanLine] {
         lines.sorted { $0.sortIndex < $1.sortIndex }
@@ -101,18 +112,18 @@ final class MealPlan {
 /// `GroceryItem.sourceRecipeTitles` when the plan is committed.
 @Model
 final class MealPlanLine {
-    var name: String
-    var canonicalName: String
+    var name: String = ""
+    var canonicalName: String = ""
     var quantity: Double?
     var unit: String?
-    var category: GroceryCategory
-    var isOptional: Bool
+    var category: GroceryCategory = GroceryCategory.other
+    var isOptional: Bool = false
     /// Titles of this plan's meals that call for the line.
-    var recipeTitles: [String]
+    var recipeTitles: [String] = []
     /// True when the pantry already covers it. Shown as "already in your
     /// kitchen" and kept off the grocery list.
-    var alreadyHave: Bool
-    var sortIndex: Int
+    var alreadyHave: Bool = false
+    var sortIndex: Int = 0
 
     var plan: MealPlan?
 

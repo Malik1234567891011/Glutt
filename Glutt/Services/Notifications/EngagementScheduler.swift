@@ -32,6 +32,10 @@ import UserNotifications
 enum EngagementScheduler {
 
     /// One id, so there is only ever one of these in flight.
+    // `nonisolated` because it is an immutable String: the default argument
+    // `identifier: String = EngagementScheduler.identifier` is evaluated in the
+    // caller context, which is an error in the Swift 6 language mode otherwise.
+    nonisolated
     static let identifier = "glutt.engagement.next"
 
     /// The repeating 07:00 Discover reminder this system replaces.

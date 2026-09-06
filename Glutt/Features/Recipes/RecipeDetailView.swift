@@ -157,6 +157,14 @@ struct RecipeDetailView: View {
         }
         .sheet(isPresented: $isShowingPreCookChecklist) {
             PreCookChecklistView(recipe: recipe) { isCooking = true }
+                // Two missing ingredients do not need a full-height sheet, and
+                // this one opened with roughly a third of its height empty
+                // under the last button. `.large` stays available rather than
+                // being replaced, so a long list, a lot of substitutions or
+                // large text can still take the whole screen: this sets where
+                // it opens, not how big it is allowed to get.
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingEditor) { RecipeEditorView(recipe: recipe) }
         .sheet(isPresented: $isOptimizing) { OptimizeRecipeView(recipe: recipe) }

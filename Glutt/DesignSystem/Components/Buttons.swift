@@ -3,7 +3,11 @@ import SwiftUI
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.gluttHeadline)
+            // Scales with the reader, capped at 24 so a full width button does
+            // not become three lines tall. The vertical padding is fixed, so
+            // the button grows with its label rather than clipping it.
+            .font(BrandFont.bricolage(17, 600, relativeTo: .headline, maxSize: 24))
+            .multilineTextAlignment(.center)
             .foregroundStyle(.white)
             .padding(.vertical, 14)
             .frame(maxWidth: .infinity)
@@ -17,7 +21,8 @@ struct PrimaryButtonStyle: ButtonStyle {
 struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.gluttHeadline)
+            .font(BrandFont.bricolage(17, 600, relativeTo: .headline, maxSize: 24))
+            .multilineTextAlignment(.center)
             .foregroundStyle(Theme.Colors.accent)
             .padding(.vertical, 14)
             .frame(maxWidth: .infinity)

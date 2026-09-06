@@ -21,6 +21,52 @@ enum BrandFont {
         Font(uiNunito(size, weight))
     }
 
+    /// The same faces, but following the reader's text size.
+    ///
+    /// Everything above returns a fixed point size, which is what the pixel
+    /// spec asked for and is why the app rendered identically at every setting
+    /// including the accessibility ones: somebody who has told iOS they need
+    /// larger text got no larger text anywhere in Glutt.
+    ///
+    /// `UIFontMetrics` scales a custom face the way the system scales its own,
+    /// so the design is unchanged at the default setting and grows from there.
+    /// Opt in per role rather than everywhere: a caption and a cooking
+    /// instruction should not grow at the same rate, and a display face that
+    /// doubles will wreck a layout that a body face survives.
+    ///
+    /// `maxSize` is the ceiling. Without one a 27pt instruction reaches the
+    /// fifties at the largest accessibility setting and pushes everything
+    /// under it off the screen, which helps nobody.
+    static func bricolage(
+        _ size: CGFloat,
+        _ weight: CGFloat = 600,
+        relativeTo textStyle: UIFont.TextStyle,
+        maxSize: CGFloat? = nil
+    ) -> Font {
+        Font(scaled(uiBricolage(size, weight), textStyle: textStyle, maxSize: maxSize))
+    }
+
+    static func nunito(
+        _ size: CGFloat,
+        _ weight: CGFloat = 600,
+        relativeTo textStyle: UIFont.TextStyle,
+        maxSize: CGFloat? = nil
+    ) -> Font {
+        Font(scaled(uiNunito(size, weight), textStyle: textStyle, maxSize: maxSize))
+    }
+
+    private static func scaled(
+        _ font: UIFont,
+        textStyle: UIFont.TextStyle,
+        maxSize: CGFloat?
+    ) -> UIFont {
+        let metrics = UIFontMetrics(forTextStyle: textStyle)
+        if let maxSize {
+            return metrics.scaledFont(for: font, maximumPointSize: maxSize)
+        }
+        return metrics.scaledFont(for: font)
+    }
+
     static func uiBricolage(_ size: CGFloat, _ weight: CGFloat = 600) -> UIFont {
         variable("Bricolage Grotesque", size: size, axes: [wght: weight, opsz: size])
     }

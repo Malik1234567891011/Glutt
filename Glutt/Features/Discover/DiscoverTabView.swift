@@ -69,14 +69,26 @@ struct DiscoverTabView: View {
                     Haptics.selection()
                     mode = mode.other
                 } label: {
-                    Text(mode.other.rawValue)
-                        .font(BrandFont.nunito(12, 800))
-                        .foregroundStyle(Theme.Colors.accent)
-                        .padding(.horizontal, 13).padding(.vertical, 8)
-                        .background(Capsule().fill(Theme.Colors.accent.opacity(0.10)))
-                        .overlay(Capsule().strokeBorder(Theme.Colors.accent.opacity(0.22), lineWidth: 1.5))
+                    // A glyph so the control does not read as a second status
+                    // chip next to the streak. They sat side by side at the
+                    // same height in the same capsule, one a button and one a
+                    // number, with nothing but a hairline border telling them
+                    // apart. The swap mark says which one does something.
+                    HStack(spacing: 5) {
+                        Ph.arrowsClockwise.regular
+                            .resizable().scaledToFit()
+                            .frame(width: 12, height: 12)
+                        Text(mode.other.rawValue)
+                    }
+                    .font(BrandFont.nunito(12, 800))
+                    .foregroundStyle(Theme.Colors.accent)
+                    .padding(.horizontal, 13).padding(.vertical, 8)
+                    .background(Capsule().fill(Theme.Colors.accent.opacity(0.10)))
+                    .overlay(Capsule().strokeBorder(Theme.Colors.accent.opacity(0.22), lineWidth: 1.5))
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Switch to \(mode.other.rawValue)")
                 streakChip
             }
         }
@@ -94,6 +106,8 @@ struct DiscoverTabView: View {
         }
         .padding(.horizontal, 13).padding(.vertical, 8)
         .background(Capsule().fill(Theme.Colors.amberChip))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("^[\(days) day](inflect: true) streak")
     }
 
     // MARK: Videos

@@ -5,6 +5,8 @@ import SwiftUI
 /// its rough quantity, swipe to remove, use-soon items flagged with an inline badge.
 struct InventoryView: View {
     @Environment(\.modelContext) private var context
+    /// Rows change shape rather than shrink at accessibility text sizes.
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Query(sort: \PantryItem.name) private var items: [PantryItem]
     @Binding var isAddingItem: Bool
     /// Which way in the header's plus menu chose, and whether the scan sheet is
@@ -242,21 +244,24 @@ struct InventoryView: View {
         IngredientCategoryStyle.chip(for: category)
     }
 
-    /// Peach pill with tomato text for items flagged use-soon.
-    private var useSoonBadge: some View {
-        Text("Use soon")
-            .font(BrandFont.nunito(10.5, 800))
-            .foregroundStyle(Theme.Colors.tomato)
-            .padding(.horizontal, 9).padding(.vertical, 4)
-            .background(Capsule().fill(Theme.Colors.peachPanel))
-    }
-
-    /// Rough-quantity pill (tap to cycle): Full is solid green, Half/Low tint down.
+    /// Rough-quantity pill, tap to cycle. Loudness rises with how much the
+    /// cook needs to do something about it.
+    ///
+    /// It used to run the other way. `full` was cream on solid herb green,
+    /// which made the most emphatic object in every row the state that needs
+    /// nothing: a cupboard of well stocked items read as a column of green
+    /// badges, and the one jar about to run out was quieter than all of them.
+    /// Now a full jar is a quiet neutral and the ramp climbs through half,
+    /// low and out.
+    ///
+    /// Still a pill, because it is a button: this is where the cook taps to
+    /// cycle the amount, and demoting it to plain text would take the control
+    /// away to solve a colour problem.
     private func quantityPill(_ item: PantryItem) -> some View {
         let colors: (fg: Color, bg: Color) = {
             switch item.roughQuantity {
-            case .full: return (Theme.Colors.creamText, Theme.Colors.accent)
-            case .half: return (Theme.Colors.accent, Theme.Colors.greenTint)
+            case .full: return (Theme.Colors.muted, Theme.Colors.surface2)
+            case .half: return (Theme.Colors.textSecondary, Theme.Colors.surface2)
             case .low: return (Theme.Colors.amber, Theme.Colors.amberChip)
             case .out: return (Theme.Colors.tomato, Theme.Colors.tomatoTint)
             }
@@ -267,29 +272,80 @@ struct InventoryView: View {
             item.updatedAt = .now
         } label: {
             Text(item.roughQuantity.label)
-                .font(BrandFont.nunito(11.5, 800))
+                .font(BrandFont.nunito(11.5, 800, relativeTo: .caption2, maxSize: 17))
+                .lineLimit(1)
                 .foregroundStyle(colors.fg)
                 .padding(.horizontal, 12).padding(.vertical, 5)
                 .background(Capsule().fill(colors.bg))
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(item.name), \(item.roughQuantity.label)")
+        .accessibilityHint("Changes how much is left")
+    }
+
+    /// Freshness, said where the item describes itself rather than as a second
+    /// pill on the trailing edge.
+    ///
+    /// "Use soon" and "Almost empty" are different questions: one is about age,
+    /// the other about amount. Side by side as two capsules they read as two
+    /// halves of one status and made a flagged row visibly busier than every
+    /// other row in the list. Freshness belongs with the item's own detail
+    /// line; the trailing edge stays the quantity control alone.
+    @ViewBuilder
+    private func detailLine(_ item: PantryItem) -> some View {
+        let rest = [item.exactQuantity, item.location.label]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+        if showsUseSoonBadge(item) {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Use soon").foregroundStyle(Theme.Colors.tomato)
+                    if !rest.isEmpty { Text(rest).foregroundStyle(Theme.Colors.muted) }
+                }
+                .font(BrandFont.nunito(12.5, 700, relativeTo: .caption1, maxSize: 20))
+            } else {
+                (Text("Use soon").foregroundStyle(Theme.Colors.tomato)
+                    + Text(rest.isEmpty ? "" : " · \(rest)").foregroundStyle(Theme.Colors.muted))
+                    .font(BrandFont.nunito(12.5, 700, relativeTo: .caption1, maxSize: 20))
+            }
+        } else {
+            Text(rest)
+                .font(BrandFont.nunito(12.5, 600, relativeTo: .caption1, maxSize: 20))
+                .foregroundStyle(Theme.Colors.muted)
+        }
     }
 
     private func itemRow(_ item: PantryItem) -> some View {
-        HStack(spacing: 13) {
-            IngredientTile(name: item.name, isMissing: item.roughQuantity == .out)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(item.name)
-                    .font(BrandFont.nunito(15, 700))
-                    .foregroundStyle(item.roughQuantity == .out ? Theme.Colors.muted : Theme.Colors.heading)
-                    .strikethrough(item.roughQuantity == .out)
-                Text([item.exactQuantity, item.location.label].compactMap { $0 }.joined(separator: " · "))
-                    .font(BrandFont.nunito(12.5, 600))
-                    .foregroundStyle(Theme.Colors.muted)
+        let name = VStack(alignment: .leading, spacing: 1) {
+            Text(item.name)
+                .font(BrandFont.nunito(15, 700, relativeTo: .subheadline, maxSize: 26))
+                .foregroundStyle(item.roughQuantity == .out ? Theme.Colors.muted : Theme.Colors.heading)
+                .strikethrough(item.roughQuantity == .out)
+            detailLine(item)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        return Group {
+            if typeSize.isAccessibilitySize {
+                // The pill drops under the name rather than squeezing it. Side
+                // by side at these sizes the name wrapped to three lines while
+                // the pill wrapped to two, and neither was readable.
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 13) {
+                        IngredientTile(name: item.name, isMissing: item.roughQuantity == .out)
+                        name
+                    }
+                    quantityPill(item)
+                }
+            } else {
+                HStack(spacing: 13) {
+                    IngredientTile(name: item.name, isMissing: item.roughQuantity == .out)
+                    name
+                    Spacer(minLength: 8)
+                    quantityPill(item)
+                }
             }
-            Spacer(minLength: 8)
-            if showsUseSoonBadge(item) { useSoonBadge }
-            quantityPill(item)
         }
         .padding(.vertical, 12)
         .contextMenu {

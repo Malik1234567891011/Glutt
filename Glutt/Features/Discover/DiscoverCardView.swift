@@ -33,24 +33,30 @@ struct DiscoverCardView: View {
                 }
             }
 
+            // Saving is the point of the feed; moving on is the way out of it.
+            //
+            // These were `.bordered` and `.borderedProminent`, which drew two
+            // filled capsules of near equal weight, and the stock `.bordered`
+            // tint read as a disabled button rather than a secondary one. Glutt
+            // already owns the pair of styles this needs.
             HStack(spacing: Theme.Spacing.sm) {
                 Button(action: onNext) {
                     Text("Show me next")
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.gluttSecondary)
+                .frame(maxWidth: .infinity)
 
                 Button(action: onSave) {
                     Group {
-                        if isSaving { ProgressView() }
-                        else { Text(isSaved ? "Saved ✓" : "Save") }
+                        if isSaving { ProgressView().tint(Theme.Colors.creamText) }
+                        else { Text(isSaved ? "Saved" : "Save") }
                     }
-                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.gluttPrimary)
+                .frame(maxWidth: .infinity)
                 .disabled(isSaving || isSaved)
+                .opacity(isSaved ? 0.55 : 1)
             }
-            .tint(Theme.Colors.accent)
         }
     }
 }

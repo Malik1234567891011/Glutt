@@ -1,6 +1,12 @@
 # Glutt
 
-A mobile-first cooking assistant. Import recipes from anywhere, know what's in your kitchen, plan your week, cook with guidance or live with Polly (a realtime voice + camera AI chef), and track what you actually ate — without the app forcing gym culture on you.
+**Glutt: Recipes & AI Chef** is an iPhone cooking app with Polly, a live voice AI chef that talks you through any recipe hands-free, answers questions out loud and can see your pan through the camera. It saves recipes from TikTok, Instagram, YouTube and any website, knows what is in your kitchen, and works with Ray-Ban Meta glasses for audio.
+
+- Website: [glutt.org](https://glutt.org)
+- App Store: [Glutt: Recipes & AI Chef](https://apps.apple.com/us/app/glutt-recipes-ai-chef/id6780553556)
+- Guides: [cooking with Meta glasses](https://glutt.org/guides/cooking-with-meta-glasses), [Polly, the AI chef](https://glutt.org/ai-chef), [FAQ](https://glutt.org/faq)
+
+This repository is the source of the iOS app. The notes below are for developers.
 
 iOS-native: SwiftUI + SwiftData, iOS 17+.
 
